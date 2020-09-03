@@ -1,0 +1,12 @@
+---
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# NEFSC Trawl Survey Analyses
+
+This repository is for analyses relating to the NEFSC bottom trawl survey and the Maine & New Hampshire trawl survey. Research topics relate to size-spectrum analyses and species distribution modeling.
+
