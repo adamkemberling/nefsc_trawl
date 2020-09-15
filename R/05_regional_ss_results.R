@@ -16,14 +16,16 @@ library(sizeSpectra)
 library(patchwork)
 library(tidyverse)
 
+
+
 ####  Support Functions  ####
 source(here("R/support/sizeSpectra_support.R"))
 
 
 
-#File Paths
+# File Paths
 mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+res_path   <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 
 ####  Data  ####
 
@@ -34,16 +36,16 @@ res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 nefsc_master <- read_csv(here("data/NEFSC/2020survdat_nye.csv"), 
                         col_types = cols(), 
                         guess_max = 1e6) %>% 
-  clean_names() 
+  clean_names()
 
-
+# Drop unhelpful columnns to free up space
 
 # Cleanup Code from Kathy
 nefsc_master <- nefsc_master%>% 
   mutate(comname = tolower(comname),
          id = format(id, scientific = FALSE)) %>%
-  # select(id, est_year, season, stratum, decdeg_beglat, decdeg_beglon,
-  #        svspp, comname, catchsex, biomass, avgdepth, abundance, length, numlen) %>%
+  select(id, est_year, season, stratum, decdeg_beglat, decdeg_beglon,
+         svspp, comname, catchsex, biomass, avgdepth, abundance, length, numlen) %>%
   filter(stratum >= 01010,
          stratum <= 01760,
          stratum != 1310,
@@ -78,7 +80,8 @@ nefsc_lw <- nefsc_lw %>%
          b = as.numeric(b),
          ln_a = log(a),
          related_ln_a = log(related_a),
-         ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a))
+         ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a),
+         a = ifelse(is.na(a), exp(ln_a), a))
 
 
 
@@ -89,11 +92,15 @@ lwreg <- lwreg %>%
   mutate(comname = str_to_lower(common_name), .before = scientific_name,
          common_name = NULL,
          scientific_name = str_to_lower(scientific_name),
-         svspp = str_pad(svspp, width = 3, side = "left", pad = "0"))
+         svspp = str_pad(svspp, width = 3, side = "left", pad = "0")) %>% 
+  mutate(ln_a = lna, 
+         a = exp(ln_a),
+         lna = NULL,
+         .before = b)
 
 
 
-#CHECKING PORTION OF FISH REPRESENTED IN WIGLEY ET AL 2003 BASED ON TOW-LEVEL DATA
+# Species class/groups based on life history
 spp_classes <- read_csv(here("data/kmills/sppclass.csv"),
                         col_types = cols())
 spp_classes <- spp_classes %>% 
@@ -108,81 +115,49 @@ spp_classes <- spp_classes %>%
  
 
 # Merge the growth coefficients with the species classes
-bn <- left_join(lwreg, spp_classes, by = c("svspp", "comname", "scientific_name"))
+wigley_lw <- left_join(lwreg, spp_classes, by = c("svspp", "comname", "scientific_name"))
 
 
 
-####  Next Steps:   ####
+####__ c.  Combining L/W  Sources  ####
 
 # 1. use these growth coefficients to get biomasses
 # 2. Potentially merge in my fishbase ones so that there is just one master
+
+wigley_lw <- wigley_lw %>% mutate(source = "wigley", .before = svspp)
+nefsc_lw  <- nefsc_lw %>% mutate(source = "fishbase", .before = comname) 
+lw_combined <- full_join(nefsc_lw, wigley_lw) 
+
+# Fill in gaps for things that should be consistent
+lw_combined <- lw_combined %>% 
+  arrange(comname) %>% 
+  mutate(
+    hare_group = ifelse(is.na(hare_group),
+                             nefsc_lw[ match(comname,  nefsc_lw$comname)[1], "hare_group"][[1]],
+                             hare_group),
+         svspp = ifelse(is.na(svspp),
+                              wigley_lw[ match(comname, wigley_lw$comname)[1], "svspp"][[1]],
+                              svspp),
+         scientific_name = ifelse(is.na(scientific_name),
+                                  wigley_lw[ match(comname, wigley_lw$comname)[1], "scientific_name"][[1]],
+                                  scientific_name),
+         fishery = ifelse(is.na(fishery),
+                          wigley_lw[ match(comname, wigley_lw$comname)[1], "fishery"][[1]],
+                          fishery),
+         spec_class = ifelse(is.na(spec_class),
+                             wigley_lw[ match(comname, wigley_lw$comname)[1], "spec_class"][[1]],
+                             spec_class)) %>% 
+  select(source, svspp, comname, scientific_name, spec_class, hare_group, fishery, season, catchsex,
+         b, a, ln_a, units, related_species, related_a, related_b, related_ln_a,
+         wigleymin, wigleymax, wigleyvalue)
+  
+
+
 # 3. From there we can do the rest of the size spectra steps
 
+# continue to get individual length bins
 
 
-
-
-#CHECKING PORTION OF FISH REPRESENTED IN WIGLEY ET AL 2003 BASED ON EXPNUMLEN
-
-sum(bn$NUMLEN,na.rm=TRUE)
-
-bn.wigley<-bn[bn$wigley=="X",]
-
-sum(bn.wigley$NUMLEN,na.rm=TRUE)
-
-sum(bn.wigley$NUMLEN,na.rm=TRUE)/sum(bn$NUMLEN,na.rm=TRUE)
-
-#82%
-
-
-
-head(bn)
-
-fish<-bn[bn$INV==0,]
-
-sum(fish$NUMLEN,na.rm=TRUE)
-
-fish.wigley<-fish[fish$wigley=="X",]
-
-sum(fish.wigley$NUMLEN,na.rm=TRUE)
-
-sum(fish.wigley$NUMLEN,na.rm=TRUE)/sum(fish$NUMLEN,na.rm=TRUE)
-
-#94.7% of fish have L-W coefficients in Wigley
-
-
-
-########################
-
-
-
-#GETTING WEIGHTS FROM L-W COEFFICIENTS
-
-
-
-fish.cut<-fish.wigley[fish.wigley$LENGTH!=0,]
-
-fish.cut<-fish.cut[!(is.na(fish.cut$LENGTH)),]
-
-#fish.cut[fish.cut$LENGTH==0,]
-
-
-
-fish.cut$LLEN<-log(fish.cut$LENGTH)
-
-class<-merge(fish.cut,sppclass2,by.x="SVSPP",by.y="SVSPP")
-
-class.wigley<-class[class$wigley=="X",]
-
-len.reg<-merge(class.wigley,lwreg,all.x=T)
-
-
-
-len.reg$LWEIGHT<-len.reg$lna + (len.reg$b*len.reg$LLEN)
-
-len.reg$WT<-exp(len.reg$LWEIGHT)
-
-len.reg$TOTWT<-len.reg$WT * len.reg$NUMLEN
 
 
 
@@ -232,7 +207,7 @@ conv_factor <- nefsc %>%
   group_by(id, comname, catchsex, numlen, abundance) %>% 
   summarise(abundance_raw = sum(numlen),
             abundance = mean(abundance), 
-            convers = abundance/abundance_raw) 
+            convers =  abundance/abundance_raw) 
 
 
 # Merge back and convert the numlen field
@@ -241,24 +216,17 @@ nefsc <- nefsc %>%
   mutate(numlen_adj = numlen * convers,
          numlen_adj = round(numlen_adj, 2)) 
 
-# Formatting individual Lengths
-
-nefsc <- nefsc %>% 
-  select(c(id,
-           est_year:svvessel, 
-           decdeg_beglat, 
-           decdeg_beglon, 
-           catchsex,
-           comname:area,
-           catchsex,station:numlen_adj))
 
 
 glimpse(nefsc)
 
 
+
+
+
 ####__ 3. Get Individual Lengths  ####
 
-# Record of unique station catches# row for each species*sex*length
+# Record of unique station catches: # rows for each species * sex * length
 nefsc_lens <- nefsc %>% 
   filter(is.na(numlen) == FALSE,
          numlen > 0) %>% 
@@ -268,48 +236,90 @@ nefsc_lens <- nefsc %>%
 # recombine with the distinct station info
 nefsc_spectra <- nefsc %>% 
   # drop the columns with individual catch info, we want all distinct records merging in ok
-  select(-c(est_julian_day, catchsex, comname, numlen_adj, biomass, abundance, length, numlen, abundance_raw, convers)) %>% 
-  distinct() %>% left_join(nefsc_lens, by = "id")
+  select(-c(catchsex, svspp, avgdepth, comname, numlen_adj, biomass, abundance, length, numlen, abundance_raw, convers)) %>% 
+  distinct() %>% 
+  left_join(nefsc_lens, by = "id")
 
 
 glimpse(nefsc_spectra)
 
 
-# Combine with the length weight coefficients
-####__ 4.  Calculate Weights  ####
-nefsc_weights <- nefsc_spectra %>% 
-  left_join(nefsc_lw[,1:5], by = "comname")  %>% 
+
+####__ 4.  Calculate Weights/Biomass  ####
+
+
+
+#Now we want to use the lw_combined here instead of just the fishbase lengths
+
+# Do a priority pass with the filter(lw_combined, source == "wigley)
+# merge on comname, season, and catchsex
+w_trimmed <- filter(lw_combined, source == "wigley") %>% 
+  select(source, season, comname, scientific_name, spec_class, hare_group, catchsex, a, b, ln_a)
+
+
+# Do a second pass with the filter(lw_combined, source == "fishbase")
+# merge on common names only
+fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
+  select(source, comname, scientific_name, spec_class, hare_group, a, b, ln_a)
+
+# First Pass - Wigley
+pass_1 <- nefsc_spectra %>% 
+  inner_join(w_trimmed)
+
+
+# Second Pass - Fishbase, for the stragglers if any
+`%notin%` <-  purrr::negate(`%in%`) # to filter out ones that have matches
+pass_2 <- nefsc_spectra %>% 
+  filter(comname %notin% w_trimmed$comname) %>% 
+  inner_join(fb_trimmed)
+
+
+# Join them with bind rows (implicitly drops things that don't have growth coefs)
+nefsc_weights <- bind_rows(pass_1, pass_2) %>% 
+  arrange(est_year, season) %>% 
   mutate(b = as.numeric(b),
          a = as.numeric(a),
-         ln_a = log(a),
+         a = ifelse(is.na(a) & !is.na(ln_a), exp(ln_a), a),
+         ln_a = ifelse(is.na(ln_a), log(a), ln_a),
          ln_weight = (ln_a + b * log(length)),
          weight_g = exp(ln_weight),
          freq_weight = weight_g * numlen_adj) %>% 
   drop_na(weight_g)
 
 
-# Check weights
-nefsc_weights %>% 
+# Check weights - seems like some are in grams
+nefsc_weights %>% group_by(comname) %>% summarise(mean_weight =  mean(weight_g)) %>% arrange(desc(mean_weight)) 
+nefsc_weights %>% group_by(comname) %>% summarise(mean_weight =  mean(weight_g)) %>% arrange(mean_weight)
+
+
+#plot them all
+weights_summ <- nefsc_weights %>% 
   group_by(comname) %>% 
-  summarise(mean_weight =  mean(weight_g)) %>% 
-  arrange(desc(mean_weight)) 
+  summarise(mean_weight = mean(weight_g, na.rm = T),
+            bin = case_when(
+              mean_weight <= 1 ~ "0 - 1",
+              mean_weight <= 5 ~ "1 - 5",
+              mean_weight <= 100 ~ "10 - 100",
+              mean_weight <= 1000 ~ "100 - 1000",
+              mean_weight <= 10000 ~ "1000 - 10000",
+              mean_weight <= 100000 ~ "10000 - 100000",
+              TRUE ~ "100000+")) %>% 
+  left_join(nefsc_weights, by = "comname") 
 
-
- nefsc_weights %>% 
+weights_summ %>% 
+  #filter(weight_g > 5) %>% 
   ggplot( aes( y = fct_reorder(comname, weight_g, .fun = mean, .desc = TRUE), x = weight_g)) + 
-  geom_boxplot() + 
-  labs(x = "Mean Weight (g)", y = "Common Name")
+  geom_boxplot(outlier.alpha = 0.2, outlier.size = 0.5, outlier.shape = 3) + 
+  labs(x = "Mean Weight (g)", y = "Common Name") +
+  facet_wrap(~bin, scales = "free", ncol = 2) +
+  theme(axis.text = element_text(size = 6))
 
 
 
 
 
 
-####__ 5. Estimate Biomass  ####
 
- 
- 
- 
  ####_____________________________________________________####
  
  ####  Size Spectra Prep  ####
@@ -322,66 +332,94 @@ nefsc_weights %>%
  # Keep desired columns, name them for the vignette
  data <- dataOrig %>%  
    mutate(season = factor(season, levels = c("SPRING", "SUMMER", "FALL", "WINTER"))) %>%
-   select(
-     Year = est_year,                     # year
-     samp_month = est_month,
-     samp_dat = est_day,
-     samp_time = est_time,
-     vessel = svvessel,
-     season,
-     SpecCode = comname,          # common name
-     hare_group,
+   rename(
+     Year = est_year,                 # year
+     SpecCode = comname,              # common name
      LngtClass = length,              # length bin
-     Number = numlen_adj,              # CPUE in n/effort
+     Number = numlen_adj,             # CPUE in n/effort
      LWa = a,                         # length/weight param
      LWb = b,                         # length/weight param
      bodyMass = weight_g,             # weight of an individual from that size class
      CPUE_bio_per_hour = freq_weight  # CPUE in biomass
-   ) %>% arrange(Year, season, SpecCode, LngtClass) %>% 
-   mutate(Biomass = Number * bodyMass)
+   ) %>% arrange(Year, season, SpecCode, LngtClass)
+ 
+ # calculate total biomass, make a key for the length weight coefficient sources
+ data <- data %>% 
+   mutate(Biomass = Number * bodyMass,
+          lw_group = str_c(SpecCode, season, catchsex))
+ 
+ 
+ 
+ 
+ 
  
  ####__  SS Species Size Bins  ####
  
- # Split for every species
+ # Split for every species  still??
+ # at this point you want to break the data into the groups 
+ # that reflect their unique length weight coefficients
  species_splits <- data %>% 
    split(.$SpecCode)
  
  
- # Get a key for each species and size class
+ # Get a key for each species and size class, with the relevant season and sex
  # assumes 1cm bins for all species as written
  data_bin_key <- species_splits %>% 
-   map_dfr(function(species_df){
+   map_dfr(function(species_split){
      
-     #pull the distinct length bins
-     species_df <- species_df %>% 
-       distinct(LngtClass, .keep_all = T) %>% 
+     # pull the distinct length bins
+     # and the related lw_groups
+     species_split <- species_split %>% 
+       distinct(LngtClass, lw_group, .keep_all = T) %>% 
        arrange(LngtClass)
      
      
      # Add the max length for the bin, and its weight
-     binned_df <- species_df %>% 
+     binned_df <- species_split %>% 
        mutate(
          LngtMax = LngtClass + 1, 
-         wmax    = exp(log(LWa) + LWb * log(LngtMax)))  %>%
-       select(SpecCode, LWa, LWb, LngtMin = LngtClass, wmin = bodyMass, LngtMax, wmax,
+         ln_wmax = (ln_a + LWb * log(LngtMax)),
+         wmax    = exp(ln_wmax))  %>%
+       select(lw_group, 
+              SpecCode, 
+              season, 
+              catchsex, 
+              LWa, 
+              ln_a, 
+              LWb, 
+              LngtMin = LngtClass, 
+              wmin = bodyMass, 
+              LngtMax, 
+              wmax,
               -c(Number, Biomass))
      
      # return the clean data
-     return(binned_df)})
+     return(binned_df)
+})
+ 
+
+ 
  
  
  # Add the bins back into the original and clean up
  dataBin <- data %>% 
-   select(Year, season, SpecCode, LngtMin = LngtClass, Number, Biomass) %>% 
-   left_join(data_bin_key, by = c("SpecCode", "LngtMin")) 
+   select(Year, season, area, catchsex, lw_group, SpecCode, LngtMin = LngtClass, Number, Biomass) %>% 
+   left_join(data_bin_key, by = c("SpecCode", "lw_group", "season", "catchsex", "LngtMin")) 
 
+ 
+ 
+ # # Export DataBin
+ # write_csv(dataBin, here("data/NEFSC/nefsc_databin_allsizes.csv"))
+ 
  
  ####__  Set Bodymass Cutoff and Groups  ####
  
  # Set bodymass lower limit
  # Filter for lower end of gear selectivity
- mass_cutoff <- 400 #grams
- dataBin <- filter(dataBin, wmin >= mass_cutoff)
+ mass_cutoff <- 5 #grams
+ dataBin <- filter(dataBin, wmin >= mass_cutoff) %>% 
+   filter(season %in% c("SPRING", "FALL")) %>% 
+   mutate(season = forcats::fct_drop(season))
  
 
  
@@ -390,34 +428,231 @@ nefsc_weights %>%
  ####  Size Spectra Group Calculations  ####
  
  #####__ 1.  All years, every region  ####
- g1 <- data %>% 
+ g1 <- dataBin %>% 
    mutate(group_level = "all_data") %>% 
-   group_by(group_level)
-   summarise(
-     #Divide Number / grouping_variable (numAreas),
-     Number = sum(Number), 
-     LWa = unique(LWa),
-     LWb = unique(LWb),
-     bodyMass = unique(bodyMass)) %>% 
-   ungroup()
+   split(.$group_level) 
  
- #####__ 2. All Years, each season  ####
+ # get SS results
+ g1_res <- g1 %>% 
+   imap_dfr(group_mle_calc) %>% 
+   mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+          Year = "all",
+          season = "all",
+          area = "all",
+          C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
  
  
- #####__ 3. All Years, region * Season  ####
+ # Better plot function for group comparisons
+group_mle_plot <- function(mle_res){
+plot <- mle_res %>% 
+   ggplot(aes(Year, b, color = area, shape = season)) +
+   geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax)) +
+   labs(x = "Year",
+        y = "Size Spectrum Slope (b)") 
+
+return(plot)
+}
  
+
+
+# plot group comparisons
+group_mle_plot(g1_res)
+
+#####__ 2. All Years, each season  ####
+
+# get SS results
+g2_res <- dataBin  %>% 
+  mutate(group_level = season) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(group_mle_calc) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = "all",
+         season = group_var,
+         area = "all",
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
+
+ 
+
+# plot group comparisons
+group_mle_plot(g2_res)
+
+
+ 
+
+#####__ 3. All Years, regions  ####
+ 
+# get SS results
+g3_res <- dataBin  %>% 
+  mutate(group_level = area) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(group_mle_calc, vecDiff = 2) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = "all",
+         season = "all",
+         area = group_var,
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
+
+
+
+# plot group comparisons
+group_mle_plot(g3_res)
+
+
+
+
+#####__ 3. All Years, seasons * regions  ####
+
+# get SS results
+g4_res <- dataBin  %>% 
+  mutate(group_level = str_c(season, area)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = group_mle_calc) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = "all",
+         season = case_when(
+           str_detect(group_var, "FALL") ~ "FALL",
+           str_detect(group_var, "SPRING") ~ "SPRING"),
+         area = case_when(
+           str_detect(group_var, "GoM") ~ "GoM",
+           str_detect(group_var, "SNE") ~ "SNE",
+           str_detect(group_var, "MAB") ~ "MAB",
+           str_detect(group_var, "GB") ~ "GB"),
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
+
+
+# plot group comparisons
+group_mle_plot(g4_res)
+
  
  #####__ 4. Every year, entire survey  ####
- 
+
+# get SS results
+g5_res <- dataBin  %>% 
+  mutate(group_level = Year) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = group_mle_calc) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = group_var,
+         season = "all",
+         area = "all",
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
+
+
+
+# plot group comparisons
+group_mle_plot(g5_res)
  
  #####__ 5. every year, every region  ####
  
+# get SS results
+g6_res <- dataBin  %>% 
+  mutate(group_level = str_c(Year, area)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = group_mle_calc) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = str_sub(group_var, 1, 4),
+         season = "all",
+         area = str_sub(group_var, 5, -1),
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
  
+
+# plot group comparisons
+group_mle_plot(g6_res)
+
+
+
+
  #####__ 6. every year, only seasons  ####
+
+# get SS results
+g7_res <- dataBin  %>% 
+  mutate(group_level = str_c(Year, season)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = group_mle_calc, vecDiff = 2) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = str_sub(group_var, 1, 4),
+         season = str_sub(group_var, 5, -1),
+         area = "all",
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
+
+
+# plot group comparisons
+group_mle_plot(g7_res)
  
- 
+
+
+
  #####__ 7. every year, region * season  ####
 
 
+# get SS results
+g8_res <- dataBin  %>% 
+  mutate(group_level = str_c(Year, season, area)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = group_mle_calc, vecDiff = 2) %>% 
+  mutate(stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         Year = str_sub(group_var, 1, 4),
+         season = case_when(
+           str_detect(group_var, "FALL") ~ "FALL",
+           str_detect(group_var, "SPRING") ~ "SPRING"),
+         area = case_when(
+           str_detect(group_var, "GoM") ~ "GoM",
+           str_detect(group_var, "SNE") ~ "SNE",
+           str_detect(group_var, "MAB") ~ "MAB",
+           str_detect(group_var, "GB") ~ "GB"),
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
 
 
+# plot group comparisons
+group_mle_plot(g8_res) +
+  facet_wrap(~ area) +
+  theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0.5)) +
+  xlab("")
+
+
+
+
+# super table
+table_complete <- bind_rows(
+  list(
+    "Overall"                        = g1_res,
+    "only seasons"                   = g2_res,
+    "only regions"                   = g3_res,
+    "region * seasons"               = g4_res,
+    "single years"                   = g5_res,
+    "single years * region"          = g6_res,
+    "single years * season "         = g7_res,
+    "single years * season * region" = g8_res
+), .id = "group ID")
+
+
+
+# super plot
+table_complete %>% 
+  mutate(Year = as.numeric(as.character(Year))) %>% 
+  group_mle_plot() + 
+  facet_grid(season ~ area) + 
+  geom_smooth(method = "gam", show.legend = FALSE, se = FALSE, 
+              formula = y ~ s(x, bs = "cs")) +
+  geom_hline(data = filter(table_complete, Year == "all"), 
+             aes(yintercept = b), linetype = 2, alpha = 0.7, size = 1) +
+  theme(axis.text.x = element_text(angle = 90, size= 6, vjust = 0.5)) +
+  labs(x = "") + 
+  guides(shape = "none",
+         color = "none")
+
+
+
+
+table_complete %>% 
+  mutate(Year = as.numeric(as.character(Year))) %>% 
+  group_mle_plot() + 
+  facet_grid(season ~ area) + 
+  geom_smooth(method = "gam", show.legend = FALSE, se = FALSE, 
+              formula = y ~ s(x, bs = "cs")) +
+  geom_hline(data = filter(table_complete, Year == "all"), 
+             aes(yintercept = b), linetype = 2, alpha = 0.7, size = 1) +
+  theme(axis.text.x = element_text(angle = 90, size= 6, vjust = 0.5)) +
+  labs(x = "") + 
+  guides(shape = "none",
+         color = "none")

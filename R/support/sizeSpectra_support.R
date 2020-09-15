@@ -39,7 +39,7 @@ make_bin_key <- function(species_df){
 
 # Takes databin split by a grouping variable .$group_var
 # returns the power law coefficients for that group
-group_mle_calc <- function(dataBinForLike, group_var){
+group_mle_calc <- function(dataBinForLike, group_var, vecDiff = 0.5){
   
   # Select the right columns
   dataBinForLike = dplyr::select(dataBinForLike,
@@ -59,6 +59,7 @@ group_mle_calc <- function(dataBinForLike, group_var){
   # previously named MLEbins.nSeaFung.new
   mle_group_bins = calcLike(negLL.fn = negLL.PLB.bins.species,
                             p = -1.9,
+                            vecDiff = vecDiff,
                             suppress.warnings = TRUE,
                             dataBinForLike = dataBinForLike,
                             n = n,

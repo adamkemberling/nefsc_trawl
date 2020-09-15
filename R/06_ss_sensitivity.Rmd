@@ -1,0 +1,49 @@
+---
+title: "Size Spectrum Sensitivity"
+author: "Adam A. Kemberling"
+date: "9/15/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+####  Packages  ####
+library(here)
+library(gmRi)
+library(sf)
+library(janitor)
+library(sizeSpectra)
+library(patchwork)
+library(tidyverse)
+
+
+
+####  Support Functions  ####
+source(here("R/support/sizeSpectra_support.R"))
+
+
+
+#File Paths
+mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
+res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+
+####  Data  ####
+dataBin <- read_csv(here("data/NEFSC/nefsc_databin_allsizes.csv"),
+                    guess_max = 1e5, col_types = cols())
+```
+
+# NEFFSC Size Spectra Sensitivity Exploration
+
+Goal of this analysis is to explore the sensitivity of NEFSC size spectra slopes to adjustments in minimum/maximum bodymass cutoffs.
+
+Additional exploration will be done to examine catch composition through:
+ * Percent of total biomass sourced from different classes of fishes  
+ * Cumulative distribution figures, examining the % of total biomass within discrete weight bins
+ 
+ 
+```{r}
+
+```
+ 
+ 
