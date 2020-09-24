@@ -6,6 +6,9 @@
 # Want to end up with a chronological record of what the slope is for every year/season/region and how that region did for the entire year as well
 
 
+# Output files:
+# dataBin & results from 5g cutoff are saved for use in 06_ss_sensitivity
+
 
 ####  Packages  ####
 library(here)
@@ -38,10 +41,13 @@ nefsc_master <- read_csv(here("data/NEFSC/2020survdat_nye.csv"),
                         guess_max = 1e6) %>% 
   clean_names()
 
+# Which months do the seasons cover
+nefsc_master %>% filter(season %in% c("SPRING", "FALL")) %>%  count(season, est_month)
+
 # Drop unhelpful columnns to free up space
 
 # Cleanup Code from Kathy
-nefsc_master <- nefsc_master%>% 
+nefsc_master <- nefsc_master %>% 
   mutate(comname = tolower(comname),
          id = format(id, scientific = FALSE)) %>%
   select(id, est_year, season, stratum, decdeg_beglat, decdeg_beglon,
@@ -274,6 +280,7 @@ pass_2 <- nefsc_spectra %>%
   inner_join(fb_trimmed)
 
 
+
 # Join them with bind rows (implicitly drops things that don't have growth coefs)
 nefsc_weights <- bind_rows(pass_1, pass_2) %>% 
   arrange(est_year, season) %>% 
@@ -285,6 +292,10 @@ nefsc_weights <- bind_rows(pass_1, pass_2) %>%
          weight_g = exp(ln_weight),
          freq_weight = weight_g * numlen_adj) %>% 
   drop_na(weight_g)
+
+
+# Export the key you are using
+# write_csv(nefsc_weights, here("data/size_spectra_results/lw_kew_combined.csv"))
 
 
 # Check weights - seems like some are in grams
@@ -403,7 +414,7 @@ weights_summ %>%
  
  # Add the bins back into the original and clean up
  dataBin <- data %>% 
-   select(Year, season, area, catchsex, lw_group, SpecCode, LngtMin = LngtClass, Number, Biomass) %>% 
+   select(Year, season, area, catchsex, lw_group, SpecCode, spec_class, LngtMin = LngtClass, Number, Biomass) %>% 
    left_join(data_bin_key, by = c("SpecCode", "lw_group", "season", "catchsex", "LngtMin")) 
 
  
@@ -626,6 +637,9 @@ table_complete <- bind_rows(
 ), .id = "group ID")
 
 
+
+# Export table
+write_csv(table_complete, path = here("data/size_spectra_results/nefsc_5grams.csv"))
 
 # super plot
 table_complete %>% 

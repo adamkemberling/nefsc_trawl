@@ -8,6 +8,27 @@ library(sizeSpectra)
 library(tidyverse)
 
 
+floor_decade <- function(year_vector, return_class = "factor"){ 
+  
+  if(class(year_vector) == "numeric") {
+    decade_vector <- year_vector - year_vector %% 10
+  }
+  
+  if(class(year_vector) %in% c("factor", "character")) {
+    year_vector <- as.numeric(as.character(year_vector))
+    decade_vector <- year_vector - year_vector %% 10
+  }
+  
+  if(return_class == "factor") {
+    decade_vector <- factor(decade_vector)
+
+  }
+  
+  return(decade_vector)
+}
+
+
+
 # Takes a list of each species, pulls distinct length bins
 # returns a key of what the wmin and wmax is for each
 # corrects wmin and wmax to kg for trouble species
