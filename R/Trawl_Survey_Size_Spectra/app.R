@@ -21,7 +21,10 @@ nefsc_master <- read_csv(here("data/NEFSC/nefsc_ss_bins.csv"), col_types = cols(
 menh_master <- read_csv(here("data/MENH/menh_ss_bins.csv"), col_types = cols())
 
 
-
+####  Attach CSS, Headers, Footers  ####
+gmRi::use_gmri_stylesheets(stylesheet = "gmri rmarkdown", 
+                           header = "gmri logo right", 
+                           footer = "akemberling")
 
 
 

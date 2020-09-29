@@ -4,10 +4,6 @@ author: "Adam A. Kemberling"
 date: "9/15/2020"
 output: 
   html_document:
-    includes:
-        before_body: support/gmri_logo_header.html
-        after_body: support/akemberling_gmri_footer.html
-    css: support/gmri_rmarkdown.css
     toc: TRUE
     toc_float:
         collapsed: FALSE
@@ -18,6 +14,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
 
 ####  Packages  ####
 library(here)
@@ -86,6 +83,13 @@ min5g %>%
   facet_grid(season ~ area)
 ```
 
+
+```{r, echo = FALSE}
+####  Attach CSS, Headers, Footers  ####
+gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
+```
+
+
 # NEFSC NMFS Trawl Size Spectra Sensitivity Exploration
 
 Goal of this analysis is to explore the sensitivity of NEFSC size spectra slopes to adjustments in minimum/maximum bodymass cutoffs.
@@ -104,9 +108,9 @@ One way to address differences in catchability of different sized fishes is by s
 
 For a starting point in the sensitivity analysis I will use all the data and calculate slopes for all the data across an evenly spaced range of cutoff values similar to a grid search.
  
-```{r}
+```{r size cutoff test}
 #range of size cutoffs
-size_cutoffs <- c(seq(0, 25, by = .5), seq(30, 200, by = 5))
+size_cutoffs <- c(seq(0, 20, by = 1))
 
 # Calculate the slope/intercepts
 size_cutoff_results <- map(size_cutoffs, function(cutoff_size) {
@@ -147,7 +151,7 @@ Slope seems to increase in the 0-25g range, then decline in an nearly linear way
 
 Would maybe suggest the 25g mark, but would imagine that this inflection point is going to depend on the data source.
  
-```{r}
+```{r b sensitivity}
 
 
 size_cutoff_results %>% 
@@ -166,7 +170,7 @@ size_cutoff_results %>%
 
 So C is the other parameter in the power law distribution, I was not sure whether it was exactly the intercept or not because its a bounded power law. This "appears" to be increase exponentially beyond 150g, but somme instances of extreme outliers makes that hard to be sure of.
 
-```{r}
+```{r c sensitivity}
 size_cutoff_results %>% 
   ggplot(aes(x = cutoff, y = C)) +
     geom_point() +
@@ -188,7 +192,7 @@ Not sure if cumulative density plots of stacked barplots are more helpful so I w
 
 
 
-```{r}
+```{r cd plot prep}
 # cumulative distribution data prep
 
 # Annual Totals
@@ -260,7 +264,7 @@ lmin_cumsums <- dataBin %>%
 
 ### Bin Size Proportions
 
-```{r, out.height = 600}
+```{r, fig.height=6}
 
 
 # Size Bins merging with totals - This one could be better as cumulative distirbution plot (s)
@@ -279,7 +283,7 @@ bin_totals %>%
 ### Species Class Proportions
 
 
-```{r, out.height = 600}
+```{r, fig.height = 6}
 
 # Class Proportions
 class_totals %>% 
