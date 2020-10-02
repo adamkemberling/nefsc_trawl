@@ -1,0 +1,158 @@
+setwd('C:/Users/Kathy/Documents/Active Research/Lenfest/Ecosystem change analyses/Data')
+load('bn.setup2.Rdata')
+load('numtows.Rdata')
+
+##EXCLUDE WATER HAULS
+bn.data<-bn.setup2[bn.setup2$SVSPP!=300,]
+
+#SELECT UNIQUE ROWS BY ID, SVSPP, AND CATCHSEX TO GET RID OF LENGTH DUPLICATES
+bn.data2<-bn.data[!duplicated(bn.data[c("ID", "SVSPP", "CATCHSEX")]),]
+
+#SUM BIOMASSES AND ABUNDANCES OVER CATCHSEX	
+bn.data3<-aggregate(cbind(BIOM.ADJ, ABUND.ADJ) ~ ID + SVSPP, sum, data=bn.data2)
+bn.data3<-bn.data3[order(bn.data3$ID),]
+bn.data4<-unique(bn.data2[,c(1,2,4,5,6,7,13,14,19,20)])
+bn.data5<-merge(bn.data3, bn.data4, by=c("ID","SVSPP"))
+
+write.csv(bn.data5,"bn.data5")
+save(bn.data5,file="bn.data5.Rdata")
+
+#GET MEAN INDWT BY ID-SPECIES	
+
+#Get weighted mean over catchsex	
+
+wt.data2<-bn.data2
+
+library(plyr)
+wt.data3<-ddply(wt.data2,c("ID","SVSPP"),summarize,weighted.mean(x=INDWT,w=ABUND.ADJ))
+colnames(wt.data3)<-c("ID","SVSPP","avg.INDWT")
+wt.data3<-wt.data3[order(wt.data3$ID),]
+wt.data4<-unique(wt.data2[,c(1,2,4,5,6,7,13,14,19,20)])
+wt.data5<-merge(wt.data3, wt.data4, by=c("ID","SVSPP"))
+
+write.csv(wt.data5,"wt.data5")
+save(wt.data5, file = "wt.data5.RData")
+
+#GET MEAN LENGTH BY ID-SPECIES
+
+len.data2<-bn.data
+
+len.data3<-ddply(len.data2,c("ID","SVSPP"),summarize,weighted.mean(x=LENGTH,w=NUMLEN))
+colnames(len.data3)<-c("ID","SVSPP","avg.LEN")
+len.data3<-len.data3[order(len.data3$ID),]
+len.data4<-unique(len.data2[,c(1,2,4,5,6,7,13,14,19,20)])
+len.data5<-merge(len.data3, len.data4, by=c("ID","SVSPP"))
+
+write.csv(len.data5,"len.data5")
+save(len.data5, file = "len.data5.RData")
+
+#MERGE DATA FILES INTO COMBINED ID-SVSPP DATASET
+
+#Do not merge in extra rows of len and wt data sets...they are NAs and create problems with means later
+tow.data1<-merge(bn.data3,wt.data3,by=c("ID","SVSPP"))
+tow.data2<-merge(tow.data1,len.data3,by=c("ID","SVSPP"))
+tow.data<-merge(tow.data2,unique(len.data2[,c(1,2,4,5,6,7,13,14,19,20)]))
+dim(tow.data)
+write.csv(tow.data,"tow.data")
+save(tow.data, file="tow.data.Rdata")
+
+##AGGREGATE STRATIFIED MEANS
+years<-seq(1968,2013)
+agg.means.out<-matrix(0,length(years)*6, 4)
+colnames(agg.means.out)<-c("group","year","param","value")
+agg.means.out[,2]<-rep(seq(1968,2013),6)
+agg.means.out[,1]<-rep("agg",length(years)*6)
+agg.means.out[,3]<-c(rep("stbiom",length(years)),
+					 rep("stab",length(years)),
+					 rep("wtwt",length(years)),
+					 rep("stwt",length(years)),
+					 rep("wtlen",length(years)),
+					 rep("stlen",length(years)))					 
+					 
+#BIOMASS
+p<-0
+years<-seq(1968,2013)
+stratum<-sort(unique(tow.data$STRATUM))
+biom.strata<-aggregate(BIOM.ADJ~EST_YEAR + STRATUM + STRATIO, sum, data=tow.data)
+biom.strata<-merge(biom.strata,numtows)
+biom.strata$mean.BIOM<-biom.strata$BIOM.ADJ/biom.strata$COUNT
+biom.strata$WTMEAN<-biom.strata$mean.BIOM*biom.strata$STRATIO
+
+for(y in years){
+data<-biom.strata[biom.strata$EST_YEAR==y,]
+agg.means.out[which(years==y)+(46*p),4]<-sum(data$WTMEAN)
+}
+
+#ABUNDANCE
+p<-1
+years<-seq(1968,2013)
+stratum<-sort(unique(tow.data$STRATUM))
+ab.strata<-aggregate(ABUND.ADJ~EST_YEAR + STRATUM + STRATIO, sum, data=tow.data)
+ab.strata<-merge(ab.strata,numtows)
+ab.strata$mean.AB<-ab.strata$ABUND.ADJ/ab.strata$COUNT
+ab.strata$WTMEAN<-ab.strata$mean.AB*ab.strata$STRATIO
+
+for(y in years){
+data<-ab.strata[ab.strata$EST_YEAR==y,]
+agg.means.out[which(years==y)+(46*p),4]<-sum(data$WTMEAN)
+}
+
+#WEIGHT
+
+#WEIGHTED MEAN (weight weighted by abundance)
+p<-2
+wtwt.agg<-ddply(tow.data,"EST_YEAR",summarize,weighted.mean(x=avg.INDWT,w=ABUND.ADJ,na.rm=TRUE))
+colnames(wtwt.agg)<-c("EST_YEAR","wtwt.agg")
+wtwt.agg<-as.data.frame(wtwt.agg)
+rows<-seq((length(years)*p)+1,(length(years)*p)+length(years))
+agg.means.out[rows,4]<-wtwt.agg$wtwt.agg
+
+#STRATIFIED MEAN
+p<-3
+wt.stratum<-ddply(tow.data,c("EST_YEAR","STRATUM"),summarize,weighted.mean(x=avg.INDWT,w=ABUND.ADJ,na.rm=TRUE))
+colnames(wt.stratum)<-c("EST_YEAR","STRATUM","WT.MEAN.WT")
+strarea<-tow.data[,c(7,11)]
+strarea<-strarea[!duplicated(strarea["STRATUM"]),]
+wt.stratum2<-merge(wt.stratum,strarea,by="STRATUM")
+
+years<-seq(1968,2013)
+stratum<-sort(unique(wt.stratum2$STRATUM))
+
+for(y in years){
+data<-wt.stratum2[wt.stratum2$EST_YEAR==y,]
+tot.str.area<-sum(data$STRATUM_AREA)
+data$stratio<-data$STRATUM_AREA/tot.str.area
+agg.means.out[which(years==y)+(46*p),4]<-sum(data$WT.MEAN.WT*data$stratio)
+}
+
+#LENGTH
+
+#WEIGHTED MEAN (length weighted by abundance)
+p<-4
+wtlen.agg<-ddply(tow.data,"EST_YEAR",summarize,weighted.mean(x=avg.LEN,w=ABUND.ADJ,na.rm=TRUE))
+colnames(wtlen.agg)<-c("EST_YEAR","wtlen.agg")
+#wtlen.agg<-as.data.frame(wtlen.agg)
+rows<-seq((length(years)*p)+1,(length(years)*p)+length(years))
+agg.means.out[rows,4]<-wtlen.agg$wtlen.agg
+
+#STRATIFIED MEAN
+p<-5
+len.stratum<-ddply(tow.data,c("EST_YEAR","STRATUM"),summarize,weighted.mean(x=avg.LEN,w=ABUND.ADJ,na.rm=TRUE))
+colnames(len.stratum)<-c("EST_YEAR","STRATUM","WT.MEAN.LEN")
+strarea<-tow.data[,c(7,11)]
+strarea<-strarea[!duplicated(strarea["STRATUM"]),]
+len.stratum2<-merge(len.stratum,strarea,by="STRATUM")
+
+years<-seq(1968,2013)
+stratum<-sort(unique(len.stratum2$STRATUM))
+
+for(y in years){
+data<-len.stratum2[len.stratum2$EST_YEAR==y,]
+tot.str.area<-sum(data$STRATUM_AREA)
+data$stratio<-data$STRATUM_AREA/tot.str.area
+agg.means.out[which(years==y)+(46*p),4]<-sum(data$WT.MEAN.LEN*data$stratio)
+}
+
+agg.means.out<-as.data.frame(agg.means.out)
+write.csv(agg.means.out,"agg.means.out")
+save(agg.means.out, file="agg.means.out.Rdata")
