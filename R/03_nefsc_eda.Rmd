@@ -29,32 +29,34 @@ library(ggforce)
 
 ####  Support Functions  ####
 source(here("R/support/sizeSpectra_support.R"))
+source(here("R/01_nefsc_ss_build.R"))
+
+####  Resource Paths  ####
 mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
 res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 
 
-
 ####  Load Data  ####
 
-# Load the build code and stratification function
-source(here("R/01_nefsc_ss_build.R"))
 
 # Fetch data prepped for size spectra analysis
-#trawl_weights <- load_ss_data()
+#weights_20 <- load_ss_data(survdat = NULL, survdat_source = "2020")
 
 # Save it once you proved that the function works
-# write_csv(trawl_weights, here::here("data/survdat_ss.csv"))
+# write_csv(weights_20, here::here("data/survdat_ss.csv"))
 
 # Load it from csv (faster)
-trawl_weights <- read_csv(here::here("data/survdat_ss.csv"), col_types = cols(), guess_max = 1e4)
+weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
+                       col_types = cols(), guess_max = 1e4)
 
 # Load the shapefiles for the polygons
 
 #### Set theme  ####
-theme_set(theme_minimal())
+theme_set(theme_classic())
 
 ```
 
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
 # Exporatory Data Analysis of NEFSC Bottom Trawl Survey Data
 
@@ -62,39 +64,21 @@ Exploration of spatial and temporal patterns in abundance, and bodymass of fishe
 
 ```{r group summaries}
 
-# Load GMRI Style
-use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
-
 # Do some formatting
-trawldat <- trawl_weights %>% 
+trawldat <- weights_20 %>% 
   mutate(
     id = as.character(id),
     season = ifelse(season == "SPRING", "Spring", "Fall"),
     season = factor(season, levels = c("Spring", "Fall"))
   )
 
-
-ann_means <- trawldat %>% 
-  group_by(est_year) %>% 
-  summarise(
-    season = "Spring + Fall",
-    total_biomass_kg = sum(sum_weight_g, na.rm = T) / 1000,
-    n_stations = n_distinct(id),
-    biomass_per_station = total_biomass_kg / n_stations,
-    mean_individual_biomass = weighted.mean(single_weight_g, weights = numlen_adj),
-    mean_individual_length = weighted.mean(length, weights = numlen_adj)) 
-
-seasonals <- trawldat %>% 
-  group_by(est_year, season) %>% 
-  summarise(
-    n_stations = n_distinct(id),
-    total_biomass_kg = sum(sum_weight_g, na.rm = T) / 1000,
-    biomass_per_station = total_biomass_kg / n_stations,
-    mean_individual_biomass = weighted.mean(single_weight_g, weights = numlen_adj),
-    mean_individual_length = weighted.mean(length, weights = numlen_adj)) 
+# Run Summary Functions
+ann_means <- ss_annual_summary(trawldat)
+seasonals <- ss_seasonal_summary(trawldat)
 
 # bind them so you can facet
-summs <- bind_rows(ann_means, seasonals)
+summs <- bind_rows(ann_means, seasonals) %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
 ```
 
 
@@ -111,13 +95,13 @@ Total biomass in the following plots represent the total of all individual bioma
 
 ```{r, fig.height = 8}
 bio_1 <- ann_means %>% 
-  ggplot(aes(est_year, total_biomass_kg, color = season)) +
+  ggplot(aes(est_year, lw_biomass_kg, color = season)) +
     geom_line(group = 1) +
     scale_color_manual(values = "black") +
     labs(x = "", y = "Total Biomass (kg)")
 
 bio_2 <- seasonals %>% 
-  ggplot(aes(est_year, total_biomass_kg, color = season)) +
+  ggplot(aes(est_year, lw_biomass_kg, color = season)) +
     geom_line() +
     labs(x = "", y = "Total Biomass (kg)")
 
@@ -132,13 +116,13 @@ Biomass per unit effort in the following figures represents the total biomass di
 
 ```{r, fig.height = 8}
 cpue_1 <- ann_means %>% 
-  ggplot(aes(est_year, biomass_per_station, color = season)) +
+  ggplot(aes(est_year, lw_biomass_per_station, color = season)) +
     geom_line(group = 1) +
     scale_color_manual(values = "black") +
     labs(x = "", y = "Adjusted Biomass per Station (kg)")
 
 cpue_2<- seasonals %>% 
-  ggplot(aes(est_year,biomass_per_station, color = season)) +
+  ggplot(aes(est_year, lw_biomass_per_station, color = season)) +
     geom_line() +
     labs(x = "", y = "Adjusted Biomass per Station (kg)")
 
@@ -151,26 +135,28 @@ cpue_1 / cpue_2
 For the following figures on relative contribution, axes for the two survey seasons are used to highlight relative differences in total biomass and cpue between the two survey seasons. A dashed line is overlayed to represent what an equal allocation would resemble. Years above the line indicate that more biomass/cpue occurred in the Fall and vice versa.
 
 ```{r, fig.height = 8}
-bio_comp <- seasonals %>% select(est_year,  season, total_biomass_kg) %>% 
-  pivot_wider(names_from = season, values_from = total_biomass_kg) %>% 
+bio_comp <- seasonals %>% select(est_year,  season, lw_biomass_kg) %>% 
+  pivot_wider(names_from = season, values_from = lw_biomass_kg) %>% 
   mutate(decade = floor_decade(est_year)) %>% 
   ggplot(aes(Spring, Fall, color = decade)) +
+    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "gray50", size = 1) +
     geom_point() +
     geom_mark_ellipse() +
-    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "gray50") +
-    labs(x = "Spring", y = "Fall", subtitle = "Total Biomass")+
+    scale_y_continuous(labels = scales::comma_format()) +
+    scale_x_continuous(labels = scales::comma_format()) +
+    labs(x = "Spring", y = "Fall", subtitle = "Total Biomass (kg)")+
     facet_wrap(~decade) +
     theme(legend.position = "none")
 
 
-cpue_comp <- seasonals %>% select(est_year,  season, biomass_per_station) %>% 
-  pivot_wider(names_from = season, values_from = biomass_per_station) %>% 
+cpue_comp <- seasonals %>% select(est_year,  season, lw_biomass_per_station) %>% 
+  pivot_wider(names_from = season, values_from = lw_biomass_per_station) %>% 
   mutate(decade = floor_decade(est_year)) %>% 
   ggplot(aes(Spring, Fall, color = decade)) +
+    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "gray50", size = 1) +
     geom_point() +
     geom_mark_ellipse() +
-    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "gray50") +
-    labs(x = "Spring", y = "Fall", subtitle = "Biomass / Standard Tow") +
+    labs(x = "Spring", y = "Fall", subtitle = "Biomass (kg) / Standard Tow") +
     facet_wrap(~decade) +
     theme(legend.position = "none")
 
@@ -188,10 +174,10 @@ Relative contribution to overall biomass by species group based on management an
 # Species Class Bins Data Prep
 class_totals <- trawldat %>% 
   group_by(est_year, spec_class) %>% 
-  summarise(`Total Class Biomass` = sum(total_biomass) / 1000) %>% 
+  summarise(`Total Class Biomass` = sum(sum_weight_g) / 1000) %>% 
   ungroup() %>% 
   left_join(ann_means, by = "est_year") %>% 
-  mutate(`Percent of Annual Biomass` = (`Total Class Biomass` / total_biomass_kg) * 100 ,
+  mutate(`Percent of Annual Biomass` = (`Total Class Biomass` / lw_biomass_kg) * 100 ,
          `Species Category` = spec_class,
          Year = as.character(est_year))
 
@@ -216,7 +202,7 @@ Check these across years and also by season
 ```{r}
 
 summs %>% 
-  ggplot(aes(est_year, mean_individual_biomass, color = season)) +
+  ggplot(aes(est_year, mean_ind_bodymass, color = season)) +
     geom_line(show.legend = FALSE) +
     scale_color_manual(values = c(
       "Spring + Fall" = "black",
@@ -234,7 +220,7 @@ summs %>%
 
 ```{r}
 summs %>% 
-  ggplot(aes(est_year, mean_individual_length, color = season)) +
+  ggplot(aes(est_year, mean_ind_length, color = season)) +
     geom_line(show.legend = FALSE) +
     scale_color_manual(values = c(
       "Spring + Fall" = "black",
@@ -291,6 +277,7 @@ survey_strata <- survey_strata %>%
 
 # Load new england
 new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
 
 
 # Make trawl data an sf dataset
@@ -308,30 +295,63 @@ trawl_sf <- trawldat %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), 
 # Plot to check
 ggplot() +
   geom_sf(data = new_england) +
-  geom_sf(data =survey_strata, aes(fill = area)) +
-  coord_sf(xlim = c(-79, -65.5), ylim = c(32, 44.5), expand = FALSE) +
+  geom_sf(data = canada) +
+  geom_sf(data = survey_strata, aes(fill = area)) +
+  coord_sf(xlim = c(-77, -65.5), ylim = c(34, 45.75), expand = FALSE) +
   guides(fill = guide_legend(nrow = 2)) +
+  theme_bw() +
   theme(legend.position = "bottom", legend.title = element_blank())
+
 ```
 
 
 ### Regional Summaries 
 ```{r}
+# Just Area, all seasona
 area_summs <- trawldat %>% 
-  group_by(est_year, area) %>% 
+  group_by(area) %>% 
   summarise(
     season = "Spring + Fall",
-    total_biomass_kg = sum(sum_weight_g, na.rm = T) / 1000,
+    lw_biomass_kg = sum(sum_weight_g, na.rm = T) / 1000,
     n_stations = n_distinct(id),
-    biomass_per_station = total_biomass_kg / n_stations,
-    mean_individual_biomass = weighted.mean(single_weight_g, weights = numlen_adj),
-    mean_individual_length = weighted.mean(length, weights = numlen_adj)
+    lw_biomass_per_station = lw_biomass_kg / n_stations,
+    mean_ind_bodymass = weighted.mean(ind_weight_g, weights = numlen_adj),
+    mean_ind_length = weighted.mean(length, weights = numlen_adj)
+  )
+
+# Area x Season
+seas_area <- trawldat %>% 
+  group_by(area, season) %>% 
+  summarise(
+    lw_biomass_kg = sum(sum_weight_g, na.rm = T) / 1000,
+    n_stations = n_distinct(id),
+    lw_biomass_per_station = lw_biomass_kg / n_stations,
+    mean_ind_bodymass = weighted.mean(ind_weight_g, weights = numlen_adj),
+    mean_ind_length = weighted.mean(length, weights = numlen_adj)
   )
 
 
-area_summs %>% 
+# Combine those two
+summs_combined <- bind_rows(area_summs, seas_area) %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
+
+summs_combined %>% 
   mutate_if(is.numeric,round, 2) %>% 
-  DT::datatable()
+  arrange(area,season) %>% 
+  knitr::kable()
+
+
+# Year x Area
+area_summs_y <- trawldat %>% 
+  group_by(est_year, area) %>% 
+  summarise(
+    season = "Spring + Fall",
+    lw_biomass_kg = sum(sum_weight_g, na.rm = T) / 1000,
+    n_stations = n_distinct(id),
+    lw_biomass_per_station = lw_biomass_kg / n_stations,
+    mean_ind_bodymass = weighted.mean(ind_weight_g, weights = numlen_adj),
+    mean_ind_length = weighted.mean(length, weights = numlen_adj)
+  )
 
 ```
 
@@ -339,10 +359,11 @@ area_summs %>%
 ### Total Biomass
 
 ```{r}
-area_summs %>% 
-  ggplot(aes(est_year, total_biomass_kg)) +
+area_summs_y %>% 
+  ggplot(aes(est_year, lw_biomass_kg)) +
     geom_line() +
     facet_wrap(~area, ncol = 2) +
+    scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Total Biomass (kg)")
 ```
 
@@ -351,8 +372,8 @@ area_summs %>%
 ### CPUE
 
 ```{r}
-area_summs %>% 
-  ggplot(aes(est_year, biomass_per_station)) +
+area_summs_y %>% 
+  ggplot(aes(est_year, lw_biomass_per_station)) +
     geom_line() +
     facet_wrap(~area, ncol = 2) +
     labs(x = "", y = "Adjusted Biomass per Station (kg)")
@@ -362,9 +383,29 @@ area_summs %>%
 
 
 
-# Summary
+# Comparisons to Older Data
 
-```{r footer}
-insert_gmri_footer()
+Concerns have been raised that the datasets obtained through the NEFSC are inconsistent in some areas over time. The following plots seek to identify differences in a dataset obtained in 2016 from what we currently are exploring with the 2020 dataset.
+
+Each file was processed for size-spectra analysis using the same processing steps. This includes the same species codes, the same abundance and stratification adjustments, and the same L-W derived biomasses.
+
+```{r}
+weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"), 
+                       col_types = cols(),
+                       guess_max = 1e5)
+weights_19 <- read_csv(here::here("data/ss_prepped_data/survdat_2019_ss.csv"), 
+                       col_types = cols(),
+                       guess_max = 1e5)
+weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
+                       col_types = cols(),
+                       guess_max = 1e5)
 ```
+
+
+```{r}
+
+```
+
+
+`r insert_gmri_footer()`
 
