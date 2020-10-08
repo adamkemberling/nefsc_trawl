@@ -79,6 +79,13 @@ seasonals <- ss_seasonal_summary(trawldat)
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
   mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
+
+
+#drop haddock to see if that changes the bump
+haddock_ann  <- ss_annual_summary(filter(trawldat, comname != "haddock"))
+haddock_seas <- ss_seasonal_summary(filter(trawldat, comname != "haddock"))
+no_haddock <- bind_rows(haddock_ann, haddock_seas) %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
 ```
 
 
@@ -95,8 +102,10 @@ Total biomass in the following plots represent the total of all individual bioma
 
 ```{r, fig.height = 8}
 bio_1 <- ann_means %>% 
-  ggplot(aes(est_year, lw_biomass_kg, color = season)) +
+  ggplot(aes(est_year, lw_biomass_kg, color = season, linetype = "All Species")) +
     geom_line(group = 1) +
+    geom_line(data = haddock_ann, 
+              aes(est_year, lw_biomass_kg, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
     labs(x = "", y = "Total Biomass (kg)")
 
@@ -116,8 +125,10 @@ Biomass per unit effort in the following figures represents the total biomass di
 
 ```{r, fig.height = 8}
 cpue_1 <- ann_means %>% 
-  ggplot(aes(est_year, lw_biomass_per_station, color = season)) +
+  ggplot(aes(est_year, lw_biomass_per_station, color = season, linetype = "All Species")) +
     geom_line(group = 1) +
+    geom_line(data = haddock_ann, 
+              aes(est_year, lw_biomass_per_station, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
     labs(x = "", y = "Adjusted Biomass per Station (kg)")
 
@@ -130,7 +141,7 @@ cpue_1 / cpue_2
 ```
 
 
-### Relative Contribution
+### Relative Contribution {.tabset}
 
 For the following figures on relative contribution, axes for the two survey seasons are used to highlight relative differences in total biomass and cpue between the two survey seasons. A dashed line is overlayed to represent what an equal allocation would resemble. Years above the line indicate that more biomass/cpue occurred in the Fall and vice versa.
 
@@ -160,10 +171,23 @@ cpue_comp <- seasonals %>% select(est_year,  season, lw_biomass_per_station) %>%
     facet_wrap(~decade) +
     theme(legend.position = "none")
 
-bio_comp / cpue_comp
+
 
 
 ```
+
+#### Biomass
+```{r}
+bio_comp
+```
+
+#### CPUE
+
+```{r}
+cpue_comp
+```
+
+
 
 ### Species Groups
 
@@ -209,7 +233,7 @@ summs %>%
       "Spring" = as.character(gmri_cols("gmri blue")),
       "Fall"   = as.character(gmri_cols("orange")))) +
   #theme(legend.position = "bottom", legend.title = element_blank()) +
-  labs(x = "", y = "Mean Individual Biomass (g)") +
+  labs(x = "", y = "Mean Individual Biomass (g)", title = "Clearly Wrong - ignore") +
   facet_wrap(~season, ncol = 1)
       
   
@@ -227,9 +251,71 @@ summs %>%
       "Spring" = as.character(gmri_cols("gmri blue")),
       "Fall"   = as.character(gmri_cols("orange")))) +
   #theme(legend.position = "bottom", legend.title = element_blank()) +
-  labs(x = "", y = "Mean Individual Length (cm)") +
+  labs(x = "", y = "Mean Individual Length (cm)", title = "Seems okay - but same method as weight...") +
   facet_wrap(~season, ncol = 1)
 ```
+
+
+
+### Top 5 Species by Weight {.tabset}
+
+Since 2008 there has been a large increase in the amount of total biomass caught and the adjusted CPUE. As a way to look into the top species contributing to this I have pulled out the top 5 species for thbat year by total biomass caught.
+
+```{r}
+# Pull top 5 species from each year, by biomass
+top_5 <- trawldat %>% 
+  filter(est_year >= 2008) %>% 
+  group_by(est_year, comname) %>% 
+  summarise(n_fish = sum(numlen_adj),
+            lw_biomass = sum(sum_weight_g) / 1000) %>% 
+  ungroup() %>% 
+  split(.$est_year) %>% 
+  map_dfr(function(yr_group){
+    yr_group  %>% 
+      slice_max(order_by = lw_biomass, n = 5)
+  })
+  
+
+# Plot each year, re-ordered by biomass
+t5_plots <- top_5 %>% 
+  split(.$est_year) %>% 
+  map(function(x){
+    x %>% mutate(comname = fct_drop(comname),
+           comname = fct_reorder(comname, .fun = max, lw_biomass)) %>% 
+    ggplot(aes(x = lw_biomass, y = comname)) +
+      geom_point() +
+      geom_segment(aes(yend = comname, x = 0, xend = lw_biomass)) +
+      facet_wrap(~est_year) +
+      scale_x_continuous(labels = scales::comma_format()) +
+      labs(x = "Total Biomass (kg)", y = "")
+})
+
+t1 <- ((t5_plots$`2008` | t5_plots$`2009`) / (t5_plots$`2010` | t5_plots$`2011`))
+t2 <- ((t5_plots$`2012` | t5_plots$`2013`) / (t5_plots$`2014` | t5_plots$`2015`))
+t3 <- ((t5_plots$`2016` | t5_plots$`2017`) / (t5_plots$`2018` | t5_plots$`2019`))
+```
+
+#### 2008 - 2011
+
+```{r}
+t1 
+```
+
+#### 2012 - 2015
+
+```{r}
+t2
+
+```
+
+#### 2016 - 2019
+
+```{r}
+t3
+
+```
+
+
 
 
 ## Spatial Patterns  {.tabset .tabset-pills}
@@ -291,7 +377,7 @@ trawl_sf <- trawldat %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), 
 
 ### Trawl Regions
 
-```{r}
+```{r, fig.height=6}
 # Plot to check
 ggplot() +
   geom_sf(data = new_england) +
@@ -365,6 +451,7 @@ area_summs_y %>%
     facet_wrap(~area, ncol = 2) +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Total Biomass (kg)")
+
 ```
 
 
@@ -390,15 +477,15 @@ Concerns have been raised that the datasets obtained through the NEFSC are incon
 Each file was processed for size-spectra analysis using the same processing steps. This includes the same species codes, the same abundance and stratification adjustments, and the same L-W derived biomasses.
 
 ```{r}
-weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"), 
-                       col_types = cols(),
-                       guess_max = 1e5)
-weights_19 <- read_csv(here::here("data/ss_prepped_data/survdat_2019_ss.csv"), 
-                       col_types = cols(),
-                       guess_max = 1e5)
-weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
-                       col_types = cols(),
-                       guess_max = 1e5)
+# weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"), 
+#                        col_types = cols(),
+#                        guess_max = 1e5)
+# weights_19 <- read_csv(here::here("data/ss_prepped_data/survdat_2019_ss.csv"), 
+#                        col_types = cols(),
+#                        guess_max = 1e5)
+# weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
+#                        col_types = cols(),
+#                        guess_max = 1e5)
 ```
 
 

@@ -94,7 +94,7 @@ summs <- bind_rows(list(summ_16, summ_19, summ_20))
 
 # Total Biomass - L-W
 summs %>% 
-  ggplot(aes(est_year, total_biomass, color = source)) +
+  ggplot(aes(est_year, lw_biomass_kg, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Total Biomass \n (L-W Regressions)")
@@ -124,7 +124,7 @@ reg_summs <- bind_rows(list(summ_16, summ_19, summ_20))
 
 # Total Biomass
 p1 <- reg_summs %>% 
-  ggplot(aes(est_year, total_biomass, color = source)) +
+  ggplot(aes(est_year, lw_biomass_kg, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
   facet_wrap(~area, ncol = 1, scales = "free") +

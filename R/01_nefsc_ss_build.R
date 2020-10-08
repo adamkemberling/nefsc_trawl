@@ -183,7 +183,10 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   trawl_lens <- trawldat %>% 
     filter(is.na(numlen) == FALSE,
            numlen > 0) %>% 
-    distinct(id, comname, catchsex, length, numlen, numlen_adj, biom.adj) 
+    distinct(id, svspp, comname, catchsex, length, numlen, numlen_adj, biom.adj) %>% 
+    mutate(svspp = as.character(svspp),
+           svspp = str_pad(svspp, 3, "left", "0"))
+    
   
   
   # Pull distinct records of the stations themselves and metadata that match
@@ -202,19 +205,22 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   #Now we want to use the lw_combined here instead of just the fishbase lengths
   lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
-                          col_types = cols())
+                          col_types = cols()) %>% 
+    mutate(svspp = as.character(svspp),
+           svspp = str_pad(svspp, 3, "left", "0"))
   
   # Do a priority pass with the filter(lw_combined, source == "wigley)
   # merge on comname, season, and catchsex
   w_trimmed <- filter(lw_combined, source == "wigley") %>% 
-    select(source, season, comname, scientific_name, spec_class, 
+    select(source, season, svspp, comname, scientific_name, spec_class, 
            hare_group, fishery, catchsex, a, b, ln_a)
   
   
   # Do a second pass with the filter(lw_combined, source == "fishbase")
   # merge on common names only
   fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
-    select(source, comname, scientific_name, spec_class, hare_group, fishery, a, b, ln_a)
+    select(source, svspp, comname, scientific_name, spec_class, 
+           hare_group, fishery, a, b, ln_a)
   
   # First Pass - Wigley
   pass_1 <- trawl_spectra %>% 
@@ -453,13 +459,16 @@ load_2016_ss_data <- function(){
   
   ####__ 1. Distinct Station & Species Length Info   ####
   
-  # For each station we need unique combinations of
-  # station_id, species, catchsex, length, adjusted_numlen
-  # Record of unique station catches: # rows for each species * sex * length
+  
+  
+  #-#
   trawl_lens <- trawldat %>% 
     filter(is.na(numlen) == FALSE,
            numlen > 0) %>% 
-    distinct(id, comname, catchsex, length, numlen, numlen_adj, biom.adj) 
+    distinct(id, svspp, comname, catchsex, length, numlen, numlen_adj, biom.adj) %>% 
+    mutate(svspp = as.character(svspp),
+           svspp = str_pad(svspp, 3, "left", "0"))
+  
   
   
   # Pull distinct records of the stations themselves and metadata that match
@@ -467,11 +476,6 @@ load_2016_ss_data <- function(){
     select(id, est_year, season, stratum, stratum_num, area, decdeg_beglat, decdeg_beglon, 
            type, avgdepth, stratio) %>% 
     distinct() 
-  
-  
-  # drop unnecessary space
-  rm(trawldat)
-  
   
   # recombine with the distinct station info
   trawl_spectra <- trawl_stations %>% 
@@ -483,19 +487,25 @@ load_2016_ss_data <- function(){
   
   #Now we want to use the lw_combined here instead of just the fishbase lengths
   lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
-                          col_types = cols())
+                          col_types = cols()) %>% 
+    mutate(svspp = as.character(svspp),
+           svspp = str_pad(svspp, 3, "left", "0"))
   
   # Do a priority pass with the filter(lw_combined, source == "wigley)
   # merge on comname, season, and catchsex
   w_trimmed <- filter(lw_combined, source == "wigley") %>% 
-    select(source, season, comname, scientific_name, spec_class, 
+    select(source, season, svspp, comname, scientific_name, spec_class, 
            hare_group, fishery, catchsex, a, b, ln_a)
   
   
   # Do a second pass with the filter(lw_combined, source == "fishbase")
   # merge on common names only
   fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
-    select(source, comname, scientific_name, spec_class, hare_group, fishery, a, b, ln_a)
+    select(source, svspp, comname, scientific_name, spec_class, 
+           hare_group, fishery, a, b, ln_a)
+  #-#
+  
+  
   
   # First Pass - Wigley
   pass_1 <- trawl_spectra %>% 
@@ -561,8 +571,8 @@ load_2016_ss_data <- function(){
 ####____________________####
 ####____________________####
 ####  Stratified Catch/Biomass  ####
-
-# 1. Year & Stratum Counts  
+####  AND  ####
+###  EDA Functions ####
 
 #### Function to get stratified means at various group levels
 # stratified = metric / num tows
@@ -617,7 +627,7 @@ ss_stratification <- function(.data = data, ...){
 # tow_id_test <- ss_stratification()
 
 
-###  EDA Functions ####
+
 
 
 
@@ -714,3 +724,54 @@ ss_seasonal_summary <- function(survey_data){
   
 }
 
+
+
+
+####  Testing merge by svspp  ####
+
+# look for #-# for insert
+
+# For each station we need unique combinations of
+# station_id, species, catchsex, length, adjusted_numlen
+# Record of unique station catches: # rows for each species * sex * length
+# trawl_lens <- trawldat %>% 
+#   filter(is.na(numlen) == FALSE,
+#          numlen > 0) %>% 
+#   distinct(id, comname, catchsex, length, numlen, numlen_adj, biom.adj) 
+# 
+# 
+# # Pull distinct records of the stations themselves and metadata that match
+# trawl_stations <- trawldat %>% 
+#   select(id, est_year, season, stratum, stratum_num, area, decdeg_beglat, decdeg_beglon, 
+#          type, avgdepth, stratio) %>% 
+#   distinct() 
+# 
+# 
+# # drop unnecessary space
+# rm(trawldat)
+# 
+# 
+# # recombine with the distinct station info
+# trawl_spectra <- trawl_stations %>% 
+#   left_join(trawl_lens, by = "id")
+# 
+# 
+# 
+# 
+# ####__ 2. Combine with Growth Coefficients  ####
+# 
+# #Now we want to use the lw_combined here instead of just the fishbase lengths
+# lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
+#                         col_types = cols())
+# 
+# # Do a priority pass with the filter(lw_combined, source == "wigley)
+# # merge on comname, season, and catchsex
+# w_trimmed <- filter(lw_combined, source == "wigley") %>% 
+#   select(source, season, comname, scientific_name, spec_class, 
+#          hare_group, fishery, catchsex, a, b, ln_a)
+# 
+# 
+# # Do a second pass with the filter(lw_combined, source == "fishbase")
+# # merge on common names only
+# fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
+#   select(source, comname, scientific_name, spec_class, hare_group, fishery, a, b, ln_a)
