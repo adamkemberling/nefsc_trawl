@@ -3,16 +3,18 @@
 
 
 ####  Packages  ####
+library(janitor)
 library(here)
 library(gmRi)
 library(tidyverse)
+library(patchwork)
 
 
 ####  Data  ####
 
-# From Janet Nye
+# 2019 data From Janet Nye
 mills_path <- shared.path(group = "Mills Lab", folder = "")
-load(str_c(mills_path, "Data/Survdat_Nye_allseason.RData"))
+#load(str_c(mills_path, "Data/Survdat_Nye_allseason.RData"))
 
 # Gonna save it locally for convenience/laziness
 #write_csv(survdat, here("data/NEFSC/2019survdat_nye.csv"))
@@ -33,10 +35,14 @@ load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
 # Wigley Paper
 # Fishbase
 
+res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+
+
 # Fishbase Growth Coefficients
 nefsc_lw <- read_csv(here("data/NEFSC/nefsc_lw_key_filled.csv"),
                      guess_max = 1e3,
                      col_types = cols())
+
 
 # Wrigley Paper, Load length weight coefficients
 load(paste0(res_path, "/NMFS_trawl/lwreg.Rdata"))
@@ -60,6 +66,16 @@ nefsc_lw <- nefsc_lw %>%
          ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a),
          a = ifelse(is.na(a), exp(ln_a), a))
 
+(nefsc_a <- ggplot(nefsc_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: fishbase"))
+(nefsc_lna <- ggplot(nefsc_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: fishbase"))
+(nefsc_b <- ggplot(nefsc_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: fishbase"))
+
+
+
+nefsc_lw %>% 
+  mutate(lna_check = log(a)) %>% 
+  ggplot(aes(ln_a, lna_check)) +
+  geom_point()
 
 
 ####__ 2. Wrigley Paper Coefficients  ####
@@ -93,11 +109,41 @@ spp_classes <- spp_classes %>%
 wigley_lw <- left_join(lwreg, spp_classes, by = c("svspp", "comname", "scientific_name"))
 
 
+
+(wigley_a   <- ggplot(wigley_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: wigley"))
+(wigley_lna <- ggplot(wigley_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: wigley"))
+(wigley_b   <- ggplot(wigley_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: wigley"))
+
+wigley_lw %>% 
+  mutate(lna_check = log(a)) %>% 
+  ggplot(aes(ln_a, lna_check)) +
+  geom_point()
+
+
+
+####____  test: compare value ranges   ####
+
+nefsc_a | wigley_a
+nefsc_lna | wigley_lna
+nefsc_b | wigley_b
+
+# weird outlier for a
+wigley_lw[which(wigley_lw$a == max(wigley_lw$a)) ,]
+
+# same for ln_a?
+wigley_lw[which(wigley_lw$ln_a == max(wigley_lw$ln_a)) ,]
+
+
+
+
+
+
 ####__ 4.  Combining Growth Coefficient Sources  ####
 
 
 # 1. use these growth coefficients to get biomasses
 # 2. Potentially merge in my fishbase ones so that there is just one master
+
 
 wigley_lw <- wigley_lw %>% mutate(source = "wigley") %>% select(source, everything())
 nefsc_lw  <- nefsc_lw %>% mutate(source = "fishbase") %>% select(source, everything())
@@ -129,6 +175,17 @@ lw_combined <- lw_combined %>%
   select(source, svspp, comname, scientific_name, spec_class, hare_group, fishery, season, catchsex,
          b, a, ln_a, units, related_species, related_a, related_b, related_ln_a,
          wigleymin, wigleymax, wigleyvalue)
+
+
+####____  test: compare value ranges   ####
+
+# Double check that the values are in the same ballpark:
+(combined_a   <- ggplot(lw_combined, aes(x = a)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source))
+(combined_lna <- ggplot(lw_combined, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source))
+(combined_b   <- ggplot(lw_combined, aes(x = b)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source))
+
+
+
 
 
 # Remove the lw building components

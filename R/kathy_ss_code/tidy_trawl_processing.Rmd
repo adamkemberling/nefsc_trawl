@@ -1,0 +1,605 @@
+---
+title: "NMFS Trawl Data Cleaning"
+author: "LGCarlson"
+date: "6/24/2019"
+output:
+  html_document: default
+---
+
+### NMFS Trawl Data Cleaning
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 999)
+
+# Detect the operating system
+os.use<- .Platform$OS.type
+
+# Set path to shared folders
+
+           #########CHANGE THIS COMPUTER NAME IF PC#######
+computer.name<- "lcarlson" # Needed for PC users
+
+shared.path<- switch(os.use, 
+                     "unix" = paste("~/Box/", user.name, sep = ""),
+                     "windows" = paste("C:/Users/", computer.name, "/Box/", sep = ""))
+
+library(tidyverse)
+library(zoo)
+library(gridExtra)
+library(RColorBrewer)
+library(viridis)
+
+check = function(x){summary(as.factor(x))}
+```
+
+
+```{r load from shared path, echo=FALSE}
+load(paste(shared.path, "Mills Lab/Data/Survdat_Nye_allseason.Rdata", sep = ""))
+theme_set(theme_light())
+```
+
+In order of operations:
+* Select columns of interest 
+* Select stratum for full offshore survey
+* Eliminate strata not sampled for full time span
+* Select fall and spring surveys only
+* Select years 1970-2017
+* If biomass is NA but abundance is >0, make biomass be 0.01
+* If biomass is 0 and abundance is >0, make biomass be 0.01
+* If abundance is NA and biomass >0, make abundance 1
+* If abundance is 0 and biomass >0, make abundance 1
+* Remove values where biomass AND abundance are NAs
+
+```{r create trawldata}
+trawl.data<-survdat %>%
+  dplyr::select(ID, EST_YEAR,SEASON, STRATUM, DECDEG_BEGLAT,DECDEG_BEGLON,
+         SVSPP, COMNAME, CATCHSEX,BIOMASS, AVGDEPTH, ABUNDANCE, LENGTH, NUMLEN) %>%
+  filter(STRATUM >= 01010 & STRATUM <= 01760) %>%
+  filter(STRATUM!=1310 & STRATUM!=1320 & STRATUM!=1330 & STRATUM!=1350 &
+           STRATUM!=1410 & STRATUM!=1420 & STRATUM!=1490) %>%
+  filter(SEASON == "SPRING" | SEASON == "FALL") %>%
+  filter(EST_YEAR >= 1970 & EST_YEAR < 2018) %>%
+  mutate(BIOMASS = ifelse(is.na(BIOMASS) == TRUE & ABUNDANCE > 0,0.01, BIOMASS)) %>% 
+  mutate(BIOMASS = ifelse(BIOMASS == 0 & ABUNDANCE > 0,0.01, BIOMASS)) %>% 
+  mutate(ABUNDANCE = ifelse(is.na(ABUNDANCE) == TRUE & BIOMASS > 0, 1, ABUNDANCE)) %>% 
+  mutate(ABUNDANCE = ifelse(ABUNDANCE == 0 & BIOMASS > 0, 1, ABUNDANCE)) %>%   
+  filter(!is.na(BIOMASS),
+         !is.na(ABUNDANCE))
+```
+
+
+Generate template of all sampling occasions by selecting distinct cases. 
+In order of operations:
+* Select distinct tows
+* Select columns of interest for tow metadata template
+
+```{r create template}
+template<-trawl.data %>%
+  distinct(ID, .keep_all = TRUE) %>%
+  dplyr::select(ID, EST_YEAR, SEASON, STRATUM,DECDEG_BEGLAT,DECDEG_BEGLON,AVGDEPTH)
+```
+
+
+
+Create a dataframe to add common names by SVSPP code. 
+In order of operations:
+* Select only SVSPP and COMNAME
+* Select distinct SVSPP values
+
+
+```{r create COMNAME dataframe}
+COMNAMEdata<-trawl.data %>% 
+  dplyr::select(SVSPP, COMNAME) %>% 
+  distinct(SVSPP, .keep_all = TRUE)
+```
+
+Biomass species-1 year-1
+* Sum total biomass by species in each year. 
+
+```{r annual sum}
+biomass.spp.year<-trawl.data %>% 
+  distinct(ID, COMNAME, CATCHSEX, BIOMASS, ABUNDANCE, .keep_all = TRUE) %>% 
+  dplyr::group_by(SVSPP, EST_YEAR) %>% 
+  dplyr::summarize(ANNUAL_SPECIES_BIOMASS = sum(BIOMASS)) 
+```
+
+Biomass species-1 tow-1
+* Sum total biomass by species in each tow.
+* Add "template" metadata for each tow.
+* Add annual species biomass column. 
+* Will use this dataframe to calculate center of biomass later on
+
+```{r species by tow sum}
+biomass.spp<-trawl.data %>% 
+  distinct(ID, COMNAME, CATCHSEX, BIOMASS, ABUNDANCE, .keep_all = T) %>% 
+  group_by(ID, SVSPP) %>% 
+  dplyr::summarize(SPECIES_BIOMASS = sum(BIOMASS), SPECIES_ABUNDANCE = sum(ABUNDANCE)) %>% 
+  right_join(template, by = "ID") %>% 
+  left_join(biomass.spp.year, by = c("EST_YEAR", "SVSPP"))
+```
+
+
+Calculate total biomass per tow, not grouped by species. Will use this later to calculate proportion of species biomass per by tow.
+
+```{r biomass per tow sum}
+biomass.tow<-trawl.data %>% 
+  distinct(ID, COMNAME, CATCHSEX, BIOMASS, ABUNDANCE, .keep_all = T) %>% 
+  group_by(ID) %>% 
+  dplyr::summarize(TOW_BIOMASS = sum(BIOMASS), TOW_ABUNDANCE = sum(ABUNDANCE)) %>% 
+  right_join(template, by = "ID")
+```
+
+
+Calculate the number of species in each tow. This is a little indirect, but it does the job.
+The output (NSPECIES) 
+
+```{r species per tow sum}
+spp.tow<-trawl.data %>% 
+  group_by(ID) %>% 
+  dplyr::count(SVSPP) %>%              # number of times a species was encountered in each tow
+  mutate(NSPECIES = n/n) %>%    # assigns each present species a "1"
+  group_by(ID) %>% 
+  summarise(NSPECIES = sum(NSPECIES))     #calculates the total number of species in each tow
+```
+
+
+Create conversion factor to adjust NUMLEN column according to ABUNDANCE (which has been modified for gear/etc by NOAA)
+```{r, message=F, warning=F}
+conversion_factor<-trawl.data %>% 
+  group_by(ID, COMNAME, CATCHSEX, ABUNDANCE) %>% 
+  dplyr::summarize(ABUNDANCE_RAW = sum(NUMLEN)) %>% 
+  mutate(CONVERS = ABUNDANCE/ABUNDANCE_RAW)
+```
+
+Adjust NUMLEN colum and check that this worked
+```{r}
+adjusted_numlen<-trawl.data %>% 
+  left_join(conversion_factor, by = c("ID", "COMNAME", "CATCHSEX", "ABUNDANCE")) %>% 
+  mutate(NUMLEN_ADJ = NUMLEN*CONVERS) %>% 
+  mutate(NUMLEN_ADJ = round(NUMLEN_ADJ,2)) 
+
+adjusted_numlen %>% 
+  group_by(ID, COMNAME, CATCHSEX, ABUNDANCE) %>% 
+  dplyr::summarize(ABUNDANCE_ADJ = sum(NUMLEN_ADJ)) %>% 
+  mutate(diff = ABUNDANCE_ADJ - ABUNDANCE) %>% 
+  ggplot(aes(diff)) + geom_histogram()
+
+
+numlen_final<-adjusted_numlen %>% 
+  dplyr::select(ID, SVSPP, CATCHSEX, ABUNDANCE, NUMLEN_ADJ) %>% 
+  mutate_at(5, round, 2) 
+
+
+adjusted_numlen_trawl<-adjusted_numlen %>% 
+  dplyr::select(-ABUNDANCE_RAW, -CONVERS)
+#write_rds(adjusted_numlen_trawl, path=paste(shared.path, "Mills Lab/Projects/Pew_project/Data/NMFS_trawl_adjnumlen.rds", sep = ""))
+
+```
+
+
+* Calculate the mean length of each species weighted by the number of individuals caught of that size (ie. 10 fish of length 10 count for more than 1 fish of length 4). mean = 9.45 not mean = 7
+* Use distinct to create one weighted mean for each species in each tow
+
+length.spp:
+* Nest all length measurements by species in a "data" column. 
+* Join with the mean length dataframe for possible future analysis of fish lengths/sizes.
+
+```{r fish lengths}
+mean.lengths<-trawl.data %>% 
+  left_join(numlen_final, by = c("ID","SVSPP", "CATCHSEX","ABUNDANCE")) %>% 
+  group_by(SVSPP,ID) %>% 
+  mutate(MEAN_LENGTH = weighted.mean(LENGTH, NUMLEN_ADJ,na.rm = TRUE), n_LENGTHS = sum(NUMLEN_ADJ)) %>% 
+  dplyr::select(ID, SVSPP, MEAN_LENGTH, n_LENGTHS) %>% 
+  distinct(ID, SVSPP, .keep_all = TRUE)
+
+length.spp<-trawl.data %>% 
+  left_join(numlen_final, by = c("ID","SVSPP", "CATCHSEX","ABUNDANCE")) %>%
+  group_by(ID, SVSPP) %>% 
+  nest(c(LENGTH,NUMLEN_ADJ), key = "LENGTH") %>% 
+  left_join(mean.lengths, by = c("ID", "SVSPP"))
+```
+
+Save the nested length data with other relevant information into an rds file for future use.
+
+```{r}
+lengthdata<-length.spp %>% 
+  left_join(biomass.spp, by = c("ID", "EST_YEAR","SVSPP","SEASON","STRATUM","DECDEG_BEGLAT","DECDEG_BEGLON","AVGDEPTH")) 
+
+#saveRDS(lengthdata, file = "NMFS_trawl_nestedlengths.rds")
+```
+
+
+
+
+
+```{r, include=FALSE}
+#Create the ultimate "longer" dataset by allowing one row per individual measured. 
+#* Use the "uncount()" function to duplicate rows according to a weighting variable (NUMLEN in this case)
+#* Calculate the number of measured invididuals versus the total number caught
+
+trawl_long<-trawl.data %>% 
+  filter(NUMLEN > 0) %>% 
+  uncount(NUMLEN)
+
+
+nmeasured<-trawl_long %>% 
+  group_by(ID, COMNAME) %>% 
+  count(LENGTH) %>% 
+  group_by(ID, COMNAME) %>% 
+  summarise(nmeasured = sum(n))
+
+nmeasured2<- trawl.data %>% 
+  group_by(ID, COMNAME) %>% 
+  dplyr::summarise(nmeasured = sum(NUMLEN))
+
+notmeasured<-biomass.spp %>% 
+  left_join(COMNAMEdata, by = "SVSPP") %>% 
+    dplyr::select(ID, COMNAME, SPECIES_ABUNDANCE) %>% 
+  left_join(nmeasured2, by = c("ID", "COMNAME")) %>% 
+  mutate(notmeasured = SPECIES_ABUNDANCE - nmeasured)
+
+notmeasured %>% 
+  group_by(COMNAME) %>% 
+  dplyr::summarize(total_abundance = sum(SPECIES_ABUNDANCE, na.rm = TRUE), total_measured = sum(nmeasured, na.rm = TRUE), total_notmeasured = sum(notmeasured, na.rm = TRUE))  %>% 
+  mutate(percent_measured = total_measured/total_abundance) %>% 
+  filter(COMNAME %in% species58) %>% 
+  mutate(COMNAME = fct_reorder(COMNAME, percent_measured)) %>% 
+  ggplot(aes(x = COMNAME, y = percent_measured)) + geom_point() + coord_flip()
+  
+```
+
+
+
+
+
+
+
+### Create "clean dataset" in a long form by tow ID and species
+
+Long data with biomass by species by tow, mean length, and tow metadata (sum biomass, avg depth, lat/long, etc). 
+In order of operations:
+* Start with biomass by species by tow data
+* Add common name data 
+* Select tow#, species number, common name, and biomass
+* Join biomass.tow to later calculate proportion of tow's biomass by species
+
+```{r long cleaned data}
+clean_trawl<-biomass.spp %>% 
+  left_join(COMNAMEdata, by = "SVSPP") %>% 
+  dplyr::select(ID, SVSPP, COMNAME, SPECIES_BIOMASS) %>% 
+  left_join(mean.lengths, by = c("ID", "SVSPP")) %>% 
+  left_join(biomass.tow, by = "ID") %>% 
+  mutate(DECADE = 10*EST_YEAR %/% 10)
+```
+
+### Create "tidy dataset" where all species level information is nested
+
+Tidy dataset by tow with fully nested species data. 
+
+In order of operations:
+* Start with biomass by species by tow data
+* Add common name data 
+* Join biomass.tow to later calculate proportion of tow's biomass by species
+* Select columns of interest 
+* Calculate proportion of tow's biomass by species
+* Remove Tow biomass column
+* Nest species-level data within each tow (not a long dataset)
+* Add in tow biomass and number of species per tow data
+
+```{r tidy cleaned data}
+tidy_trawl<-mean.lengths %>% 
+  left_join(biomass.spp, by = c("ID", "SVSPP")) %>% 
+  left_join(COMNAMEdata, by = "SVSPP") %>% 
+  left_join(biomass.tow, by = "ID") %>% 
+  dplyr::select(ID, SVSPP, COMNAME, SPECIES_BIOMASS, MEAN_LENGTH, n_LENGTHS, TOW_BIOMASS) %>% 
+  mutate(BIOMASS_PROP = SPECIES_BIOMASS/TOW_BIOMASS) %>% 
+  dplyr::select(-TOW_BIOMASS) %>% 
+  group_by(ID) %>% 
+  nest() %>% 
+  left_join(biomass.tow, by = "ID") %>% 
+  left_join(spp.tow, by = "ID")
+```
+
+
+### Center of biomass 
+
+Calculate center of species biomass for each year.
+
+In order of operations:
+* Start with biomass by species by tow data
+* Remove biomass NAs
+* Calculate the biomass weighted latitude and longitude for each tow
+* Calculate the center of mass latitude and longitude
+* Remove any lat/long NA values
+* Add common name data
+
+LGC: Corrected typo:
+>summarise(CENTER_LAT = sum(weightedLAT), CENTER_LAT = sum(weightedLON)) %>% filter(!is.na(CENTER_LAT),
+         !is.na(CENTER_LAT)) %>%
+>  left_join(COMNAMEdata, by = "SVSPP")
+
+```{r center of bio}
+centerofbiomass<-biomass.spp %>% 
+  filter(!is.na(SPECIES_BIOMASS), 
+                !is.na(ANNUAL_SPECIES_BIOMASS)) %>% 
+  mutate(weightedLAT = (SPECIES_BIOMASS/ANNUAL_SPECIES_BIOMASS)*DECDEG_BEGLAT) %>% 
+  mutate(weightedLON = (SPECIES_BIOMASS/ANNUAL_SPECIES_BIOMASS)*DECDEG_BEGLON) %>% 
+  group_by(SVSPP,EST_YEAR) %>% 
+  summarise(CENTER_LAT = sum(weightedLAT, na.rm = TRUE), CENTER_LON = sum(weightedLON, na.rm = TRUE)) %>% 
+  filter(!is.na(CENTER_LAT), 
+         !is.na(CENTER_LON)) %>% 
+  left_join(COMNAMEdata, by = "SVSPP")
+```
+
+
+Select only species that occur in all years of the time series.
+
+```{r species in all years, message=FALSE, warning=FALSE}
+center_fullTS<-centerofbiomass %>% 
+  group_by(SVSPP, COMNAME) %>% 
+  count() %>%                                        #calculates number of years each spp occurs
+  filter(n == (max(trawl.data$EST_YEAR) - min(trawl.data$EST_YEAR) + 1)) %>%   #filter missing yr species
+  dplyr::select(SVSPP)
+
+center_fullTS<-centerofbiomass %>%           #center of biomass only for species present in all years
+  semi_join(center_fullTS, by = "SVSPP")        
+```
+
+
+
+```{r}
+center_fullTS %>% 
+  distinct(COMNAME, .keep_all = TRUE)
+```
+
+```{r}
+species58<-as.vector(unique(center_fullTS$COMNAME))
+```
+
+
+Plot center of biomass. 
+
+Kathy: I made these plots similar to the ones you made so you can see that the calculations turned out the same.
+
+```{r plotting loop, warning=FALSE,message=FALSE}
+loopbydf<-COMNAMEdata %>% 
+  semi_join(center_fullTS, by = "SVSPP") %>% 
+  arrange(SVSPP) %>% 
+  mutate(loopby = seq(1,62,1))
+
+plotlist<-list()
+
+for(i in loopbydf$loopby){
+tempdf<-center_fullTS %>% 
+  filter(SVSPP == loopbydf$SVSPP[loopbydf$loopby == i]) %>% 
+  mutate(smoothed = c(NA,NA,rollmean(CENTER_LAT,5),NA,NA))
+
+plotlist[[i]]<-ggplot() + geom_point(data = tempdf,aes(x = EST_YEAR, y = CENTER_LAT)) + geom_line(data = tempdf,aes(x = EST_YEAR, y = CENTER_LAT), size = .5) + geom_line(data = tempdf,aes(x = EST_YEAR, y = smoothed), size = 0.9, color = "blue") + labs(x = "Year", y = "Center of latitude", title = paste('Species:', unique(tempdf$COMNAME))) + theme(panel.grid = element_blank())
+}
+
+#just plots the first 8 for example
+list1 = plotlist[c(1:8)]
+do.call(grid.arrange,c(list1, ncol = 4))
+```
+
+
+Bring in species traits data and pull out "functional groups." 
+```{r functional groups, message=FALSE, warning=FALSE}
+speciestraits<-read_csv(file = paste(shared.path, "Mills Lab/Projects/Pew_project/Metadata/species names and characteristics.csv", sep = "")) %>% 
+  dplyr::select(SVSPP, COMNAME, HARE_ET_AL_2016_Functional_Group) %>% 
+  rename("functgroup" = "HARE_ET_AL_2016_Functional_Group") %>% 
+  replace(.,is.na(.), "Unclassified")  
+```
+
+### Some length explorations
+
+Long data with biomass by species by tow, nested lengths by species, and tow metadata (sum biomass, avg depth, lat/long, etc). 
+
+```{r}
+nestedlengths<-biomass.spp %>% 
+  left_join(COMNAMEdata, by = "SVSPP") %>% 
+  dplyr::select(ID, SVSPP, COMNAME, SPECIES_BIOMASS, SPECIES_ABUNDANCE) %>% 
+  left_join(length.spp, by = c("ID", "SVSPP")) %>% 
+  left_join(biomass.tow, by = "ID") %>% 
+  mutate(DECADE = 10*EST_YEAR %/% 10)
+```
+
+
+```{r}
+nestedlengths %>% 
+  mutate_at(14:15, round,0) %>% 
+  left_join(speciestraits, by = "COMNAME") %>% 
+  group_by(DECADE,DECDEG_BEGLAT,functgroup) %>% 
+  filter(!is.na(functgroup)) %>% 
+  summarise(mLENGTH = mean(MEAN_LENGTH, na.rm = TRUE), sd = sd(MEAN_LENGTH,na.rm = TRUE)) %>% 
+  ggplot(aes(DECDEG_BEGLAT,mLENGTH)) + geom_errorbar(aes(ymin=mLENGTH-sd,ymax=mLENGTH+sd),width = 0.6) +
+  geom_point() + facet_grid(rows = vars(fct_reorder(functgroup,mLENGTH)), cols = vars(DECADE)) + 
+  labs(x = "Latitude (N)", y = "Length (cm)") + theme(panel.grid = element_blank()) + coord_flip() + 
+  theme(axis.text = element_text(size = 12),axis.title = element_text(size = 14), 
+        strip.text = element_text(size = 12))
+```
+
+```{r}
+nestedlengths %>% 
+  mutate(DEPTH_ROUND = 50*AVGDEPTH %/% 50) %>% 
+  left_join(speciestraits, by = "COMNAME") %>% 
+  group_by(DECADE,DEPTH_ROUND,functgroup) %>% 
+  filter(!is.na(functgroup)) %>% 
+  summarise(mLENGTH = mean(MEAN_LENGTH, na.rm = TRUE), sd = sd(MEAN_LENGTH,na.rm = TRUE)) %>% 
+  ggplot(aes(DEPTH_ROUND,mLENGTH)) + geom_errorbar(aes(ymin=mLENGTH-sd,ymax=mLENGTH+sd),width = 25) +
+  geom_point() + coord_flip() + scale_x_continuous(breaks = c(0,150,300,450)) + 
+  facet_grid(rows = vars(fct_reorder(functgroup,mLENGTH)), cols = vars(DECADE)) + 
+  labs(x = "Depth (m)", y = "Length (cm)") + theme(panel.grid = element_blank()) + 
+  theme(axis.text = element_text(size = 12),axis.title = element_text(size = 14), 
+        strip.text = element_text(size = 12)) 
+```
+
+
+
+```{r}
+commonspp<-c("SILVER HAKE", "SPINY DOGFISH", "RED HAKE", "LONGFIN SQUID", "GOOSEFISH", "AMERICAN LOBSTER")
+
+nestedlengths %>% 
+  mutate_at(14:15, round,0) %>% 
+  filter(COMNAME %in% commonspp) %>% 
+  group_by(DECDEG_BEGLAT, DECADE, COMNAME) %>% 
+  summarise(mLENGTH = mean(MEAN_LENGTH, na.rm = TRUE), sd = sd(MEAN_LENGTH,na.rm = TRUE)) %>% 
+  ggplot(aes(DECDEG_BEGLAT,mLENGTH)) + geom_errorbar(aes(ymin=mLENGTH-sd,ymax=mLENGTH+sd),width = 0.6) +
+  geom_point() + facet_grid(rows = vars(fct_reorder(COMNAME,mLENGTH)), cols = vars(DECADE)) + 
+  coord_flip() + labs(x = "Latitude (N)", y = "Length (cm)") + theme(panel.grid = element_blank()) +
+  theme(axis.text = element_text(size = 12),axis.title = element_text(size = 14), 
+        strip.text = element_text(size = 12)) + scale_x_continuous(breaks = c(0,150,300,450))
+```
+
+
+```{r}
+clean_trawl %>% 
+  group_by(EST_YEAR) %>% 
+  summarize(min = min(MEAN_LENGTH, na.rm = TRUE), max = max(MEAN_LENGTH, na.rm = TRUE), q25 = quantile(MEAN_LENGTH,probs = 0.25, na.rm = TRUE), q75 = quantile(MEAN_LENGTH,probs = 0.75, na.rm = TRUE), mean = mean(MEAN_LENGTH, na.rm = TRUE), n = n())
+```
+
+
+```{r}
+clean_trawl %>% 
+  group_by(DECADE) %>% 
+  ggplot(aes(MEAN_LENGTH)) + geom_histogram() + facet_wrap(~DECADE) + xlim(0,200)
+```
+
+
+```{r}
+p <- c(0.05,0.1,0.15,0.20,0.25,0.75,0.80,0.85,0.90,0.95)
+
+p_names <- paste0(p*100, "%")
+p_funs <- map(p, ~partial(quantile, probs = .x, na.rm = TRUE)) %>% 
+  set_names(nm = p_names)
+
+quanttable<-clean_trawl %>% 
+  mutate(DECADE = 10*EST_YEAR %/% 10) %>% 
+  filter(!is.na(DECADE)) %>%
+  group_by(DECADE) %>% 
+  summarize_at(vars(MEAN_LENGTH), p_funs)
+quanttable
+```
+
+```{r}
+decadevector<-as.vector(unique(quanttable$DECADE))
+clean_trawl<-clean_trawl %>% 
+  filter(!is.na(MEAN_LENGTH))
+
+clean_trawl$quant = 0.5
+
+for(i in decadevector){
+  
+temp_quanttable<-quanttable %>% 
+  filter(DECADE == i)
+
+if(clean_trawl$DECADE == i){
+clean_trawl$quant[clean_trawl$MEAN_LENGTH <= temp_quanttable$`25%`] = "0.25"
+clean_trawl$quant[clean_trawl$MEAN_LENGTH <= temp_quanttable$`10%`] = "0.10"
+
+clean_trawl$quant[clean_trawl$MEAN_LENGTH >= temp_quanttable$`75%`] = "0.75"
+clean_trawl$quant[clean_trawl$MEAN_LENGTH >= temp_quanttable$`90%`] = "0.90"
+
+}
+else{clean_trawl$quant = clean_trawl$quant}
+}
+
+```
+
+
+
+```{r}
+clean_trawl %>% 
+  group_by(DECADE) %>% 
+  ggplot(aes(MEAN_LENGTH, fill = quant)) + geom_histogram() + facet_wrap(~DECADE, ncol = 5) + xlim(0,180) + scale_fill_manual(values = c("#252525","#737373","#bdbdbd","#737373","#252525")) + labs(x = "Length (cm)", y = "count", fill = "Quantile") + theme(panel.grid = element_blank()) + theme(strip.background = element_blank(), strip.text = element_text(size = 12, color = "black"))
+
+#ggsave(filename = "quantilehist.pdf", plot = last_plot(), height = 3.5, width = 11)
+```
+
+```{r}
+clean_trawl %>% 
+  group_by(DECADE, quant) %>% 
+  summarise(n = n(), mean = mean(MEAN_LENGTH, na.rm = TRUE))
+```
+
+```{r}
+
+clean_trawl %>% 
+  left_join(speciestraits, by = "COMNAME") %>% 
+  filter(MEAN_LENGTH < 200, 
+         !is.na(functgroup)) %>% 
+  ggplot(aes(MEAN_LENGTH, fill = functgroup)) + geom_histogram(binwidth = 1) + facet_wrap(~quant, scales = "free_x", ncol = 5) + labs(x = "Length (cm)", y = "count", fill = "Functional group") + theme(panel.grid = element_blank()) + theme(strip.background = element_blank(), strip.text = element_text(size = 12, color = "black")) + scale_fill_manual(values = rev(brewer.pal(9, "PuBuGn")))
+
+#ggsave(filename = "functgrouphist.pdf", plot = last_plot(), height = 3.5, width = 11)
+```
+
+```{r}
+clean_trawl %>% 
+  mutate(LATblock = 2*DECDEG_BEGLAT %/% 2) %>% 
+  group_by(LATblock) %>% 
+  summarize(n = n())
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+speciesvector<-as.vector(unique(center_fullTS$COMNAME))
+
+for(s in speciesvector){
+  
+temp_df<-clean_trawl %>% 
+  mutate(LATblock = 2*DECDEG_BEGLAT %/% 2) %>% 
+  filter(COMNAME == s) %>% 
+  group_by(DECADE, LATblock) %>% 
+  summarise(mLENGTH = mean(MEAN_LENGTH), sd = sd(MEAN_LENGTH), n = sum(n_LENGTHS)) 
+
+speciesplot<-ggplot(temp_df, aes(LATblock, mLENGTH, label = n)) +
+  geom_errorbar(aes(ymin=mLENGTH-sd,ymax=mLENGTH+sd),width = 1) +
+  geom_point() + coord_flip() + facet_wrap(~DECADE, ncol = 5) + geom_text(hjust = -0.25, vjust = -0.25) +
+  theme(panel.grid = element_blank()) + xlim(33,45) +
+  labs(y = "Length (cm)", x = "Latitude", title = (paste('Species:', s, sep=' '))) +
+  theme(strip.background = element_blank(), strip.text = element_text(size = 12, color = "black")) + 
+  theme(axis.text = element_text(size = 12), axis.title = element_text(size = 12))
+print(speciesplot)
+
+#name = paste('lengthxlat', s, sep='_')
+#ggsave(speciesplot,filename = paste(shared.path, "Mills Lab/Projects/Pew_project/Leading-Trailing_Edge_Project/Temp_Figures/lengths/byspecies/", name,".pdf",sep = ""), width = 11, height = 4)
+}
+```
+
+
+```{r}
+clean_trawl %>% 
+  filter(COMNAME %in% speciesvector) %>% 
+  group_by(COMNAME) %>% 
+  summarise(mLENGTH = mean(MEAN_LENGTH, na.rm = TRUE), sd = sd(MEAN_LENGTH, na.rm = TRUE), maxLENGTH = max(MEAN_LENGTH, na.rm = TRUE), mLAT = weighted.mean(DECDEG_BEGLAT,SPECIES_BIOMASS, na.rm = TRUE), n = n(), se = (sd/n)) %>% 
+  left_join(speciestraits, by = "COMNAME") %>% 
+  ggplot(aes(fct_reorder(COMNAME,mLENGTH), mLENGTH, 
+            color = fct_relevel(functgroup, "Elasmobranch", "Coastal", "Unclassified",
+                                "Groundfish","Pelagic", "Invertebrates"))) +
+  geom_errorbar(aes(ymin=mLENGTH-sd,ymax=mLENGTH+sd),width = 1) +
+  geom_point() + coord_flip() +
+  theme(panel.grid = element_blank()) +
+  labs(y = "Mean length (cm)", x = "", color = "Functional group") +
+  theme(strip.background = element_blank(), strip.text = element_text(size = 12, color = "black")) + 
+  theme(axis.text.x = element_text(size = 12), axis.text.y = element_text(size = 7), axis.title = element_text(size = 12)) + scale_color_viridis(discrete = TRUE)
+
+#ggsave(filename = "speciesmeanlength.pdf", plot = last_plot(), height = 8.5, width = 10)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

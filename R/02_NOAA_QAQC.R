@@ -76,7 +76,7 @@ weights_19 <- load_ss_data(survdat = trawl_19, survdat_source = "2019")
 weights_20 <- load_ss_data(survdat_source = "2020")
 
 
-# export for speedy recovery
+# # export for speedy recovery
 # write_csv(weights_16, here::here("data/ss_prepped_data/survdat_2016_ss.csv"))
 # write_csv(weights_19, here::here("data/ss_prepped_data/survdat_2019_ss.csv"))
 # write_csv(weights_20, here::here("data/ss_prepped_data/survdat_2020_ss.csv"))
@@ -97,14 +97,14 @@ summs %>%
   ggplot(aes(est_year, lw_biomass_kg, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
-  labs(x = "", y = "Total Biomass \n (L-W Regressions)")
+  labs(x = "", y = "Total Biomass (kg) \n (L-W Regressions)")
 
 # Total Biomass - FSCS
 summs %>% 
   ggplot(aes(est_year, fscs_biomass, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
-  labs(x = "", y = "Total Biomass \n (FSCS Haul Weights)")
+  labs(x = "", y = "Total Biomass (kg) \n (FSCS Haul Weights)")
 
 # Number of Species
 summs %>% 
