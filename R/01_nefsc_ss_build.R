@@ -269,6 +269,8 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     as_tibble()
   
   ####__ 4. Area Weighted Biomass  ####
+  # Incorrect usage - needs to  move to summary functions, 
+  # should be used to adjust relative cpue, not raw biomass
   trawl_weights <- trawl_weights %>% 
     mutate(
       strat_wt_bio_fscs = stratio * biom_adj,

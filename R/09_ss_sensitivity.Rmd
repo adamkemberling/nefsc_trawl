@@ -100,7 +100,7 @@ Additional exploration will be done to examine catch composition through:
  
 * Cumulative distribution figures, examining the % of total biomass within discrete weight bins
  
- 
+Detailed code for the data builds and summary functions can be found [here](https://github.com/adamkemberling/nefsc_trawl/blob/master/R/01_nefsc_ss_build.R).
  
 ##  Minimum Bodymass Sensitivity {.tabset}
  

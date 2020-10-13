@@ -38,13 +38,6 @@ res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 
 ####  Load Data  ####
 
-
-# Fetch data prepped for size spectra analysis
-#weights_20 <- load_ss_data(survdat = NULL, survdat_source = "2020")
-
-# Save it once you proved that the function works
-# write_csv(weights_20, here::here("data/survdat_ss.csv"))
-
 # Load it from csv (faster)
 weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
                        col_types = cols(), guess_max = 1e4)
@@ -285,7 +278,7 @@ summs %>%
       "Spring" = as.character(gmri_cols("gmri blue")),
       "Fall"   = as.character(gmri_cols("orange")))) +
   #theme(legend.position = "bottom", legend.title = element_blank()) +
-  labs(x = "", y = "Mean Individual Biomass (g)", title = "Clearly Wrong - ignore") +
+  labs(x = "", y = "Mean Individual Biomass (g)") +
   facet_wrap(~season, ncol = 1)
       
 
