@@ -304,7 +304,7 @@ summs %>%
       "Spring" = as.character(gmri_cols("gmri blue")),
       "Fall"   = as.character(gmri_cols("orange")))) +
   #theme(legend.position = "bottom", legend.title = element_blank()) +
-  labs(x = "", y = "Mean Individual Length (cm)", title = "Seems okay - but same method as weight...") +
+  labs(x = "", y = "Mean Individual Length (cm)") +
   facet_wrap(~season, ncol = 1)
 
 # # What do the histograms look like:

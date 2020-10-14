@@ -54,7 +54,7 @@ dataBin <- dataBin %>%
          Year = forcats::fct_drop(Year),
          `Bodymass Bin (g)` = case_when(
               wmax <= 1 ~ "0 - 1",
-              wmax <= 10 ~ "1 - 5",
+              wmax <= 10 ~ "1 - 10",
               wmax <= 100 ~ "10 - 100",
               wmax <= 1000 ~ "100 - 1000",
               wmax <= 10000 ~ "1000 - 10000",
@@ -76,18 +76,17 @@ region_temps <- map(regions, function(x){
   return(region_ts)
 }) %>% setNames(regions) %>%  bind_rows(.id = "region")
 
-min5g %>% 
-  mutate(year = as.numeric(Year)) %>% 
-  ggplot(aes(year, b)) +
-  geom_point() +
-  facet_grid(season ~ area)
-```
 
 
-```{r, echo = FALSE}
-####  Attach CSS, Headers, Footers  ####
-gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
+# # Plotting all 5gram cutoff results
+# min5g %>% 
+#   mutate(year = as.numeric(Year)) %>% 
+#   ggplot(aes(year, b)) +
+#   geom_point() +
+#   facet_grid(season ~ area) + labs(x = "")
 ```
+
+`r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
 
 # NEFSC NMFS Trawl Size Spectra Sensitivity Exploration
@@ -108,9 +107,9 @@ One way to address differences in catchability of different sized fishes is by s
 
 For a starting point in the sensitivity analysis I will use all the data and calculate slopes for all the data across an evenly spaced range of cutoff values similar to a grid search.
  
-```{r size cutoff test}
+```{r size cutoff test, cache=TRUE}
 #range of size cutoffs
-size_cutoffs <- c(seq(0, 50, by = 1))
+size_cutoffs <- c(seq(0, 50, by = 2.5))
 
 # Calculate the slope/intercepts
 size_cutoff_results <- map(size_cutoffs, function(cutoff_size) {
@@ -147,9 +146,9 @@ size_cutoff_results <- size_cutoff_results %>%
  
 ### Slope Sensitivity
 
-Slope seems to increase in the 0-25g range, then decline in an nearly linear way as minimum bodysize cutoff increases. The linear relationship makes me wonder whether the actual slope value is important, or whether the relative changes in slope may be more important. It would seem like as long as the cutoff is consistent between groups that they could be compared against one-another for inference.
+Slope seems to decline in an nearly linear way as minimum bodysize cutoff increases. Thi linear relationship makes sense because you are removing the biomass of smaller fishes, meaning the remaining larger fishers take up a larger proportion of the total biomass. This makes me wonder whether the actual slope value is important, or whether the relative changes in slope may be more important. It would seem like as long as the cutoff is consistent between groups that they could be compared against one-another for inference.
 
-Would maybe suggest the 25g mark, but would imagine that this inflection point is going to depend on the data source.
+In the Edwards vignettes a cutoff of 5g is used, which is referenced to a paper by Blanchard et al., 2005. 
  
 ```{r b sensitivity}
 
@@ -168,7 +167,7 @@ size_cutoff_results %>%
 
 ### C sensitivity
 
-So C is the other parameter in the power law distribution, I was not sure whether it was exactly the intercept or not because its a bounded power law. This "appears" to be increase exponentially beyond 150g, but somme instances of extreme outliers makes that hard to be sure of.
+So C is the other parameter in the power law distribution... Check back to see what it refers to.
 
 ```{r c sensitivity}
 size_cutoff_results %>% 
@@ -208,7 +207,7 @@ bin_totals <- dataBin %>%
   summarise(`Total Bin Biomass` = sum(Biomass)) %>%  
   ungroup() %>% 
   left_join(totals, by = "Year") %>% 
-  mutate(`Percent of Annual Biomass (g)` = (`Total Bin Biomass` / `Total Annual Biomass`) * 100 )
+  mutate(`Percent of Annual Biomass` = (`Total Bin Biomass` / `Total Annual Biomass`) * 100 )
 
 
 
@@ -218,7 +217,7 @@ class_totals <- dataBin %>%
   summarise(`Total Class Biomass` = sum(Biomass)) %>% 
   ungroup() %>% 
   left_join(totals, by = "Year") %>% 
-  mutate(`Percent of Annual Biomass (g)` = (`Total Class Biomass` / `Total Annual Biomass`) * 100 ,
+  mutate(`Percent of Annual Biomass` = (`Total Class Biomass` / `Total Annual Biomass`) * 100 ,
          `Species Category` = spec_class)
 
 
@@ -269,7 +268,7 @@ lmin_cumsums <- dataBin %>%
 
 # Size Bins merging with totals - This one could be better as cumulative distirbution plot (s)
 bin_totals %>% 
-  ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass (g)`, fill = `Bodymass Bin (g)`)) + 
+  ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass`, fill = `Bodymass Bin (g)`)) + 
     geom_col(color = "white", size = 0.2) +
     labs(x = "", y = "Proportion of Total Annual Biomass") +
     coord_flip() +
@@ -287,7 +286,7 @@ bin_totals %>%
 
 # Class Proportions
 class_totals %>% 
-  ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass (g)`, fill = `Species Category`)) + 
+  ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass`, fill = `Species Category`)) + 
     geom_col(color = "white", size = 0.2) +
     labs(x = "", y = "Proportion of Total Annual Biomass") +
     coord_flip() +
@@ -300,7 +299,7 @@ class_totals %>%
 
 ### Discrete Bodymass Bins {.tabset}
 
-```{r cd plot setup}
+```{r size plots}
 
 # Plot the cumulative plots by bodymass bins, by decade
 decade_plots_size <- size_cumsums %>% 
@@ -317,127 +316,28 @@ decade_plots_size <- size_cumsums %>%
     
     # Cumulative Biomass
     biomass_plot <- levels_dropped %>% 
-      ggplot(aes(x = `Weight Bin`, y = `Total Bin Biomass`)) +
-      #ggplot(aes(x = `Weight Bin`, y = `Cumulative Biomass (kg)`, color = `Bodymass Bin (g)`)) +
-        #geom_step(group = 1, size = 1) +
+      ggplot(aes(x = `Weight Bin`, y = `Total Bin Biomass` / 1000)) +
         geom_col(aes(fill = `Bodymass Bin (g)`)) +
-        geom_hline(data = totals_dropped, aes(yintercept = (`Total Annual Biomass` / 1) / 2), 
+        geom_hline(data = totals_dropped, aes(yintercept = (`Total Annual Biomass` / 1000) / 2), 
                    linetype = 2, alpha = 0.5, color = "royalblue") +
         facet_wrap(~Year, ncol = 5) +
-        #scale_color_gmri() +
         scale_y_continuous(labels = scales::comma_format()) +
         scale_fill_gmri() +
-        theme(legend.position = "none")
+        theme(legend.position = "none") +
+        labs(y = "Total Bin Biomass (kg)")
     
     # Proportion of Total Biomass
     proportion_plot <- levels_dropped %>% 
-      ggplot(aes(x = `Weight Bin`, y = `Percent of Annual Biomass (g)`)) +
-      #ggplot(aes(x = `Weight Bin`, y = `Proportion of Annual Biomass`, color = `Bodymass Bin (g)`)) +
-        #geom_step(group = 1, size = 1) +
+      ggplot(aes(x = `Weight Bin`, y = `Percent of Annual Biomass`)) +
         geom_col(aes(fill = `Bodymass Bin (g)`)) +
-        #geom_hline(yintercept = 0.5, linetype = 2, alpha = 0.5, color = "royalblue") +
         geom_hline(yintercept = 50, linetype = 2, alpha = 0.5, color = "royalblue") +
         facet_wrap(~Year, ncol = 5)  +
-        #scale_color_gmri() +
         scale_fill_gmri() +
         guides("color" = guide_legend(title.position = "top", title.hjust = 0.5))  +
       theme(legend.position = "top")
     
     stacked_plot <- biomass_plot / proportion_plot
-    #return(stacked_plot)
-    return(list("mass" = biomass_plot,
-                "proportion" = proportion_plot))
     
-    
-  })
-
-
-
-
-
-
-
-
-
-
-
-####  Column Plots for the different classes
-
-# And do the same for the species classes
-decade_plots_class <- class_cumsums %>% 
-  mutate(decade = floor_decade(Year)) %>% 
-  split(.$decade) %>% 
-  map(function(decade_group){
-    
-    # Drop levels
-    levels_dropped <- decade_group %>% 
-      mutate(Year = forcats:::fct_drop(Year))
-    
-    totals_dropped <- filter(totals, Year %in% levels_dropped$Year) %>% 
-      mutate(Year = forcats:::fct_drop(Year))
-    
-    # Cumulative Biomass
-    biomass_plot <- levels_dropped %>% 
-      ggplot(aes(x = `Species Class`, y = `Total Class Biomass`)) +
-        geom_col(aes(fill = `Species Category`)) +
-        geom_hline(data = totals_dropped, aes(yintercept = (`Total Annual Biomass`) / 2), 
-                   linetype = 2, alpha = 0.5, color = "royalblue") +
-        facet_wrap(~Year) +
-        scale_fill_gmri() +
-        scale_y_continuous(labels = scales::comma_format()) +
-        theme(legend.position = "none")
-    
-    # Proportion of Total Biomass
-    proportion_plot <- levels_dropped %>% 
-      ggplot(aes(x = `Species Class`, y = `Percent of Annual Biomass (g)`)) +
-        geom_col(aes(fill = `Species Category`)) +
-        geom_hline(yintercept = 50, linetype = 2, alpha = 0.5, color = "royalblue") +
-        facet_wrap(~Year)  +
-        scale_fill_gmri() +
-        guides("color" = guide_legend(title.position = "top", title.hjust = 0.5)) +
-      theme(legend.position = "top")
-        
-        stacked_plot <- biomass_plot / proportion_plot
-        #return(stacked_plot)
-        return(list("mass" = biomass_plot,
-                    "proportion" = proportion_plot))
-    
-    
-    
-  })
-
-
-####  Plotting CDP of lmin instead of mass bins   ####
-decade_plots_length <- lmin_cumsums %>% 
-  mutate(decade = floor_decade(Year)) %>% 
-  split(.$decade) %>% 
-  map(function(decade_group){
-    
-    # Drop levels
-    levels_dropped <- decade_group %>% 
-      mutate(Year = forcats:::fct_drop(Year))
-    
-    totals_dropped <- filter(totals, Year %in% levels_dropped$Year) %>% 
-      mutate(Year = forcats:::fct_drop(Year))
-    
-    # Cumulative Biomass
-    biomass_plot <- levels_dropped %>% 
-      ggplot(aes(x = `Length (cm)`, y = `Cumulative Biomass (kg)`)) +
-        geom_step(group = 1, size = 1) +
-        geom_hline(data = totals_dropped, aes(yintercept = (`Total Annual Biomass` / 1000) / 2), 
-                   linetype = 2, alpha = 0.5, color = "royalblue") +
-        facet_wrap(~Year, ncol = 5) +
-        theme(legend.position = "none")
-    
-    # Proportion of Total Biomass
-    proportion_plot <- levels_dropped %>% 
-      ggplot(aes(x = `Length (cm)`, y = `Proportion of Annual Biomass`)) +
-        geom_step(group = 1, size = 1) +
-        geom_hline(yintercept = 0.5, linetype = 2, alpha = 0.5, color = "royalblue") +
-        facet_wrap(~Year, ncol = 5)
-    
-    stacked_plot <- biomass_plot / proportion_plot
-    #return(stacked_plot)
     return(list("mass" = biomass_plot,
                 "proportion" = proportion_plot))
     
@@ -482,10 +382,57 @@ decade_plots_size$`2010`$proportion
 
 ### Species Class Bins {.tabset}
 
+```{r class plots}
+####  Column Plots for the different classes
+
+# And do the same for the species classes
+decade_plots_class <- class_cumsums %>% 
+  mutate(decade = floor_decade(Year)) %>% 
+  split(.$decade) %>% 
+  map(function(decade_group){
+    
+    # Drop levels
+    levels_dropped <- decade_group %>% 
+      mutate(Year = forcats:::fct_drop(Year))
+    
+    totals_dropped <- filter(totals, Year %in% levels_dropped$Year) %>% 
+      mutate(Year = forcats:::fct_drop(Year))
+    
+    # Cumulative Biomass
+    biomass_plot <- levels_dropped %>% 
+      ggplot(aes(x = `Species Class`, y = `Total Class Biomass` / 1000)) +
+        geom_col(aes(fill = `Species Category`)) +
+        geom_hline(data = totals_dropped, aes(yintercept = (`Total Annual Biomass` / 1000) / 2), 
+                   linetype = 2, alpha = 0.5, color = "royalblue") +
+        facet_wrap(~Year) +
+        scale_fill_gmri() +
+        scale_y_continuous(labels = scales::comma_format()) +
+        theme(legend.position = "none") +
+        labs(y = "Total Class Biomass (kg)")
+    
+    # Proportion of Total Biomass
+    proportion_plot <- levels_dropped %>% 
+      ggplot(aes(x = `Species Class`, y = `Percent of Annual Biomass`)) +
+        geom_col(aes(fill = `Species Category`)) +
+        geom_hline(yintercept = 50, linetype = 2, alpha = 0.5, color = "royalblue") +
+        facet_wrap(~Year)  +
+        scale_fill_gmri() +
+        guides("color" = guide_legend(title.position = "top", title.hjust = 0.5)) +
+      theme(legend.position = "top")
+        
+        stacked_plot <- biomass_plot / proportion_plot
+        return(list("mass" = biomass_plot,
+                    "proportion" = proportion_plot))
+    
+    
+    
+  })
+```
+
+
 #### 1980's
 
 ```{r}
-
 # And plot
 decade_plots_class$`1980`$mass
 decade_plots_class$`1980`$proportion
@@ -514,6 +461,48 @@ decade_plots_class$`2010`$proportion
 
 
 ### Fish Length {.tabset}
+
+```{r length plots}
+
+####  Plotting CDP of lmin instead of mass bins   ####
+decade_plots_length <- lmin_cumsums %>% 
+  mutate(decade = floor_decade(Year)) %>% 
+  split(.$decade) %>% 
+  map(function(decade_group){
+    
+    # Drop levels
+    levels_dropped <- decade_group %>% 
+      mutate(Year = forcats:::fct_drop(Year))
+    
+    totals_dropped <- filter(totals, Year %in% levels_dropped$Year) %>% 
+      mutate(Year = forcats:::fct_drop(Year))
+    
+    # Cumulative Biomass
+    biomass_plot <- levels_dropped %>% 
+      ggplot(aes(x = `Length (cm)`, y = `Cumulative Biomass (kg)`)) +
+        geom_step(group = 1, size = 1) +
+        geom_hline(data = totals_dropped, aes(yintercept = (`Total Annual Biomass` / 1000) / 2), 
+                   linetype = 2, alpha = 0.5, color = "royalblue") +
+        scale_y_continuous(labels = scales::comma_format()) +
+        facet_wrap(~Year, ncol = 5) +
+        theme(legend.position = "none") 
+    
+    # Proportion of Total Biomass
+    proportion_plot <- levels_dropped %>% 
+      ggplot(aes(x = `Length (cm)`, y = `Proportion of Annual Biomass`)) +
+        geom_step(group = 1, size = 1) +
+        geom_hline(yintercept = 0.5, linetype = 2, alpha = 0.5, color = "royalblue") +
+        facet_wrap(~Year, ncol = 5)
+    
+    stacked_plot <- biomass_plot / proportion_plot
+    return(list("mass" = biomass_plot,
+                "proportion" = proportion_plot))
+    
+    
+  })
+
+```
+
 
 #### 1980's
 
