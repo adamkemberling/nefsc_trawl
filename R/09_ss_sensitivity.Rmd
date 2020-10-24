@@ -66,6 +66,7 @@ dataBin <- dataBin %>%
 # 5g min size cutoff
 min5g <- read_csv(here("data/size_spectra_results/nefsc_5grams.csv"))
 
+
 # OISST Timeseries
 regions <- c("Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight")
 region_temps <- map(regions, function(x){
@@ -77,13 +78,6 @@ region_temps <- map(regions, function(x){
 }) %>% setNames(regions) %>%  bind_rows(.id = "region")
 
 
-
-# # Plotting all 5gram cutoff results
-# min5g %>% 
-#   mutate(year = as.numeric(Year)) %>% 
-#   ggplot(aes(year, b)) +
-#   geom_point() +
-#   facet_grid(season ~ area) + labs(x = "")
 ```
 
 `r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -635,4 +629,46 @@ results_w_temps %>%
 
 ```
 
- 
+### Regional Timelines
+
+These are the results from using a 5 gram bodysize cutoff.
+
+```{r}
+# # Plotting all 5gram cutoff results
+
+
+min5g <- min5g %>% 
+  mutate(Year = as.numeric(as.character(Year)),
+         season = case_when(season == "all" ~ "Spring + Fall",
+                            season == "SPRING" ~ "Spring",
+                            season == "FALL" ~ "Fall"),
+         season = factor(season, levels = c("Spring", "Fall", "Spring + Fall"))) 
+
+
+# # how the hline intercepts are created by facet grid 
+# filter(min5g, is.na(Year)) %>% 
+#   split(.$season) %>% 
+#   map(~ split(x = .x, f = .x$area))
+
+
+
+min5g %>% 
+  ggplot(aes(Year, b, color = area, shape = season)) +
+    geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax), alpha = 0.5) +
+     geom_hline(data = filter(min5g, is.na(Year)), 
+               aes(yintercept = b), linetype = 2, alpha = 0.7, size = 1) +
+    facet_grid(season ~ area) + 
+   
+    geom_smooth(method = "gam", show.legend = FALSE, se = FALSE, 
+                formula = y ~ s(x, bs = "cs")) +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, size= 6, vjust = 0.5)) +
+    scale_color_gmri() +
+    labs() + 
+    guides(shape = "none",
+           color = "none") +
+    labs(x = "", 
+         caption = "Horizontal line represents the mean across all years for facet group.",
+        y = "Size Spectrum Slope (b)") 
+```
+

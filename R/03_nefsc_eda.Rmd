@@ -25,6 +25,7 @@ library(sizeSpectra)
 library(patchwork)
 library(tidyverse)
 library(ggforce)
+library(knitr)
 
 
 ####  Support Functions  ####
@@ -53,21 +54,21 @@ theme_set(theme_classic())
 
 # Exporatory Data Analysis of NEFSC Bottom Trawl Survey Data
 
-Exploration of spatial and temporal patterns in abundance, and bodymass of fishes from the Northeast groundfish survey.
+Exploration of spatial and temporal patterns in abundance, and bodymass of fishes from the Northeast groundfish survey. Build code containing data wrangling and conversions can be accessed [here.](https://github.com/adamkemberling/nefsc_trawl/blob/master/R/01_nefsc_ss_build.R)
 
 ```{r group summaries}
 
 # Do some formatting
-trawldat <- weights_20 %>% 
+weights_20 <- weights_20 %>% 
   mutate(
     id = as.character(id),
-    season = ifelse(season == "SPRING", "Spring", "Fall"),
+    season = ifelse(season %in% c("SPRING", "Spring"), "Spring", "Fall"),
     season = factor(season, levels = c("Spring", "Fall"))
   )
 
 # Run Summary Functions
-ann_means <- ss_annual_summary(trawldat)
-seasonals <- ss_seasonal_summary(trawldat)
+ann_means <- ss_annual_summary(weights_20)
+seasonals <- ss_seasonal_summary(weights_20)
 
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
@@ -75,8 +76,8 @@ summs <- bind_rows(ann_means, seasonals) %>%
 
 
 #drop haddock to see if that changes the bump
-haddock_ann  <- ss_annual_summary(filter(trawldat, comname != "haddock"))
-haddock_seas <- ss_seasonal_summary(filter(trawldat, comname != "haddock"))
+haddock_ann  <- ss_annual_summary(filter(weights_20, comname != "haddock"))
+haddock_seas <- ss_seasonal_summary(filter(weights_20, comname != "haddock"))
 no_haddock <- bind_rows(haddock_ann, haddock_seas) %>% 
   mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
 ```
@@ -122,16 +123,16 @@ bio_1 / bio_2
 
 ```{r, fig.height = 8}
 ship_1 <- ann_means %>% 
-  ggplot(aes(est_year, fscs_biomass, color = season, linetype = "All Species")) +
+  ggplot(aes(est_year, fscs_biomass_kg, color = season, linetype = "All Species")) +
     geom_line(group = 1) +
     geom_line(data = haddock_ann, 
-              aes(est_year, fscs_biomass, color = season, linetype = "Haddock Removed")) +
+              aes(est_year, fscs_biomass_kg, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Total Biomass (kg)")
 
 ship_2 <- seasonals %>% 
-  ggplot(aes(est_year, fscs_biomass, color = season)) +
+  ggplot(aes(est_year, fscs_biomass_kg, color = season)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Total Biomass (kg)")
@@ -139,24 +140,63 @@ ship_2 <- seasonals %>%
 ship_1 / ship_2
 ```
 
-#### Area Stratified
+#### Area Stratified {.tabset}
 
+For area stratified weight in kg I currently have these formulas:
+
+The stratum area ratio is the area of strata:  $1,2,3, ...s$ relative to the total area of the survey (only stratum with data we use is included.)
+
+$$stratio_s = area(stratum_s)~ / total~area$$
+
+Next, using the amount of tows in a given year for a specific strata, we get the amount of biomass (kg) across that group and divide it by the effort. This is then scaled by $stratio$ to scale it by how much cpue for that stratum reflects the total area of the surey.
+
+For Strata: $1,2,3, ...s$     
+For years: $1,2,3, ...i$     
+
+$$stratum~weighted~cpue = stratio_s * (~sum(biomass_{is})~/~n~stations_{is}~),$$
+
+
+Then that weighted cpue is transformed back to kg. The stratum weighted catch per station is divided by .01 (nautical miles conversion), then multiplied by the total area of all strata. Finally that value is then then we take the log base ten of that to return the biomass?
+
+$$stratum~weighted~biomass = log10(~~(stratum~weighted~cpue~/~.01)~  *~total~area~~)$$
+
+##### L-W
+
+```{r}
+lw_strat_1 <- ann_means %>% 
+  ggplot(aes(est_year, lw_strat_biomass, color = season, linetype = "All Species")) +
+    geom_line(group = 1) +
+    scale_color_manual(values = "black") +
+    scale_y_continuous(labels = scales::comma_format()) +
+    labs(x = "", y = "Stratum Weighted Biomass \n (l-W Regressions)")
+
+lw_strat_2 <- seasonals %>% 
+  ggplot(aes(est_year, lw_strat_biomass, color = season)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::comma_format()) +
+    labs(x = "", 
+         y = "Stratum Weighted Biomass \n (L-W Regressions)")
+
+lw_strat_1 / lw_strat_2
+```
+
+##### FSCS
 
 ```{r}
 strat_1 <- ann_means %>% 
   ggplot(aes(est_year, fscs_strat_biomass, color = season, linetype = "All Species")) +
     geom_line(group = 1) +
-    geom_line(data = haddock_ann, 
-              aes(est_year, fscs_strat_biomass, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Stratum Area Weighted Biomass")
+    labs(x = "", y = "Stratum Weighted Biomass \n (Gross Shipboard Weight)")
 
 strat_2 <- seasonals %>% 
   ggplot(aes(est_year, fscs_strat_biomass, color = season)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Stratum Area Weighted Biomass")
+    labs(x = "", 
+         y = "Stratum Weighted Biomass \n (Gross Shipboard Weight)", 
+         caption = "Stratum Weighted Biomass = Total Stratum Biomass (kg) * (stratum area / total stratum area)")
 
 strat_1 / strat_2
 ```
@@ -165,7 +205,7 @@ strat_1 / strat_2
 
 ### CPUE
 
-Biomass per unit effort in the following figures represents the total biomass divided by the effort in number of stations. Adjustments for the 2008 vessel change are assumed to be corrected for in the data. There has been no correction for differences in stratum area in these figures.
+Biomass per unit effort in the following figures represents the total biomass divided by the effort in number of stations. Adjustments for the 2008 vessel change are assumed to be corrected for in the data. There has been no correction for differences in stratum area in these figures, only station effort.
 
 
 ```{r, fig.height = 8}
@@ -186,62 +226,18 @@ cpue_1 / cpue_2
 ```
 
 
-### Relative Contribution {.tabset}
-
-For the following figures on relative contribution, axes for the two survey seasons are used to highlight relative differences in total biomass and cpue between the two survey seasons. A dashed line is overlayed to represent what an equal allocation would resemble. Years above the line indicate that more biomass/cpue occurred in the Fall and vice versa.
-
-```{r, fig.height = 8}
-bio_comp <- seasonals %>% select(est_year,  season, lw_biomass_kg) %>% 
-  pivot_wider(names_from = season, values_from = lw_biomass_kg) %>% 
-  mutate(decade = floor_decade(est_year)) %>% 
-  ggplot(aes(Spring, Fall, color = decade)) +
-    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "gray50", size = 1) +
-    geom_point() +
-    geom_mark_ellipse() +
-    scale_y_continuous(labels = scales::comma_format()) +
-    scale_x_continuous(labels = scales::comma_format()) +
-    labs(x = "Spring", y = "Fall", subtitle = "Total Biomass (kg)")+
-    facet_wrap(~decade) +
-    theme(legend.position = "none")
-
-
-cpue_comp <- seasonals %>% select(est_year,  season, lw_biomass_per_station) %>% 
-  pivot_wider(names_from = season, values_from = lw_biomass_per_station) %>% 
-  mutate(decade = floor_decade(est_year)) %>% 
-  ggplot(aes(Spring, Fall, color = decade)) +
-    geom_abline(slope = 1, intercept = 0, linetype = 2, color = "gray50", size = 1) +
-    geom_point() +
-    geom_mark_ellipse() +
-    labs(x = "Spring", y = "Fall", subtitle = "Biomass (kg) / Standard Tow") +
-    facet_wrap(~decade) +
-    theme(legend.position = "none")
 
 
 
 
-```
-
-#### Biomass
-```{r}
-bio_comp
-```
-
-#### CPUE
-
-```{r}
-cpue_comp
-```
-
-
-
-### Species Groups
+### Species Guilds {.tabset}
 
 Relative contribution to overall biomass by species group based on management and/or life history: Demersal, Elasmobranch, Groundfish, Pelagic
 
 
 ```{r, fig.height = 8}
 # Species Class Bins Data Prep
-class_totals <- trawldat %>% 
+class_totals <- weights_20 %>% 
   group_by(est_year, spec_class) %>% 
   summarise(`Total Class Biomass` = sum(sum_weight_kg)) %>% 
   ungroup() %>% 
@@ -249,11 +245,18 @@ class_totals <- trawldat %>%
   mutate(`Percent of Annual Biomass` = (`Total Class Biomass` / lw_biomass_kg) * 100 ,
          `Species Category` = spec_class,
          Year = as.character(est_year))
+```
+
+#### Proportion of Total Catch
+
+```{r, fig.height=6}
+#2008 
 
 # Class Proportions
 class_totals %>% 
   ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass`, fill = `Species Category`)) + 
     geom_col(color = "white", size = 0.2) +
+    geom_vline(xintercept = "2008", linetype = 2, color = "gray25") +
     labs(x = "", y = "Proportion of Total Annual Biomass") +
     coord_flip() +
     scale_fill_gmri() +
@@ -264,6 +267,124 @@ class_totals %>%
 ```
 
 
+#### Pelagics
+
+
+```{r, fig.height=6}
+guild_plots <- weights_20 %>% 
+  split(.$spec_class) %>% 
+  imap(function(guild, guild_name){
+    
+    
+    year_df <- guild %>% 
+      split(.$est_year) %>% 
+      imap_dfr(function(year_group, year){
+        #quantile breaks
+        probs <- c(0.5, 0.25, 0.5, 0.75, 0.95 )
+        
+        # length quantiles
+        length_quantiles <- Hmisc::wtd.quantile(
+            x = year_group$length, 
+            weights = year_group$numlen_adj, 
+            probs = ) %>% 
+          as.data.frame() %>% 
+          rownames_to_column() %>% 
+          setNames(c("probability", "length")) %>% 
+          mutate(probability = factor(probs),
+                 year = year)
+        
+        # weight quantiles
+        weight_quantiles <- Hmisc::wtd.quantile(
+            x = year_group$ind_weight_kg, 
+            weights = year_group$numlen_adj, 
+            probs = probs) %>% 
+          as.data.frame() %>% 
+          rownames_to_column() %>% 
+          setNames(c("probability", "weight (kg)")) %>% 
+          mutate(probability = factor(probs),
+                 year = year)
+        
+        guild_data <- left_join(length_quantiles, weight_quantiles, 
+                               by = c("year", "probability")) %>% 
+          mutate(year = fct_rev(year))
+        
+        return(guild_data)  
+          
+    
+      })
+    
+    
+    
+    
+    #return(year_df)
+    guild_key <- c("dem" = "Demersals", 
+                   "el" = "Elasmobranchs", 
+                   "gf" = "Groundfish", 
+                   "pel" = "Pelagics")
+    
+    
+    #make plot
+    p1 <- ggplot(year_df, aes(length, fct_rev(year))) +
+      geom_rect(xmin = -Inf, 
+                xmax = Inf, 
+                ymin = "2008", 
+                ymax = "2019", 
+                fill = "gray90") +
+      geom_line(aes(group = year), color = "gray50", alpha = 0.5) +
+      geom_point(aes(color = probability)) +
+      
+      scale_color_gmri() +
+      labs(subtitle = guild_key[guild_name], x = "Individual Length (cm)", y = NULL) +
+      theme(legend.position = "none")
+    
+    #make plot
+    p2 <- ggplot(year_df, aes(`weight (kg)`, fct_rev(year))) +
+      geom_rect(xmin = -Inf, 
+                xmax = Inf, 
+                ymin = "2008", 
+                ymax = "2019", 
+                fill = "gray90") +
+      geom_line(aes(group = year), color = "gray50", alpha = 0.5) +
+      geom_point(aes(color = probability)) +
+      scale_color_gmri() +
+      labs(x = "Individual Weight (kg)", y = NULL) +
+      theme(axis.text.y = element_blank(),
+            axis.ticks.y = element_blank())
+      
+    patch_plot <- p1 + p2
+    return(patch_plot)
+    
+    
+  })
+
+
+guild_plots$pel
+```
+
+#### Demersals
+
+```{r, fig.height=6}
+
+# Size Plots
+guild_plots$dem
+```
+
+#### Elasmobranchs
+
+```{r, fig.height=6}
+guild_plots$el
+```
+
+#### Groundfish
+
+```{r, fig.height=6}
+guild_plots$gf
+```
+
+
+
+
+
 ### Mean Individual Biomass
 
 Check these across years and also by season
@@ -271,7 +392,7 @@ Check these across years and also by season
 ```{r}
 
 summs %>% 
-  ggplot(aes(est_year, mean_ind_bodymass * 1000, color = season)) +
+  ggplot(aes(est_year, mean_ind_bodymass_lw * 1000, color = season)) +
     geom_line(show.legend = FALSE) +
     scale_color_manual(values = c(
       "Spring + Fall" = "black",
@@ -281,14 +402,6 @@ summs %>%
   labs(x = "", y = "Mean Individual Biomass (g)") +
   facet_wrap(~season, ncol = 1)
       
-
-# # What do the histograms look like:
-# trawldat %>%
-#   select(id, est_year, area, season, length, ind_weight_kg, numlen_adj) %>%
-#   uncount(numlen_adj) %>%
-#   ggplot(aes(x = ind_weight_kg)) +
-#   scale_y_continuous(labels = scales::comma_format()) +
-#   geom_histogram()
   
 ```
 
@@ -307,13 +420,6 @@ summs %>%
   labs(x = "", y = "Mean Individual Length (cm)") +
   facet_wrap(~season, ncol = 1)
 
-# # What do the histograms look like:
-# trawldat %>%
-#   select(id, est_year, area, season, length, ind_weight_kg, numlen_adj) %>%
-#   uncount(numlen_adj) %>%
-#   ggplot(aes(x = length)) +
-#   scale_y_continuous(labels = scales::comma_format()) +
-#   geom_histogram()
 ```
 
 
@@ -324,7 +430,7 @@ Since 2008 there has been a large increase in the amount of total biomass caught
 
 ```{r}
 # Pull top 5 species from each year, by biomass
-top_5 <- trawldat %>% 
+top_5 <- weights_20 %>% 
   filter(est_year >= 2004) %>% 
   group_by(est_year, comname) %>% 
   summarise(n_fish = sum(numlen_adj),
@@ -384,8 +490,120 @@ t4
 
 ```
 
+### Small Fish {.tabset}
+
+Bodymass size cutoffs are used to plot the timelines of total fish biomass below the following thresholds for individual biomass: .0625, .125, .25, .5, 1kg. This is going to fail for the shipboard weights because that weight is divided equally across different measurements of fishes regardless of size.
+
+#### .0625 kg
+
+```{r}
+max_weight_plot <- function(size_cutoff){
+  weights_20 %>% 
+    filter(ind_weight_kg < size_cutoff) %>% 
+    group_by(est_year) %>% 
+    summarise(total_biomass_lw = sum(sum_weight_kg),
+              `Maximum Individual Biomass` = str_c("Individual Mass < ", size_cutoff, " kg")) %>%
+    ggplot(aes(est_year, total_biomass_lw, color = `Maximum Individual Biomass`)) +
+      geom_line() +
+      scale_color_gmri() +
+      scale_y_continuous(labels = scales::comma_format()) +
+      labs(x = NULL, y = "Total Annual (kg)") +
+    theme(legend.position = "bottom")
+}
 
 
+# .5 kg
+max_weight_plot(.0625)
+
+```
+
+#### .125 kg
+
+```{r}
+max_weight_plot(.125)
+```
+
+#### .25 kg
+
+```{r}
+max_weight_plot(.25)
+```
+
+#### .5
+
+```{r}
+max_weight_plot(.5)
+```
+
+
+#### 1 kg
+
+```{r}
+max_weight_plot(1)
+```
+
+
+###  Big Fish Patterns {.tabset}
+
+Same idea for the larger fish, but the opposite. A minimum cutoff for the individual bodymass. Below are the upper quantiles for individual body mass weighted by number at length.
+
+
+```{r}
+# # Weighted Quantiles for Individual weights
+# Hmisc::wtd.quantile(x = weights_20$ind_weight_kg, weights = weights_20$numlen_adj, probs = c(.75, 0.8, 0.9, 0.95)) %>% 
+#   as.data.frame() %>% round(digits = 2) %>% 
+#   knitr::kable()
+
+# plotting function
+min_weight_plot <- function(size_cutoff){
+  weights_20 %>% 
+    filter(ind_weight_kg > size_cutoff) %>% 
+    group_by(est_year) %>% 
+    summarise(total_biomass_lw = sum(sum_weight_kg),
+              `Minimum Individual Biomass` = str_c("Individual Mass > ", size_cutoff, " kg")) %>%
+    ggplot(aes(est_year, total_biomass_lw, color = `Minimum Individual Biomass`)) +
+      geom_line() +
+      scale_color_gmri() +
+      scale_y_continuous(labels = scales::comma_format()) +
+      labs(x = NULL, y = "Total Annual (kg)") +
+    theme(legend.position = "bottom")
+}
+```
+
+#### .25  kg
+
+```{r}
+min_weight_plot(.25)
+```
+
+
+#### .5 kg
+
+```{r}
+min_weight_plot(.5)
+```
+
+
+#### 1 kg
+
+```{r}
+min_weight_plot(1)
+```
+
+#### 2 kg
+```{r}
+min_weight_plot(2)
+```
+
+#### 5 kg
+```{r}
+min_weight_plot(5)
+```
+
+#### 10 kg
+```{r}
+min_weight_plot(10)
+```
 
 ## Spatial Patterns  {.tabset .tabset-pills}
 
@@ -436,7 +654,7 @@ canada <- ne_states("canada") %>% st_as_sf(crs = 4326)
 
 
 # Make trawl data an sf dataset
-trawl_sf <- trawldat %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
+trawl_sf <- weights_20 %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
 
 ```
 
@@ -463,8 +681,8 @@ ggplot() +
 ### Regional Summaries 
 ```{r}
 # Just Area, all seasona
-area_summs <- trawldat %>% 
-  group_by(area) %>% 
+area_summs <- weights_20 %>% 
+  group_by(survey_area) %>% 
   summarise(
     season = "Spring + Fall",
     lw_biomass_kg = sum(sum_weight_kg, na.rm = T),
@@ -475,8 +693,8 @@ area_summs <- trawldat %>%
   )
 
 # Area x Season
-seas_area <- trawldat %>% 
-  group_by(area, season) %>% 
+seas_area <- weights_20 %>% 
+  group_by(survey_area, season) %>% 
   summarise(
     lw_biomass_kg = sum(sum_weight_kg, na.rm = T),
     n_stations = n_distinct(id),
@@ -492,13 +710,13 @@ summs_combined <- bind_rows(area_summs, seas_area) %>%
 
 summs_combined %>% 
   mutate_if(is.numeric,round, 2) %>% 
-  arrange(area,season) %>% 
+  arrange(survey_area,season) %>% 
   knitr::kable()
 
 
 # Year x Area
-area_summs_y <- trawldat %>% 
-  group_by(est_year, area) %>% 
+area_summs_y <- weights_20 %>% 
+  group_by(est_year, survey_area) %>% 
   summarise(
     season = "Spring + Fall",
     lw_biomass_kg = sum(sum_weight_kg, na.rm = T),
@@ -517,7 +735,7 @@ area_summs_y <- trawldat %>%
 area_summs_y %>% 
   ggplot(aes(est_year, lw_biomass_kg)) +
     geom_line() +
-    facet_wrap(~area, ncol = 2) +
+    facet_wrap(~survey_area, ncol = 2) +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Total Biomass (kg)")
 
@@ -531,7 +749,7 @@ area_summs_y %>%
 area_summs_y %>% 
   ggplot(aes(est_year, lw_biomass_per_station)) +
     geom_line() +
-    facet_wrap(~area, ncol = 2) +
+    facet_wrap(~survey_area, ncol = 2) +
     labs(x = "", y = "Adjusted Biomass per Station (kg)")
            
 ```
@@ -564,7 +782,7 @@ reg_summs <- bind_rows(list(summ_16, summ_19, summ_20))
 ```
 
 
-```{r, fig.height=8, fig.width=6}
+```{r, fig.height=8, fig.width=8}
 
 
 
@@ -573,15 +791,15 @@ p1 <- reg_summs %>%
   ggplot(aes(est_year, lw_biomass_kg, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1, scales = "free") +
+  facet_wrap(~survey_area, ncol = 1, scales = "free") +
   labs(x = "", y = "Total Biomass \n (L-W Regressions)")
 
 # Total Biomass - FSCS
 p2 <- reg_summs %>% 
-  ggplot(aes(est_year, fscs_biomass, color = source)) +
+  ggplot(aes(est_year, fscs_biomass_kg, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1) +
+  facet_wrap(~survey_area, ncol = 1) +
   labs(x = "", y = "Total Biomass \n (FSCS Haul Weights)")
 
 # effort
@@ -589,7 +807,7 @@ p3 <- reg_summs %>%
   ggplot(aes(est_year, n_stations, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1) +
+  facet_wrap(~survey_area, ncol = 1) +
   labs(x = "", y = "Effort (haul count)")
 
 # Species 
@@ -597,7 +815,7 @@ p4 <- reg_summs %>%
   ggplot(aes(est_year, n_species, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1) +
+  facet_wrap(~survey_area, ncol = 1) +
   labs(x = "", y = "Distinct Species")
 
 p1 + p2 + p3 + p4

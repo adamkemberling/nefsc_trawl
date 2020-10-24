@@ -24,12 +24,12 @@ library(tidyverse)
 load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 
   ####  Paths  ####
-  mills_path <- shared.path(group = "Mills Lab", folder = "")
-  nsf_path <- shared.path(group = "NSF OKN", folder = "")
+  mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = "")
+  nsf_path   <- shared.path(os.use = "unix", group = "NSF OKN", folder = "")
   res_path   <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
   
   # Support Functions
-  `%not in%` <-  purrr::negate(`%in%`) # to filter out ones that have matches
+  `%not in%` <- purrr::negate(`%in%`) # to filter out ones that have matches
   
   
   ####  Load Data  ####
@@ -44,30 +44,32 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   } 
   
   
-  # Survey Stratumm Areas
+  # Load Survey Stratum Area Info
   stratum_area <- read_csv(str_c(mills_path, "Projects/NSF_CAccel/Data/strata area.csv"), 
                            col_types = cols())
   
   
   
-  ####  2020 Survey Data Prep  ####
-  
   
   ####__ 1. Column Changes  ####
   trawldat <- survdat %>% 
-    mutate(comname = tolower(comname),
-           id = format(id, scientific = FALSE),
-           biomass = ifelse(is.na(biomass) == TRUE & abundance > 0, 0.0001, biomass),
-           biomass = ifelse(biomass == 0 & abundance > 0, 0.01, biomass),
-           abundance = ifelse(is.na(abundance) == TRUE & biomass > 0, 1, abundance),
-           abundance = ifelse(abundance == 0 & biomass > 0, 1, abundance),
-           tstrat = str_sub(stratum, 2, 3)) 
+    mutate(
+      comname   = tolower(comname),
+      id        = format(id, scientific = FALSE),
+      biomass   = ifelse(is.na(biomass) == TRUE & abundance > 0, 0.0001, biomass),
+      biomass   = ifelse(biomass == 0 & abundance > 0, 0.01, biomass),
+      abundance = ifelse(is.na(abundance) == TRUE & biomass > 0, 1, abundance),
+      abundance = ifelse(abundance == 0 & biomass > 0, 1, abundance),
+      tstrat    = str_sub(stratum, 2, 3)) 
   
   
-  ####__ 2. Column Selection  ####
+  ####__ 2. Column Selection /reordering ####
 
+  # currently a light-weight group of columns, 
+  # leaves behind CTD and shipboard instrument details.
+  # Favors the larger categorical group metadata
   trawldat <- trawldat %>%
-    select(id, est_year, est_month, est_day, season, stratum, tstrat, decdeg_beglat, decdeg_beglon,
+    select(id, est_year, est_month, est_day, svvessel, season, stratum, tstrat, decdeg_beglat, decdeg_beglon,
            svspp, comname, catchsex, biomass, avgdepth, abundance, length, numlen) 
   
   
@@ -87,6 +89,8 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
       stratum != 1490,
       # Filter to just Spring and Fall
       season %in% c("SPRING", "FALL"),
+      # Only the Albatross and Henry Bigelow
+      svvessel %in% c("AL", "HB"),
       est_year >= 1970,
       est_year < 2020,
       # Drop na Biomass and Abundance Records
@@ -95,25 +99,42 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  ####__ 4. Stratum Area Ratios  ####
+  ####__ 4. Stratum Area/Effort Ratios  ####
+  
+  # Join to the file containing area of each stratum
   trawldat <- left_join(trawldat, stratum_area, by = "stratum")
   trawldat <- arrange(trawldat, id)
   
   
-  # Compute Stratum Area Ratio & Adjusted Abundances
-  total_stratum_area <- distinct(stratum_area, stratum, .keep_all = T) %$% sum(area, na.rm = T)
-  trawldat <- trawldat %>% 
-    mutate(stratio = area / total_stratum_area,
-           biom_adj = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass),
-           abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance),
-           indwt = biom_adj / abund_adj)
+  # Get Total stratum area of all strata (excluding ones we do not care about via left join)
+  total_stratum_area <- stratum_area %>% 
+    distinct(stratum, .keep_all = T) %$% 
+    sum(area, na.rm = T)
   
+  
+  # Calculate strata area relative to total area i.e. stratio
+  trawldat <- trawldat %>% 
+    mutate(
+      stratio   = area / total_stratum_area,
+      biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass),
+      abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance))
+  
+  
+  # Get number of unique tows per stratum
+  yr_strat_effort <- trawldat %>% 
+    group_by(est_year, stratum) %>% 
+    summarise(strat_effort = n_distinct(id))
+  
+  
+  # Add those yearly effort counts back for later
+  trawldat <- trawldat %>% 
+    left_join(yr_strat_effort, by = c("est_year", "stratum"))
   
   
   ###__ 5. Explicit Species Exclusion  ####
   trawldat <- trawldat %>% 
     filter(
-      # Exclude the Shrimps
+      # Exclude the Skrimps
       svspp %not in% c(285:299, 305, 306, 307, 316, 323, 910:915, 955:961),
       # Exclude the unidentified fish
       svspp %not in% c(0, 978, 979, 980, 998)
@@ -122,7 +143,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   ####__ 6. Spatial Filtering  ####
   
-  # If we know which strata represent which area we can use this:
+  # If we know which strata represent which area we can use this
   # Stratum Key for filtering specific areas
   strata_key <- list(
     "Georges Bank"          = as.character(13:23),
@@ -132,14 +153,15 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   # Add labels to the data
   trawldat <- trawldat %>% 
-    mutate(area =  case_when(
+    mutate(
+      survey_area =  case_when(
       tstrat %in% strata_key$`Georges Bank`         ~ "GB", 
       tstrat %in% strata_key$`Gulf of Maine`        ~ "GoM",
       tstrat %in% strata_key$`Southern New England` ~ "SNE",
       tstrat %in% strata_key$`Mid-Atlantic Bight`   ~ "MAB",
       TRUE                                          ~ "not found"))
   
-  # Use strata_select to pull the strata we want
+  # Optional, Use strata_select to pull the strata we want
   strata_select <- c(
     strata_key$`Georges Bank`, 
     strata_key$`Gulf of Maine`,
@@ -156,9 +178,9 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   ####__ 7. Adjusted NumLength  ####
   conv_factor <- trawldat %>% 
     group_by(id, comname, catchsex, numlen, abundance) %>% 
-    summarise(abundance_raw = sum(numlen),         # Total abundance by numlen aka how many measured at that size
-              #abundance = mean(abundance),         # abundance is number measured of that species, same across the groups so mean pulls one value
-              convers =  abundance/abundance_raw)  # convers is the difference between abundance and the number measured
+    summarise(
+      abund_raw = sum(numlen),               # Total abundance by numlen aka how many measured at that size
+      convers   =  abundance / abund_raw)  # convers is the difference between abundance and the number measured
   
   
   # Merge back and convert the numlen field
@@ -192,8 +214,9 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   # Pull distinct records of the stations themselves and metadata that match
   trawl_stations <- trawldat %>% 
-    select(id, est_year, est_month,  est_day, season, stratum, stratum_num, area, decdeg_beglat, decdeg_beglon, 
-           type, avgdepth, stratio) %>% 
+    select(id, est_year, est_month,  est_day, svvessel, season, stratum, 
+           stratum_num, survey_area, decdeg_beglat, decdeg_beglon, 
+           type, avgdepth, stratio, strat_effort) %>% 
     distinct() 
   
   # recombine with the distinct station info
@@ -204,7 +227,8 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   ####__ 2. Combine with Growth Coefficients  ####
   
-  #Now we want to use the lw_combined here instead of just the fishbase lengths
+  # Now we want to use the lw_combined here instead of just the fishbase lengths
+  # This is a combined table of wigley and fishbase L-W coefficients
   lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
                           col_types = cols()) %>% 
     mutate(svspp = as.character(svspp),
@@ -241,14 +265,15 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # Join them with bind rows (implicitly drops things that don't have growth coefs)
   trawl_weights <- bind_rows(pass_1, pass_2) %>% 
     arrange(est_year, season) %>% 
-    mutate(b = as.numeric(b),
-           a = as.numeric(a),
-           a = ifelse(is.na(a) & !is.na(ln_a), exp(ln_a), a),
-           ln_a = ifelse(is.na(ln_a), log(a), ln_a),          # log of a used if ln_a is isn't already there (some fish just had ln_a reported)
-           llen = log(length),
-           ind_log_wt = ln_a + (b * llen),
-           ind_weight_kg = exp(ind_log_wt),                    # weight of an individual in size class
-           sum_weight_kg = ind_weight_kg * numlen_adj) %>%      # Individual weight * adjusted numlen
+    mutate(
+      b             = as.numeric(b),
+      a             = as.numeric(a),
+      a             = ifelse(is.na(a) & !is.na(ln_a), exp(ln_a), a),
+      ln_a          = ifelse(is.na(ln_a), log(a), ln_a),  # log of a used if ln_a is isn't already there (some fish just had ln_a reported)
+      llen          = log(length),
+      ind_log_wt    = ln_a + (b * llen),
+      ind_weight_kg = exp(ind_log_wt),                    # weight of an individual in size class
+      sum_weight_kg = ind_weight_kg * numlen_adj) %>%     # Individual weight * adjusted numlen
     drop_na(ind_weight_kg) %>% 
     select(-ind_log_wt, -llen)
   
@@ -268,14 +293,41 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     mutate(lw_group = str_c(comname, season, catchsex)) %>% 
     as_tibble()
   
+  
+  
+  
   ####__ 4. Area Weighted Biomass  ####
-  # Incorrect usage - needs to  move to summary functions, 
-  # should be used to adjust relative cpue, not raw biomass
-  trawl_weights <- trawl_weights %>% 
+
+  # 1. Get the average abundance and biomass by effort in that stratum by year
+  # 2. Multiply that mean catch by the area ratio
+  
+  
+  # Good to go up until here:
+  # Issue is that we have 2+ scales going on
+  # The individual lengths and their length specific bodymass
+  # and then the species aggregate biomasses
+  # and then the effort by stratum each year to scale with
+  
+  # the effort (tows) below is from that year and in that stratum
+  #the  question is whether you can apply stratio here and aggregate up or not
+  trawl_weights <- trawl_weights  %>% 
     mutate(
-      strat_wt_bio_fscs = stratio * biom_adj,
-      strat_wt_bio_lw = stratio * sum_weight_kg
-    )
+      
+      # 1. Stratum Weighted biomass cpue
+      strat_wt_bio_fscs = stratio * (biom_adj / strat_effort),
+      strat_wt_bio_lw   = stratio * (sum_weight_kg / strat_effort),
+      # 2. Stratum Weighted Biomass in kg
+      fscs_strat_bio = log10((strat_wt_bio_fscs / .01) * total_stratum_area),
+      lw_strat_bio   = log10((strat_wt_bio_lw / .01) * total_stratum_area)
+      
+      # So the fscs one will repeat itself, 
+      # should be able to pull it out with distinct later
+    ) 
+  
+  
+  # Remove instances where there were fish that were measured but not weighed
+  trawl_weights <- trawl_weights %>% 
+    filter(lw_strat_bio != -Inf)
   
   return(trawl_weights)
 }
@@ -284,7 +336,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 
 ####____________________####
 
-####____________________####
+
 ####  2016 Size Spectrum Build  ####
 
 load_2016_ss_data <- function(){
@@ -351,7 +403,7 @@ load_2016_ss_data <- function(){
   
   ####__ 2. Column Selection  ####
   trawldat <- trawldat %>%
-    select(id, est_year,season, stratum, tstrat, decdeg_beglat = lat, decdeg_beglon = lon,
+    select(id, est_year, svvessel, season, stratum, tstrat, decdeg_beglat = lat, decdeg_beglon = lon,
            svspp, comname, catchsex, biomass, avgdepth = depth, abundance, length, numlen) 
   
   
@@ -371,6 +423,8 @@ load_2016_ss_data <- function(){
       stratum != 1490,
       # Filter to just Spring and Fall
       season %in% c("SPRING", "FALL"),
+      # Only the Albatross and Henry Bigelow
+      svvessel %in% c("AL", "HB"),
       est_year >= 1970,
       est_year < 2020,
       # Drop na Biomass and Abundance Records
@@ -379,7 +433,7 @@ load_2016_ss_data <- function(){
   
   
   
-  ####__ 4. Stratum Area Ratios  ####
+  ####__ 4. Import Stratum Area Ratios  ####
   # Survey Stratumm Areas
   stratum_area <- read_csv(str_c(mills_path, "Projects/NSF_CAccel/Data/strata area.csv"), 
                            col_types = cols()) %>% 
@@ -389,14 +443,28 @@ load_2016_ss_data <- function(){
   trawldat <- arrange(trawldat, id)
   
   
-  # Compute Stratum Area Ratio & Adjusted Abundances
-  total_stratum_area <- distinct(stratum_area, stratum, .keep_all = T) %$% sum(area, na.rm = T)
+  # Get Total stratum area of all strata (excluding ones we do not care about via left join)
+  total_stratum_area <- stratum_area %>% 
+    distinct(stratum, .keep_all = T) %$% 
+    sum(area, na.rm = T)
+  
+  
+  # Calculate strata area relative to total area i.e. stratio
   trawldat <- trawldat %>% 
     mutate(stratio = area / total_stratum_area,
            biom_adj = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass),
-           abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance),
-           indwt = biom_adj / abund_adj)
+           abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance))
   
+  
+  # Get number of unique tows per stratum
+  yr_strat_effort <- trawldat %>% 
+    group_by(est_year, stratum) %>% 
+    summarise(strat_effort = n_distinct(id))
+  
+  
+  # Add those yearly effort counts back for later
+  trawldat <- trawldat %>% 
+    left_join(yr_strat_effort, by = c("est_year", "stratum"))
   
   
   ###__ 5. Explicit Species Exclusion  ####
@@ -421,7 +489,7 @@ load_2016_ss_data <- function(){
   
   # Add labels to the data
   trawldat <- trawldat %>% 
-    mutate(area =  case_when(
+    mutate(survey_area =  case_when(
       tstrat %in% strata_key$`Georges Bank`         ~ "GB", 
       tstrat %in% strata_key$`Gulf of Maine`        ~ "GoM",
       tstrat %in% strata_key$`Southern New England` ~ "SNE",
@@ -481,8 +549,8 @@ load_2016_ss_data <- function(){
   
   # Pull distinct records of the stations themselves and metadata that match
   trawl_stations <- trawldat %>% 
-    select(id, est_year, season, stratum, stratum_num, area, decdeg_beglat, decdeg_beglon, 
-           type, avgdepth, stratio) %>% 
+    select(id, est_year, season, stratum, stratum_num, survey_area, decdeg_beglat, decdeg_beglon, 
+           type, avgdepth, stratio, strat_effort) %>% 
     distinct() 
   
   # recombine with the distinct station info
@@ -565,12 +633,26 @@ load_2016_ss_data <- function(){
   
   
   ####__ 4. Area Weighted Biomass  ####
-  trawl_weights <- trawl_weights %>% 
+  # the effort (tows) below is from that year and in that stratum
+  #the  question is whether you can apply stratio here and aggregate up or not
+  trawl_weights <- trawl_weights  %>% 
     mutate(
-      strat_wt_bio_fscs = stratio * biom_adj,
-      strat_wt_bio_lw = stratio * sum_weight_kg
+      
+      # 1. Stratum Weighted biomass cpue
+      strat_wt_bio_fscs = stratio * (biom_adj / strat_effort),
+      strat_wt_bio_lw   = stratio * (sum_weight_kg /strat_effort),
+      # 2. Stratum Weighted Biomass in kg
+      fscs_strat_bio = log10((strat_wt_bio_fscs / .01) * total_stratum_area),
+      lw_strat_bio   = log10((strat_wt_bio_lw / .01) * total_stratum_area)
+      
+      # So the fscs one will repeat itself, 
+      # should be able to pull it out with distinct later
     )
   
+  
+  # Remove instances where there were fish that were measured but not weighed
+  trawl_weights <- trawl_weights %>% 
+    filter(lw_strat_bio != -Inf)
   
   # Pass out 2016 weights
   return(trawl_weights)
@@ -582,107 +664,132 @@ load_2016_ss_data <- function(){
 
 
 ####____________________####
-####____________________####
-####  Stratified Catch/Biomass  ####
-####  AND  ####
-###  EDA Functions ####
 
-#### Function to get stratified means at various group levels
-# stratified = metric / num tows
-ss_stratification <- function(.data = data, ...){
+####  Aggregate Summary Functions  ####
+
+
+
+
+
+
+#### 1. By-Species Summary  ####
+
+# Stratified Mean = metric / num tows
+# Area Stratified Mean = stratified mean * stratum area ratio 
+
+# For testing
+# dat_2020 <- load_ss_data(survdat_source = "2020")
+
+#' Stratified Means from Size Spectrum Data
+#'
+#' @param .data Input data, generated by load_ss_data() function.
+#' @param ... Factor columns indicating what you wish to group_by for aggregated metrics
+#'
+#' @return species_data_stratified, a table with aggregate numbers, weights, and cpue by grouping stratum 
+#' @export
+#'
+#' @examples
+ss_lw_stratification <- function(.data = data, ...){
+  
   
   # number of effort (tows) in the groups
   num_tows <- .data %>% 
     group_by(...) %>% 
-    summarise(tow_count = n())
+    summarise(n_stations = n_distinct(id))
   
-  # Add effort to the data
+  # Add effort back to the data
   data_stratified <- .data %>% 
     left_join(num_tows)
   
-  # now get the stratified values at each fish growth group
-  data_stratified <- data_stratified  %>% 
-    group_by(..., comname, lw_group) %>% 
+  ## Things that we want to total for the stratum that vary by length increments  ##
+  species_data_stratified <- data_stratified  %>% 
+    group_by(..., comname, stratified_effort) %>% 
     summarise(
-      ## Things that are the same across groups ##
-      a = mean(a),                   
-      b = mean(b),
-      ln_a = mean(ln_a),
-      ind_weight_kg = mean(ind_weight_kg),
-      ## Things that we want to total for the stratum  ##
-      numlen_adj = sum(numlen_adj),       # Total count of individuals
-      sum_weight_kg = sum(sum_weight_kg),   # Total Biomass of species at length for group strata
-      mbiom_per_tow = sum_weight_kg / mean(tow_count),  # total weight averaged by n-tows
-      wtmean_per_tow = mbiom_per_tow * mean(stratio))  # relative to stratum area
+      n_species                = n_distinct(comname),                         # Distinct species
+      lw_biomass_kg            = sum(sum_weight_kg),                          # sum weight across species
+      fscs_biomass_kg          = sum(biom_adj),                               # total fscs weight
+      lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
+      fscs_biomass_per_station = fscs_biomass_kg /n_stations,                 # total fscs weight / tows
+      total_fish               = sum(numlen_adj),                             # total number across species
+      mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
+      mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
+      mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
+      lw_strat_biomass         = sum(lw_strat_bio, na.rm = T),                # tot wt adjusted by stratum ratio
+      fscs_strat_biomass       = sum(fscs_strat_bio))                         # kg / tow, weighted by stratum area ratio 
+    
   
-  # Recreate the catchsex bit
-  data_stratified <- data_stratified %>% 
-    mutate(catchsex = case_when(
-      str_detect(lw_group, "0") ~ "0",
-      str_detect(lw_group, "1") ~ "1")) %>% 
-    ungroup()
+  
+  
+  
   
   # Return the data aggreagted to group levels
-  return(data_stratified)
+  return(species_data_stratified)
   
 }
 
 # # Test it out
-# # Just years and stratum
-# strat_test <- ss_stratification(data, est_year, stratum_num)
-# glimpse(strat_test)
-# 
-# # Year as well as season and stratum
-# t2 <- ss_stratification(data, est_year, season, stratum_num)
-# glimpse(t2)
-# 
-# # Individual tows
-# tow_id_test <- ss_stratification()
+# test <- ss_lw_stratification(dat_2020, est_year, stratum_num)
+# glimpse(test)
 
 
 
 
-####__####
 
 
 
+#### 2. Annual Summary  ####
 # Return an annual summary
 ss_annual_summary <- function(survey_data) {
+
   
-  # Summarize on a measurement length level
+  # Summarize on an individual measurement length level
   summ_data <- survey_data %>% 
     group_by(est_year) %>% 
     summarise(
-      area = "All Areas",
-      season = "Spring + Fall",
-      n_stations = n_distinct(id),
-      n_species = n_distinct(comname),
-      lw_biomass_kg = sum(sum_weight_kg),
-      lw_biomass_per_station = lw_biomass_kg / n_stations,
-      total_fish = sum(numlen_adj),
-      mean_ind_length = weighted.mean(length, numlen_adj),
-      mean_ind_bodymass = weighted.mean(ind_weight_kg, numlen_adj),
-      lw_strat_biomass = sum(strat_wt_bio_lw)
+      area                     = "All Areas",
+      season                   = "Spring + Fall",
+      n_stations               = n_distinct(id),                              # Distinct tows
+      n_species                = n_distinct(comname),                         # Distinct species
+      lw_biomass_kg            = sum(sum_weight_kg),                          # sum weight across species
+      fscs_biomass_kg          = sum(biom_adj),
+      lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
+      fscs_biomass_per_station = fscs_biomass_kg /n_stations,
+      total_fish               = sum(numlen_adj),                             # total number across species
+      mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
+      mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
+      mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
+      lw_strat_biomass         = sum(lw_strat_bio, na.rm = T),                 # tot wt adjusted by stratum ratio
+      fscs_strat_biomass       = sum(fscs_strat_bio)
     )
   
-  # Biomass from aggregate catch by species at station, 
-  #these are distinct to each tow but repeated for different sizes of the same species
-  agg_biomass <- survey_data %>% 
-    group_by(est_year, id, comname,  biom_adj) %>% 
-    summarise(
-      haul_biomass = biom_adj,
-      haul_strat_biomass = mean(strat_wt_bio_fscs, na.rm = T)) %>% 
-    ungroup() %>% 
-    group_by(est_year) %>% 
-    summarise(
-      fscs_biomass = sum(haul_biomass),
-      fscs_strat_biomass = sum(haul_strat_biomass))
+  # # Biomass from aggregate catch by species at station, 
+  # # these are distinct to each tow, species & sex 
+  # # but repeated for different sizes of the same species&sex
+  # 
+  # 
+  # # Step 1: Collapse differences in sex to single overall biomass per species at a tow
+  # # biom_adj changes for catchsex, otherwise is repeated, so we want distinct records
+  # agg_biomass <- survey_data %>% 
+  #   group_by(est_year, id, comname) %>% 
+  #   distinct(biom_adj, .keep_all = T) %>% 
+  #   summarise(
+  #     haul_bio_fscs   = sum(biom_adj),            # fscs shipboard weight for all individuals together
+  #     haul_strat_biom = sum(fscs_strat_bio)) %>%  # fscs shipboard weight, area & effort adjusted
+  #     ungroup() 
+  # 
+  #  # Step 2: aggregate those up to the year
+  # agg_biomass <- agg_biomass %>% 
+  #   group_by(est_year) %>% 
+  #   summarise(
+  #     fscs_biomass       = sum(haul_bio_fscs),
+  #     fscs_strat_biomass = sum(haul_strat_biom))
+  # 
+  # # rejoin
+  # summ_data <- left_join(summ_data, agg_biomass, by = c("est_year")) %>% 
+  #   mutate(
+  #     fscs_biomass_cpue = fscs_biomass / n_stations,
+  #     mean_fscs_bio     = fscs_biomass / total_fish)
   
-  # rejoin
-  summ_data <- left_join(summ_data, agg_biomass, by = c("est_year")) %>% 
-    mutate(
-      fscs_biom_per_station = fscs_biomass / n_stations,
-      mean_fscs_bio = fscs_biomass / total_fish)
   return(summ_data)
   
 }
@@ -690,142 +797,135 @@ ss_annual_summary <- function(survey_data) {
 
 
 
-####__####
+#### 3. Regional Summary####
 
 
 
 # Include region as a group
 ss_regional_differences <- function(survey_data) {
   
-  # Summarize on a measurement length level
   summ_data <- survey_data %>% 
-    group_by(est_year, area) %>% 
+    group_by(est_year, survey_area) %>% 
     summarise(
-      season = "Spring + Fall",
-      n_stations = n_distinct(id),
-      n_species = n_distinct(comname),
-      lw_biomass_kg = sum(sum_weight_kg),
-      lw_biomass_per_station = lw_biomass_kg / n_stations,
-      total_fish = sum(numlen_adj),
-      mean_ind_length = weighted.mean(length, numlen_adj),
-      mean_ind_bodymass = weighted.mean(ind_weight_kg, numlen_adj),
-      lw_strat_biomass = sum(strat_wt_bio_lw)
-  )
+      season                   = "Spring + Fall",
+      n_stations               = n_distinct(id),                              # Distinct tows
+      n_species                = n_distinct(comname),                         # Distinct species
+      lw_biomass_kg            = sum(sum_weight_kg),                          # sum weight across species
+      fscs_biomass_kg          = sum(biom_adj),
+      lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
+      fscs_biomass_per_station = fscs_biomass_kg /n_stations,
+      total_fish               = sum(numlen_adj),                             # total number across species
+      mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
+      mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
+      mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
+      lw_strat_biomass         = sum(lw_strat_bio, na.rm = T),                 # tot wt adjusted by stratum ratio
+      fscs_strat_biomass       = sum(fscs_strat_bio)
+    )
   
-  # Biomass from aggregate catch by species at station, 
-  #these are distinct to each tow but repeated for different sizes of the same species
-  agg_biomass <- survey_data %>% 
-    group_by(est_year, area, id, comname, biom_adj) %>% 
-    summarise(
-      haul_biomass = biom_adj,
-      haul_strat_biomass = mean(strat_wt_bio_fscs, na.rm = T)) %>% 
-    ungroup() %>% 
-    group_by(est_year, area) %>% 
-    summarise(
-      fscs_biomass = sum(haul_biomass),
-      fscs_strat_biomass = sum(haul_strat_biomass))
   
-  # rejoin
-  summ_data <- left_join(summ_data, agg_biomass, by = c("est_year", "area")) %>% 
-    mutate(
-      fscs_biom_per_station = fscs_biomass / n_stations,
-      mean_fscs_bio = fscs_biomass / total_fish)
-  return(summ_data)
+  # # Old Methods
+  # 
+  # # Summarize on a measurement length level
+  # summ_data <- survey_data %>% 
+  #   group_by(est_year, survey_area) %>% 
+  #   summarise(
+  #     season                 = "Spring + Fall",
+  #     n_stations             = n_distinct(id),
+  #     n_species              = n_distinct(comname),
+  #     lw_biomass_kg          = sum(sum_weight_kg),
+  #     lw_biomass_per_station = lw_biomass_kg / n_stations,
+  #     total_fish             = sum(numlen_adj),
+  #     mean_ind_length        = weighted.mean(length, numlen_adj),
+  #     mean_ind_bodymass      = weighted.mean(ind_weight_kg, numlen_adj),
+  #     lw_strat_biomass       = sum(strat_wt_bio_lw)
+  # )
+  # 
+  # # Biomass from aggregate catch by species at station, 
+  # #these are distinct to each tow but repeated for different sizes of the same species
+  # agg_biomass <- survey_data %>% 
+  #   group_by(est_year, survey_area, id, comname, biom_adj) %>% 
+  #   summarise(
+  #     haul_biomass       = biom_adj,
+  #     haul_strat_biomass = mean(strat_wt_bio_fscs, na.rm = T)) %>% 
+  #   ungroup() %>% 
+  #   group_by(est_year, survey_area) %>% 
+  #   summarise(
+  #     fscs_biomass       = sum(haul_biomass),
+  #     fscs_strat_biomass = sum(haul_strat_biomass)
+  #   )
+  # 
+  # # rejoin
+  # summ_data <- left_join(summ_data, agg_biomass, by = c("est_year", "survey_area")) %>% 
+  #   mutate(
+  #     fscs_biom_per_station = fscs_biomass / n_stations,
+  #     mean_fscs_bio = fscs_biomass / total_fish)
+  # return(summ_data)
   
 }
 
 
 
-####__####
+#### 4. Seasonal Summary  ####
 
 # Include season as a group
 ss_seasonal_summary <- function(survey_data){
   
-  # Summarize on a measurement length level
-  summ_data <- survey_data %>% 
-    group_by(est_year, season) %>% 
+  summ_data <- survey_data %>%
+    group_by(est_year, season) %>%
     summarise(
-      area = "All Areas",
-      n_stations = n_distinct(id),
-      n_species = n_distinct(comname),
-      lw_biomass_kg = sum(sum_weight_kg),
-      lw_biomass_per_station = lw_biomass_kg / n_stations,
-      total_fish = sum(numlen_adj),
-      mean_ind_length = weighted.mean(length, numlen_adj),
-      mean_ind_bodymass = weighted.mean(ind_weight_kg, numlen_adj),
-      lw_strat_biomass = sum(strat_wt_bio_lw)
-    ) 
+      area                     = "All Areas",
+      n_stations               = n_distinct(id),                              # Distinct tows
+      n_species                = n_distinct(comname),                         # Distinct species
+      lw_biomass_kg            = sum(sum_weight_kg),                          # sum weight across species
+      fscs_biomass_kg          = sum(biom_adj),
+      lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
+      fscs_biomass_per_station = fscs_biomass_kg /n_stations,
+      total_fish               = sum(numlen_adj),                             # total number across species
+      mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
+      mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
+      mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
+      lw_strat_biomass         = sum(lw_strat_bio, na.rm = T),                 # tot wt adjusted by stratum ratio
+      fscs_strat_biomass       = sum(fscs_strat_bio)
+    )
+ 
+  # Old data
   
-  # Biomass from aggregate catch by species at station, 
-  #these are distinct to each tow but repeated for different sizes of the same species
-  agg_biomass <- survey_data %>% 
-    group_by(est_year, season, id, comname, biom_adj) %>% 
-    summarise(
-      haul_biomass = biom_adj,
-      haul_strat_biomass = mean(strat_wt_bio_fscs, na.rm = T)) %>% 
-    ungroup() %>% 
-    group_by(est_year, season) %>% 
-    summarise(
-      fscs_biomass = sum(haul_biomass),
-      fscs_strat_biomass = sum(haul_strat_biomass))
-  
-  # rejoin
-  summ_data <- left_join(summ_data, agg_biomass, by = c("est_year", "season")) %>% 
-    mutate(
-      fscs_biom_per_station = fscs_biomass / n_stations,
-      mean_fscs_bio = fscs_biomass / total_fish)
-  return(summ_data)
+  # # Summarize on a measurement length level
+  # summ_data <- survey_data %>%
+  #   group_by(est_year, season) %>%
+  #   summarise(
+  #     area                   = "All Areas",
+  #     n_stations             = n_distinct(id),
+  #     n_species              = n_distinct(comname),
+  #     lw_biomass_kg          = sum(sum_weight_kg),
+  #     lw_biomass_per_station = lw_biomass_kg / n_stations,
+  #     total_fish             = sum(numlen_adj),
+  #     mean_ind_length        = weighted.mean(length, numlen_adj),
+  #     mean_ind_bodymass      = weighted.mean(ind_weight_kg, numlen_adj),
+  #     lw_strat_biomass       = sum(strat_wt_bio_lw)
+  #   ) 
+  # 
+  # # Biomass from aggregate catch by species at station, 
+  # #these are distinct to each tow but repeated for different sizes of the same species
+  # agg_biomass <- survey_data %>% 
+  #   group_by(est_year, season, id, comname, biom_adj) %>% 
+  #   summarise(
+  #     haul_biomass = biom_adj,
+  #     haul_strat_biomass = mean(strat_wt_bio_fscs, na.rm = T)) %>% 
+  #   ungroup() %>% 
+  #   group_by(est_year, season) %>% 
+  #   summarise(
+  #     fscs_biomass = sum(haul_biomass),
+  #     fscs_strat_biomass = sum(haul_strat_biomass))
+  # 
+  # # rejoin
+  # summ_data <- left_join(summ_data, agg_biomass, by = c("est_year", "season")) %>% 
+  #   mutate(
+  #     fscs_biom_per_station = fscs_biomass / n_stations,
+  #     mean_fscs_bio = fscs_biomass / total_fish)
+  # return(summ_data)
   
 }
 
 
-
-
-####  Testing merge by svspp  ####
-
-# look for #-# for insert
-
-# For each station we need unique combinations of
-# station_id, species, catchsex, length, adjusted_numlen
-# Record of unique station catches: # rows for each species * sex * length
-# trawl_lens <- trawldat %>% 
-#   filter(is.na(numlen) == FALSE,
-#          numlen > 0) %>% 
-#   distinct(id, comname, catchsex, length, numlen, numlen_adj, biom_adj) 
-# 
-# 
-# # Pull distinct records of the stations themselves and metadata that match
-# trawl_stations <- trawldat %>% 
-#   select(id, est_year, season, stratum, stratum_num, area, decdeg_beglat, decdeg_beglon, 
-#          type, avgdepth, stratio) %>% 
-#   distinct() 
-# 
-# 
-# # drop unnecessary space
-# rm(trawldat)
-# 
-# 
-# # recombine with the distinct station info
-# trawl_spectra <- trawl_stations %>% 
-#   left_join(trawl_lens, by = "id")
-# 
-# 
-# 
-# 
-# ####__ 2. Combine with Growth Coefficients  ####
-# 
-# #Now we want to use the lw_combined here instead of just the fishbase lengths
-# lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
-#                         col_types = cols())
-# 
-# # Do a priority pass with the filter(lw_combined, source == "wigley)
-# # merge on comname, season, and catchsex
-# w_trimmed <- filter(lw_combined, source == "wigley") %>% 
-#   select(source, season, comname, scientific_name, spec_class, 
-#          hare_group, fishery, catchsex, a, b, ln_a)
-# 
-# 
-# # Do a second pass with the filter(lw_combined, source == "fishbase")
-# # merge on common names only
-# fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
-#   select(source, comname, scientific_name, spec_class, hare_group, fishery, a, b, ln_a)
+####____________________####

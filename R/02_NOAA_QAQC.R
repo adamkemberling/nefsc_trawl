@@ -7,7 +7,7 @@
 
 
 ####____________________####
-####  Packages  ####
+###__ Packages  ####
 library(here)
 library(janitor)
 library(gmRi)
@@ -22,33 +22,7 @@ res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 
 
 
-####  Data  ####
-
-
-# Species key - for 2016 data
-spp_classes <- read_csv(here("data/kmills/sppclass.csv"),
-                        col_types = cols()) %>% 
-  clean_names() %>% 
-  mutate(common_name = str_to_lower(common_name),
-         scientific_name = str_to_lower(scientific_name),
-         svspp = as.integer(svspp)) %>% 
-  distinct(svspp, comname = common_name, scientific_name)
-
-# 2016 Raw data
-load(str_c(mills_path, "Projects/WARMEM/Old survey data/Survdat.RData"))
-trawl_14 <- survdat %>% 
-  as_tibble() %>% 
-  clean_names() %>% 
-  left_join(spp_classes, by = "svspp") %>% 
-  mutate(cruise6 = str_pad(cruise6, 6, "left", "0"),
-         station = str_pad(station, 3, "left", "0"),
-         stratum = str_pad(stratum, 4, "left", "0"),
-         id = str_c(cruise6, station, stratum)) %>% 
-  select(id, cruise6, station, stratum, svvessel, est_year = year, season, lat, lon,
-         svspp, comname, scientific_name, length, abundance, biomass, everything())
-
-# drop survdat
-rm(survdat)
+####__  Data  ####
 
 
 # 2019 survdat data
@@ -57,24 +31,32 @@ trawl_19 <- survdat %>% clean_names()
 rm(survdat)
 
 
-
-# 2020 Raw data
-trawl_20 <- read_csv(here("data/NEFSC/2020survdat_nye.csv"), 
-                     guess_max = 1e5, 
-                     col_types = cols()) %>% clean_names()
-
+# # 2020 Raw data
+# trawl_20 <- read_csv(here("data/NEFSC/2020survdat_nye.csv"), 
+#                      guess_max = 1e6, 
+#                      col_types = cols()) %>% clean_names()
 
 
 
 
 
 
-# Size Spectra Builds
+
+####__  Size Spectra Builds  ####
 source(here("R/01_nefsc_ss_build.R"))
 weights_16 <- load_2016_ss_data() 
 weights_19 <- load_ss_data(survdat = trawl_19, survdat_source = "2019")
 weights_20 <- load_ss_data(survdat_source = "2020")
 
+
+# Here are the main columns for weights, stratified weights, etc
+weights_20 %>% select(id, comname, biom_adj, numlen_adj, ind_weight_kg, sum_weight_kg, 
+                      strat_wt_bio_fscs, strat_wt_bio_lw, fscs_strat_bio, lw_strat_bio)
+
+
+
+
+####__  Export SS Prepped Data  ####
 
 # # export for speedy recovery
 # write_csv(weights_16, here::here("data/ss_prepped_data/survdat_2016_ss.csv"))
@@ -83,7 +65,7 @@ weights_20 <- load_ss_data(survdat_source = "2020")
 
 
 ####____________________####
-####  Comparing Annual Differences  ####
+####  1. Comparing Annual Differences  ####
 
 # run summaries
 summ_16 <- ss_annual_summary(weights_16) %>% mutate(source = "2016")
@@ -101,7 +83,7 @@ summs %>%
 
 # Total Biomass - FSCS
 summs %>% 
-  ggplot(aes(est_year, fscs_biomass, color = source)) +
+  ggplot(aes(est_year, fscs_biomass_kg, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Total Biomass (kg) \n (FSCS Haul Weights)")
@@ -113,7 +95,23 @@ summs %>%
   labs(x = "", y = "Number of Species")
 
 
-####  Regional Differences  ####
+# stratum weighted catch /  nautical mile - length weight derived
+summs %>% 
+  ggplot(aes(est_year, lw_strat_biomass, color = source)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::comma_format()) +
+    labs(x = "", y = "Effort & Area Stratified Biomass \n L-W Derived")
+
+
+# stratum weighted catch /  nautical mile - length weight derived
+summs %>% 
+  ggplot(aes(est_year, fscs_strat_biomass, color = source)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Effort & Area Stratified Biomass \n FSCS Derived")
+
+
+####  2. Regional Differences  ####
 
 # run summaries
 summ_16 <- ss_regional_differences(weights_16) %>% mutate(source = "2016")
@@ -127,31 +125,31 @@ p1 <- reg_summs %>%
   ggplot(aes(est_year, lw_biomass_kg, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1, scales = "free") +
+  facet_wrap(~survey_area, ncol = 1, scales = "free") +
   labs(x = "", y = "Total Biomass \n (L-W Regressions)")
 
 # Total Biomass - FSCS
 p2 <- reg_summs %>% 
-  ggplot(aes(est_year, fscs_biomass, color = source)) +
+  ggplot(aes(est_year, fscs_biomass_kg, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1) +
+  facet_wrap(~survey_area, ncol = 1 , scales = "free") +
   labs(x = "", y = "Total Biomass \n (FSCS Haul Weights)")
 
 # effort
 p3 <- reg_summs %>% 
-  ggplot(aes(est_year, n_stations, color = source)) +
+  ggplot(aes(est_year, lw_strat_biomass, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1) +
-  labs(x = "", y = "Effort (haul count)")
+  facet_wrap(~survey_area, ncol = 1, scales = "free") +
+  labs(x = "", y = "Stratified Abundance - L-W")
 
 # Species 
 p4 <- reg_summs %>% 
-  ggplot(aes(est_year, n_species, color = source)) +
+  ggplot(aes(est_year, fscs_strat_biomass, color = source)) +
   geom_line(show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~area, ncol = 1) +
-  labs(x = "", y = "Distinct Species")
+  facet_wrap(~survey_area, ncol = 1, scales = "free") +
+  labs(x = "", y = "Stratified Abundance - FSCS")
 
 p1 + p2 + p3 + p4
