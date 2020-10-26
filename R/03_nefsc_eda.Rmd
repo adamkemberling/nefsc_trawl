@@ -542,6 +542,100 @@ max_weight_plot(.5)
 max_weight_plot(1)
 ```
 
+#### Vessel Changes
+
+Maximum size plots show a huge increase in biomass of small fishes corresponding with the vessel change from the RV Albatross to the RV Henry Bigelow. 
+
+To Take a look at what species contributed the most to this, I will maintain the maximum bodysize filter of .125 kg, and compare the difference in catch/tow for species across research vessel. The following plots will highlight the top & bottom ten species experiencing positive/negative changes to their catch rates. Temporal differences are ignored here, and may play a bigger role than vessel changes.
+
+```{r}
+# annual biomasses for top 10 species, ordered by total biomass that year
+# Minimum individual bodymass of 5k
+
+
+# Compare total biomass and cpue across vessels
+svp <- weights_20 %>% 
+    filter(ind_weight_kg < .125) %>% 
+    group_by(svvessel, comname) %>% 
+    summarise(bio = sum(sum_weight_kg),
+              effort = n_distinct(id),
+              cpue = bio / effort) %>% 
+  pivot_wider(names_from = svvessel, 
+              names_sep = "_",
+              values_from = c(bio, effort, cpue)) %>% 
+  mutate(cpue_change = (cpue_HB - cpue_AL) / cpue_AL) %>% 
+  arrange(desc(cpue_change))
+
+
+
+
+# Highlight Positive Changes in CPUE
+pos_change_plot <- svp %>% 
+  slice_max(n = 10, order_by = cpue_change) %>% 
+  mutate(comname = fct_reorder(comname, cpue_change, max)) %>% 
+  ggplot(aes(y = comname, x = cpue_change)) +
+  geom_segment(aes(x = 0, xend = cpue_change, y = comname, yend = comname)) +
+  geom_point() +
+  labs(x = "Relative CPUE Change \n AL -> HB", y = "", subtitle = "Top Positive Shifts in CPUE")
+
+# individual cpues
+al_p <- svp %>% 
+  slice_max(n = 10, order_by = cpue_change) %>% 
+  mutate(comname = fct_reorder(comname, cpue_AL, max)) %>% 
+  ggplot(aes(y = comname, x = cpue_AL)) +
+  geom_segment(aes(x = 0, xend = cpue_AL, y = comname, yend = comname)) +
+  geom_point() +
+  labs(x = "Biomass (kg) / Station", y = "", subtitle = "Albatross CPUE")
+
+hb_p <- svp %>% 
+  slice_max(n = 10, order_by = cpue_change) %>% 
+  mutate(comname = fct_reorder(comname, cpue_HB, max)) %>% 
+  ggplot(aes(y = comname, x = cpue_HB)) +
+  geom_segment(aes(x = 0, xend = cpue_HB, y = comname, yend = comname)) +
+  geom_point() +
+  labs(x = "Biomass (kg) / Station", y = "", subtitle = "Bigelow CPUE")
+
+
+pos_change_plot | (al_p / hb_p)
+
+
+
+
+# Highlight Positive Changes in CPUE
+neg_change_plot <- svp %>% 
+  slice_min(n = 10, order_by = cpue_change) %>% 
+  mutate(comname = fct_reorder(comname, cpue_change, max)) %>% 
+  ggplot(aes(y = comname, x = cpue_change)) +
+  geom_segment(aes(x = 0, xend = cpue_change, y = comname, yend = comname)) +
+  geom_point() + 
+  scale_x_reverse() +
+  labs(x = "Relative CPUE Change \n AL -> HB", y = "", subtitle = "Top Negative Shifts in CPUE")
+
+# individual cpues
+al_neg <- svp %>% 
+  slice_min(n = 10, order_by = cpue_change) %>% 
+  mutate(comname = fct_reorder(comname, cpue_AL, min)) %>% 
+  ggplot(aes(y = comname, x = cpue_AL)) +
+  geom_segment(aes(x = 0, xend = cpue_AL, y = comname, yend = comname)) +
+  geom_point() +
+  labs(x = "Biomass (kg) / Station", y = "", subtitle = "Albatross CPUE")
+
+hb_neg <- svp %>% 
+  slice_min(n = 10, order_by = cpue_change) %>% 
+  mutate(comname = fct_reorder(comname, cpue_HB, min)) %>% 
+  ggplot(aes(y = comname, x = cpue_HB)) +
+  geom_segment(aes(x = 0, xend = cpue_HB, y = comname, yend = comname)) +
+  geom_point() +
+  labs(x = "Biomass (kg) / Station", y = "", subtitle = "Bigelow CPUE")
+
+
+neg_change_plot | (al_neg / hb_neg)
+
+```
+
+
+
+
 
 ###  Big Fish {.tabset}
 
@@ -598,12 +692,189 @@ min_weight_plot(2)
 #### 5 kg
 ```{r}
 min_weight_plot(5)
+
 ```
 
 #### 10 kg
 ```{r}
 min_weight_plot(10)
 ```
+
+
+#### Recent Upswings
+
+Plots of minimum bodysize cutoff at 5kg and 10kg seem to have a big upswing in the last couple years, the following plot looks to highlight where the most biomass resides in those years with that same minimum bodymass cutoff.
+
+```{r}
+# annual biomasses for top 10 species, ordered by total biomass that year
+# Minimum individual bodymass of 5k
+y_plots <- weights_20 %>% 
+    filter(ind_weight_kg > 5,
+           est_year >= 2016) %>% 
+    group_by(est_year, comname) %>% 
+    summarise(total_biomass_lw = sum(sum_weight_kg),
+              `Minimum Individual Biomass` = str_c("Individual Mass > ", 5, " kg")) %>%   
+  split(.$est_year) %>% 
+  map(function(x){
+    x %>%  
+      top_n(n = 10, total_biomass_lw) %>% 
+      arrange(desc(total_biomass_lw)) %>% 
+      mutate(comname = fct_reorder(comname, total_biomass_lw, mean))  %>% 
+      ggplot(aes(total_biomass_lw, comname)) +
+      geom_segment(aes(x = 0, xend = total_biomass_lw, comname, yend = comname)) +
+      geom_point() +
+      facet_wrap(~est_year) +
+      labs(x = "Total Biomass (kg)", y = NULL)})
+
+y_plots$`2016` | y_plots$`2017`
+y_plots$`2018` | y_plots$`2019`
+```
+
+#### Cownose Rays
+
+Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further inspection shows that they boil down to two alarmingly high catches in the fall of each year. The table below details all instances of catch for cownose rays since 1990. Typically there have been 0-2 per year, with a deeply concerning increase in 2018-2019.
+```{r}
+
+# How many cownose rays, and how suspicious is that number?
+ cownose <- weights_20 %>% 
+  filter(comname == "cownose ray",
+          est_year >= 1990) %>% 
+   group_by(comname, est_year, season, id) %>% 
+   summarise(total_biomass_lw = sum(sum_weight_kg),
+              num_individuals = sum(numlen_adj),
+              n_occurrences   = n_distinct(id)) 
+
+cownose %>% kable()
+ 
+ # cownose %>% 
+ #   ggplot(aes(factor(est_year), total_biomass_lw)) +
+ #     geom_col() +
+ #    labs(x = "", y = "total biomass")
+ # 
+ # cownose %>% 
+ #   ggplot(aes(factor(est_year), num_individuals)) +
+ #     geom_col() +
+ #    labs(x = "", y = "Number Caught")
+ # 
+ # cownose %>% 
+ #   ggplot(aes(factor(est_year), n_occurrences)) +
+ #     geom_col() +
+ #     labs(x = "", y = "Number of Occurrences")
+```
+
+
+### Size Spectra Bins {.tabset}
+
+Using the same bodymass bins as in Kathy's code `cleaned up size spectra code.R` we can take a look at how an overall size spectrum slope would look like for the two surveys. This will help us gain a coarse idea of where to put limits on the bodymass ranges based on the survey gear.
+
+
+```{r}
+
+# Set up bins for log(10) of individual weights
+weights_20 <- weights_20 %>% 
+  mutate(
+    lweight = log(ind_weight_kg),
+    llen = log(length),
+    l10wt = log10(ind_weight_kg),
+         # case_when is greedy so once something is assigned it is out of the pool of candidates
+         # In this case you want to count down
+    lenbin2 = case_when(
+      llen > 5    ~ 10,
+      llen > 4.5  ~ 9,
+      llen > 4    ~ 8,
+      llen > 3.5  ~ 7,
+      llen > 3    ~ 6,
+      llen > 2.5  ~ 5,
+      llen > 2    ~ 4,
+      llen > 1.5  ~ 3,
+      llen > 1    ~ 2,
+      llen > 0.5  ~ 1,
+      TRUE        ~ 0),
+    wtbin = case_when(
+      lweight > 4   ~ 8,
+      lweight > 2   ~ 7,
+      lweight > 0   ~ 6,
+      lweight > -2  ~ 5,
+      lweight > -4  ~ 4,
+      lweight > -6  ~ 3,
+      lweight > -8  ~ 2,
+      lweight > -10  ~ 1,
+      lweight < -10  ~ 0,
+    ),
+    wt10bin =  case_when(
+      l10wt > 2.5   ~ 20,
+      l10wt > 2     ~ 19,
+      l10wt > 1.5   ~ 18,
+      l10wt > 1     ~ 17,
+      l10wt > 0.5   ~ 16,
+      l10wt > 0     ~ 15,
+      l10wt > -0.5  ~ 14,
+      l10wt > -1    ~ 13,
+      l10wt > -1.5  ~ 12,
+      l10wt > -2    ~ 11,
+      l10wt > -2.5  ~ 10,
+      l10wt > -3    ~ 9,
+      l10wt > -3.5  ~ 8,
+      l10wt > -4    ~ 7,
+      l10wt > -4.5  ~ 6,
+      l10wt > -5    ~ 5,
+      l10wt > -5.5  ~ 4,
+      l10wt > -6    ~ 3,
+      l10wt > -6.5  ~ 2,
+      l10wt > -7    ~ 1,
+      TRUE ~ 0)) 
+
+# bin summaries
+bin_summs <- weights_20 %>% 
+  group_by(svvessel, lenbin2, wtbin, wt10bin) %>% 
+  summarise(n_group = sum(numlen_adj))
+
+```
+
+#### Length Bins
+
+```{r}
+
+# log() length bins
+ggplot(bin_summs, aes(lenbin2, n_group, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_log10() +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "log2 Length Bins", y = "Abundance")
+
+```
+
+#### log(weight)
+
+```{r}
+
+# log() weight bins
+ggplot(bin_summs, aes(wtbin, n_group, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_log10() +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "log2 Weight Bins", y = "Abundance")
+
+```
+
+#### log10(weight)
+
+```{r}
+
+#l10 weight bins
+ggplot(bin_summs, aes(wt10bin, n_group, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_log10() +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "log10 Weight Bins", y = "Abundance")
+```
+
+
+
+
 
 ## Spatial Patterns  {.tabset .tabset-pills}
 
