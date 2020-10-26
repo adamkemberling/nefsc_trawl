@@ -289,8 +289,8 @@ guild_plots <- weights_20 %>%
             probs = ) %>% 
           as.data.frame() %>% 
           rownames_to_column() %>% 
-          setNames(c("probability", "length")) %>% 
-          mutate(probability = factor(probs),
+          setNames(c("Quantile", "length")) %>% 
+          mutate(Quantile = factor(probs),
                  year = year)
         
         # weight quantiles
@@ -300,12 +300,12 @@ guild_plots <- weights_20 %>%
             probs = probs) %>% 
           as.data.frame() %>% 
           rownames_to_column() %>% 
-          setNames(c("probability", "weight (kg)")) %>% 
-          mutate(probability = factor(probs),
+          setNames(c("Quantile", "weight (kg)")) %>% 
+          mutate(Quantile = factor(probs),
                  year = year)
         
         guild_data <- left_join(length_quantiles, weight_quantiles, 
-                               by = c("year", "probability")) %>% 
+                               by = c("year", "Quantile")) %>% 
           mutate(year = fct_rev(year))
         
         return(guild_data)  
@@ -331,7 +331,7 @@ guild_plots <- weights_20 %>%
                 ymax = "2019", 
                 fill = "gray90") +
       geom_line(aes(group = year), color = "gray50", alpha = 0.5) +
-      geom_point(aes(color = probability)) +
+      geom_point(aes(color = Quantile)) +
       
       scale_color_gmri() +
       labs(subtitle = guild_key[guild_name], x = "Individual Length (cm)", y = NULL) +
@@ -345,7 +345,7 @@ guild_plots <- weights_20 %>%
                 ymax = "2019", 
                 fill = "gray90") +
       geom_line(aes(group = year), color = "gray50", alpha = 0.5) +
-      geom_point(aes(color = probability)) +
+      geom_point(aes(color = Quantile)) +
       scale_color_gmri() +
       labs(x = "Individual Weight (kg)", y = NULL) +
       theme(axis.text.y = element_blank(),
@@ -543,7 +543,7 @@ max_weight_plot(1)
 ```
 
 
-###  Big Fish Patterns {.tabset}
+###  Big Fish {.tabset}
 
 Same idea for the larger fish, but the opposite. A minimum cutoff for the individual bodymass. Below are the upper quantiles for individual body mass weighted by number at length.
 

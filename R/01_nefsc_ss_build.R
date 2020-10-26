@@ -107,7 +107,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   # Get Total stratum area of all strata (excluding ones we do not care about via left join)
-  total_stratum_area <- stratum_area %>% 
+  total_stratum_area <- trawldat %>% 
     distinct(stratum, .keep_all = T) %$% 
     sum(area, na.rm = T)
   
@@ -444,7 +444,7 @@ load_2016_ss_data <- function(){
   
   
   # Get Total stratum area of all strata (excluding ones we do not care about via left join)
-  total_stratum_area <- stratum_area %>% 
+  total_stratum_area <- trawldat %>% 
     distinct(stratum, .keep_all = T) %$% 
     sum(area, na.rm = T)
   
