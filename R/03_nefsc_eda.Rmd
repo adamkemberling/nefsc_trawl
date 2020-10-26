@@ -873,6 +873,39 @@ ggplot(bin_summs, aes(wt10bin, n_group, fill = svvessel)) +
 ```
 
 
+#### Annual
+
+```{r}
+ann_summs <- weights_20 %>% 
+  group_by(est_year, svvessel, lenbin2, wtbin, wt10bin) %>% 
+  summarise(n_group = sum(numlen_adj))
+
+#l10 weight bins
+ann_plots <- list()
+
+ann_plots$AL <- ann_summs %>% 
+  filter(svvessel == "AL",
+         est_year >= 2000) %>%
+  ggplot(aes(wt10bin, n_group, fill = svvessel)) +
+        geom_col(show.legend = F) +
+        scale_y_log10() +
+        facet_grid(est_year ~ svvessel, scales = "free") +
+        scale_fill_gmri() +
+        labs(x = "log10 Weight Bins", y = "Abundance") +
+        theme(strip.text.y = element_text(angle = 0))
+
+ann_plots$HB <- ann_summs %>% 
+  filter(svvessel == "HB") %>%
+  ggplot(aes(wt10bin, n_group, fill = svvessel)) +
+        geom_col(show.legend = F) +
+        scale_y_log10() +
+        facet_grid(est_year ~ svvessel, scales = "free") +
+        scale_fill_gmri(reverse = T) +
+        labs(x = "log10 Weight Bins", y = "Abundance") +
+        theme(strip.text.y = element_text(angle = 0))
+
+ann_plots$AL | ann_plots$HB
+```
 
 
 
