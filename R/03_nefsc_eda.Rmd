@@ -67,8 +67,10 @@ weights_20 <- weights_20 %>%
   )
 
 # Run Summary Functions
-ann_means <- ss_annual_summary(weights_20)
-seasonals <- ss_seasonal_summary(weights_20)
+ann_means <- ss_annual_summary(weights_20) %>% 
+  mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
+seasonals <- ss_seasonal_summary(weights_20) %>% 
+  mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
 
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
@@ -148,19 +150,51 @@ The stratum area ratio is the area of strata:  $1,2,3, ...s$ relative to the tot
 
 $$stratio_s = area(stratum_s)~ / total~area$$
 
-Next, using the amount of tows in a given year for a specific strata, we get the amount of biomass (kg) across that group and divide it by the effort. This is then scaled by $stratio$ to scale it by how much cpue for that stratum reflects the total area of the surey.
+Next, using the amount of tows in a given year for a specific strata, we get the amount of individuals across that group and divide it by the effort. This is then scaled by $stratio$ to scale it by how abundance for that stratum reflects the total area of the surey.
 
 For Strata: $1,2,3, ...s$     
 For years: $1,2,3, ...i$     
 
-$$stratum~weighted~cpue = stratio_s * (~sum(biomass_{is})~/~n~stations_{is}~),$$
+$$stratum~weighted~abundance = stratio_s * (\frac{~abundance_{is}~}{~n~stations_{is}}~),$$
 
 
-Then that weighted cpue is transformed back to kg. The stratum weighted catch per station is divided by .01 (nautical miles conversion), then multiplied by the total area of all strata. Finally that value is then then we take the log base ten of that to return the biomass?
+The stratum weighted abundance/effort is divided by .01 (nautical miles conversion), then multiplied by the total area of all strata to reflect what it would be for the area of the entire stratum. Finally that abundance value can be multiplied by either the biomass for the size at length, or the biomass from fscs (which is just evenly distributed across size groups, and not by number of fish).
 
-$$stratum~weighted~biomass = log10(~~(stratum~weighted~cpue~/~.01)~  *~total~area~~)$$
+$$stratum~weighted~biomass = ~~(\frac{stratum~weighted~abundance}{.01~nautical~miles}~  *~total~area~~) * individual~biomass$$
+
+
+##### Abundance
+
+When expanding the catches out to the total area the survey represents we can get this timeline of abundance.
+
+```{r}
+abund_1 <- ann_means %>% 
+  ggplot(aes(est_year, total_fish)) +
+  geom_line(color = "gray50", linetype = 3) +
+  geom_line(aes(color = `Research Vessel`), show.legend = F) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_color_gmri() +
+  scale_x_continuous(labels = scales::breaks_pretty()) +
+  labs(x = "", y = "Total Fish from Survey") 
+
+abund_2 <- ann_means %>% 
+  ggplot(aes(est_year, strat_total_abundance)) +
+  geom_line(color = "gray50", linetype = 3) +
+  geom_line(aes(color = `Research Vessel`)) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_color_gmri() +
+  scale_x_continuous(labels = scales::breaks_pretty()) +
+  labs(x = "", y = "Total Catch \n Area Extrapolated") +
+  theme(legend.position = "bottom")
+
+
+abund_1 / abund_2
+```
+
 
 ##### L-W
+
+Biomass below is a function of the total annual abundance, expanded out to total survey area, multiplied by the biomass at length based on the L-W regression coefficients for each species.
 
 ```{r}
 lw_strat_1 <- ann_means %>% 
@@ -168,19 +202,21 @@ lw_strat_1 <- ann_means %>%
     geom_line(group = 1) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Stratum Weighted Biomass \n (l-W Regressions)")
+    labs(x = "", y = "Stratum Weighted Biomass (kg) \n (l-W Regressions)")
 
 lw_strat_2 <- seasonals %>% 
   ggplot(aes(est_year, lw_strat_biomass, color = season)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", 
-         y = "Stratum Weighted Biomass \n (L-W Regressions)")
+         y = "Stratum Weighted Biomass (kg) \n (L-W Regressions)")
 
 lw_strat_1 / lw_strat_2
 ```
 
 ##### FSCS
+
+Biomass below is a function of the total annual abundance, expanded out to total survey area, multiplied by the biomass as recorded in fscs. This "biomass" is the total biomass for a given species at a station, distributed evenly across *n* groups for the different lengths encountered. This is **not** distributed equally by the number of fish at each length, just the number of *n* groups
 
 ```{r}
 strat_1 <- ann_means %>% 
@@ -195,8 +231,7 @@ strat_2 <- seasonals %>%
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", 
-         y = "Stratum Weighted Biomass \n (Gross Shipboard Weight)", 
-         caption = "Stratum Weighted Biomass = Total Stratum Biomass (kg) * (stratum area / total stratum area)")
+         y = "Stratum Weighted Biomass \n (Gross Shipboard Weight)")
 
 strat_1 / strat_2
 ```

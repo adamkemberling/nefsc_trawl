@@ -38,6 +38,8 @@ lw_coef <- read_csv("data/MENH/listfishusingfishbase.csv", col_types = cols()) %
 #          ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a)) %>% 
 #   select(common_name, b, a, ln_a)
 
+# Parameters from wigley paper
+
 
 
 
@@ -47,9 +49,9 @@ lw_coef <- read_csv("data/MENH/listfishusingfishbase.csv", col_types = cols()) %
 ###__  Calculating Weights  ####
 menh_weights <- left_join(menh_len, lw_coef, by = "common_name") %>% 
   select(common_name, ln_a, a, b, everything())  %>% 
-  mutate(ln_weight = (ln_a + b * log(length))) %>% 
-  mutate(weight_kg = exp(ln_weight)) %>% 
-  mutate(freq_weigth = weight_kg * frequency)
+  mutate(ln_weight = (ln_a + b * log(length)),
+         weight_kg = exp(ln_weight),
+         freq_weigth = weight_kg * frequency)
 
 
 
@@ -121,14 +123,14 @@ data <- dataOrig %>%
     a = exp(ln_a),
     weight_g = weight_kg * 1000) %>% 
   select(
-    Year = year,                     # year
-    SpecCode = common_name,          # common name
-    LngtClass = length,              # length bin
-    Number = frequency,              # CPUE in n/effort
-    LWa = a,                         # length/weight param
-    LWb = b,                         # length/weight param
-    bodyMass = weight_g,             # weight of an individual from that size class
-    CPUE_bio_per_hour = freq_weight  # CPUE in biomass
+    Year = year,                           # year
+    SpecCode = common_name,                # common name
+    LngtClass = length,                    # length bin
+    Number = frequency,                    # CPUE in n/effort
+    LWa = a,                               # length/weight param
+    LWb = b,                               # length/weight param
+    bodyMass = weight_g,                   # weight of an individual from that size class
+    CPUE_bio_per_hour = freq_weight        # CPUE in biomass
   ) %>% arrange(Year, SpecCode, LngtClass)
 
 

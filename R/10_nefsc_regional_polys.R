@@ -74,8 +74,8 @@ ggplot() +
   coord_sf(xlim = c(-79, -65.5), ylim = c(32, 44.5), expand = FALSE)
 
 # Export Single Areas
-gb <- strata_assigned %>% filter(area == "Georges Bank")
-gm <- strata_assigned %>% filter(area == "Gulf of Maine")
+gb  <- strata_assigned %>% filter(area == "Georges Bank")
+gm  <- strata_assigned %>% filter(area == "Gulf of Maine")
 mab <- strata_assigned %>% filter(area == "Mid-Atlantic Bight")
 sne <- strata_assigned %>% filter(area == "Southern New England")
 

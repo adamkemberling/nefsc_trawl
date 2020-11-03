@@ -9,7 +9,7 @@
 
 
 
-#### Packages  ####
+####  Load Packages  ####
 library(janitor)
 library(magrittr)
 library(here)
@@ -18,6 +18,7 @@ library(tidyverse)
 
 
 
+####____________________####
 ####____________________####
 
 #### 2019-2020 Size Spectrum Build  ####
@@ -63,18 +64,38 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
       tstrat    = str_sub(stratum, 2, 3)) 
   
   
-  ####__ 2. Column Selection /reordering ####
+  ####__ 2. Column Selection ####
 
   # currently a light-weight group of columns, 
   # leaves behind CTD and shipboard instrument details.
   # Favors the larger categorical group metadata
   trawldat <- trawldat %>%
-    select(id, est_year, est_month, est_day, svvessel, season, stratum, tstrat, decdeg_beglat, decdeg_beglon,
-           svspp, comname, catchsex, biomass, avgdepth, abundance, length, numlen) 
+    select(
+      id, 
+      est_year, 
+      est_month, 
+      est_day, 
+      svvessel, 
+      season, 
+      stratum, 
+      tstrat, 
+      decdeg_beglat, 
+      decdeg_beglon,
+      svspp, 
+      comname, 
+      catchsex, 
+      biomass, 
+      avgdepth, 
+      abundance, 
+      length, 
+      numlen) 
   
   
   
-  ####__ 3. Filtering  ####
+  
+  
+  
+  ####__ 3. Data Filtering  ####
   trawldat <- trawldat %>%
     filter(
       # Eliminate Candian Strata and Not in Use Strata
@@ -313,15 +334,21 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   trawl_weights <- trawl_weights  %>% 
     mutate(
       
-      # 1. Stratum Weighted biomass cpue
-      strat_wt_bio_fscs = stratio * (biom_adj / strat_effort),
-      strat_wt_bio_lw   = stratio * (sum_weight_kg / strat_effort),
-      # 2. Stratum Weighted Biomass in kg
-      fscs_strat_bio = log10((strat_wt_bio_fscs / .01) * total_stratum_area),
-      lw_strat_bio   = log10((strat_wt_bio_lw / .01) * total_stratum_area)
+      # 1. Get Stratum Area Weighted Abundance
+      mean_abund        = numlen_adj / strat_effort,                # how many / number of tows
+      wt_mean_abund     = mean_abund * stratio,                     # adjust by relative stratum size
+      strat_abund       = (wt_mean_abund / .01) * total_stratum_area, # convert to nautical miles, multiply by total area
       
-      # So the fscs one will repeat itself, 
-      # should be able to pull it out with distinct later
+      # 2. Stratum Weighted Biomass = abundance * weight
+      fscs_strat_bio = biom_adj * strat_abund,
+      lw_strat_bio   = sum_weight_kg * strat_abund
+      
+      # # 1. Stratum Weighted biomass cpue
+      # strat_wt_bio_fscs = stratio * (biom_adj / strat_effort),
+      # strat_wt_bio_lw   = stratio * (sum_weight_kg /strat_effort),
+      # # 2. Stratum Weighted Biomass in kg
+      # fscs_strat_bio = log10((strat_wt_bio_fscs / .01) * total_stratum_area),
+      # lw_strat_bio   = log10((strat_wt_bio_lw / .01) * total_stratum_area)
     ) 
   
   
@@ -334,6 +361,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 
 
 
+####____________________####
 ####____________________####
 
 
@@ -408,7 +436,7 @@ load_2016_ss_data <- function(){
   
   
   
-  ####__ 3. Filtering  ####
+  ####__ 3. Data Filtering  ####
   trawldat <- trawldat %>%
     filter(
       # Eliminate Candian Strata and Not in Use Strata
@@ -637,16 +665,23 @@ load_2016_ss_data <- function(){
   #the  question is whether you can apply stratio here and aggregate up or not
   trawl_weights <- trawl_weights  %>% 
     mutate(
+      # 1. Stratum Area Weighted Abundance
+      mean_abund        = numlen_adj / strat_effort,                # how many / number of tows
+      wt_mean_abund     = mean_abund * stratio,                     # adjust by relative stratum size
+      strat_abund       = (wt_mean_abund / .01) * total_stratum_area, # convert to nautical miles, multiply by total area
       
-      # 1. Stratum Weighted biomass cpue
-      strat_wt_bio_fscs = stratio * (biom_adj / strat_effort),
-      strat_wt_bio_lw   = stratio * (sum_weight_kg /strat_effort),
-      # 2. Stratum Weighted Biomass in kg
-      fscs_strat_bio = log10((strat_wt_bio_fscs / .01) * total_stratum_area),
-      lw_strat_bio   = log10((strat_wt_bio_lw / .01) * total_stratum_area)
+      # 2. Stratum Weighted Biomass
+      fscs_strat_bio = biom_adj * strat_abund,     # stratified biomass using fscs biomass
+      lw_strat_bio   = sum_weight_kg * strat_abund # stratified biomass using L-W coefficients
       
-      # So the fscs one will repeat itself, 
-      # should be able to pull it out with distinct later
+      # # 1. Stratum Weighted biomass cpue
+      # strat_wt_bio_fscs = stratio * (biom_adj / strat_effort),
+      # strat_wt_bio_lw   = stratio * (sum_weight_kg /strat_effort),
+      # # 2. Stratum Weighted Biomass in kg
+      # fscs_strat_bio = log10((strat_wt_bio_fscs / .01) * total_stratum_area),
+      # lw_strat_bio   = log10((strat_wt_bio_lw / .01) * total_stratum_area)
+      
+      
     )
   
   
@@ -663,6 +698,7 @@ load_2016_ss_data <- function(){
 
 
 
+####____________________####
 ####____________________####
 
 ####  Aggregate Summary Functions  ####
@@ -711,6 +747,7 @@ ss_lw_stratification <- function(.data = data, ...){
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,                 # total fscs weight / tows
       total_fish               = sum(numlen_adj),                             # total number across species
+      strat_total_abundance    = sum(strat_abund),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
@@ -755,11 +792,12 @@ ss_annual_summary <- function(survey_data) {
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_fish               = sum(numlen_adj),                             # total number across species
+      strat_total_abundance    = sum(strat_abund),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
       lw_strat_biomass         = sum(lw_strat_bio, na.rm = T),                 # tot wt adjusted by stratum ratio
-      fscs_strat_biomass       = sum(fscs_strat_bio)
+      fscs_strat_biomass       = sum(fscs_strat_bio, na.rm = T)
     )
   
   # # Biomass from aggregate catch by species at station, 
@@ -815,6 +853,7 @@ ss_regional_differences <- function(survey_data) {
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_fish               = sum(numlen_adj),                             # total number across species
+      strat_total_abundance    = sum(strat_abund),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
@@ -881,6 +920,7 @@ ss_seasonal_summary <- function(survey_data){
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_fish               = sum(numlen_adj),                             # total number across species
+      strat_total_abundance    = sum(strat_abund),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length

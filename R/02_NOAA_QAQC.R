@@ -51,7 +51,7 @@ weights_20 <- load_ss_data(survdat_source = "2020")
 
 # Here are the main columns for weights, stratified weights, etc
 weights_20 %>% select(id, comname, biom_adj, numlen_adj, ind_weight_kg, sum_weight_kg, 
-                      strat_wt_bio_fscs, strat_wt_bio_lw, fscs_strat_bio, lw_strat_bio)
+                     strat_abund, fscs_strat_bio, lw_strat_bio)
 
 
 
@@ -95,7 +95,7 @@ summs %>%
   labs(x = "", y = "Number of Species")
 
 
-# stratum weighted catch /  nautical mile - length weight derived
+# stratum weighted catch - length weight derived
 summs %>% 
   ggplot(aes(est_year, lw_strat_biomass, color = source)) +
     geom_line() +
@@ -103,13 +103,27 @@ summs %>%
     labs(x = "", y = "Effort & Area Stratified Biomass \n L-W Derived")
 
 
-# stratum weighted catch /  nautical mile - length weight derived
+# stratum weighted catch - FSCS derived
 summs %>% 
   ggplot(aes(est_year, fscs_strat_biomass, color = source)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Effort & Area Stratified Biomass \n FSCS Derived")
 
+
+# Total Fish Caught
+summs %>% 
+  ggplot(aes(est_year, total_fish, color = source)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Survey Total Abundance")
+
+# stratum weighted abundance
+summs %>% 
+  ggplot(aes(est_year, strat_total_abundance, color = source)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Effort & Area Expanded Total Abundance")
 
 ####  2. Regional Differences  ####
 

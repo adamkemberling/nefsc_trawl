@@ -40,19 +40,27 @@ res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 
 
 ####  Data  ####
-dataBin <- read_csv(here("data/NEFSC/nefsc_databin_allsizes.csv"),
-                    guess_max = 1e5, col_types = cols())
+
+# source file: 06_nefsc_size_spectra.R
+dataBin <- read_csv(here("data/NEFSC/nefsc_ss_bins.csv"), col_types = cols())
+
+# # source file: 08_nefsc_sensitivity_prep
+# dataBin <- read_csv(here("data/NEFSC/nefsc_databin_allsizes.csv"),
+#                     guess_max = 1e5, col_types = cols())
 
 
 # Make some changes
 dataBin <- dataBin %>% 
-  filter(season %in% c("SPRING", "FALL"),
+  filter(season %in% c("Spring", "Fall"),
          Number > 0,
          Biomass > 0) %>% 
-  mutate(season = forcats::fct_drop(season),
-         Year = factor(Year),
-         Year = forcats::fct_drop(Year),
-         `Bodymass Bin (g)` = case_when(
+  mutate(
+    season = forcats::fct_drop(season),
+    season = factor(season, levels = c("Spring", "Fall")),
+    Year = factor(Year),
+    Year = forcats::fct_drop(Year),
+    # Bins for plotting
+    `Bodymass Bin (g)` = case_when(
               wmax <= 1 ~ "0 - 1",
               wmax <= 10 ~ "1 - 10",
               wmax <= 100 ~ "10 - 100",
@@ -60,6 +68,64 @@ dataBin <- dataBin %>%
               wmax <= 10000 ~ "1000 - 10000",
               wmax <= 100000 ~ "10000 - 100000",
               TRUE ~ "100000+"))
+
+
+
+# Kathy bins - on kg
+dataBin <- dataBin %>% 
+  mutate(
+    lweight = log(wmin / 1000),
+    llen = log(LngtMin),
+    l10wt = log10(wmin / 1000),
+    # length bins
+    lenbin2 = case_when(
+      llen > 5    ~ 10,
+      llen > 4.5  ~ 9,
+      llen > 4    ~ 8,
+      llen > 3.5  ~ 7,
+      llen > 3    ~ 6,
+      llen > 2.5  ~ 5,
+      llen > 2    ~ 4,
+      llen > 1.5  ~ 3,
+      llen > 1    ~ 2,
+      llen > 0.5  ~ 1,
+      TRUE        ~ 0),
+    # weight bins
+    wtbin = case_when(
+      lweight > 4   ~ 8,
+      lweight > 2   ~ 7,
+      lweight > 0   ~ 6,
+      lweight > -2  ~ 5,
+      lweight > -4  ~ 4,
+      lweight > -6  ~ 3,
+      lweight > -8  ~ 2,
+      lweight > -10  ~ 1,
+      lweight < -10  ~ 0),
+    # weight log10 bins
+    wt10bin =  case_when(
+      l10wt > 2.5   ~ 20,
+      l10wt > 2     ~ 19,
+      l10wt > 1.5   ~ 18,
+      l10wt > 1     ~ 17,
+      l10wt > 0.5   ~ 16,
+      l10wt > 0     ~ 15,
+      l10wt > -0.5  ~ 14,
+      l10wt > -1    ~ 13,
+      l10wt > -1.5  ~ 12,
+      l10wt > -2    ~ 11,
+      l10wt > -2.5  ~ 10,
+      l10wt > -3    ~ 9,
+      l10wt > -3.5  ~ 8,
+      l10wt > -4    ~ 7,
+      l10wt > -4.5  ~ 6,
+      l10wt > -5    ~ 5,
+      l10wt > -5.5  ~ 4,
+      l10wt > -6    ~ 3,
+      l10wt > -6.5  ~ 2,
+      l10wt > -7    ~ 1,
+      TRUE ~ 0)) 
+
+
 
 
 
@@ -172,6 +238,37 @@ size_cutoff_results %>%
                label.y = "top", label.x = "left") +
     labs(x = "Minimum Bodymass Cutoff (g)", y = "Size Spectrum Intercept? (C)")
   
+```
+
+
+### Biomass Bins
+
+```{r}
+# 4 plots for how the distribution looks with those cutoffs
+coarse_breaks <- c(0, 250, 500, 750, 1000)
+coarse_breaks <- setNames(coarse_breaks, paste0(coarse_breaks, "g"))
+
+# bin summaries for overall view
+break_plots <- map(coarse_breaks, function(breakpoint){
+  bio_plot <- dataBin %>% 
+    filter(wmin >= breakpoint) %>% 
+    group_by(lenbin2, wtbin, wt10bin) %>% 
+    summarise(n_group = sum(Number)) %>% 
+    mutate(mass_break = paste0("Minimum Body Mass = ", breakpoint)) %>% 
+    ggplot(aes(wt10bin, n_group, fill = mass_break)) +
+      geom_col(show.legend = F) +
+      scale_y_log10() +
+      scale_fill_gmri() +
+      facet_wrap(~mass_break) + 
+      labs(x = "log10 Weight Bins", y = "Abundance") +
+    xlim(c(0, 24))
+})
+
+break_plots$`0g`
+break_plots$`250g`
+break_plots$`500g`
+break_plots$`750g`
+break_plots$`1000g`
 ```
 
 

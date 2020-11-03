@@ -17,12 +17,16 @@ source(here("R/support/sizeSpectra_support.R"))
 
 # Load the Catch of each station, with the length and weight bins for each species
 # there has been no biomass cutoff at this stage
+
+# source file: 06_nefsc_size_spectra.R
 nefsc_master <- read_csv(here("data/NEFSC/nefsc_ss_bins.csv"), col_types = cols()) #%>% filter(Year >= 2000)
+
+# source file: 05_MENH_size_spectrum.R
 menh_master <- read_csv(here("data/MENH/menh_ss_bins.csv"), col_types = cols())
 
 
 ####  Attach CSS, Headers, Footers  ####
-gmRi::use_gmri_stylesheets(stylesheet = "gmri rmarkdown", 
+gmRi::use_gmri_style_shiny(stylesheet = "gmri rmarkdown", 
                            header = "gmri logo right", 
                            footer = "akemberling")
 
@@ -47,15 +51,15 @@ nefsc_dbin <- nefsc_master %>%
 
 
 # # Map through instead of looping
-# nefsc_400g_ss <- nefsc_dbin %>% 
-#     split(.$group_var) %>% 
-#     imap_dfr(group_mle_calc) %>% 
+# nefsc_400g_ss <- nefsc_dbin %>%
+#     split(.$group_var) %>%
+#     imap_dfr(group_mle_calc) %>%
 #     mutate(
 #         stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
 #         Year = str_sub(group_var, 1, 4),
 #         Year = as.numeric(as.character(Year)),
 #         season = str_sub(group_var, 6, -1),
-#         season = factor(season, levels = c("SPRING", "SUMMER", "FALL", "WINTER")),
+#         season = factor(season, levels = c("Spring", "Fall")),
 #         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
 
 
@@ -100,8 +104,12 @@ nefsc_static_plots <- map(nefsc_years, function(the_year){
     
     # Take length for assembly of patchwork
     num_plots <- length(list_key) 
+    #return(num_plots)
     
-    if(num_plots == 1){
+    
+    if(num_plots == 0){
+        plot_patchwork <- ggplot()
+    }else if(num_plots == 1){
         p1 <- seasonal_isd[[list_key[1]]][["obs_y"]]
         plot_patchwork <- p1
     } else if(num_plots == 2){
@@ -120,7 +128,7 @@ nefsc_static_plots <- map(nefsc_years, function(the_year){
         p4 <- seasonal_isd[[list_key[4]]][["obs_y"]]
         plot_patchwork <- wrap_plots(p1, p2, p3, p4, ncol = 2)
     }
-    
+
     return(plot_patchwork)
 }) %>% setNames(nefsc_years)
 
