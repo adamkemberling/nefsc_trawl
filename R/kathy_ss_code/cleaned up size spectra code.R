@@ -360,7 +360,7 @@ for(x in wt10bin){
   for(p in period){
     data <- wt_setup_strata[wt_setup_strata$WT10BIN==x,]
     data <- data[data$period==p,]
-    Awt.period.out[which(period==p),which(wt10bin==x)] <- sum((data$WTMEAN)/.01)*totstrwt
+    Awt.period.out[which(period==p),which(wt10bin==x)] <- sum((data$WTMEAN) / .01) * totstrwt
   }
 }
 write.csv(Awt.period.out,"Awt.period.out")

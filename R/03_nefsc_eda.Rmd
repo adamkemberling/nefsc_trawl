@@ -67,10 +67,8 @@ weights_20 <- weights_20 %>%
   )
 
 # Run Summary Functions
-ann_means <- ss_annual_summary(weights_20) %>% 
-  mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
-seasonals <- ss_seasonal_summary(weights_20) %>% 
-  mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
+ann_means <- ss_annual_summary(weights_20)
+seasonals <- ss_seasonal_summary(weights_20) 
 
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
@@ -107,13 +105,13 @@ bio_1 <- ann_means %>%
               aes(est_year, lw_biomass_kg, color = season, linetype = "Haddock Removed")) +
     scale_y_continuous(labels = scales::comma_format()) +
     scale_color_manual(values = "black") +
-    labs(x = "", y = "Total Biomass (kg)")
+    labs(x = "", y = "Survey Biomass (kg)")
 
 bio_2 <- seasonals %>% 
   ggplot(aes(est_year, lw_biomass_kg, color = season)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Total Biomass (kg)")
+    labs(x = "", y = "Survey Biomass (kg)", caption = "Biomass from length-weight regressions.")
 
 bio_1 / bio_2
 
@@ -131,36 +129,51 @@ ship_1 <- ann_means %>%
               aes(est_year, fscs_biomass_kg, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Total Biomass (kg)")
+    labs(x = "", y = "Survey Biomass (kg)")
 
 ship_2 <- seasonals %>% 
   ggplot(aes(est_year, fscs_biomass_kg, color = season)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Total Biomass (kg)")
+    labs(x = "", y = "Survey Biomass (kg)", caption = "Biomass from survdat$biomass.")
 
 ship_1 / ship_2
 ```
 
-#### Area Stratified {.tabset}
+#### Stratification {.tabset}
 
-For area stratified weight in kg I currently have these formulas:
+Area stratified totals and catch/tow for abundance and biomass are calculated according to the following formulas in accordance with code found [here, courtesy of Sean Lucey](https://github.com/slucey/RSurvey/blob/master/Survdat/R/survdat_functions.R)
 
-The stratum area ratio is the area of strata:  $1,2,3, ...s$ relative to the total area of the survey (only stratum with data we use is included.)
 
-$$stratio_s = area(stratum_s)~ / total~area$$
+The stratum area ratio is the area of strata:  $1,2,3, ...s$ relative to the total area of all strata sampled that year (only stratum with data we use is included).
 
-Next, using the amount of tows in a given year for a specific strata, we get the amount of individuals across that group and divide it by the effort. This is then scaled by $stratio$ to scale it by how abundance for that stratum reflects the total area of the surey.
+Alternatively, catch can be similarly weighted acccording to the effort and areas of the regional [Ecological Production Units](https://noaa-edab.github.io/tech-doc/epu.html). Both of the following are done for each year to account for annual variation in coverage.
+
+$$stratum~ratio = area(stratum_s)~ / total~area$$
+
+**or**
+
+$$epu~ratio = area(epu_s) / total~area$$
+
+Next, using the amount of tows in a given year for a specific strata/epu, we get the amount of individuals across that group and divide it by the effort. This is then scaled by $stratum~ratio$ to scale it by how abundance for that stratum reflects the total area of the surey.
 
 For Strata: $1,2,3, ...s$     
 For years: $1,2,3, ...i$     
 
-$$stratum~weighted~abundance = stratio_s * (\frac{~abundance_{is}~}{~n~stations_{is}}~),$$
+$$stratum~weighted~catch = stratum~ratio_s * (\frac{~abundance_{is}~}{~n~stations_{is}}~),$$
 
 
-The stratum weighted abundance/effort is divided by .01 (nautical miles conversion), then multiplied by the total area of all strata to reflect what it would be for the area of the entire stratum. Finally that abundance value can be multiplied by either the biomass for the size at length, or the biomass from fscs (which is just evenly distributed across size groups, and not by number of fish).
+The stratum weighted catch (abundance or biomass) is the average catch rate for a given area, weighted by how much the area that stratum is relative to the overall survey area that year.
 
-$$stratum~weighted~biomass = ~~(\frac{stratum~weighted~abundance}{.01~nautical~miles}~  *~total~area~~) * individual~biomass$$
+The stratum weighted catch is then multiplied by the total survey area for that year, divided by the area of a standard tow by the RV Albatross (0.0384 square km). That value can be adjusted to reflect differences in catchability (q) if available, otherwise q is explicitly assumed to be 1. This gives the total abundance or biomass for a given size class across the entire strata based on its catch rate that year and the area that the stratum represents.
+
+$$area~expanded~abundance =(stratum~weighted~catch * \frac{total~area}{.0384~square~km})~/~q$$
+
+Then to get the expected biomass for a given size class using the length weight coefficients, the expanded total abundance for that size class just needs to be multiplied by what the mean bodymass would be for that length fish and its species-specific coefficients.
+
+
+$$area~expanded~biomass = area~expanded~abundance~*~size~specific~biomass$$
+
 
 
 ##### Abundance
@@ -169,7 +182,7 @@ When expanding the catches out to the total area the survey represents we can ge
 
 ```{r}
 abund_1 <- ann_means %>% 
-  ggplot(aes(est_year, total_fish)) +
+  ggplot(aes(est_year, total_survey_abund)) +
   geom_line(color = "gray50", linetype = 3) +
   geom_line(aes(color = `Research Vessel`), show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
@@ -178,13 +191,14 @@ abund_1 <- ann_means %>%
   labs(x = "", y = "Total Fish from Survey") 
 
 abund_2 <- ann_means %>% 
-  ggplot(aes(est_year, strat_total_abundance)) +
+  ggplot(aes(est_year, strat_abundance_s/1000000)) +
   geom_line(color = "gray50", linetype = 3) +
   geom_line(aes(color = `Research Vessel`)) +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_color_gmri() +
   scale_x_continuous(labels = scales::breaks_pretty()) +
-  labs(x = "", y = "Total Catch \n Area Extrapolated") +
+  labs(x = "", y = "Area Extrapolated Abundance \n(millions)",
+       caption = "Stratification weights from nmfs trawl stratum, not ecological production units.") +
   theme(legend.position = "bottom")
 
 
@@ -198,40 +212,50 @@ Biomass below is a function of the total annual abundance, expanded out to total
 
 ```{r}
 lw_strat_1 <- ann_means %>% 
-  ggplot(aes(est_year, lw_strat_biomass, color = season, linetype = "All Species")) +
-    geom_line(group = 1) +
+  ggplot() +
+    geom_line(aes(est_year, lw_strat_biomass_s/1000000, 
+                  color = season, linetype = "NMFS Stratum Weights")) +
+    geom_line(aes(est_year, lw_strat_biomass_epu/1000000, 
+                  color = season, linetype = "EPU Area Weights")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Stratum Weighted Biomass (kg) \n (l-W Regressions)")
+    facet_wrap(~`Research Vessel`, scales = "free") +
+    labs(x = "", y = "Area Expanded Biomass\nl-W Regressions (million kg)") 
 
 lw_strat_2 <- seasonals %>% 
-  ggplot(aes(est_year, lw_strat_biomass, color = season)) +
-    geom_line() +
+  ggplot() +
+    geom_line(aes(est_year, lw_strat_biomass_s/1000000, color = season)) +
     scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~`Research Vessel`, scales = "free") +
     labs(x = "", 
-         y = "Stratum Weighted Biomass (kg) \n (L-W Regressions)")
+         y = "Area Expanded Biomass\nL-W Regressions (million kg)")
 
 lw_strat_1 / lw_strat_2
 ```
 
 ##### FSCS
 
-Biomass below is a function of the total annual abundance, expanded out to total survey area, multiplied by the biomass as recorded in fscs. This "biomass" is the total biomass for a given species at a station, distributed evenly across *n* groups for the different lengths encountered. This is **not** distributed equally by the number of fish at each length, just the number of *n* groups
+As for the shipboard measurements of biomass `survdat$biomass`, the Biomass below is a function of the total annual abundance, expanded out to total survey area, multiplied by the biomass as recorded in fscs. This "biomass" is the total biomass for a given species at a station, distributed evenly across *n* groups for the different lengths encountered. This is **not** distributed equally by the number of fish at each length, just the number of *n* groups
 
 ```{r}
 strat_1 <- ann_means %>% 
-  ggplot(aes(est_year, fscs_strat_biomass, color = season, linetype = "All Species")) +
-    geom_line(group = 1) +
+  ggplot() +
+    geom_line(aes(est_year, fscs_strat_biomass_s/1000000, 
+                  color = season, linetype = "NMFS Stratum Weights")) +
+    geom_line(aes(est_year, fscs_strat_biomass_epu/1000000, 
+                  color = season, linetype = "EPU Area Weights")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Stratum Weighted Biomass \n (Gross Shipboard Weight)")
+    facet_wrap(~`Research Vessel`, scales = "free") +
+    labs(x = "", y = "Area Expanded Biomass \n Shipboard Weight (million kg)")
 
 strat_2 <- seasonals %>% 
-  ggplot(aes(est_year, fscs_strat_biomass, color = season)) +
+  ggplot(aes(est_year, fscs_strat_biomass_s/1000000, color = season)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
+  facet_wrap(~`Research Vessel`, scales = "free") +
     labs(x = "", 
-         y = "Stratum Weighted Biomass \n (Gross Shipboard Weight)")
+         y = "Area Expanded Biomass \n Shipboard Weight (million kg)")
 
 strat_1 / strat_2
 ```
@@ -240,22 +264,22 @@ strat_1 / strat_2
 
 ### CPUE
 
-Biomass per unit effort in the following figures represents the total biomass divided by the effort in number of stations. Adjustments for the 2008 vessel change are assumed to be corrected for in the data. There has been no correction for differences in stratum area in these figures, only station effort.
+Biomass per station in the following figures represents the total biomass divided by the effort in number of stations. Adjustments for the 2008 vessel change are assumed to be corrected for in the data. There has been no correction for differences in stratum area in these figures, only station effort.
 
 
 ```{r, fig.height = 8}
 cpue_1 <- ann_means %>% 
-  ggplot(aes(est_year, lw_biomass_per_station, color = season, linetype = "All Species")) +
-    geom_line(group = 1) +
+  ggplot() +
+    geom_line(aes(est_year, lw_biomass_per_station, color = season, linetype = "All Species")) +
     geom_line(data = haddock_ann, 
               aes(est_year, lw_biomass_per_station, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
-    labs(x = "", y = "Adjusted Biomass per Station (kg)")
+    labs(x = "", y = "LW Biomass / Station\n(kg)")
 
 cpue_2<- seasonals %>% 
   ggplot(aes(est_year, lw_biomass_per_station, color = season)) +
     geom_line() +
-    labs(x = "", y = "Adjusted Biomass per Station (kg)")
+    labs(x = "", y = "LW Biomass / Station\n(kg)")
 
 cpue_1 / cpue_2
 ```
@@ -341,7 +365,8 @@ guild_plots <- weights_20 %>%
         
         guild_data <- left_join(length_quantiles, weight_quantiles, 
                                by = c("year", "Quantile")) %>% 
-          mutate(year = fct_rev(year))
+          mutate(year = fct_rev(year),
+                 `Research Vessel` = ifelse(as.numeric(as.character(year)) > 2008, "HB", "AL"))
         
         return(guild_data)  
           
@@ -370,7 +395,7 @@ guild_plots <- weights_20 %>%
       
       scale_color_gmri() +
       labs(subtitle = guild_key[guild_name], x = "Individual Length (cm)", y = NULL) +
-      theme(legend.position = "none")
+      theme(legend.position = "none") #+facet_wrap(`Research Vessel` ~ ., ncol = 1, scales = "free_y")
     
     #make plot
     p2 <- ggplot(year_df, aes(`weight (kg)`, fct_rev(year))) +
@@ -384,7 +409,7 @@ guild_plots <- weights_20 %>%
       scale_color_gmri() +
       labs(x = "Individual Weight (kg)", y = NULL) +
       theme(axis.text.y = element_blank(),
-            axis.ticks.y = element_blank())
+            axis.ticks.y = element_blank()) #+facet_wrap(`Research Vessel` ~ ., ncol = 1, scales = "free_y")
       
     patch_plot <- p1 + p2
     return(patch_plot)
@@ -537,7 +562,8 @@ max_weight_plot <- function(size_cutoff){
     filter(ind_weight_kg < size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
-              `Maximum Individual Biomass` = str_c("Individual Mass < ", size_cutoff, " kg")) %>%
+              `Maximum Individual Biomass` = str_c("Individual Mass < ", size_cutoff, " kg"),
+              .groups = "keep") %>%
     ggplot(aes(est_year, total_biomass_lw, color = `Maximum Individual Biomass`)) +
       geom_line() +
       scale_color_gmri() +
@@ -594,7 +620,8 @@ svp <- weights_20 %>%
     group_by(svvessel, comname) %>% 
     summarise(bio = sum(sum_weight_kg),
               effort = n_distinct(id),
-              cpue = bio / effort) %>% 
+              cpue = bio / effort,
+              .groups = "keep") %>% 
   pivot_wider(names_from = svvessel, 
               names_sep = "_",
               values_from = c(bio, effort, cpue)) %>% 
@@ -689,7 +716,8 @@ min_weight_plot <- function(size_cutoff){
     filter(ind_weight_kg > size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
-              `Minimum Individual Biomass` = str_c("Individual Mass > ", size_cutoff, " kg")) %>%
+              `Minimum Individual Biomass` = str_c("Individual Mass > ", size_cutoff, " kg"),
+              .groups = "keep") %>%
     ggplot(aes(est_year, total_biomass_lw, color = `Minimum Individual Biomass`)) +
       geom_line() +
       scale_color_gmri() +
@@ -772,8 +800,7 @@ Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further in
 
 # How many cownose rays, and how suspicious is that number?
  cownose <- weights_20 %>% 
-  filter(comname == "cownose ray",
-          est_year >= 1990) %>% 
+  filter(comname == "cownose ray") %>% 
    group_by(comname, est_year, season, id) %>% 
    summarise(total_biomass_lw = sum(sum_weight_kg),
               num_individuals = sum(numlen_adj),
@@ -781,20 +808,16 @@ Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further in
 
 cownose %>% kable()
  
- # cownose %>% 
- #   ggplot(aes(factor(est_year), total_biomass_lw)) +
- #     geom_col() +
- #    labs(x = "", y = "total biomass")
- # 
- # cownose %>% 
- #   ggplot(aes(factor(est_year), num_individuals)) +
- #     geom_col() +
- #    labs(x = "", y = "Number Caught")
- # 
- # cownose %>% 
- #   ggplot(aes(factor(est_year), n_occurrences)) +
- #     geom_col() +
- #     labs(x = "", y = "Number of Occurrences")
+# Get summary metrics for cownose
+weights_20 %>% 
+  filter(comname == "cownose ray") %>% 
+  agg_species_metrics(est_year, season) %>% 
+  mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL")) %>% 
+  ggplot(aes(est_year, abundance, color = season)) +
+  geom_point() +
+  facet_wrap(~`Research Vessel`, scales = "free_x") +
+  labs(x = "", y = "Seasonal Abundance")
+
 ```
 
 
@@ -802,17 +825,25 @@ cownose %>% kable()
 
 Using the same bodymass bins as in Kathy's code `cleaned up size spectra code.R` we can take a look at how an overall size spectrum slope would look like for the two surveys. This will help us gain a coarse idea of where to put limits on the bodymass ranges based on the survey gear.
 
+One thing that was brought up in my discussion with [Andrew Edwards](https://github.com/andrew-edwards) was that I should be standardizing the bin heights by their width because evenly spaced values on a log scale are increasingly large on the untransformed scale. For example for bins using log10() scale, the bin width from 2 < log10(x) < 3 is 900, and the next bin 3 < log10(x) < 4 has a width of 9,000.
+
 
 ```{r}
 
-# Set up bins for log(10) of individual weights
+# Set up bins for plotting normalized size specra
+
+# COMMENTS
+# bins increase in width as you work up on the log scale, 
+# need to narmalize them by bin width so that they are comparable.
+
+# NOTE: case_when is greedy so once something is assigned it is out of the pool of candidates
+# In this case you want to count down    
 weights_20 <- weights_20 %>% 
   mutate(
     lweight = log(ind_weight_kg),
     llen = log(length),
     l10wt = log10(ind_weight_kg),
-         # case_when is greedy so once something is assigned it is out of the pool of candidates
-         # In this case you want to count down
+    # Length bins for log() scale
     lenbin2 = case_when(
       llen > 5    ~ 10,
       llen > 4.5  ~ 9,
@@ -824,8 +855,24 @@ weights_20 <- weights_20 %>%
       llen > 1.5  ~ 3,
       llen > 1    ~ 2,
       llen > 0.5  ~ 1,
-      TRUE        ~ 0),
+      llen >   0  ~ 0),
+    # Range of lengths for each bin
+    len_range = case_when(
+      lenbin2 == 10 ~ exp(5.5) - exp(5),
+      lenbin2 == 9 ~ exp(5) - exp(4.5),
+      lenbin2 == 8 ~ exp(4.5) - exp(4),
+      lenbin2 == 7 ~ exp(4) - exp(3.5),
+      lenbin2 == 6 ~ exp(3.5) - exp(3),
+      lenbin2 == 5 ~ exp(3) - exp(2.5),
+      lenbin2 == 4 ~ exp(2.5) - exp(2),
+      lenbin2 == 3 ~ exp(2) - exp(1.5),
+      lenbin2 == 2 ~ exp(1.5) - exp(1),
+      lenbin2 == 1 ~ exp(1) - exp(.5),
+      lenbin2 == 0 ~ exp(0.5) - exp(0)),
+    # Weight bins on log() scale
     wtbin = case_when(
+      lweight > 8   ~ 10,
+      lweight > 6   ~ 9,
       lweight > 4   ~ 8,
       lweight > 2   ~ 7,
       lweight > 0   ~ 6,
@@ -834,9 +881,23 @@ weights_20 <- weights_20 %>%
       lweight > -6  ~ 3,
       lweight > -8  ~ 2,
       lweight > -10  ~ 1,
-      lweight < -10  ~ 0,
-    ),
+      lweight < -10  ~ 0),
+    # Weight Range for each bin
+    wt_range = case_when(
+      wtbin == 10 ~ exp(10) - exp(8),
+      wtbin ==  9 ~ exp(8) - exp(6),
+      wtbin ==  8 ~ exp(6) - exp(4),
+      wtbin ==  7 ~ exp(4) - exp(2),
+      wtbin ==  6 ~ exp(2) - exp(1),
+      wtbin ==  5 ~ exp(1) - exp(.5),
+      wtbin ==  4 ~ exp(.5) - exp(.25),
+      wtbin ==  3 ~ exp(.25) - exp(.125),
+      wtbin ==  2 ~ exp(.125) - exp(.0625),
+      wtbin ==  1 ~ exp(.0625) - exp(.03125),
+      wtbin ==  0 ~ exp(.03125) - exp(.015625)),
+    # Weight bins on log10() scale
     wt10bin =  case_when(
+      l10wt > 3     ~ 21,
       l10wt > 2.5   ~ 20,
       l10wt > 2     ~ 19,
       l10wt > 1.5   ~ 18,
@@ -857,12 +918,44 @@ weights_20 <- weights_20 %>%
       l10wt > -6    ~ 3,
       l10wt > -6.5  ~ 2,
       l10wt > -7    ~ 1,
-      TRUE ~ 0)) 
+      l10wt > -7.5  ~ 0),
+    # Weight ranges for log10() bins
+    wt10_range = case_when(
+      wt10bin == 21 ~ 10 ^ 3.5  - 10 ^ 3,
+      wt10bin == 20 ~ 10 ^ 3    - 10 ^ 2.5,
+      wt10bin == 19 ~ 10 ^ 2.5  - 10 ^ 2,
+      wt10bin == 18 ~ 10 ^ 2    - 10 ^ 1.5,
+      wt10bin == 17 ~ 10 ^ 1.5  - 10 ^ 1,
+      wt10bin == 16 ~ 10 ^ 1    - 10 ^ 0.5,
+      wt10bin == 15 ~ 10 ^ 0.5  - 10 ^ 0,
+      wt10bin == 14 ~ 10 ^ 0    - 10 ^ -0.5,
+      wt10bin == 13 ~ 10 ^ -0.5 - 10 ^ -1,
+      wt10bin == 12 ~ 10 ^ -1   - 10 ^ -1.5,
+      wt10bin == 11 ~ 10 ^ -1.5 - 10 ^ -2,
+      wt10bin == 10 ~ 10 ^ -2   - 10 ^ -2.5,
+      wt10bin ==  9 ~ 10 ^ -2.5 - 10 ^ -3,
+      wt10bin ==  8 ~ 10 ^ -3   - 10 ^ -3.5,
+      wt10bin ==  7 ~ 10 ^ -3.5 - 10 ^ -4,
+      wt10bin ==  6 ~ 10 ^ -4   - 10 ^ -4.5,
+      wt10bin ==  5 ~ 10 ^ -4.5 - 10 ^ -5,
+      wt10bin ==  4 ~ 10 ^ -5   - 10 ^ -5.5,
+      wt10bin ==  3 ~ 10 ^ -5.5 - 10 ^ -6,
+      wt10bin ==  2 ~ 10 ^ -6   - 10 ^ -6.5,
+      wt10bin ==  1 ~ 10 ^ -6.5 - 10 ^ -7,
+      wt10bin ==  0 ~ 10 ^ -7   - 10 ^ -7.5
+    ))  
 
-# bin summaries
+
+
+# Summarise bins to get counts and normalizeed counts
 bin_summs <- weights_20 %>% 
-  group_by(svvessel, lenbin2, wtbin, wt10bin) %>% 
-  summarise(n_group = sum(numlen_adj))
+  group_by(svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
+  summarise(n_group = sum(numlen_adj),
+            .groups = "keep") %>% 
+  ungroup() %>% 
+  mutate(l_norm = n_group / len_range,
+         wtbin_norm = n_group / wt_range,
+         wt10_norm = n_group / wt10_range)
 
 ```
 
@@ -871,27 +964,49 @@ bin_summs <- weights_20 %>%
 ```{r}
 
 # log() length bins
-ggplot(bin_summs, aes(lenbin2, n_group, fill = svvessel)) +
+l1 <- ggplot(bin_summs, aes(lenbin2, n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_log10() +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
     labs(x = "log2 Length Bins", y = "Abundance")
 
+l2 <- ggplot(bin_summs, aes(lenbin2, l_norm, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "log2 Length Bins", y = "Normalized Abundance")
+
+l1 | l2
+
 ```
+
+
+
+
 
 #### log(weight)
 
 ```{r}
 
 # log() weight bins
-ggplot(bin_summs, aes(wtbin, n_group, fill = svvessel)) +
+wt1 <- ggplot(bin_summs, aes(wtbin, n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_log10() +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
     labs(x = "log2 Weight Bins", y = "Abundance")
 
+wt2 <- ggplot(bin_summs, aes(wtbin, wtbin_norm, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "log2 Weight Bins", y = "Normalized Abundance")
+
+
+wt1 | wt2
 ```
 
 #### log10(weight)
@@ -899,12 +1014,23 @@ ggplot(bin_summs, aes(wtbin, n_group, fill = svvessel)) +
 ```{r}
 
 #l10 weight bins
-ggplot(bin_summs, aes(wt10bin, n_group, fill = svvessel)) +
+wt10_1 <- ggplot(bin_summs, aes(wt10bin, n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_log10() +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
     labs(x = "log10 Weight Bins", y = "Abundance")
+
+
+# abundance normalized by bin width
+wt10_2 <- ggplot(bin_summs, aes(wt10bin, wt10_norm, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "log10 Weight Bins", y = "Normalized Abundance")
+
+wt10_1 | wt10_2
 ```
 
 
@@ -912,8 +1038,13 @@ ggplot(bin_summs, aes(wt10bin, n_group, fill = svvessel)) +
 
 ```{r}
 ann_summs <- weights_20 %>% 
-  group_by(est_year, svvessel, lenbin2, wtbin, wt10bin) %>% 
-  summarise(n_group = sum(numlen_adj))
+  group_by(est_year, svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
+  summarise(n_group = sum(numlen_adj),
+            .groups = "keep") %>% 
+  ungroup() %>% 
+  mutate(l_norm = n_group / len_range,
+         wtbin_norm = n_group / wt_range,
+         wt10_norm = n_group / wt10_range)
 
 #l10 weight bins
 ann_plots <- list()
@@ -939,7 +1070,33 @@ ann_plots$HB <- ann_summs %>%
         labs(x = "log10 Weight Bins", y = "Abundance") +
         theme(strip.text.y = element_text(angle = 0))
 
+
+ann_plots$AL_norm <- ann_summs %>% 
+  filter(svvessel == "AL",
+         est_year >= 2000) %>%
+  ggplot(aes(wt10bin, wt10_norm, fill = svvessel)) +
+        geom_col(show.legend = F) +
+        scale_y_continuous(labels = scales::comma_format()) +
+        facet_grid(est_year ~ svvessel, scales = "free") +
+        scale_fill_gmri() +
+        labs(x = "log10 Weight Bins", y = "Normalized Abundance") +
+        theme(strip.text.y = element_text(angle = 0))
+
+ann_plots$HB_norm <- ann_summs %>% 
+  filter(svvessel == "HB") %>%
+  ggplot(aes(wt10bin, wt10_norm, fill = svvessel)) +
+        geom_col(show.legend = F) +
+        scale_y_continuous(labels = scales::comma_format()) +
+        facet_grid(est_year ~ svvessel, scales = "free") +
+        scale_fill_gmri(reverse = T) +
+        labs(x = "log10 Weight Bins", y = "Normalized Abundance") +
+        theme(strip.text.y = element_text(angle = 0))
+
 ann_plots$AL | ann_plots$HB
+
+ann_plots$AL_norm | ann_plots$HB_norm
+
+
 ```
 
 
@@ -1016,6 +1173,22 @@ ggplot() +
 
 ```
 
+###  Ecological Production Units
+
+```{r, fig.height=6}
+epu_sf <- ecodata::epu_sf
+
+ggplot() +
+  geom_sf(data = new_england) +
+  geom_sf(data = canada) +
+  geom_sf(data = epu_sf, aes(fill = EPU)) +
+  coord_sf(xlim = c(-77, -65.5), ylim = c(34, 45.75), expand = FALSE) +
+  guides(fill = guide_legend(nrow = 2)) +
+  theme_bw() +
+  theme(legend.position = "bottom", legend.title = element_blank())
+```
+
+
 
 ### Regional Summaries 
 ```{r}
@@ -1028,7 +1201,8 @@ area_summs <- weights_20 %>%
     n_stations = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length = weighted.mean(length, weights = numlen_adj)
+    mean_ind_length = weighted.mean(length, weights = numlen_adj),
+    .groups = "keep"
   )
 
 # Area x Season
@@ -1039,7 +1213,8 @@ seas_area <- weights_20 %>%
     n_stations = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length = weighted.mean(length, weights = numlen_adj)
+    mean_ind_length = weighted.mean(length, weights = numlen_adj),
+    .groups = "keep"
   )
 
 
@@ -1062,7 +1237,11 @@ area_summs_y <- weights_20 %>%
     n_stations = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length = weighted.mean(length, weights = numlen_adj)
+    mean_ind_length = weighted.mean(length, weights = numlen_adj),
+    expanded_abund = sum(expanded_abund_s),
+    expanded_lwbio = sum(expanded_lwbio_s),
+    expanded_biom = sum(expanded_biom_s),
+    .groups = "keep"
   )
 
 ```
@@ -1093,8 +1272,44 @@ area_summs_y %>%
            
 ```
 
+### Area Expanded Abundance
 
+```{r}
+area_summs_y %>% 
+  ggplot(aes(est_year, expanded_abund/1000000)) +
+    geom_line() +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~survey_area, ncol = 2) +
+    labs(x = "", y = "Area Expanded Abundance (millions)")
+           
+```
 
+### Area Expanded Biomass
+
+The expected biomass estimates for the `survdat$biomass` data and the expected biomass from L-W regressions differ wildly once the survey transitions over to the Henry Bigelow. Not sure at this point if that is because the coefficients are off, or if there are some specific stations that need to be investigated, but its quite a large difference:
+
+```{r, fig.height=6}
+fscs <- area_summs_y %>% 
+  ggplot() +
+    geom_line(aes(est_year, expanded_biom  /1000000, color = "Shipboard Weights")) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~survey_area, ncol = 1) +
+    scale_color_gmri(reverse = T) +
+    labs(x = "", y = "Area Expanded Biomass FSCS (million kg)") +
+    theme(legend.position = "bottom", legend.title = element_blank())
+
+lw <- area_summs_y %>% 
+  ggplot() +
+    geom_line(aes(est_year, expanded_lwbio /1000000, color = "LW Regression Weights")) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    scale_color_gmri(reverse = F) +
+    facet_wrap(~survey_area, ncol = 1) +
+    labs(x = "", y = "Area Expanded Biomass LW (million kg)") +
+    theme(legend.position = "bottom", legend.title = element_blank())
+
+fscs | lw
+           
+```
 
 # Comparisons to Older Data
 
@@ -1102,22 +1317,24 @@ Concerns have been raised that the datasets obtained through the NEFSC are incon
 
 Each file was processed for size-spectra analysis using the same processing steps. This includes the same species codes, the same abundance and stratification adjustments, and the same L-W derived biomasses.
 
+**NOTE:**
+The resulting analysis has been removed to shorten the length of this markdown.
 ```{r}
-weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"),
-                       col_types = cols(),
-                       guess_max = 1e5)
-weights_19 <- read_csv(here::here("data/ss_prepped_data/survdat_2019_ss.csv"),
-                       col_types = cols(),
-                       guess_max = 1e5)
-weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"),
-                       col_types = cols(),
-                       guess_max = 1e5)
-
-# run summaries
-summ_16 <- ss_regional_differences(weights_16) %>% mutate(source = "2016")
-summ_19 <- ss_regional_differences(weights_19) %>% mutate(source = "2019")
-summ_20 <- ss_regional_differences(weights_20) %>% mutate(source = "2020")
-reg_summs <- bind_rows(list(summ_16, summ_19, summ_20))
+# weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"),
+#                        col_types = cols(),
+#                        guess_max = 1e5)
+# weights_19 <- read_csv(here::here("data/ss_prepped_data/survdat_2019_ss.csv"),
+#                        col_types = cols(),
+#                        guess_max = 1e5)
+# weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"),
+#                        col_types = cols(),
+#                        guess_max = 1e5)
+# 
+# # run summaries
+# summ_16 <- ss_regional_differences(weights_16) %>% mutate(source = "2016")
+# summ_19 <- ss_regional_differences(weights_19) %>% mutate(source = "2019")
+# summ_20 <- ss_regional_differences(weights_20) %>% mutate(source = "2020")
+# reg_summs <- bind_rows(list(summ_16, summ_19, summ_20))
 ```
 
 
@@ -1125,39 +1342,39 @@ reg_summs <- bind_rows(list(summ_16, summ_19, summ_20))
 
 
 
-# Total Biomass
-p1 <- reg_summs %>% 
-  ggplot(aes(est_year, lw_biomass_kg, color = source)) +
-  geom_line(show.legend = F) +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~survey_area, ncol = 1, scales = "free") +
-  labs(x = "", y = "Total Biomass \n (L-W Regressions)")
-
-# Total Biomass - FSCS
-p2 <- reg_summs %>% 
-  ggplot(aes(est_year, fscs_biomass_kg, color = source)) +
-  geom_line() +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~survey_area, ncol = 1) +
-  labs(x = "", y = "Total Biomass \n (FSCS Haul Weights)")
-
-# effort
-p3 <- reg_summs %>% 
-  ggplot(aes(est_year, n_stations, color = source)) +
-  geom_line(show.legend = F) +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~survey_area, ncol = 1) +
-  labs(x = "", y = "Effort (haul count)")
-
-# Species 
-p4 <- reg_summs %>% 
-  ggplot(aes(est_year, n_species, color = source)) +
-  geom_line(show.legend = F) +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~survey_area, ncol = 1) +
-  labs(x = "", y = "Distinct Species")
-
-p1 + p2 + p3 + p4
+# # Total Biomass
+# p1 <- reg_summs %>% 
+#   ggplot(aes(est_year, lw_biomass_kg, color = source)) +
+#   geom_line(show.legend = F) +
+#   scale_y_continuous(labels = scales::comma_format()) +
+#   facet_wrap(~survey_area, ncol = 1, scales = "free") +
+#   labs(x = "", y = "Total Biomass \n (L-W Regressions)")
+# 
+# # Total Biomass - FSCS
+# p2 <- reg_summs %>% 
+#   ggplot(aes(est_year, fscs_biomass_kg, color = source)) +
+#   geom_line() +
+#   scale_y_continuous(labels = scales::comma_format()) +
+#   facet_wrap(~survey_area, ncol = 1) +
+#   labs(x = "", y = "Total Biomass \n (FSCS Haul Weights)")
+# 
+# # effort
+# p3 <- reg_summs %>% 
+#   ggplot(aes(est_year, n_stations, color = source)) +
+#   geom_line(show.legend = F) +
+#   scale_y_continuous(labels = scales::comma_format()) +
+#   facet_wrap(~survey_area, ncol = 1) +
+#   labs(x = "", y = "Effort (haul count)")
+# 
+# # Species 
+# p4 <- reg_summs %>% 
+#   ggplot(aes(est_year, n_species, color = source)) +
+#   geom_line(show.legend = F) +
+#   scale_y_continuous(labels = scales::comma_format()) +
+#   facet_wrap(~survey_area, ncol = 1) +
+#   labs(x = "", y = "Distinct Species")
+# 
+# p1 + p2 + p3 + p4
 ```
 
 
