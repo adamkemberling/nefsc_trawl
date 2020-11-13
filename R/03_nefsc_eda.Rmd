@@ -727,18 +727,7 @@ min_weight_plot <- function(size_cutoff){
 }
 ```
 
-#### .25  kg
 
-```{r}
-min_weight_plot(.25)
-```
-
-
-#### .5 kg
-
-```{r}
-min_weight_plot(.5)
-```
 
 
 #### 1 kg
@@ -1319,6 +1308,7 @@ Each file was processed for size-spectra analysis using the same processing step
 
 **NOTE:**
 The resulting analysis has been removed to shorten the length of this markdown.
+
 ```{r}
 # weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"),
 #                        col_types = cols(),

@@ -325,7 +325,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     filter(is.na(length) == FALSE,
            is.na(numlen) == FALSE,
            numlen_adj > 0) %>% 
-    distinct(id, svspp, comname, catchsex, length, numlen, numlen_adj, biom_adj) %>% 
+    distinct(id, svspp, comname, catchsex, abundance, length,  numlen, numlen_adj, biom_adj) %>% 
     mutate(svspp = as.character(svspp),
            svspp = str_pad(svspp, 3, "left", "0"))
     
