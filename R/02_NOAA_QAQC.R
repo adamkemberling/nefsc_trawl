@@ -155,7 +155,7 @@ summs  %>%
   ggplot() +
     geom_line(aes(est_year, lw_strat_biomass_s/ 1000000, color = "Stratum Weighted")) +
     geom_line(aes(est_year, lw_strat_biomass_epu/ 1000000, color = "EPU Weighted")) +
-    facet_wrap(~vessel, scales = "free") +
+    facet_wrap(~`Research Vessel`, scales = "free") +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Projected Total Biomass (million kg)\n L-W Derived")
 
@@ -166,7 +166,7 @@ summs %>%
   ggplot() +
   geom_line(aes(est_year, fscs_strat_biomass_s/ 1000000, color = "Stratum Weighted")) +
   geom_line(aes(est_year, fscs_strat_biomass_epu/ 1000000, color = "EPU Weighted")) +
-  facet_wrap(~vessel, scales = "free") +
+  facet_wrap(~`Research Vessel`, scales = "free") +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Projected Total Biomass (million kg)\n FSCS Derived")
 

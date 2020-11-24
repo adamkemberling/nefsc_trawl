@@ -7,7 +7,7 @@ output:
     toc: TRUE
     toc_float:
         collapsed: FALSE
-    code_folding: show
+    code_folding: hide
 editor_options: 
   chunk_output_type: console
 ---
@@ -25,6 +25,7 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(scales)
+library(ggforce)
 
 
 
@@ -80,7 +81,7 @@ The cleanup function retains the station-level information of the raw data, so i
 
 ```{r}
 test_station <- weights_20$id[1]
-test_species <- unique(weights_20$comname)[3]
+test_species <- unique(weights_20$comname)[4]
 
 print(paste0("The test station is: ", test_station))
 print(paste0("The test species is: ", test_species))
@@ -163,15 +164,15 @@ In this way, using the example above there are catch per tow estimates for Ameri
 weights_20 %>% 
     filter(id == test_station, 
            comname == tolower(test_species)) %>% 
-      select("Species" = comname, 
-             "Length" = length, 
-             "Number at Length" = numlen_adj, 
-             "Weight (g)" = sum_weight_kg, 
-             "Stratum" = stratum,
-             "Tows in Stratum (by year)" = strat_ntows, 
-             "Abundance per Tow" = abund_tow_s, 
-             "Weighted Abundance per Tow (by stratum area)" =  wt_abund_s,
-             "Projected Abundance (stratum)" = expanded_abund_s) %>% 
+      select("Species"                                      = comname, 
+             "Length"                                       = length, 
+             "Number at Length"                             = numlen_adj, 
+             "Weight (g)"                                   = sum_weight_kg, 
+             "Stratum"                                      = stratum,
+             "Tows in Stratum (by year)"                    = strat_ntows, 
+             "Abundance per Tow"                            = abund_tow_s, 
+             "Weighted Abundance per Tow (by stratum area)" = wt_abund_s,
+             "Projected Abundance (stratum)"                = expanded_abund_s) %>% 
   mutate(`Weight (g)` = `Weight (g)` * 1000) %>% 
   mutate_if(is.numeric, round, 3) %>% 
   kable() %>%  
@@ -194,8 +195,8 @@ cod_20 <- weights_20 %>% filter(comname == "atlantic cod")
 cod_20 %>% 
   group_by(est_year, season, comname) %>% 
   summarise(stratified_abundance = sum(expanded_abund_s),
-            stratified_lwbio = sum(expanded_lwbio_s),
-            stratified_biom = sum(expanded_biom_s)) %>% 
+            stratified_lwbio     = sum(expanded_lwbio_s),
+            stratified_biom      = sum(expanded_biom_s)) %>% 
   kable() %>% 
   kable_styling(font_size = 10)
 ```
@@ -207,11 +208,96 @@ cod_20 %>%
 # Aggregating then calculating the catch rates etc.
 cod_20 %>% 
   agg_species_metrics(est_year, season) %>% 
-  select(est_year, season, comname, 
-         stratified_abundance = strat_abundance_s,
-         stratified_lwbio = lw_strat_biomass_s,
-         stratified_biom = fscs_strat_biomass_s) %>% 
+  select(Year                   = est_year, 
+         Season                 = season, 
+         Species                = comname, 
+         `Stratified Abundance` = strat_abundance_s,
+         `Stratified LWbio`       = lw_strat_biomass_s,
+         `Stratified Biom`        = fscs_strat_biomass_s) %>% 
   kable() %>% 
   kable_styling(font_size = 10)
 ```
 
+# LW Coefficient Comparisons
+
+Looks like the root cause is just the difference between what the mean prediction from species-specific coefficients is when compared to the biomass column in survdat.
+
+Going to plot out how each species compares individually and rank their fits.
+
+
+```{r, fig.height=10}
+# Thoughts - difference between lw biomass vs. time 
+# (i.e. is their relationship changing)
+# how does that relate to temperature and survey change'
+# good way to flag species that are way off
+
+# Load all years and species
+weights_all <- load_ss_data(survdat_source = "2020")
+
+
+# Get the total weights for each station, then do it each year for every species
+species_summaries <- weights_all %>% 
+  group_by(est_year, comname, id) %>% 
+  summarise(length_weight_biomass = sum(sum_weight_kg),
+            ship_measured_biomass = sum(biom_adj),
+            lw_underestimate = ship_measured_biomass - length_weight_biomass) %>% 
+  ungroup()
+
+
+# Format rankings to plot
+n_species <- length(unique(species_summaries$comname))
+ranks <- species_summaries %>% 
+  mutate(comname = fct_reorder(.f = comname, .x = lw_underestimate, mean),
+         species_rank = as.numeric(comname),
+         extremes = ifelse( species_rank >= n_species - 15, "Extreme Under-Estimation", NA),
+         extremes = ifelse(species_rank <= 15, "Extreme Over-Estimation", extremes)) 
+
+
+
+# All ranks in one panel
+all_ranks <- ranks %>% 
+  ggplot(aes(lw_underestimate, species_rank)) +
+    geom_boxplot(aes(group = species_rank), color = "gray40") +
+    geom_boxplot(data = filter(ranks, is.na(extremes) == FALSE),
+                 aes(group = species_rank, color = extremes)) +
+    scale_x_continuous(labels = comma_format()) +
+    scale_color_gmri() +
+    guides("color" = guide_legend(title = "")) +
+    labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
+         y = "Underestimation Rank") +
+  theme(legend.position = c(0.2, 0.95))
+
+# Focus on top 5
+top_5 <- ranks %>% 
+  filter(extremes == "Extreme Under-Estimation") %>% 
+  ggplot(aes(lw_underestimate, comname)) +
+    geom_boxplot(aes(group = species_rank), color = gmri_cols("orange")) +
+    scale_color_gmri() +
+    scale_x_continuous(labels = comma_format()) +
+    labs(x = "",
+         y = "", 
+         title = "Length-Weight Biomass < 'survdat$Biomass'") +
+  theme(title = element_text(hjust = 0.5))
+
+# Focus on bottom 5
+bot_5 <- ranks %>% 
+  filter(extremes == "Extreme Over-Estimation") %>% 
+  ggplot(aes(lw_underestimate, comname)) +
+    geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
+    scale_color_gmri() +
+    scale_x_continuous(labels = comma_format()) +
+    labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
+         y = "", 
+         title = "Length-Weight Biomass > 'survdat$Biomass'") +
+  theme(title = element_text(hjust = 0.5))
+  
+
+
+# Patchwork plot
+all_ranks | (top_5/bot_5)
+
+```
+
+
+
+## LW Regression Fit Diagnostics

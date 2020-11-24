@@ -66,16 +66,19 @@ nefsc_lw <- nefsc_lw %>%
          ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a),
          a = ifelse(is.na(a), exp(ln_a), a))
 
+# validation plots
 (nefsc_a <- ggplot(nefsc_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: fishbase"))
 (nefsc_lna <- ggplot(nefsc_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: fishbase"))
 (nefsc_b <- ggplot(nefsc_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: fishbase"))
-
-
 
 nefsc_lw %>% 
   mutate(lna_check = log(a)) %>% 
   ggplot(aes(ln_a, lna_check)) +
   geom_point()
+
+
+
+
 
 
 ####__ 2. Wrigley Paper Coefficients  ####
@@ -109,11 +112,10 @@ spp_classes <- spp_classes %>%
 wigley_lw <- left_join(lwreg, spp_classes, by = c("svspp", "comname", "scientific_name"))
 
 
-
+# Validation Plots
 (wigley_a   <- ggplot(wigley_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: wigley"))
 (wigley_lna <- ggplot(wigley_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: wigley"))
 (wigley_b   <- ggplot(wigley_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: wigley"))
-
 wigley_lw %>% 
   mutate(lna_check = log(a)) %>% 
   ggplot(aes(ln_a, lna_check)) +
@@ -151,25 +153,56 @@ lw_combined <- full_join(nefsc_lw, wigley_lw, by = c("source", "comname", "b", "
 
 # Fill in gaps for things that should be consistent
 # Lot of matching by common name and pulling the first value where it matches to fill the NA values
-lw_combined <- lw_combined %>% 
-  arrange(comname) %>% 
-  mutate(
-    hare_group = ifelse(is.na(hare_group),
-                        nefsc_lw[ match(comname,  nefsc_lw$comname)[1], "hare_group"][[1]],
-                        hare_group),
-    svspp = ifelse(is.na(svspp),
-                   wigley_lw[ match(comname, wigley_lw$comname)[1], "svspp"][[1]],
-                   svspp),
-    scientific_name = ifelse(is.na(scientific_name),
-                             wigley_lw[ match(comname, wigley_lw$comname)[1], "scientific_name"][[1]],
-                             scientific_name),
-    fishery = ifelse(is.na(fishery),
-                     wigley_lw[ match(comname, wigley_lw$comname)[1], "fishery"][[1]],
-                     fishery),
-    spec_class = ifelse(is.na(spec_class),
-                        wigley_lw[ match(comname, wigley_lw$comname)[1], "spec_class"][[1]],
-                        spec_class))
 
+# Create named vectors to use as lookup keys
+hare_lookup    <- setNames(nefsc_lw$hare_group, nefsc_lw$comname )
+svspp_lookup   <- setNames(wigley_lw$svspp, wigley_lw$comname )
+sci_lookup     <- setNames(wigley_lw$scientific_name, wigley_lw$comname)
+fishery_lookup <- setNames(wigley_lw$fishery, wigley_lw$comname)
+class_lookup   <- setNames(wigley_lw$spec_class, wigley_lw$comname)
+
+# This is/was broken when not split first
+lw_combined <- lw_combined %>% 
+  arrange(comname) %>%
+  split(.$comname) %>% 
+  map_dfr(function(x){
+    
+    # Grab the common name, first one in case of repeats
+    species_selector <- x$comname[1]
+  
+    # Now fill in the NA values by using the species as a key
+    x <- x %>% 
+      mutate(
+        # if hare group missing, match the common names, pull hare group, else leave blank
+        hare_group = ifelse(is.na(hare_group) & species_selector %in% names(hare_lookup),
+                            hare_lookup[[species_selector]][1],
+                            hare_group),
+    
+        # if svspp missing, match the common names, pull svspp value, else leave blank
+        svspp = ifelse(is.na(svspp)& species_selector %in% names(svspp_lookup),
+                       svspp_lookup[[species_selector]],
+                       svspp),
+    
+        # if scientific name missing, match the common names, pull sci name, else leave blank
+        scientific_name = ifelse(is.na(scientific_name) & species_selector %in% names(sci_lookup),
+                                 sci_lookup[[species_selector]],
+                                 scientific_name),
+    
+        # if fishery missing, match the common names, pull fishery, else leave blank
+        fishery = ifelse(is.na(fishery) & species_selector %in% names(fishery_lookup),
+                         fishery_lookup[[species_selector]],
+                         fishery),
+    
+        # if fishery missing, match the common names, pull fishery, else leave blank
+        spec_class = ifelse(is.na(spec_class) & species_selector %in% names(class_lookup),
+                            class_lookup[[species_selector]],
+                            spec_class))
+
+  })
+  
+  
+  
+  
 # Grab and order columns we need
 lw_combined <- lw_combined %>% 
   select(source, svspp, comname, scientific_name, spec_class, hare_group, fishery, season, catchsex,

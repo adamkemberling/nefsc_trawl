@@ -175,13 +175,13 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     )
   
   
-  # ####__ 6. Spatial Filtering  ####
+  # ####__ 4. Spatial Filtering  ####
   
   
   #### EPU assignment for survdat stations - function from Sean Luceys "RSurvey" repo
   source(here("R/kathy_ss_code/slucey_survdat_functions.R"))
   epu_sf <- ecodata::epu_sf
-  epu_sp <- as_Spatial(epu_sf)
+  epu_sp <- suppressWarnings(as_Spatial(epu_sf))
   
   
   # assign EPU labels
@@ -232,7 +232,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  ####__ 4. Stratum Area/Effort Ratios  ####
+  ####__ 5. Stratum Area/Effort Ratios  ####
   
   
   
@@ -290,7 +290,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 
 
 
-  ####__ 7. Adjusted NumLength  ####
+  ####__ 6. Adjusted NumLength  ####
   # scales difference between the sum(numlen) and the reported abundance
   # convers is the difference between abundance and the number measured
   conv_factor <- trawldat %>%
@@ -325,6 +325,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     filter(is.na(length) == FALSE,
            is.na(numlen) == FALSE,
            numlen_adj > 0) %>% 
+    # Columns that uniquely identify a station and the different catches
     distinct(id, svspp, comname, catchsex, abundance, length,  numlen, numlen_adj, biom_adj) %>% 
     mutate(svspp = as.character(svspp),
            svspp = str_pad(svspp, 3, "left", "0"))
@@ -332,7 +333,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   # Pull distinct records of the stations themselves and metadata that match
-  # these are susceptiblt to upstream changes
+  # these are susceptible to upstream changes
   trawl_stations <- trawldat %>% 
     select(
       # Tow Identification details
@@ -357,8 +358,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # This table is a combined table of wigley and fishbase L-W coefficients
   lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
                           col_types = cols()) %>% 
-    mutate(svspp = as.character(svspp),
-           svspp = str_pad(svspp, 3, "left", "0"))
+    mutate(svspp = str_pad(svspp, 3, "left", "0"))
   
   # Do a priority pass with the filter(lw_combined, source == "wigley)
   # merge on comname, season, and catchsex
@@ -370,8 +370,9 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # Do a second pass with the filter(lw_combined, source == "fishbase")
   # merge on common names only
   fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
-    select(source, svspp, comname, scientific_name, spec_class, 
-           hare_group, fishery, a, b, ln_a)
+    select(source, -svspp, comname, scientific_name, spec_class, 
+           hare_group, fishery, a, b, ln_a)  
+    
   
   # First Pass - Wigley
   pass_1 <- trawl_spectra %>% 
@@ -384,7 +385,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # currently not joining well because lack of svspp and comname agreement 
   pass_2 <- trawl_spectra %>% 
     filter(comname %not in% w_trimmed$comname) %>% 
-    inner_join(fb_trimmed)
+    inner_join(fb_trimmed) 
   
   
   
@@ -427,15 +428,15 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # 2. Multiply that mean catch by the area ratio
   
   
-  # Good to go up until here:
-  # Issue is that we have 2+ scales going on
-  # The individual lengths and their length specific bodymass
-  # and then the species aggregate biomasses
-  # and then the effort by stratum each year to scale with
+  # Constants:
+  # average area covered by an albatross standard tow in km2
+  alb_tow_km2 <- 0.0384 
+  # catchability coefficient, ideally should shift for different species guilds
+  q <- 1                
+ 
   
+  # Get the area wighted CPUEs and their area expanded biomass/abundance
   # The effort (tows) below is from that year and in that stratum
- alb_tow_km2 <- 0.0384 # average area covered by an albatross standard tow in km2
- q <- 1                # catchability coefficient, ideally should shift for different species guilds
   trawl_weights <- trawl_weights  %>% 
     mutate(
       
