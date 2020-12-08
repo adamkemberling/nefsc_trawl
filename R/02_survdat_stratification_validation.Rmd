@@ -272,13 +272,14 @@ mismatch_plot <- function(x){
       guides("color" = guide_legend(title = "")) +
       labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
            y = "Underestimation Rank") +
-    theme(legend.position = c(0.2, 0.95))
+    theme(legend.position = c(0.2, 1))
   
   # Focus on top 5
   top_5 <- ranks %>% 
     filter(extremes == "Extreme Under-Estimation") %>% 
     ggplot(aes(lw_underestimate, comname)) +
       geom_boxplot(aes(group = species_rank), color = gmri_cols("orange")) +
+      #geom_vline(xintercept = 0, size = 0.5, color = "black", linetype = 2) +
       scale_color_gmri() +
       scale_x_continuous(labels = comma_format()) +
       labs(x = "",
@@ -291,6 +292,7 @@ mismatch_plot <- function(x){
     filter(extremes == "Extreme Over-Estimation") %>% 
     ggplot(aes(lw_underestimate, comname)) +
       geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
+      #geom_vline(xintercept = 0, size = 0.5, color = "black", linetype = 2) +
       scale_color_gmri() +
       scale_x_continuous(labels = comma_format()) +
       labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
@@ -311,7 +313,7 @@ mismatch_plot <- function(x){
 
 These species got a priority pass when matching with L-W coefficients because they are from a more recent and region specific source.
 
-```{r, out.height=8}
+```{r, fig.height=8}
 weights_all %>% filter(source == "wigley") %>% 
   mismatch_plot()
 ```
@@ -321,7 +323,7 @@ weights_all %>% filter(source == "wigley") %>%
 
 These species were matched up with coefficients from fishbase and are likely less accurate than the ones with svspp codes.
 
-```{r, out.height=8}
+```{r, fig.height=8}
 weights_all %>% filter(source == "fishbase") %>% 
   mismatch_plot()
 ```
