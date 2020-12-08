@@ -17,8 +17,9 @@ library(tidyverse)
 
 
 # Load the build code and stratification function
-mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+box_paths <- research_access_paths(os.use = "unix")
+mills_path <- box_paths$mills
+res_path <- box_paths$res
 
 
 
@@ -31,11 +32,6 @@ trawl_19 <- survdat %>% clean_names()
 rm(survdat)
 
 
-# # 2020 Raw data
-# trawl_20 <- read_csv(here("data/NEFSC/2020survdat_nye.csv"), 
-#                      guess_max = 1e6, 
-#                      col_types = cols()) %>% clean_names()
-
 
 
 
@@ -45,7 +41,7 @@ rm(survdat)
 ####__  Size Spectra Builds  ####
 source(here("R/01_nefsc_ss_build.R"))
 # weights_16 <- load_2016_ss_data() 
-# weights_19 <- load_ss_data(survdat = trawl_19, survdat_source = "2019")
+weights_19 <- load_ss_data(survdat = trawl_19, survdat_source = "2019")
 weights_20 <- load_ss_data(survdat_source = "2020")
 
 
@@ -59,42 +55,6 @@ weights_20 %>% select(
   expanded_biom_s, expanded_biom_epu,            # projected biomass, weighted by stratum cpue, expanded to total area
   expanded_lwbio_s, expanded_lwbio_epu)          # projected biomass as l-w biomass of individuals * stratified abundance
 
-
-# column groups, by what they are and what stratification they are
-
-# annual summaries, rough approach
-test_summaries <- weights_20 %>% 
-  group_by(est_year) %>% 
-  summarise(across(c(numlen_adj, sum_weight_kg, biom_adj, abund_tow_s:expanded_lwbio_epu), ~ sum(.x, na.rm = T)),
-            .groups = "keep") %>% 
-  pivot_longer(names_to = "Metric", values_to = "total", cols = c(numlen_adj:expanded_lwbio_epu)) %>% 
-  mutate(
-    strat_level = case_when(
-      str_detect(Metric, "_epu") ~ "epu",
-      str_detect(Metric, "sum_weight_kg|biom_adj|numlen_adj") ~ "un-adjusted",
-      str_detect(Metric, "_s") ~ "nmfs_strata"),
-    type = case_when(
-      str_detect(Metric, "kg|biom_adj")     ~ "survey biomass",
-      str_detect(Metric, "tow")             ~ "catch / tow",
-      str_detect(Metric, "wt")              ~ "weighted cpue",
-      str_detect(Metric, "expanded")        ~ "expanded total",
-      str_detect(Metric, "numlen_adj|abund") ~ "abundance"),
-    `measurement source` = case_when(
-      str_detect(Metric, "lwbio|sum_weight_kg")  ~ "LW Regression",
-      str_detect(Metric, "biom|biom_adj")        ~ "Shipboard Biomass",
-      str_detect(Metric, "abund|numlen_adj")     ~ "Abundance"),
-    vessel = ifelse(est_year > 2008, "HB", "AL")
-  )
-
-
-test_summaries %>% 
-  split(.$vessel) %>%
-  map(function(x){
-    ggplot(x, aes(est_year, total)) +
-    geom_line(aes(color = `measurement source`, linetype = )) +
-    labs(x = "", y = "Annual Total") +
-    facet_grid(type~strat_level, scales = "free")
-  })
 
 
 
@@ -111,7 +71,7 @@ test_summaries %>%
 
 # run summaries
 #summ_16 <- ss_annual_summary(weights_16) %>% mutate(source = "2016 survdat")
-#summ_19 <- ss_annual_summary(weights_19) %>% mutate(source = "2019 survdat")
+summ_19 <- ss_annual_summary(weights_19) %>% mutate(source = "2019 survdat")
 summ_20 <- ss_annual_summary(weights_20) %>% mutate(source = "2020 survdat")
 # summs <- bind_rows(list(summ_16, summ_19, summ_20))
 # summs <- bind_rows(list(summ_19, summ_20))
@@ -218,3 +178,106 @@ p4 <- reg_summs %>%
   labs(x = "", y = "Stratified Biomass (million kg)\nFSCS")
 
 p1 + p2 + p3 + p4
+
+
+
+
+
+
+
+
+
+
+
+
+####  Mapping the trawl areas, exists elsewhere but needed for something  ####
+
+# Load polygons for mapping
+library(rnaturalearth)
+library(sf)
+box_paths <- research_access_paths()
+res_path <- box_paths$res
+new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+canada <- ne_states("canada") %>% st_as_sf(crs = 4326)
+trawl_strata <- read_sf(str_c(res_path, "Shapefiles/BottomTrawlStrata/BTS_Strata.shp"))
+trawl_strata <- trawl_strata %>%  clean_names()
+
+# Stratum Key for filtering specific areas
+strata_key <- list(
+  "Georges Bank"          = as.character(13:23),
+  "Gulf of Maine"         = as.character(24:40),
+  "Southern New England"  = str_pad(as.character(1:12), width = 2, pad = "0", side = "left"),
+  "Mid-Atlantic Bight"    = as.character(61:76))
+
+# Add labels to the data
+trawl_strata <- trawl_strata %>%
+  mutate(
+    strat_num = str_sub(strata, 2, 3),
+    survey_area =  case_when(
+      strat_num %in% strata_key$`Georges Bank`         ~ "Georges Bank",
+      strat_num %in% strata_key$`Gulf of Maine`        ~ "Gulf of Maine",
+      strat_num %in% strata_key$`Southern New England` ~ "Southern New England",
+      strat_num %in% strata_key$`Mid-Atlantic Bight`   ~ "Mid-Atlantic Bight",
+      TRUE                                             ~ "not found"))
+
+
+# Optional, Use strata_select to pull the strata we want individually
+strata_select <- c(
+  strata_key$`Georges Bank`,
+  strata_key$`Gulf of Maine`,
+  strata_key$`Southern New England`,
+  strata_key$`Mid-Atlantic Bight`)
+
+
+# Filtering with strata_select
+trawl_strata <- trawl_strata %>% 
+  filter(
+    strata >= 01010,
+    strata <= 01760,
+    strata != 1310,
+    strata != 1320,
+    strata != 1330,
+    strata != 1350,
+    strata != 1410,
+    strata != 1420,
+    strata != 1490,
+    strat_num %in% strata_select)
+
+
+ggplot() +
+  geom_sf(data = trawl_strata, aes(fill = survey_area)) +
+  geom_sf(data = new_england) +
+  geom_sf(data = canada) +
+  coord_sf(xlim = c(-76, -66), ylim = c(35,46)) +
+  theme(legend.title = element_blank())
+
+
+
+# Load and reshape the Gulf of Maine timeseries for Jason Johnston
+
+gom_temps <- read_csv(str_c(box_paths$okn, "oisst/regional_timeseries/nmfs_trawl_regions/OISSTv2_anom_gulf_of_maine.csv"))
+
+# get yearxmonth means
+monthlyavg <- gom_temps %>% 
+  mutate(year = lubridate::year(time), 
+         month = lubridate::month(time)) %>% 
+  group_by(year, month) %>% 
+  summarise(
+    mean_sst = mean(sst, na.rm = T),
+    historic_avg = mean(sst_clim, na.rm = T),
+    temp_anomaly = mean_sst - historic_avg,
+    climate_ref_period = "1982-2011",
+    data_source = "NOAA OISST",
+    region = "Gulf of Maine",
+    region_def = "NMFS Trawl Strata 24-40")
+
+# # Export csv for Jason to use
+# write_csv(monthlyavg, here("data/GoM_monthly_oisst.csv"))
+
+
+ggplot() +
+  geom_sf(data = filter(trawl_strata, survey_area == "Gulf of Maine"), aes(fill = survey_area)) +
+  geom_sf(data = new_england) +
+  geom_sf(data = canada) +
+  coord_sf(xlim = c(-71, -65.5), ylim = c(41,46)) +
+  theme(legend.title = element_blank())

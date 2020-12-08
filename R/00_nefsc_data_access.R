@@ -1,5 +1,8 @@
 ####  NEFSC Trawl Data Access  ####
 
+# COMMENTS:
+# This script goes over where the trawl data is stored and where it has been resaved locally
+# Also contained is the processing code for the length weight coefficient key
 
 
 ####  Packages  ####
@@ -12,15 +15,18 @@ library(patchwork)
 
 ####  Data  ####
 
-# 2019 data From Janet Nye
+# Paths
 mills_path <- shared.path(group = "Mills Lab", folder = "")
+res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+
+# 2019 data From Janet Nye
 #load(str_c(mills_path, "Data/Survdat_Nye_allseason.RData"))
 
 # Gonna save it locally for convenience/laziness
 #write_csv(survdat, here("data/NEFSC/2019survdat_nye.csv"))
 
 # 2020 edition
-load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
+load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
 
 # Gonna save it locally for convenience/laziness
 # write_csv(survdat, here("data/NEFSC/2020survdat_nye.csv"))
@@ -35,17 +41,18 @@ load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
 # Wigley Paper
 # Fishbase
 
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+
 
 
 # Fishbase Growth Coefficients
-nefsc_lw <- read_csv(here("data/NEFSC/nefsc_lw_key_filled.csv"),
+fishbase_lw <- read_csv(here("data/NEFSC/nefsc_lw_key_filled.csv"),
                      guess_max = 1e3,
                      col_types = cols())
 
 
 # Wrigley Paper, Load length weight coefficients
 load(paste0(res_path, "/NMFS_trawl/lwreg.Rdata"))
+wrigley_lw <- lwreg; rm(lwreg)
 
 
 # Species class/groups based on life history
@@ -58,7 +65,7 @@ spp_classes <- read_csv(here("data/kmills/sppclass.csv"),
 
 ####__ 1.  Fishbase Coefficients  ####
 # Fill in NA growth coefficients using related species (typically same genera)
-nefsc_lw <- nefsc_lw %>% 
+fishbase_lw <- fishbase_lw %>% 
   mutate(a = as.numeric(a),
          b = as.numeric(b),
          ln_a = log(a),
@@ -67,11 +74,12 @@ nefsc_lw <- nefsc_lw %>%
          a = ifelse(is.na(a), exp(ln_a), a))
 
 # validation plots
-(nefsc_a <- ggplot(nefsc_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: fishbase"))
-(nefsc_lna <- ggplot(nefsc_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: fishbase"))
-(nefsc_b <- ggplot(nefsc_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: fishbase"))
+(nefsc_a <- ggplot(fishbase_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: fishbase"))
+(nefsc_lna <- ggplot(fishbase_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: fishbase"))
+(nefsc_b <- ggplot(fishbase_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: fishbase"))
 
-nefsc_lw %>% 
+# Check that ln_a is consistent with what it would be if we calculated them right now from a
+fishbase_lw %>% 
   mutate(lna_check = log(a)) %>% 
   ggplot(aes(ln_a, lna_check)) +
   geom_point()
@@ -81,9 +89,12 @@ nefsc_lw %>%
 
 
 
+
+
+
 ####__ 2. Wrigley Paper Coefficients  ####
-lwreg <- lwreg %>% clean_names()  
-lwreg <- lwreg %>%  
+wrigley_lw <- wrigley_lw %>% clean_names()  
+wrigley_lw <- wrigley_lw %>%  
   mutate(comname = str_to_lower(common_name), .before = scientific_name,
          common_name = NULL,
          scientific_name = str_to_lower(scientific_name),
@@ -95,8 +106,25 @@ lwreg <- lwreg %>%
 
 
 
+
+# Validation Plots
+(wigley_a   <- ggplot(wigley_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: wigley"))
+(wigley_lna <- ggplot(wigley_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: wigley"))
+(wigley_b   <- ggplot(wigley_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: wigley"))
+wigley_lw %>% 
+  mutate(lna_check = log(a)) %>% 
+  ggplot(aes(ln_a, lna_check)) +
+  geom_point()
+
+
+
+
+
+
+
 ####__ 3. Classes & Economic Groups  ####
-# Species Life History & Fisheries Relevance
+
+# Clean up Species Life History & Fisheries Relevance
 spp_classes <- spp_classes %>% 
   clean_names() %>% 
   mutate(common_name = str_to_lower(common_name),
@@ -108,18 +136,16 @@ spp_classes <- spp_classes %>%
   select(svspp, comname = common_name, everything(), -flag, -flag2)
 
 
-# Merge the growth coefficients with the species classes
-wigley_lw <- left_join(lwreg, spp_classes, by = c("svspp", "comname", "scientific_name"))
 
 
-# Validation Plots
-(wigley_a   <- ggplot(wigley_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: wigley"))
-(wigley_lna <- ggplot(wigley_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: wigley"))
-(wigley_b   <- ggplot(wigley_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: wigley"))
-wigley_lw %>% 
-  mutate(lna_check = log(a)) %>% 
-  ggplot(aes(ln_a, lna_check)) +
-  geom_point()
+# Merge the growth coefficient tables with the species classes  
+
+# Fishbase
+fishbase_lw <- left_join(fishbase_lw, spp_classes, by = "comname")
+
+# Wrigley
+wigley_lw <- left_join(wrigley_lw, spp_classes, by = c("svspp", "comname", "scientific_name"))
+
 
 
 
@@ -146,16 +172,22 @@ wigley_lw[which(wigley_lw$ln_a == max(wigley_lw$ln_a)) ,]
 # 1. use these growth coefficients to get biomasses
 # 2. Potentially merge in my fishbase ones so that there is just one master
 
-
 wigley_lw <- wigley_lw %>% mutate(source = "wigley") %>% select(source, everything())
-nefsc_lw  <- nefsc_lw %>% mutate(source = "fishbase") %>% select(source, everything())
-lw_combined <- full_join(nefsc_lw, wigley_lw, by = c("source", "comname", "b", "a", "ln_a")) 
+fishbase_lw  <- fishbase_lw %>% mutate(source = "fishbase") %>% select(source, everything())
+lw_combined <- full_join(fishbase_lw, wigley_lw, by = c("source", "comname", "b", "a", "ln_a", "svspp", "scientific_name", "spec_class", "fishery")) 
+#lw_combined <- full_join(fishbase_lw, wigley_lw, by = c("source", "comname", "b", "a", "ln_a")) 
 
+
+
+
+
+
+#### Gap Fill for NA's  ####
 # Fill in gaps for things that should be consistent
 # Lot of matching by common name and pulling the first value where it matches to fill the NA values
 
 # Create named vectors to use as lookup keys
-hare_lookup    <- setNames(nefsc_lw$hare_group, nefsc_lw$comname )
+hare_lookup    <- setNames(fishbase_lw$hare_group, fishbase_lw$comname )
 svspp_lookup   <- setNames(wigley_lw$svspp, wigley_lw$comname )
 sci_lookup     <- setNames(wigley_lw$scientific_name, wigley_lw$comname)
 fishery_lookup <- setNames(wigley_lw$fishery, wigley_lw$comname)
@@ -213,7 +245,7 @@ lw_combined <- lw_combined %>%
 ####____  test: compare value ranges   ####
 
 # Double check that the values are in the same ballpark:
-(combined_a   <- ggplot(lw_combined, aes(x = a)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source))
+(combined_a   <- ggplot(lw_combined, aes(x = a)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source, scales = "free"))
 (combined_lna <- ggplot(lw_combined, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source))
 (combined_b   <- ggplot(lw_combined, aes(x = b)) + geom_histogram() + labs(caption = "source: combined") + facet_wrap(~source))
 
@@ -222,7 +254,7 @@ lw_combined <- lw_combined %>%
 
 
 # Remove the lw building components
-rm(wigley_lw, nefsc_lw, spp_classes, lwreg)
+rm(wigley_lw, fishbase_lw, spp_classes, wrigley_lw)
 
 
 # Export the key for the size spectra build

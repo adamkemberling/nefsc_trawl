@@ -41,7 +41,7 @@ library(tidyverse)
 # 
 # # Load strata shapefiles, get area, also assign their EPU
 # 
-# trawl_strata <- survey_strata <- read_sf(str_c(res_path, "Shapefiles/BottomTrawlStrata/BTS_Strata.shp"))
+# trawl_strata <- read_sf(str_c(res_path, "Shapefiles/BottomTrawlStrata/BTS_Strata.shp"))
 # trawl_strata <- trawl_strata %>%  clean_names()
 # trawl_sp     <- sf::as_Spatial(trawl_strata)
 # # get area
@@ -67,9 +67,10 @@ library(tidyverse)
 load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 
   ####  Paths  
-  mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = "")
-  nsf_path   <- shared.path(os.use = "unix", group = "NSF OKN", folder = "")
-  res_path   <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+  box_paths  <- research_access_paths(os.use = "unix")
+  mills_path <- box_paths$mills
+  nsf_path   <- box_paths$okn
+  res_path   <- box_paths$res
   
   
   ####  Load Data  ####
@@ -79,7 +80,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   # 2020 groundfish survey data
   if(survdat_source == "2020"){
-    load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
+    load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
     survdat <- clean_names(survdat)
   } 
   
@@ -99,16 +100,22 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   ####__ 1. Column Changes  ####
   trawldat <- survdat %>% 
     mutate(
-      comname   = tolower(comname),
-      id        = format(id, scientific = FALSE),
+      # Text Formatting 
+      comname = tolower(comname),
+      id      = format(id, scientific = FALSE),
+      # Biomass and abundance NA substitutions
       biomass   = ifelse(is.na(biomass) == TRUE & abundance > 0, 0.0001, biomass),
       abundance = ifelse(is.na(abundance) == TRUE & biomass > 0, 1, abundance),
-      #stratum number excluding leading and trailing codes for inshore/offshore
-      strat_num    = str_sub(stratum, 2, 3)) %>%  
+      # Sratum number, excluding leading and trailing codes for inshore/offshore, for matching
+      strat_num = str_sub(stratum, 2, 3)) %>%  
     mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), .after = biomass) %>% 
     mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), .after = abundance)
   
-  ####__ 2. Column Selection ####
+  
+  
+  
+  
+  ####__ 2. Column Selections ####
 
   # currently a light-weight group of columns, 
   # leaves behind CTD and shipboard instrument details.
@@ -141,7 +148,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  ####__ 3. Data Filtering  ####
+  ####__ 3. Row Filtering  ####
   # 1. Strata
   # 2. Seasons
   # 3. Year limits
@@ -149,7 +156,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # 5. Species Exclusion
   trawldat <- trawldat %>%
     filter(
-      # Eliminate Candian Strata and Not in Use Strata
+      # Eliminate Candian Strata and Strata No longer in Use 
       stratum >= 01010,
       stratum <= 01760,
       stratum != 1310,
@@ -175,7 +182,13 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     )
   
   
-  # ####__ 4. Spatial Filtering  ####
+  
+  
+  
+  
+  
+  
+  ####__ 4. Spatial Filtering  ####
   
   
   #### EPU assignment for survdat stations - function from Sean Luceys "RSurvey" repo
@@ -233,8 +246,8 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   ####__ 5. Stratum Area/Effort Ratios  ####
-  
-  
+  # Stratum area ratio is the ratio between the area of the select 
+  # stratum to the total area of all stratum sampled that year
   
   # Join to the files containing area of each stratum, epu
   trawldat <- trawldat %>% 
@@ -287,6 +300,9 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
     left_join(yr_epu_effort, by = c("est_year", "epu"))
   
   
+  
+  
+  
 
 
 
@@ -294,7 +310,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # scales difference between the sum(numlen) and the reported abundance
   # convers is the difference between abundance and the number measured
   conv_factor <- trawldat %>%
-    group_by(id, comname, catchsex, numlen, abundance) %>%
+    group_by(id, comname, catchsex, abundance) %>%
     summarise(
       abund_raw = sum(numlen),               
       convers   =  abund_adj / abund_raw,
@@ -303,7 +319,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 
   # Merge back and convert the numlen field
   trawldat <- trawldat %>%
-    left_join(conv_factor, by = c("id", "comname", "catchsex", "numlen", "abundance")) %>%
+    left_join(conv_factor, by = c("id", "comname", "catchsex", "abundance")) %>%
     mutate(numlen_adj = numlen * convers, .after = numlen) %>% 
     select(-c(abund_raw, convers))
 
@@ -312,7 +328,11 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  #### Length to Bodymass Conversions  ####
+  
+  
+  
+  
+  #### Section 2: Length to Bodymass Conversions  ####
   
   
   
@@ -359,6 +379,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"),
                           col_types = cols()) %>% 
     mutate(svspp = str_pad(svspp, 3, "left", "0"))
+  
   
   # Do a priority pass with the filter(lw_combined, source == "wigley)
   # merge on comname, season, and catchsex
@@ -431,6 +452,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   # Constants:
   # average area covered by an albatross standard tow in km2
   alb_tow_km2 <- 0.0384 
+  
   # catchability coefficient, ideally should shift for different species guilds
   q <- 1                
  
@@ -498,6 +520,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
 # dat_2020 <- load_ss_data(survdat_source = "2020")
 
 
+####____________________####
 
 
 #### 1. Stratified Species Summary  ####
@@ -716,10 +739,10 @@ ss_annual_summary <- function(survey_data) {
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
-      lw_strat_biomass_s       = sum(expanded_lwbio_s, na.rm = T),              # total biomass across all areas,  weighted by stratum
-      lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),            # total biomass across all areas,  weighted by epu
-      fscs_strat_biomass_s     = sum(expanded_biom_s),                       # total biomass across all areas,  weighted by stratum
-      fscs_strat_biomass_epu   = sum(expanded_biom_epu),                     # total biomass across all areas, weighted by epu
+      lw_strat_biomass_s       = sum(expanded_lwbio_s, na.rm = T),            # total biomass across all areas,  weighted by stratum
+      lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),          # total biomass across all areas,  weighted by epu
+      fscs_strat_biomass_s     = sum(expanded_biom_s),                        # total biomass across all areas,  weighted by stratum
+      fscs_strat_biomass_epu   = sum(expanded_biom_epu),                      # total biomass across all areas, weighted by epu
       .groups = "keep"
     )  %>% 
     mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))

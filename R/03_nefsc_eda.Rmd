@@ -33,8 +33,9 @@ source(here("R/support/sizeSpectra_support.R"))
 source(here("R/01_nefsc_ss_build.R"))
 
 ####  Resource Paths  ####
-mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+box_paths <- research_access_paths(os.use = "unix")
+mills_path <- box_paths$mills
+res_path <- box_paths$res
 
 
 ####  Load Data  ####
@@ -44,6 +45,10 @@ weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"),
                        col_types = cols(), guess_max = 1e4)
 
 # Load the shapefiles for the polygons
+
+# Load new england
+new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
 
 #### Set theme  ####
 theme_set(theme_classic())
@@ -302,24 +307,23 @@ class_totals <- weights_20 %>%
   ungroup() %>% 
   left_join(ann_means, by = "est_year") %>% 
   mutate(`Percent of Annual Biomass` = (`Total Class Biomass` / lw_biomass_kg) * 100 ,
-         `Species Category` = spec_class,
+         `Species Guild` = spec_class,
+         `Species Guild` = ifelse(is.na(`Species Guild`), "Unclassified", `Species Guild`),
          Year = as.character(est_year))
 ```
 
 #### Proportion of Total Catch
 
 ```{r, fig.height=6}
-#2008 
-
 # Class Proportions
 class_totals %>% 
-  ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass`, fill = `Species Category`)) + 
+  ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass`, fill = `Species Guild`)) + 
     geom_col(color = "white", size = 0.2) +
     geom_vline(xintercept = "2008", linetype = 2, color = "gray25") +
     labs(x = "", y = "Proportion of Total Annual Biomass") +
     coord_flip() +
     scale_fill_gmri() +
-    scale_y_continuous(position = "right", ) +
+    scale_y_continuous(position = "right") +
     guides("fill" = guide_legend(title.position = "top", title.hjust = 0.5)) +
     theme(legend.position = "bottom")
 
@@ -489,6 +493,7 @@ summs %>%
 Since 2008 there has been a large increase in the amount of total biomass caught and the adjusted CPUE. As a way to look into the top species contributing to this I have pulled out the top 5 species for thbat year by total biomass caught.
 
 ```{r}
+
 # Pull top 5 species from each year, by biomass
 top_5 <- weights_20 %>% 
   filter(est_year >= 2004) %>% 
@@ -626,7 +631,8 @@ svp <- weights_20 %>%
               names_sep = "_",
               values_from = c(bio, effort, cpue)) %>% 
   mutate(cpue_change = (cpue_HB - cpue_AL) / cpue_AL) %>% 
-  arrange(desc(cpue_change))
+  arrange(desc(cpue_change)) %>% 
+  ungroup
 
 
 
@@ -634,7 +640,8 @@ svp <- weights_20 %>%
 # Highlight Positive Changes in CPUE
 pos_change_plot <- svp %>% 
   slice_max(n = 10, order_by = cpue_change) %>% 
-  mutate(comname = fct_reorder(comname, cpue_change, max)) %>% 
+  mutate(comname = fct_reorder(.f = comname, .x = cpue_change, .fun = max)) %>% 
+  
   ggplot(aes(y = comname, x = cpue_change)) +
   geom_segment(aes(x = 0, xend = cpue_change, y = comname, yend = comname)) +
   geom_point() +
@@ -769,7 +776,7 @@ y_plots <- weights_20 %>%
   split(.$est_year) %>% 
   map(function(x){
     x %>%  
-      top_n(n = 10, total_biomass_lw) %>% 
+      top_n(n = 20, total_biomass_lw) %>% 
       arrange(desc(total_biomass_lw)) %>% 
       mutate(comname = fct_reorder(comname, total_biomass_lw, mean))  %>% 
       ggplot(aes(total_biomass_lw, comname)) +
@@ -831,8 +838,15 @@ weights_20 <- weights_20 %>%
   mutate(
     lweight = log(ind_weight_kg),
     llen = log(length),
-    l10wt = log10(ind_weight_kg),
-    # Length bins for log() scale
+    l10wt = log10(ind_weight_kg))
+
+
+
+
+ # Length bins for log() scale
+weights_20 <- weights_20 %>% 
+  mutate(
+    # Bin Numbers
     lenbin2 = case_when(
       llen > 5    ~ 10,
       llen > 4.5  ~ 9,
@@ -857,8 +871,15 @@ weights_20 <- weights_20 %>%
       lenbin2 == 3 ~ exp(2) - exp(1.5),
       lenbin2 == 2 ~ exp(1.5) - exp(1),
       lenbin2 == 1 ~ exp(1) - exp(.5),
-      lenbin2 == 0 ~ exp(0.5) - exp(0)),
-    # Weight bins on log() scale
+      lenbin2 == 0 ~ exp(0.5) - exp(0)))
+
+
+
+
+# Weight bins on log() scale
+weights_20 <- weights_20 %>% 
+  mutate(
+    # Bin numbers
     wtbin = case_when(
       lweight > 8   ~ 10,
       lweight > 6   ~ 9,
@@ -883,8 +904,15 @@ weights_20 <- weights_20 %>%
       wtbin ==  3 ~ exp(.25) - exp(.125),
       wtbin ==  2 ~ exp(.125) - exp(.0625),
       wtbin ==  1 ~ exp(.0625) - exp(.03125),
-      wtbin ==  0 ~ exp(.03125) - exp(.015625)),
-    # Weight bins on log10() scale
+      wtbin ==  0 ~ exp(.03125) - exp(.015625)))
+
+
+
+
+# Weight Bins on log10 scale
+weights_20 <- weights_20 %>% 
+  mutate(
+    #Bin Numbers
     wt10bin =  case_when(
       l10wt > 3     ~ 21,
       l10wt > 2.5   ~ 20,
@@ -952,20 +980,22 @@ bin_summs <- weights_20 %>%
 
 ```{r}
 
+# The bin names have no values Reference points
+
 # log() length bins
 l1 <- ggplot(bin_summs, aes(lenbin2, n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_log10() +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "log2 Length Bins", y = "Abundance")
+    labs(x = "Bin Number", y = "Abundance")
 
 l2 <- ggplot(bin_summs, aes(lenbin2, l_norm, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "log2 Length Bins", y = "Normalized Abundance")
+    labs(x = "Bin Number", y = "Normalized Abundance", caption = "Bin numbers increase at increments of 0.5 in log(length).")
 
 l1 | l2
 
@@ -992,7 +1022,7 @@ wt2 <- ggplot(bin_summs, aes(wtbin, wtbin_norm, fill = svvessel)) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "log2 Weight Bins", y = "Normalized Abundance")
+    labs(x = "log2 Weight Bins", y = "Normalized Abundance", caption = "Bin numbers increase at increments of 2 in log(weight).")
 
 
 wt1 | wt2
@@ -1017,7 +1047,7 @@ wt10_2 <- ggplot(bin_summs, aes(wt10bin, wt10_norm, fill = svvessel)) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "log10 Weight Bins", y = "Normalized Abundance")
+    labs(x = "log10 Weight Bins", y = "Normalized Abundance", caption = "Bin numbers increase at increments of 0.5 in log(length).")
 
 wt10_1 | wt10_2
 ```
@@ -1133,10 +1163,6 @@ survey_strata <- survey_strata %>%
   )) %>% 
   select(finstr_id, strata, strata_num, area, a2, str2, set, stratuma, str3, geometry)
 
-# Load new england
-new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
-canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
-
 
 # Make trawl data an sf dataset
 trawl_sf <- weights_20 %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
@@ -1180,7 +1206,9 @@ ggplot() +
 
 
 ### Regional Summaries 
+
 ```{r}
+
 # Just Area, all seasona
 area_summs <- weights_20 %>% 
   group_by(survey_area) %>% 
@@ -1192,7 +1220,8 @@ area_summs <- weights_20 %>%
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
     mean_ind_length = weighted.mean(length, weights = numlen_adj),
     .groups = "keep"
-  )
+  ) %>% 
+  ungroup()
 
 # Area x Season
 seas_area <- weights_20 %>% 
@@ -1204,7 +1233,8 @@ seas_area <- weights_20 %>%
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
     mean_ind_length = weighted.mean(length, weights = numlen_adj),
     .groups = "keep"
-  )
+  ) %>% 
+  ungroup()
 
 
 # Combine those two
@@ -1221,22 +1251,29 @@ summs_combined %>%
 area_summs_y <- weights_20 %>% 
   group_by(est_year, survey_area) %>% 
   summarise(
-    season = "Spring + Fall",
-    lw_biomass_kg = sum(sum_weight_kg, na.rm = T),
-    n_stations = n_distinct(id),
+    season                 = "Spring + Fall",
+    lw_biomass_kg          = sum(sum_weight_kg, na.rm = T),
+    n_stations             = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
-    mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length = weighted.mean(length, weights = numlen_adj),
-    expanded_abund = sum(expanded_abund_s),
-    expanded_lwbio = sum(expanded_lwbio_s),
-    expanded_biom = sum(expanded_biom_s),
+    mean_ind_bodymass      = weighted.mean(ind_weight_kg, weights = numlen_adj),
+    mean_ind_length        = weighted.mean(length, weights = numlen_adj),
+    expanded_abund         = sum(expanded_abund_s),
+    expanded_lwbio         = sum(expanded_lwbio_s),
+    expanded_biom          = sum(expanded_biom_s),
     .groups = "keep"
-  )
+  ) %>% 
+  ungroup()
 
+
+weights_20 %>% 
+  ggplot(aes(est_year, sum_weight_kg)) +
+  geom_boxplot(aes(group = est_year))
 ```
 
 
 ### Total Biomass
+
+Total biomass in the figures below is derived from weight at length relationships and reflects the mean expected biomass of the fish caught using the observed distribution and frequency of lengths.
 
 ```{r}
 area_summs_y %>% 
@@ -1252,6 +1289,8 @@ area_summs_y %>%
 
 ### CPUE
 
+CPUE displayed below is the mean total biomass, derived from weight at length relationships, per station for each region. These values have not been weighted to reflect the difference in area between regions.
+
 ```{r}
 area_summs_y %>% 
   ggplot(aes(est_year, lw_biomass_per_station)) +
@@ -1262,6 +1301,8 @@ area_summs_y %>%
 ```
 
 ### Area Expanded Abundance
+
+Area expanded abundance is calculated by taking the catch per station rates for each length class of each species and extending that density to the total areas of the region. Catchability is assumed to be 1 for this calculation though it is certainly lower. This extension of catch rates is highly sensitive to large swings due to high variances and zero inflation of abundances.
 
 ```{r}
 area_summs_y %>% 

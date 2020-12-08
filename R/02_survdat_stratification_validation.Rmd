@@ -30,8 +30,9 @@ library(ggforce)
 
 
 # Load the build code and stratification function
-mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+box_paths <- research_access_paths(os.use = "unix")
+mills_path <- box_paths$mills
+res_path <- box_paths$res
 
 #### Set theme  ####
 theme_set(theme_minimal())
@@ -144,6 +145,7 @@ bind_rows(ann_summs, seas_summs) %>%
     scale_color_gmri() +
     labs(x = "") +
     theme(legend.position = "bottom")
+
 ```
 
 
@@ -153,6 +155,8 @@ bind_rows(ann_summs, seas_summs) %>%
 Another comparison of interest is whether it makes a difference to calculate catch rates for individual lengths of a species, expanding those rates out to get a stratified biomass. Or to aggregate before estimating catch rates.
 
 The following code will look into that comparison.
+
+
 
 ## Size Specific Catch Rates {.tabset}
 
@@ -218,7 +222,7 @@ cod_20 %>%
   kable_styling(font_size = 10)
 ```
 
-# LW Coefficient Comparisons
+# LW Coefficient Comparisons {.tabset .tabset-pills}
 
 Looks like the root cause is just the difference between what the mean prediction from species-specific coefficients is when compared to the biomass column in survdat.
 
@@ -236,68 +240,97 @@ weights_all <- load_ss_data(survdat_source = "2020")
 
 
 # Get the total weights for each station, then do it each year for every species
-species_summaries <- weights_all %>% 
-  group_by(est_year, comname, id) %>% 
-  summarise(length_weight_biomass = sum(sum_weight_kg),
-            ship_measured_biomass = sum(biom_adj),
-            lw_underestimate = ship_measured_biomass - length_weight_biomass) %>% 
-  ungroup()
-
-
-# Format rankings to plot
-n_species <- length(unique(species_summaries$comname))
-ranks <- species_summaries %>% 
-  mutate(comname = fct_reorder(.f = comname, .x = lw_underestimate, mean),
-         species_rank = as.numeric(comname),
-         extremes = ifelse( species_rank >= n_species - 15, "Extreme Under-Estimation", NA),
-         extremes = ifelse(species_rank <= 15, "Extreme Over-Estimation", extremes)) 
-
-
-
-# All ranks in one panel
-all_ranks <- ranks %>% 
-  ggplot(aes(lw_underestimate, species_rank)) +
-    geom_boxplot(aes(group = species_rank), color = "gray40") +
-    geom_boxplot(data = filter(ranks, is.na(extremes) == FALSE),
-                 aes(group = species_rank, color = extremes)) +
-    scale_x_continuous(labels = comma_format()) +
-    scale_color_gmri() +
-    guides("color" = guide_legend(title = "")) +
-    labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
-         y = "Underestimation Rank") +
-  theme(legend.position = c(0.2, 0.95))
-
-# Focus on top 5
-top_5 <- ranks %>% 
-  filter(extremes == "Extreme Under-Estimation") %>% 
-  ggplot(aes(lw_underestimate, comname)) +
-    geom_boxplot(aes(group = species_rank), color = gmri_cols("orange")) +
-    scale_color_gmri() +
-    scale_x_continuous(labels = comma_format()) +
-    labs(x = "",
-         y = "", 
-         title = "Length-Weight Biomass < 'survdat$Biomass'") +
-  theme(title = element_text(hjust = 0.5))
-
-# Focus on bottom 5
-bot_5 <- ranks %>% 
-  filter(extremes == "Extreme Over-Estimation") %>% 
-  ggplot(aes(lw_underestimate, comname)) +
-    geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
-    scale_color_gmri() +
-    scale_x_continuous(labels = comma_format()) +
-    labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
-         y = "", 
-         title = "Length-Weight Biomass > 'survdat$Biomass'") +
-  theme(title = element_text(hjust = 0.5))
+# Plot flags top and bottom 15 species that don't match well with survdat$biomass
+mismatch_plot <- function(x){
+  species_summaries <- x %>% 
+    group_by(est_year, comname, id) %>% 
+    summarise(length_weight_biomass = sum(sum_weight_kg),
+              ship_measured_biomass = sum(biom_adj),
+              lw_underestimate = ship_measured_biomass - length_weight_biomass) %>% 
+    ungroup()
   
-
-
-# Patchwork plot
-all_ranks | (top_5/bot_5)
-
+  
+  # Format rankings to plot
+  n_species <- length(unique(species_summaries$comname))
+  ranks <- species_summaries %>% 
+    mutate(comname = fct_reorder(.f = comname, .x = lw_underestimate, mean),
+           species_rank = as.numeric(comname),
+           extremes = ifelse( species_rank >= n_species - 15, "Extreme Under-Estimation", NA),
+           extremes = ifelse(species_rank <= 15, "Extreme Over-Estimation", extremes)) 
+  
+  
+  
+  # All ranks in one panel
+  all_ranks <- ranks %>% 
+    ggplot(aes(lw_underestimate, species_rank)) +
+      geom_boxplot(aes(group = species_rank), color = "gray40") +
+      geom_boxplot(data = filter(ranks, is.na(extremes) == FALSE),
+                   aes(group = species_rank, color = extremes)) +
+      geom_vline(xintercept = 0, size = 0.5, color = "black", linetype = 2) +
+      scale_x_continuous(labels = comma_format()) +
+      scale_color_gmri() +
+      guides("color" = guide_legend(title = "")) +
+      labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
+           y = "Underestimation Rank") +
+    theme(legend.position = c(0.2, 0.95))
+  
+  # Focus on top 5
+  top_5 <- ranks %>% 
+    filter(extremes == "Extreme Under-Estimation") %>% 
+    ggplot(aes(lw_underestimate, comname)) +
+      geom_boxplot(aes(group = species_rank), color = gmri_cols("orange")) +
+      scale_color_gmri() +
+      scale_x_continuous(labels = comma_format()) +
+      labs(x = "",
+           y = "", 
+           subtitle = "L-W mass < 'survdat$Biomass'") +
+    theme(title = element_text(hjust = 0.5))
+  
+  # Focus on bottom 5
+  bot_5 <- ranks %>% 
+    filter(extremes == "Extreme Over-Estimation") %>% 
+    ggplot(aes(lw_underestimate, comname)) +
+      geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
+      scale_color_gmri() +
+      scale_x_continuous(labels = comma_format()) +
+      labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
+           y = "", 
+           subtitle = "L-W mass > 'survdat$Biomass'") +
+    theme(title = element_text(hjust = 0.5))
+    
+  
+  
+  # Patchwork plot
+  plot_out <- all_ranks | (top_5/bot_5)
+  return(plot_out)
+}
 ```
 
 
+## SVSPP Species
+
+These species got a priority pass when matching with L-W coefficients because they are from a more recent and region specific source.
+
+```{r, out.height=8}
+weights_all %>% filter(source == "wigley") %>% 
+  mismatch_plot()
+```
+
+
+## Fishbase Species
+
+These species were matched up with coefficients from fishbase and are likely less accurate than the ones with svspp codes.
+
+```{r, out.height=8}
+weights_all %>% filter(source == "fishbase") %>% 
+  mismatch_plot()
+```
+
 
 ## LW Regression Fit Diagnostics
+
+
+
+
+
+
