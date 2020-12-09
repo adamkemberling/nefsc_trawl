@@ -490,7 +490,7 @@ summs %>%
 
 ### Top 5 Species by Weight {.tabset}
 
-Since 2008 there has been a large increase in the amount of total biomass caught and the adjusted CPUE. As a way to look into the top species contributing to this I have pulled out the top 5 species for thbat year by total biomass caught.
+Since 2008 there has been a large increase in the amount of total biomass caught and the adjusted CPUE. As a way to look into the top species contributing to this I have pulled out the top 5 species for that year by total biomass caught as derived from their length weight relationships.
 
 ```{r}
 
@@ -513,7 +513,7 @@ t5_plots <- top_5 %>%
   split(.$est_year) %>% 
   map(function(x){
     x %>% mutate(comname = fct_drop(comname),
-           comname = fct_reorder(comname, .fun = max, lw_biomass)) %>% 
+                 comname = fct_reorder(comname, .fun = max, lw_biomass)) %>% 
     ggplot(aes(x = lw_biomass, y = comname)) +
       geom_point() +
       geom_segment(aes(yend = comname, x = 0, xend = lw_biomass)) +
@@ -522,6 +522,7 @@ t5_plots <- top_5 %>%
       labs(x = "Total Biomass (kg)", y = "")
 })
 
+# Assemble 4-panel plots displaying years in groups of 4
 t1 <- ((t5_plots$`2004` | t5_plots$`2005`) / (t5_plots$`2006` | t5_plots$`2007`))
 t2 <- ((t5_plots$`2008` | t5_plots$`2009`) / (t5_plots$`2010` | t5_plots$`2011`))
 t3 <- ((t5_plots$`2012` | t5_plots$`2013`) / (t5_plots$`2014` | t5_plots$`2015`))

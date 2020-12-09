@@ -126,25 +126,46 @@ ann_summs <- weights_20 %>%
   group_by(est_year) %>% 
   summarise(`L-W Biomass` = sum(sum_weight_kg),
             `Bulk Biomass` = sum(biom_adj),
+            `Area Stratified Total L-W` = sum(expanded_lwbio_s),
+            `Area Stratified Total BIOMASS` = sum(expanded_biom_s),
             season = "SPRING + FALL")
 
 # Seasonal Differences
 seas_summs <- weights_20 %>% 
   group_by(est_year, season) %>% 
   summarise(`L-W Biomass` = sum(sum_weight_kg),
-            `Bulk Biomass` = sum(biom_adj))
+            `Bulk Biomass` = sum(biom_adj),
+            `Area Stratified Total L-W` = sum(expanded_lwbio_s),
+            `Area Stratified Total BIOMASS` = sum(expanded_biom_s))
 
-bind_rows(ann_summs, seas_summs) %>% 
-  pivot_longer(names_to = "Biomass Source", values_to = "Biomass (kg)", 
+
+# reformat for plotting
+summaries_long <- bind_rows(ann_summs, seas_summs) %>% 
+  pivot_longer(names_to = "Biomass Source", values_to = "Total Survey Biomass (kg)", 
                cols = c(`L-W Biomass`, `Bulk Biomass`)) %>% 
-  mutate(season = factor(season, levels = c("SPRING + FALL", "SPRING", "FALL")))%>% 
-  ggplot(aes(est_year, `Biomass (kg)`, color = `Biomass Source`)) +
-    geom_line() +
-    facet_wrap(~season, ncol = 1) +
-    scale_y_continuous(labels = comma_format())+
-    scale_color_gmri() +
-    labs(x = "") +
-    theme(legend.position = "bottom")
+  pivot_longer(names_to = "Stratified Biomass Source", values_to = "Area Projected Biomass (kg)", 
+               cols = c(`Area Stratified Total L-W`,`Area Stratified Total BIOMASS`)) %>% 
+  mutate(season = factor(season, levels = c("SPRING + FALL", "SPRING", "FALL")))
+
+
+# Total Biomass from survey
+ggplot(summaries_long, aes(est_year, `Total Survey Biomass (kg)`, color = `Biomass Source`)) +
+  geom_line() +
+  facet_wrap(~season, ncol = 1) +
+  scale_y_continuous(labels = comma_format())+
+  scale_color_gmri() +
+  labs(x = "") +
+  theme(legend.position = "bottom")
+
+
+# What that biomass is extended out to total areas
+ggplot(summaries_long, aes(est_year, `Area Projected Biomass (kg)`, color = `Stratified Biomass Source`)) +
+  geom_line() +
+  facet_grid(season~`Stratified Biomass Source`) +
+  scale_y_continuous(labels = comma_format())+
+  scale_color_gmri() +
+  labs(x = "") +
+  theme(legend.position = "bottom")
 
 ```
 

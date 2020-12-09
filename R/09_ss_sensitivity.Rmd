@@ -34,9 +34,10 @@ source(here("R/support/sizeSpectra_support.R"))
 theme_set(theme_minimal() + theme(axis.text = element_text(color = "black")))
 
 
-# File Paths
-mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+####  Resource Paths  ####
+box_paths <- research_access_paths(os.use = "unix")
+mills_path <- box_paths$mills
+res_path <- box_paths$res
 
 
 ####  Data  ####
@@ -78,7 +79,7 @@ dataBin <- dataBin %>%
     llen = log(LngtMin),
     l10wt = log10(wmin / 1000),
     # length bins
-    lenbin2 = case_when(
+    lenbin = case_when(
       llen > 5    ~ 10,
       llen > 4.5  ~ 9,
       llen > 4    ~ 8,
@@ -252,7 +253,7 @@ coarse_breaks <- setNames(coarse_breaks, paste0(coarse_breaks, "g"))
 break_plots <- map(coarse_breaks, function(breakpoint){
   bio_plot <- dataBin %>% 
     filter(wmin >= breakpoint) %>% 
-    group_by(lenbin2, wtbin, wt10bin) %>% 
+    group_by(lenbin, wtbin, wt10bin) %>% 
     summarise(n_group = sum(Number)) %>% 
     mutate(mass_break = paste0("Minimum Body Mass = ", breakpoint)) %>% 
     ggplot(aes(wt10bin, n_group, fill = mass_break)) +

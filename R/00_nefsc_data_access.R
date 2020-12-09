@@ -73,18 +73,16 @@ fishbase_lw <- fishbase_lw %>%
          ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a),
          a = ifelse(is.na(a), exp(ln_a), a))
 
-# validation plots
-(nefsc_a <- ggplot(fishbase_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: fishbase"))
-(nefsc_lna <- ggplot(fishbase_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: fishbase"))
-(nefsc_b <- ggplot(fishbase_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: fishbase"))
-
-# Check that ln_a is consistent with what it would be if we calculated them right now from a
-fishbase_lw %>% 
-  mutate(lna_check = log(a)) %>% 
-  ggplot(aes(ln_a, lna_check)) +
-  geom_point()
-
-
+# # validation plots
+# (nefsc_a <- ggplot(fishbase_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: fishbase"))
+# (nefsc_lna <- ggplot(fishbase_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: fishbase"))
+# (nefsc_b <- ggplot(fishbase_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: fishbase"))
+# 
+# # Check that ln_a is consistent with what it would be if we calculated them right now from a
+# fishbase_lw %>% 
+#   mutate(lna_check = log(a)) %>% 
+#   ggplot(aes(ln_a, lna_check)) +
+#   geom_point()
 
 
 
@@ -107,14 +105,14 @@ wrigley_lw <- wrigley_lw %>%
 
 
 
-# Validation Plots
-(wigley_a   <- ggplot(wigley_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: wigley"))
-(wigley_lna <- ggplot(wigley_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: wigley"))
-(wigley_b   <- ggplot(wigley_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: wigley"))
-wigley_lw %>% 
-  mutate(lna_check = log(a)) %>% 
-  ggplot(aes(ln_a, lna_check)) +
-  geom_point()
+# # Validation Plots
+# (wigley_a   <- ggplot(wigley_lw, aes(x = a)) + geom_histogram() + labs(caption = "source: wigley"))
+# (wigley_lna <- ggplot(wigley_lw, aes(x = ln_a)) + geom_histogram() + labs(caption = "source: wigley"))
+# (wigley_b   <- ggplot(wigley_lw, aes(x = b)) + geom_histogram() + labs(caption = "source: wigley"))
+# wigley_lw %>% 
+#   mutate(lna_check = log(a)) %>% 
+#   ggplot(aes(ln_a, lna_check)) +
+#   geom_point()
 
 
 

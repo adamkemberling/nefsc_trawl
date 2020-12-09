@@ -383,30 +383,30 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   # Do a priority pass with the filter(lw_combined, source == "wigley)
   # merge on comname, season, and catchsex
-  w_trimmed <- filter(lw_combined, source == "wigley") %>% 
+  wigley_coefficients <- filter(lw_combined, source == "wigley") %>% 
     select(source, season, svspp, comname, scientific_name, spec_class, 
            hare_group, fishery, catchsex, a, b, ln_a)
   
   
   # Do a second pass with the filter(lw_combined, source == "fishbase")
   # merge on common names only
-  fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
+  fishbase_coefficients <- filter(lw_combined, source == "fishbase") %>% 
     select(source, -svspp, comname, scientific_name, spec_class, 
            hare_group, fishery, a, b, ln_a)  
     
   
   # First Pass - Wigley
+  # Join just by svspp to account for name changes
   pass_1 <- trawl_spectra %>% 
-    # Join just by svspp to account for name changes
     select(-comname) %>% 
-    inner_join(w_trimmed)
+    inner_join(wigley_coefficients)
   
   
   # Second Pass - Fishbase, for the stragglers if any
-  # currently not joining well because lack of svspp and comname agreement 
+  # currently has potential for double matching in event of name changes
   pass_2 <- trawl_spectra %>% 
-    filter(comname %not in% w_trimmed$comname) %>% 
-    inner_join(fb_trimmed) 
+    filter(comname %not in% wigley_coefficients$comname) %>% 
+    inner_join(fishbase_coefficients) 
   
   
   
@@ -427,7 +427,7 @@ load_ss_data <- function(survdat = NULL, survdat_source = "2020"){
   
   
   # clean up environment
-  rm(pass_1, pass_2, fb_trimmed, w_trimmed)
+  rm(pass_1, pass_2, fishbase_coefficients, wigley_coefficients)
   
   
   
@@ -1078,14 +1078,14 @@ ss_seasonal_summary <- function(survey_data){
 #   
 #   # Do a priority pass with the filter(lw_combined, source == "wigley)
 #   # merge on comname, season, and catchsex
-#   w_trimmed <- filter(lw_combined, source == "wigley") %>% 
+#   wigley_coefficients <- filter(lw_combined, source == "wigley") %>% 
 #     select(source, season, svspp, comname, scientific_name, spec_class, 
 #            hare_group, fishery, catchsex, a, b, ln_a)
 #   
 #   
 #   # Do a second pass with the filter(lw_combined, source == "fishbase")
 #   # merge on common names only
-#   fb_trimmed <- filter(lw_combined, source == "fishbase") %>% 
+#   fishbase_coefficients <- filter(lw_combined, source == "fishbase") %>% 
 #     select(source, svspp, comname, scientific_name, spec_class, 
 #            hare_group, fishery, a, b, ln_a)
 #   #-#
@@ -1096,14 +1096,14 @@ ss_seasonal_summary <- function(survey_data){
 #   pass_1 <- trawl_spectra %>% 
 #     # Join just by svspp to account for name changes
 #     select(-comname) %>% 
-#     inner_join(w_trimmed)
+#     inner_join(wigley_coefficients)
 #   
 #   
 #   # Second Pass - Fishbase, for the stragglers if any
 #   # currently not joining well because lack of svspp and comname agreement 
 #   pass_2 <- trawl_spectra %>% 
-#     filter(comname %not in% w_trimmed$comname) %>% 
-#     inner_join(fb_trimmed)
+#     filter(comname %not in% wigley_coefficients$comname) %>% 
+#     inner_join(fishbase_coefficients)
 #   
 # 
 #   
@@ -1123,7 +1123,7 @@ ss_seasonal_summary <- function(survey_data){
 #     select(-ind_log_wt)
 #   
 #   # clean up environment
-#   rm(pass_1, pass_2, fb_trimmed, w_trimmed)
+#   rm(pass_1, pass_2, fishbase_coefficients, wigley_coefficients)
 #   
 #   
 #   
