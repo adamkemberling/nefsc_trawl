@@ -261,11 +261,11 @@ weights_all <- load_ss_data(survdat_source = "2020")
 
 
 # Get the total weights for each station, then do it each year for every species
-# Plot flags top and bottom 15 species that don't match well with survdat$biomass
-mismatch_plot <- function(x){
+mismatch_ranks <- function(x){
   species_summaries <- x %>% 
     group_by(est_year, comname, id) %>% 
-    summarise(length_weight_biomass = sum(sum_weight_kg),
+    summarise(number_caught = sum(numlen_adj),
+              length_weight_biomass = sum(sum_weight_kg),
               ship_measured_biomass = sum(biom_adj),
               lw_underestimate = ship_measured_biomass - length_weight_biomass) %>% 
     ungroup()
@@ -279,13 +279,18 @@ mismatch_plot <- function(x){
            extremes = ifelse( species_rank >= n_species - 15, "Extreme Under-Estimation", NA),
            extremes = ifelse(species_rank <= 15, "Extreme Over-Estimation", extremes)) 
   
+  return(ranks)
   
-  
+}
+
+
+# Plot flags top and bottom 15 species that don't match well with survdat$biomass
+mismatch_plot <- function(x){
   # All ranks in one panel
-  all_ranks <- ranks %>% 
+  all_ranks <- x %>% 
     ggplot(aes(lw_underestimate, species_rank)) +
       geom_boxplot(aes(group = species_rank), color = "gray40") +
-      geom_boxplot(data = filter(ranks, is.na(extremes) == FALSE),
+      geom_boxplot(data = filter(x, is.na(extremes) == FALSE),
                    aes(group = species_rank, color = extremes)) +
       geom_vline(xintercept = 0, size = 0.5, color = "black", linetype = 2) +
       scale_x_continuous(labels = comma_format()) +
@@ -296,7 +301,7 @@ mismatch_plot <- function(x){
     theme(legend.position = c(0.2, 1))
   
   # Focus on top 5
-  top_5 <- ranks %>% 
+  top_5 <- x %>% 
     filter(extremes == "Extreme Under-Estimation") %>% 
     ggplot(aes(lw_underestimate, comname)) +
       geom_boxplot(aes(group = species_rank), color = gmri_cols("orange")) +
@@ -309,7 +314,7 @@ mismatch_plot <- function(x){
     theme(title = element_text(hjust = 0.5))
   
   # Focus on bottom 5
-  bot_5 <- ranks %>% 
+  bot_5 <- x %>% 
     filter(extremes == "Extreme Over-Estimation") %>% 
     ggplot(aes(lw_underestimate, comname)) +
       geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
@@ -327,6 +332,9 @@ mismatch_plot <- function(x){
   plot_out <- all_ranks | (top_5/bot_5)
   return(plot_out)
 }
+
+
+
 ```
 
 
@@ -335,7 +343,15 @@ mismatch_plot <- function(x){
 These species got a priority pass when matching with L-W coefficients because they are from a more recent and region specific source.
 
 ```{r, fig.height=8}
-weights_all %>% filter(source == "wigley") %>% 
+# Get ranks for everything
+all_source_ranks <- weights_20 %>%
+  mismatch_ranks() 
+
+# Just Wigley
+wigley_ranks <- weights_all %>% filter(source == "wigley") %>% 
+  mismatch_ranks() 
+
+wigley_ranks %>% 
   mismatch_plot()
 ```
 
@@ -345,15 +361,130 @@ weights_all %>% filter(source == "wigley") %>%
 These species were matched up with coefficients from fishbase and are likely less accurate than the ones with svspp codes.
 
 ```{r, fig.height=8}
-weights_all %>% filter(source == "fishbase") %>% 
+fishbase_ranks <- weights_all %>% filter(source == "fishbase") %>% 
+  mismatch_ranks()
+
+fishbase_ranks %>% 
   mismatch_plot()
 ```
 
 
-## LW Regression Fit Diagnostics
+## LW Regression Fit Diagnostics {.tabset}
+
+
+### Subsample Errors
+
+Take the species that stood out above and plot the mismatch versus the station abundances. This should highlight whether its an issue of subsampling. Might be beneficial to  split it for seasons for dogfish and some other species.
+
+
+```{r, fig.height=10}
+
+
+#species that are caught in large numbers
+subsampling_suspects <- c("spiny dogfish", "haddock", "blueback herring", "american shad", "windowpane", "silver rag", "atlantic cod", "pollock", "smooth dogfish", "acadian redfish")
 
 
 
+# plot
+all_source_ranks %>% 
+  filter(comname %in% subsampling_suspects) %>% 
+  ggplot(aes(number_caught, lw_underestimate)) +
+      geom_point(color = gmri_cols("gmri blue")) +
+      geom_smooth(method = "lm", color = gmri_cols("orange")) +
+      facet_wrap(~comname, scales = "free", ncol = 2) +
+      labs(x = "Single Station Abundance", y = "survdat$BIOMASS - LW Biomass")
+  
+```
 
+
+### Mismatch Outliers
+
+Dig into the cases where things are really off by flagging the outliers and plotting those relationships.
+
+```{r, fig.height=10}
+
+# Flagging outliers using ruler
+library(ruler)
+
+
+#### Outlier Rules ####
+
+
+#Z-score
+isnt_out_z <- function(x, thres = 3, na.rm = TRUE) {
+  abs(x - mean(x, na.rm = na.rm)) <= thres * sd(x, na.rm = na.rm)
+}
+
+
+# Median Absolute Deviation https://en.wikipedia.org/wiki/Median_absolute_deviation
+isnt_out_mad <- function(x, thres = 3, na.rm = TRUE) {
+  abs(x - median(x, na.rm = na.rm)) <= thres * mad(x, na.rm = na.rm)
+}
+
+
+
+# Tukeys Fences - box plot outliers https://en.wikipedia.org/wiki/Outlier#Tukey&%2339;s_fences
+isnt_out_tukey <- function(x, k = 1.5, na.rm = TRUE) {
+  quar <- quantile(x, probs = c(0.25, 0.75), na.rm = na.rm)
+  iqr <- diff(quar)
+  
+  (quar[1] - k * iqr <= x) & (x <= quar[2] + k * iqr)
+}
+
+
+# Mahalanobis Distance https://en.wikipedia.org/wiki/Mahalanobis_distance
+maha_dist <- . %>% select_if(is.numeric) %>%
+    mahalanobis(center = colMeans(.), cov = cov(.))
+isnt_out_maha <- function(tbl, isnt_out_f, ...) {
+  tbl %>% maha_dist() %>% isnt_out_f(...)
+}
+
+
+
+# Definition of non-outlier row
+isnt_out_funs <- funs(
+  z = isnt_out_z,
+  mad = isnt_out_mad,
+  tukey = isnt_out_tukey
+)
+
+
+#Implementation
+all_source_ranks <- all_source_ranks %>% 
+  split(.$comname) %>% 
+  map_dfr(~ .x %>% 
+  mutate(abundance_outliers = isnt_out_tukey(number_caught),
+         estimation_outliers = isnt_out_tukey(lw_underestimate))
+)
+
+
+# Plot High Catch Outliers
+all_source_ranks %>% 
+  #Filter to just outliers
+  filter(abundance_outliers == F,
+         comname %in% subsampling_suspects)%>% 
+  ggplot(aes(number_caught, lw_underestimate)) +
+      geom_point(color = gmri_cols("gmri blue")) +
+      geom_smooth(formula = y ~ x, method = "lm", color = gmri_cols("orange")) +
+      facet_wrap(~comname, scales = "free", ncol = 2) +
+      labs(x = "Single Station Abundance", y = "survdat$BIOMASS - LW Biomass",
+           caption = "Data shown are outliers in station abundance by species.")
+
+
+# Plot the estimation outliers
+# Plot High Catch Outliers
+all_source_ranks %>% 
+  #Filter to just outliers
+  filter(estimation_outliers == F,
+         comname %in% subsampling_suspects)%>% 
+  ggplot(aes(number_caught, lw_underestimate)) +
+      geom_point(color = gmri_cols("gmri blue")) +
+      geom_smooth(formula = y ~ x, method = "lm", color = gmri_cols("orange")) +
+      facet_wrap(~comname, scales = "free", ncol = 2) +
+      labs(x = "Single Station Abundance", y = "survdat$BIOMASS - LW Biomass",
+           caption = "Data shown are outliers in estimate error between BIOMASS and L-W weights.")
+
+
+```
 
 
