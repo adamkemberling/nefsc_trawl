@@ -222,6 +222,12 @@ cod_20 %>%
   summarise(stratified_abundance = sum(expanded_abund_s),
             stratified_lwbio     = sum(expanded_lwbio_s),
             stratified_biom      = sum(expanded_biom_s)) %>% 
+  select(Year                     = est_year, 
+         Season                   = season, 
+         Species                  = comname, 
+         `Stratified Abundance`   = stratified_abundance,
+         `Stratified LWbio`       = stratified_lwbio,
+         `Stratified Biom`        = stratified_biom) %>% 
   kable() %>% 
   kable_styling(font_size = 10)
 ```
@@ -468,6 +474,7 @@ all_source_ranks %>%
       geom_smooth(formula = y ~ x, method = "lm", color = gmri_cols("orange")) +
       facet_wrap(~comname, scales = "free", ncol = 2) +
       labs(x = "Single Station Abundance", y = "survdat$BIOMASS - LW Biomass",
+           subtitle = "Abundance Outliers",
            caption = "Data shown are outliers in station abundance by species.")
 
 
@@ -482,6 +489,7 @@ all_source_ranks %>%
       geom_smooth(formula = y ~ x, method = "lm", color = gmri_cols("orange")) +
       facet_wrap(~comname, scales = "free", ncol = 2) +
       labs(x = "Single Station Abundance", y = "survdat$BIOMASS - LW Biomass",
+           subtitle = "Biomass Estimation Outliers",
            caption = "Data shown are outliers in estimate error between BIOMASS and L-W weights.")
 
 
