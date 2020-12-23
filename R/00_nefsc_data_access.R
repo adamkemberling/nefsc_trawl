@@ -15,9 +15,11 @@ library(patchwork)
 
 ####  Data  ####
 
-# Paths
-mills_path <- shared.path(group = "Mills Lab", folder = "")
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+####  Paths  
+box_paths  <- research_access_paths(os.use = "unix")
+mills_path <- box_paths$mills
+nsf_path   <- box_paths$okn
+res_path   <- box_paths$res
 
 # 2019 data From Janet Nye
 #load(str_c(mills_path, "Data/Survdat_Nye_allseason.RData"))
@@ -27,6 +29,12 @@ res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
 
 # 2020 edition
 load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
+
+
+
+
+
+
 
 # Gonna save it locally for convenience/laziness
 # write_csv(survdat, here("data/NEFSC/2020survdat_nye.csv"))
@@ -50,9 +58,12 @@ fishbase_lw <- read_csv(here("data/NEFSC/nefsc_lw_key_filled.csv"),
                      col_types = cols())
 
 
-# Wrigley Paper, Load length weight coefficients
+# wigley Paper, Load length weight coefficients
 load(paste0(res_path, "/NMFS_trawl/lwreg.Rdata"))
-wrigley_lw <- lwreg; rm(lwreg)
+wigley_lw <- lwreg; rm(lwreg)
+
+# Save as csv to double check coefficients against paper
+write_csv(wigley_lw, here("data/kmills/wigley_06_lwreg.csv"))
 
 
 # Species class/groups based on life history
@@ -90,9 +101,9 @@ fishbase_lw <- fishbase_lw %>%
 
 
 
-####__ 2. Wrigley Paper Coefficients  ####
-wrigley_lw <- wrigley_lw %>% clean_names()  
-wrigley_lw <- wrigley_lw %>%  
+####__ 2. Susan Wigley Paper Coefficients  ####
+wigley_lw <- wigley_lw %>% clean_names()  
+wigley_lw <- wigley_lw %>%  
   mutate(comname = str_to_lower(common_name), .before = scientific_name,
          common_name = NULL,
          scientific_name = str_to_lower(scientific_name),
@@ -141,8 +152,8 @@ spp_classes <- spp_classes %>%
 # Fishbase
 fishbase_lw <- left_join(fishbase_lw, spp_classes, by = "comname")
 
-# Wrigley
-wigley_lw <- left_join(wrigley_lw, spp_classes, by = c("svspp", "comname", "scientific_name"))
+# wigley
+wigley_lw <- left_join(wigley_lw, spp_classes, by = c("svspp", "comname", "scientific_name"))
 
 
 
@@ -252,9 +263,55 @@ lw_combined <- lw_combined %>%
 
 
 # Remove the lw building components
-rm(wigley_lw, fishbase_lw, spp_classes, wrigley_lw)
+rm(wigley_lw, fishbase_lw, spp_classes, wigley_lw)
 
 
 # Export the key for the size spectra build
-write_csv(lw_combined, here::here("data/biomass_key_combined.csv"))
+#write_csv(lw_combined, here::here("data/biomass_key_combined.csv"))
 
+
+
+
+
+
+####  Loading the Combined Key for Investigation  ####
+lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"))
+
+# Species with strange fits
+
+lw_combined %>% 
+  filter(comname == "spiny dogfish") %>% 
+  View("Spiny dogfish")
+
+lw_combined %>% 
+  filter(scientific_name == "scophthalmus aquosus" | comname == "windowpane") %>% 
+  ggplot(aes(comname, a)) +
+  geom_col()
+
+
+
+
+
+
+####  Double checking Fishbase coefficients  ####
+
+library(rfishbase)
+fb_manual <- filter(lw_combined, source == "fishbase")
+fb_species <- data.frame("ComName" = unique(fb_manual$comname))
+
+#### Step 1: get scientific names and SpecCodes  ####
+fb_sci <- rfishbase::common_to_sci(fb_species$ComName)
+
+
+#### Step 2: Get length-weight coefficients  ####
+fb_coefficients <- rfishbase::length_weight(species_list = fb_sci$Species)
+fb_coefficients
+
+ggplot() +
+  geom_density(data = fb_coefficients, aes(a, color = "rfishbase")) + 
+  geom_density(data = fb_manual, aes(a, color = "Manual Lookup"))
+
+
+ggplot() +
+  geom_density(data = fb_coefficients, aes(b, color = "rfishbase")) + 
+  geom_density(data = fb_manual, aes(b, color = "Manual Lookup"))

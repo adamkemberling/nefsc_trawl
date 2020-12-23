@@ -26,23 +26,16 @@ res_path <- box_paths$res
 ####__  Data  ####
 
 
-# 2019 survdat data
-load(str_c(mills_path, "Data/Survdat_Nye_allseason_2019.RData"))
-trawl_19 <- survdat %>% clean_names()
-rm(survdat)
-
-
-
-
-
-
-
-
 ####__  Size Spectra Builds  ####
+
+# Load data build function
 source(here("R/01_nefsc_ss_build.R"))
-# weights_16 <- load_2016_ss_data() 
-weights_19 <- load_ss_data(survdat = trawl_19, survdat_source = "2019")
-weights_20 <- load_ss_data(survdat_source = "2020")
+
+# Load cleaned data
+weights_20 <- survdat_prep(survdat_source = "2020") %>% 
+  add_lw_info() %>% 
+  add_area_stratification()
+
 
 
 # Here are the main columns for weights, stratified weights, etc
@@ -70,23 +63,18 @@ weights_20 %>% select(
 ####  1. Comparing Annual Differences  ####
 
 # run summaries
-#summ_16 <- ss_annual_summary(weights_16) %>% mutate(source = "2016 survdat")
-summ_19 <- ss_annual_summary(weights_19) %>% mutate(source = "2019 survdat")
+# summ_16 <- ss_annual_summary(weights_16) %>% mutate(source = "2016 survdat")
+# summ_19 <- ss_annual_summary(weights_19) %>% mutate(source = "2019 survdat")
 summ_20 <- ss_annual_summary(weights_20) %>% mutate(source = "2020 survdat")
 # summs <- bind_rows(list(summ_16, summ_19, summ_20))
 # summs <- bind_rows(list(summ_19, summ_20))
 summs <- bind_rows(summ_20)
 
 
-# Number of Species
-summs %>% 
-  ggplot(aes(est_year, n_species, color = source)) +
-  geom_line() +
-  labs(x = "", y = "Number of Species")
 
 # Total Fish Caught - Actual in survey
 summs %>% 
-  ggplot(aes(est_year, total_survey_abund, color = source)) +
+  ggplot(aes(est_year, total_survey_abund)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Survey Total Abundance")
@@ -103,8 +91,8 @@ summs %>%
 # Total Fish Caught - Projected
 summs %>% 
   ggplot() +
-  geom_line(aes(est_year, strat_abundance_s, color = "Stratum Effort/Area Weighted")) +
-  geom_line(aes(est_year, strat_abundance_epu, color = "EPU Effort/Area Weighted")) +
+  geom_line(aes(est_year, strat_abundance_s, color = "Stratum Effort/Area Weighted"), show.legend = F) +
+  #geom_line(aes(est_year, strat_abundance_epu, color = "EPU Effort/Area Weighted")) +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Effort & Area Expanded Total Abundance")
 
@@ -113,8 +101,8 @@ summs %>%
 # Total Projected Biomass - whole survey
 summs  %>% 
   ggplot() +
-    geom_line(aes(est_year, lw_strat_biomass_s/ 1000000, color = "Stratum Weighted")) +
-    geom_line(aes(est_year, lw_strat_biomass_epu/ 1000000, color = "EPU Weighted")) +
+    geom_line(aes(est_year, lw_strat_biomass_s/ 1000000, color = "Stratum Weighted"), show.legend = F) +
+    #geom_line(aes(est_year, lw_strat_biomass_epu/ 1000000, color = "EPU Weighted")) +
     facet_wrap(~`Research Vessel`, scales = "free") +
     scale_y_continuous(labels = scales::comma_format()) +
     labs(x = "", y = "Projected Total Biomass (million kg)\n L-W Derived")
@@ -124,8 +112,8 @@ summs  %>%
 # Total Projected Biomass - whole survey
 summs %>% 
   ggplot() +
-  geom_line(aes(est_year, fscs_strat_biomass_s/ 1000000, color = "Stratum Weighted")) +
-  geom_line(aes(est_year, fscs_strat_biomass_epu/ 1000000, color = "EPU Weighted")) +
+  geom_line(aes(est_year, fscs_strat_biomass_s/ 1000000, color = "Stratum Weighted"), show.legend = F) +
+  # geom_line(aes(est_year, fscs_strat_biomass_epu/ 1000000, color = "EPU Weighted")) +
   facet_wrap(~`Research Vessel`, scales = "free") +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Projected Total Biomass (million kg)\n FSCS Derived")
@@ -162,8 +150,7 @@ p2 <- reg_summs %>%
 # effort
 p3 <- reg_summs %>% 
   ggplot() +
-  geom_line( aes(est_year, lw_strat_biomass_s / 1000000, color = "Stratum"), show.legend = F) +
-  geom_line( aes(est_year, lw_strat_biomass_epu/ 1000000, color = "EPU"), show.legend = F) +
+  geom_line( aes(est_year, lw_strat_biomass_s / 1000000), show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
   facet_wrap(~survey_area, ncol = 1, scales = "free") +
   labs(x = "", y = "Stratified Biomass (million kg)\nL-W")
@@ -171,8 +158,7 @@ p3 <- reg_summs %>%
 # Species 
 p4 <- reg_summs %>% 
   ggplot() +
-  geom_line(aes(est_year, fscs_strat_biomass_s/ 1000000, color = "Stratum"), show.legend = F) +
-  geom_line(aes(est_year, fscs_strat_biomass_epu/ 1000000, color = "EPU"), show.legend = F) +
+  geom_line(aes(est_year, fscs_strat_biomass_s/ 1000000), show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
   facet_wrap(~survey_area, ncol = 1, scales = "free") +
   labs(x = "", y = "Stratified Biomass (million kg)\nFSCS")
