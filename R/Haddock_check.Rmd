@@ -1,5 +1,5 @@
 ---
-title: "Haddock Error Check"
+title: "Checking Haddock Biomass Discrepancies"
 author: "Adam A. Kemberling"
 date: "`r Sys.Date()`"
 output: 
@@ -48,7 +48,8 @@ When digging into the data for Haddock it appeared that the biomass for haddock 
 
 What gives?
 
-## Pull Haddock data
+## Load survdat, Pull Haddock Data
+
 
 ```{r}
 # Load 2020 Raw survdat data from .RData file
@@ -67,34 +68,56 @@ trawl_20 <- trawl_20 %>%
     svspp   = as.character(svspp),
     svspp   = str_pad(svspp, 3, "left", "0"),
     
-    # Biomass and abundance NA substitutions
+    # Biomass and abundance NA substitutions - flag these events
+    no_bio    = ifelse(is.na(biomass) == TRUE & abundance > 0, "bio_flag", "bio_ok"),
     biomass   = ifelse(is.na(biomass) == TRUE & abundance > 0, 0.0001, biomass),
+    
+    
     # # Checking if error is caused by this adjustment: verdict - not the issue
+    no_abund = ifelse(is.na(abundance) == TRUE & biomass > 0, "abund_flag", "anund_ok"),
     abundance = ifelse(is.na(abundance) == TRUE & biomass > 0, 1, abundance),
     
     # Sratum number, excluding leading and trailing codes for inshore/offshore, for matching
     strat_num = str_sub(stratum, 2, 3)) %>%  
+  
+  # Bump biomass/abundance above 0 if there is a complementary measurement
+  # Shouldn't have biomass and no fish etc.
   mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), .after = biomass) %>% 
   mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), .after = abundance)
-  # # Checking if error is caused by this adjustment: verdict - not the issue
-  # mutate(abund_adj = abundance, .after = abundance)
+  
+
+
+# # Checking if error is caused by this adjustment: verdict - not the issue
+# mutate(abund_adj = abundance, .after = abundance)
 
 
 
 
-# And filter
+# Filter Data Down to isolate issues
 haddock <- trawl_20 %>% 
-  filter(# Filter to just Spring and Fall
-         season %in% c("SPRING", "FALL"),
-         # Only the Albatross and Henry Bigelow
-         svvessel %in% c("AL", "HB"),
-         est_year >= 2000,
-         est_year <= 2020, 
-         comname == "haddock")
+  filter(
+    # Filter to just Spring and Fall
+    season %in% c("SPRING", "FALL"),
+         
+    # Filter to only the Albatross and Henry Bigelow Vessels
+    svvessel %in% c("AL", "HB"),
+    
+    # Choose manageable time frame
+    est_year >= 2000,
+    est_year <= 2020, 
+    
+    # Pull out Haddock
+    comname == "haddock")
+
+
 ```
 
 
 ## Adjust Numbers at Length
+
+Sometimes in the data there are situations where the number recorded for a given species' "abundance" does not match the amount of fish you get when tallying up the numbers of each length. 
+
+To account for this mismatch we use a conversion factor to scale up/down how many of each size class there would have needed to be to have that tally match up.
 
 ```{r}
 # Get the abundance value for each sex arrived at by summing across each length
@@ -103,12 +126,12 @@ abundance_check <- haddock %>%
   group_by(id, comname, catchsex, abundance) %>%
   summarise(
     abund_actual = sum(numlen),                
-    n_len_class = n_distinct(length), # number of distinct lengths caught that station
-    .groups     = "keep") %>% 
+    n_len_class  = n_distinct(length), # number of distinct lengths caught that station
+    .groups      = "keep") %>% 
   ungroup()
 
 # Conversion factor translates each size at length to what it would need be to be
-# fot them to add up to that "abund_actual"
+# for them to add up to that "abundance" column
 conv_factor <- haddock %>% 
   distinct(id, comname, catchsex, length, abund_adj) %>% 
   inner_join(abundance_check) %>% 
@@ -119,8 +142,8 @@ conv_factor <- haddock %>%
 # Merge back and convert the numlen field
 haddock_clean <- haddock %>%
   left_join(conv_factor) %>%
-  mutate(numlen_adj = numlen * convers, .after = numlen) %>% 
-  select(-c(abund_actual, convers))
+  mutate(numlen_adj = numlen * convers, .after = numlen) # %>% 
+  #select(-c(abund_actual, convers))
 ```
 
 
@@ -156,6 +179,10 @@ haddock_lw <- haddock_lw %>%
 
 ## Look at differences between the two
 
+For any given station across all the different survey seasons and and for both vessels you would expect there to be a very tight 1:1 relationship between the weights expected from haddock's length weight relationship and the actual biomass weights of weighing all the fish together.
+
+What seems really odd is that this is true across all groups, except for data collected on the Bigelow during Fall. For this group a tight linear relationship exists, but it shows a much steeper relationship.
+
 ```{r}
 
 # Checking one species at a time
@@ -169,9 +196,9 @@ haddock_lw %>%
   geom_point(show.legend = F) +
   facet_grid(season~svvessel) +
   geom_abline(slope = 1, intercept = 0, linetype = 2, color  = "darkblue") +
+  scale_color_gmri() +
   labs(x = "Weight from survdat$BIOMASS", y = "Weight from LW relationship",
-       caption = "Dashed line depicts 1:1 relationship",
-       subtitle = "Haddock Growth Coefficient Testing")
+       caption = "Dashed line depicts 1:1 relationship")
   
       
     
@@ -180,6 +207,8 @@ haddock_lw %>%
 ## Is it an issue with the length classes?
 
 Its possible that I introduced some matching issues by trying to cheat my way through with that biomass per length class column.
+
+This would create a duplication of catches in certain cases for the totaling of just the length weight weights. To check this I can double-check that only unique station-species-sex-length groups are being counted.
 
 ```{r}
 # Pull distinct records of each stations BIOMASS for haddock
@@ -202,15 +231,17 @@ ggplot(dup_id_test,
              color = svvessel)) +
   geom_point(show.legend = F) +
   facet_grid(season~svvessel) +
+  scale_color_gmri() +
   geom_abline(slope = 1, intercept = 0, linetype = 2, color  = "darkblue") +
   labs(x = "Weight from survdat$BIOMASS", y = "Weight from LW relationship",
-       caption = "Dashed line depicts 1:1 relationship",
-       subtitle = "Haddock Growth Coefficient Testing")
+       caption = "Dashed line depicts 1:1 relationship")
 ```
 
 
 
 ## Anything remarkable happening with lengths?
+
+
 
 ```{r}
 haddock_lw %>% 
@@ -218,6 +249,7 @@ haddock_lw %>%
   geom_histogram(aes(x = length, fill = svvessel)) + #un-weighted
   geom_histogram(aes(x = length, weight = numlen_adj, fill = svvessel)) + #weighted
   facet_grid(season~svvessel) +
+  scale_fill_gmri() +
   labs(x = "Length (cm)", y = "Frequency - Weighted By Numlen")
   
 ```
@@ -230,8 +262,79 @@ haddock_lw %>%
   summarise(total_fish = sum(numlen_adj)) %>% 
   ggplot(aes(est_year, total_fish, color = svvessel)) +
   geom_line(show.legend = F) +
+  scale_color_gmri() +
   facet_wrap(~season) +
   labs(x = "", y = "Total Haddock Caught in Survey")
 ```
 
+## NA Replacement Issues?
+
+One thing that could be happening is that in the Fall, when there are astronomically high numbers, it is not possible to get a total biomass value.
+
+In these events we would still have a size distribution and weights for individuals that are taken as a subsample. This would contribute to length weight biomass, where there is a 0 substituted as total biomass.
+
+### NA BIOMASS
+
+```{r}
+
+# check instances of NA biomass
+haddock_lw %>% 
+  ggplot(aes(est_year, biomass, color = no_bio)) +
+  geom_point() +
+  facet_wrap(~no_bio)  +
+  scale_color_gmri() +
+  labs(x = "")
+```
+
+### NA Abundance
+
+```{r}
+
+# check instances of NA abundance
+haddock_lw %>% 
+  ggplot(aes(est_year, abundance, color = no_abund)) +
+  geom_point() +
+  scale_color_gmri() +
+  labs(x = "")
+```
+
+
+## Numlen Adjusted Problems
+
+As part of the cleanup process we create that `numlen_adj` column to account for the mismatch between the number of fish measured and the abundance recorded. This often scales up the `numlen` column and would increase the length weight biomasses.
+
+It appears from plotting these factors that for Spring, and Fall for the Albatross this value is around 1 and imparts a minor adjustment. In contrast, fall henry bigelow factors are closer to 4.
+
+```{r}
+haddock_lw %>% 
+  ggplot(aes(x = convers)) +
+  geom_histogram() +
+  facet_grid(season~svvessel, scales = "free") +
+  labs(x = "Numlen Conversion Factor", y = "Count")
+```
+
+If you plot the relationships between the length weight biomass and the survdat$BIOMASS column and account for this adjustment then the relationship looks like this:
+
+
+```{r}
+convers_check <- haddock_lw %>% 
+  filter(svvessel == "HB") %>% 
+  mutate(sum_weight_undadj = ind_weight_kg * numlen) %>% 
+  group_by(id, est_year, season, svvessel, catchsex) %>% 
+  summarise(lw_bio = sum(sum_weight_kg),
+            lw_unadj = sum(sum_weight_undadj),
+            biomass_col = sum(biom_per_lclass))
+
+convers_check %>% 
+  ggplot() +
+  geom_point(aes(biomass_col, lw_unadj, 
+             color = "Numlen Un-Adjusted")) +
+  geom_point(aes(biomass_col, lw_bio, 
+             color = "Numlen Adjusted")) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, color  = "darkblue") +
+  facet_grid(season~.) +
+  scale_color_gmri() +
+  labs(x = "Weight from survdat$BIOMASS", y = "Weight from LW relationship",
+       caption = "Dashed line depicts 1:1 relationship")
+```
 

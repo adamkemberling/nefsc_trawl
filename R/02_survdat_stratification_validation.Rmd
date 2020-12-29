@@ -82,6 +82,11 @@ survdat_20 <- survdat_prep(survdat = trawl_20, survdat_source = "tester")
 # Add LW coefficients
 survdat_lw <- add_lw_info(survdat_clean = survdat_20)
 
+# Validation Step:
+# Change total LW weight to ignore numlen_adjusted conversion
+# This will isolate whether the coefficients are bad or whether its the adjustment
+survdat_lw$sum_weight_kg <- survdat_lw$ind_weight_kg * survdat_lw$numlen
+
 # Get stratified Biomass
 weights_20 <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
 
@@ -356,6 +361,8 @@ Looks like the root cause is just the difference between what the mean predictio
 
 Going to plot out how each species compares individually and rank their fits.
 
+**NOTE:** The data shown below has been set up to display an un-adjusted `numlen`. This should isolate cases where the regressions have poor fit, and ignore the adjustment caused by subsampling.
+
 
 ```{r, fig.height=10}
 # Thoughts - difference between lw biomass vs. time 
@@ -366,6 +373,9 @@ Going to plot out how each species compares individually and rank their fits.
 # Load all years and species
 weights_all <- survdat_prep(survdat_source = "2020") %>% 
   add_lw_info() %>% 
+  # Validation Step:
+  # Change total LW weight to ignore numlen_adjusted conversion
+  mutate(sum_weight_kg = ind_weight_kg * numlen) %>% 
   add_area_stratification()
 
 
@@ -616,14 +626,18 @@ If we assume that the total biomass weighed at a station is correct then we can 
 For example values 100% heavier or lighter.
 
 ```{r}
-broken_coefficients <- weights_all %>% 
+# Identify Coefficients that seem off
+perc_differences <- weights_all %>% 
   group_by(comname, source) %>% 
   summarise(
     `Biomass`    = sum(biom_per_lclass),
     `LW Biomass` = sum(sum_weight_kg),
     weight_perc_diff  = ((`LW Biomass` - Biomass) / Biomass) * 100,
     broken_coef  = ifelse(weight_perc_diff > 100 | weight_perc_diff < -100, "broken", "less broken"),
-    .groups = "keep") %>% ungroup() %>% 
+    .groups = "keep") %>% ungroup() 
+
+# Pull the ones that are flagged
+broken_coefficients <- perc_differences %>% 
   filter(broken_coef == "broken")
 
 # Broken Wigley Coefficientz
@@ -632,7 +646,8 @@ broken_coefficients %>%
   mutate(comname = fct_reorder(comname, weight_perc_diff, max)) %>% 
   ggplot(aes(weight_perc_diff, comname)) +
    geom_point() +
-   labs(x = "Percent Difference in Biomass Sources", y = "")
+   labs(x = "Percent Difference in Biomass Sources", y = "",
+        subtitle = "Extreme Biomass Mismatch - Wigley Coefficients")
 
 # Broken fishbase coefficients
 broken_coefficients %>% 
@@ -644,48 +659,46 @@ broken_coefficients %>%
    geom_point() +
    labs(x = "Percent Difference in Biomass Sources", 
         y = "", 
-        caption = "hogfish excluded, super broken also") +
+        caption = "hogfish excluded, super broken also",
+        subtitle = "Extreme Biomass Mismatch - Fishbase Coefficients") +
   scale_x_continuous(labels = scales::comma_format())
   
 
-broken_coefficients %>% filter(source == "wigley")
-broken_coefficients %>% filter(source == "fishbase")
 ```
 
 
 
-## Removing bad fits
+## Removing bad fits with Cutoff
 
-Certain coefficients seem to be really off and contributing to some really big differences in stratified abundances/biomasses.
+Certain coefficients seem to be really off and contributing to some really big differences in stratified abundances/biomasses. If we set a reasonable cutoff threshold of 50%, these are what the timelines now look like and how many species get dropped from each source.
 
 
 ```{r}
 
-bad_coefficients <-
-  c("windowpane",
-    "swordfish",
-    "snowy grouper",
-    "cobia",
-    "king mackerel",
-    "scalloped hammerhead shark",
-    "warsaw grouper",
-    "dusky shark",
-    "ocean sunfish",
-    "southern eagle ray",
-    "porbeagle shark",
-    "northern sand lance",
-    # wigley
-    "haddock",
-    "butterfish",
-    "southern stingray"
-  )
+# Cutoff Threshold
+cut_percent <- 50
+
+fishbase_cutoffs <- perc_differences %>% 
+  filter(source == "fishbase",
+         weight_perc_diff >= cut_percent) %>% 
+  pull(comname)
+
+wigley_cutoffs <- perc_differences %>% 
+  filter(source == "wigley",
+         weight_perc_diff >= cut_percent) %>% 
+  pull(comname)
+
+# concatenate them
+bad_coefficients <- 
+  c( fishbase_cutoffs, wigley_cutoffs)
 
 
-
+# drop things using cutoff
 fish_removed <- weights_all %>% 
   filter(comname %not in% bad_coefficients)
 
 
+# Re-total weights without those species
 new_totals <- fish_removed %>% 
  group_by(est_year, season) %>% 
  summarise(`Biomass` = sum(biom_per_lclass),
@@ -693,14 +706,35 @@ new_totals <- fish_removed %>%
            .groups = "keep")
 
 
-
+# Plot timelines again
 ggplot(new_totals, aes(est_year)) +
   geom_line(aes(y = Biomass, color = "BIOMASS")) +
   geom_line(aes(y = `LW Biomass`, color = "LW Biomass")) +
   facet_wrap(~season, ncol = 1) +
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
-  labs(x = "", subtitle = "Error prone species removed") +
+  labs(x = "", 
+       subtitle = paste0("Species Removed at ", cut_percent, "% Difference Cutoff"),
+       caption = paste(length(fishbase_cutoffs),"Fishbase Species Removed.",    length(wigley_cutoffs), "Wigley Species Removed")) +
   theme(legend.position = "bottom")
+
+
+fishbase_okay <- perc_differences %>% 
+  filter(source == "fishbase",
+         weight_perc_diff < cut_percent) %>% 
+  pull(comname)
+
+wigley_okay <- perc_differences %>% 
+  filter(source == "wigley",
+         weight_perc_diff < cut_percent) %>% 
+  pull(comname)
+
+
+```
+
+The species that pass the cutoff of: `r cut_percent` are the following `r length(wigley_okay)` species:
+
+```{r}
+wigley_okay
 ```
 
