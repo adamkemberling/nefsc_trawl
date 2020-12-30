@@ -72,8 +72,8 @@ weights_20 <- weights_20 %>%
   )
 
 # Run Summary Functions
-ann_means <- ss_annual_summary(weights_20)
-seasonals <- ss_seasonal_summary(weights_20) 
+ann_means <- ss_annual_summary(weights_20, include_epu = F)
+seasonals <- ss_seasonal_summary(weights_20, include_epu = F) 
 
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
@@ -219,9 +219,9 @@ Biomass below is a function of the total annual abundance, expanded out to total
 lw_strat_1 <- ann_means %>% 
   ggplot() +
     geom_line(aes(est_year, lw_strat_biomass_s/1000000, 
-                  color = season, linetype = "NMFS Stratum Weights")) +
-    geom_line(aes(est_year, lw_strat_biomass_epu/1000000, 
-                  color = season, linetype = "EPU Area Weights")) +
+                  color = season, linetype = "NMFS Stratum Weighted")) +
+    # geom_line(aes(est_year, lw_strat_biomass_epu/1000000, 
+    #               color = season, linetype = "EPU Area Weighted")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~`Research Vessel`, scales = "free") +
@@ -246,9 +246,9 @@ As for the shipboard measurements of biomass `survdat$biomass`, the Biomass belo
 strat_1 <- ann_means %>% 
   ggplot() +
     geom_line(aes(est_year, fscs_strat_biomass_s/1000000, 
-                  color = season, linetype = "NMFS Stratum Weights")) +
-    geom_line(aes(est_year, fscs_strat_biomass_epu/1000000, 
-                  color = season, linetype = "EPU Area Weights")) +
+                  color = season, linetype = "NMFS Stratum Weighted")) +
+    # geom_line(aes(est_year, fscs_strat_biomass_epu/1000000, 
+    #               color = season, linetype = "EPU Area Weights")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~`Research Vessel`, scales = "free") +
@@ -519,7 +519,7 @@ t5_plots <- top_5 %>%
       geom_segment(aes(yend = comname, x = 0, xend = lw_biomass)) +
       facet_wrap(~est_year) +
       scale_x_continuous(labels = scales::comma_format()) +
-      labs(x = "Total Biomass (kg)", y = "")
+      labs(x = "Total Biomass (kg) - From LW Relationship", y = "")
 })
 
 # Assemble 4-panel plots displaying years in groups of 4
@@ -575,7 +575,7 @@ max_weight_plot <- function(size_cutoff){
       scale_color_gmri() +
       scale_y_continuous(labels = scales::comma_format()) +
       labs(x = NULL, y = "Total Annual (kg)") +
-    theme(legend.position = "bottom")
+    theme(legend.position = c(0.3, 0.9))
 }
 
 
@@ -731,7 +731,7 @@ min_weight_plot <- function(size_cutoff){
       scale_color_gmri() +
       scale_y_continuous(labels = scales::comma_format()) +
       labs(x = NULL, y = "Total Annual (kg)") +
-    theme(legend.position = "bottom")
+    theme(legend.position = c(0.3, 0.9))
 }
 ```
 
@@ -793,6 +793,7 @@ y_plots$`2018` | y_plots$`2019`
 #### Cownose Rays
 
 Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further inspection shows that they boil down to two alarmingly high catches in the fall of each year. The table below details all instances of catch for cownose rays since 1990. Typically there have been 0-2 per year, with a deeply concerning increase in 2018-2019.
+
 ```{r}
 
 # How many cownose rays, and how suspicious is that number?
@@ -810,8 +811,8 @@ weights_20 %>%
   filter(comname == "cownose ray") %>% 
   agg_species_metrics(est_year, season) %>% 
   mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL")) %>% 
-  ggplot(aes(est_year, abundance, color = season)) +
-  geom_point() +
+  ggplot(aes(est_year, abundance, fill = season)) +
+  geom_col() +
   facet_wrap(~`Research Vessel`, scales = "free_x") +
   labs(x = "", y = "Seasonal Abundance")
 
@@ -1266,9 +1267,9 @@ area_summs_y <- weights_20 %>%
   ungroup()
 
 
-weights_20 %>% 
-  ggplot(aes(est_year, sum_weight_kg)) +
-  geom_boxplot(aes(group = est_year))
+# weights_20 %>% 
+#   ggplot(aes(est_year, sum_weight_kg)) +
+#   geom_boxplot(aes(group = est_year))
 ```
 
 

@@ -31,10 +31,10 @@ res_path <- box_paths$res
 # Load data build function
 source(here("R/01_nefsc_ss_build.R"))
 
-# Load cleaned data
+# Load cleaned data, and drop species with off coefficients
 weights_20 <- survdat_prep(survdat_source = "2020") %>% 
-  add_lw_info() %>% 
-  add_area_stratification()
+  add_lw_info(cutoff = T) %>% 
+  add_area_stratification(include_epu = F)
 
 
 
@@ -42,12 +42,12 @@ weights_20 <- survdat_prep(survdat_source = "2020") %>%
 weights_20 %>% select(
   est_year, stratum, epu, id, comname, biom_adj, # station and catch info
   numlen_adj, ind_weight_kg, sum_weight_kg,      # number at length, individual and group weights
-  abund_tow_s, abund_tow_epu,                    # abundance / number of tows in that strata that year
-  biom_tow_s, biom_tow_epu,                      # biomass / number of tows in that strata that year
-  expanded_abund_s, expanded_abund_epu,          # projected abundance, weighted by stratum cpue, expanded to total area
-  expanded_biom_s, expanded_biom_epu,            # projected biomass, weighted by stratum cpue, expanded to total area
-  expanded_lwbio_s, expanded_lwbio_epu)          # projected biomass as l-w biomass of individuals * stratified abundance
-
+  abund_tow_s, #abund_tow_epu,                    # abundance / number of tows in that strata that year
+  biom_tow_s, #biom_tow_epu,                      # biomass / number of tows in that strata that year
+  expanded_abund_s, #expanded_abund_epu,         # projected abundance, weighted by stratum cpue, expanded to total area
+  expanded_biom_s, #expanded_biom_epu,           # projected biomass, weighted by stratum cpue, expanded to total area
+  expanded_lwbio_s#, expanded_lwbio_epu          # projected biomass as l-w biomass of individuals * stratified abundance
+)
 
 
 
@@ -63,9 +63,9 @@ weights_20 %>% select(
 ####  1. Comparing Annual Differences  ####
 
 # run summaries
-# summ_16 <- ss_annual_summary(weights_16) %>% mutate(source = "2016 survdat")
-# summ_19 <- ss_annual_summary(weights_19) %>% mutate(source = "2019 survdat")
-summ_20 <- ss_annual_summary(weights_20) %>% mutate(source = "2020 survdat")
+# summ_16 <- agg_species_metrics(weights_16, est_year, include_epu = F) %>% mutate(source = "2016 survdat")
+# summ_19 <- agg_species_metrics(weights_19, est_year, include_epu = F) %>% mutate(source = "2019 survdat")
+summ_20 <- agg_strat_metrics(weights_20, est_year, area_stratification = "stratum") %>% mutate(source = "2020 survdat")
 # summs <- bind_rows(list(summ_16, summ_19, summ_20))
 # summs <- bind_rows(list(summ_19, summ_20))
 summs <- bind_rows(summ_20)
@@ -74,7 +74,7 @@ summs <- bind_rows(summ_20)
 
 # Total Fish Caught - Actual in survey
 summs %>% 
-  ggplot(aes(est_year, total_survey_abund)) +
+  ggplot(aes(est_year, sum_abund)) +
   geom_line() +
   scale_y_continuous(labels = scales::comma_format()) +
   labs(x = "", y = "Survey Total Abundance")

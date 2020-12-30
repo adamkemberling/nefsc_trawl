@@ -169,6 +169,7 @@ haddock_lw <- haddock_lw %>%
     llen          = log(length),                # Self explanatory
     ind_log_wt    = ln_a + (b * llen),          # log(weight) of an individual at that length
     ind_weight_kg = exp(ind_log_wt),            # Weight of an individual in size class
+    sum_weight_unadj = ind_weight_kg * numlen,  # unadjusted
     sum_weight_kg = ind_weight_kg * numlen_adj, # Weight of all individuals of size class
     # Adjustment for how BIOMASS is repeated, 
     # puts it in equal amounts for each weight class so we can sum easier
@@ -177,7 +178,7 @@ haddock_lw <- haddock_lw %>%
 ```
 
 
-## Look at differences between the two
+## Look at Differeces Between BIOMASS and LW Biomass {.tabset}
 
 For any given station across all the different survey seasons and and for both vessels you would expect there to be a very tight 1:1 relationship between the weights expected from haddock's length weight relationship and the actual biomass weights of weighing all the fish together.
 
@@ -186,11 +187,18 @@ What seems really odd is that this is true across all groups, except for data co
 ```{r}
 
 # Checking one species at a time
-haddock_lw %>% 
-  
+station_summs <- haddock_lw %>% 
   group_by(id, est_year, season, svvessel, catchsex) %>% 
   summarise(lw_bio = sum(sum_weight_kg),
-            biomass_col = sum(biom_per_lclass)) %>% 
+            lw_unadj = sum(sum_weight_unadj),
+            biomass_col = sum(biom_per_lclass))
+```
+
+### Biomass & Adjusted Numlen
+
+```{r}
+# Plot against numlen_adj
+station_summs %>%   
   ggplot(aes(biomass_col, lw_bio, 
              color = svvessel)) +
   geom_point(show.legend = F) +
@@ -198,10 +206,25 @@ haddock_lw %>%
   geom_abline(slope = 1, intercept = 0, linetype = 2, color  = "darkblue") +
   scale_color_gmri() +
   labs(x = "Weight from survdat$BIOMASS", y = "Weight from LW relationship",
-       caption = "Dashed line depicts 1:1 relationship")
-  
+       caption = "Dashed line depicts 1:1 relationship",
+       subtitle = "LW Biomass using numlen_adj")
+```
+
+### Biomass & Numlen
+
+```{r}  
       
-    
+# if BIOMASS not been adjusted in FALL, then you'd see mismatches across other seasons 
+station_summs %>%   
+  ggplot(aes(biomass_col, lw_unadj, 
+             color = svvessel)) +
+  geom_point(show.legend = F) +
+  facet_grid(season~svvessel) +
+  geom_abline(slope = 1, intercept = 0, linetype = 2, color  = "darkblue") +
+  scale_color_gmri() +
+  labs(x = "Weight from survdat$BIOMASS", y = "Weight from LW relationship",
+       caption = "Dashed line depicts 1:1 relationship",
+       subtitle = "LW Biomass using numlen")
 ```
 
 ## Is it an issue with the length classes?
@@ -241,7 +264,7 @@ ggplot(dup_id_test,
 
 ## Anything remarkable happening with lengths?
 
-
+Another possible problem could relate to the fit of the growth curve. If there is a poor fit at some end of the curve, then its possible that having a bunch of catch in that size range would impact fit. To check this we can simply plot the length frequencies, looking to see if there is some special signature visible in Fall.
 
 ```{r}
 haddock_lw %>% 
@@ -254,7 +277,9 @@ haddock_lw %>%
   
 ```
 
-## Numbers
+## Checking Abundance Numbers
+
+There may be some catch density issues for this species. The catch in Fall since 2008 is the highest it has ever been, so perhaps catch densities may be the problem.
 
 ```{r}
 haddock_lw %>% 
@@ -267,7 +292,7 @@ haddock_lw %>%
   labs(x = "", y = "Total Haddock Caught in Survey")
 ```
 
-## NA Replacement Issues?
+## NA Replacement Issues? {.tabset}
 
 One thing that could be happening is that in the Fall, when there are astronomically high numbers, it is not possible to get a total biomass value.
 
@@ -275,18 +300,21 @@ In these events we would still have a size distribution and weights for individu
 
 ### NA BIOMASS
 
+Plotting the what the original value of `BIOMASS` is for each length weight total. If there was one without the other it should be flagged.
+
 ```{r}
 
 # check instances of NA biomass
 haddock_lw %>% 
-  ggplot(aes(est_year, biomass, color = no_bio)) +
+  ggplot(aes(est_year, sum_weight_kg, color = no_bio)) +
   geom_point() +
-  facet_wrap(~no_bio)  +
   scale_color_gmri() +
-  labs(x = "")
+  labs(x = "", y = "Length Weight Biomass", color = "BIOMASS Check")
 ```
 
 ### NA Abundance
+
+Plotting the what the original value of `ABUNDANCE` is for each length weight total. If there was one without the other it should be flagged.
 
 ```{r}
 
@@ -307,10 +335,13 @@ It appears from plotting these factors that for Spring, and Fall for the Albatro
 
 ```{r}
 haddock_lw %>% 
-  ggplot(aes(x = convers)) +
-  geom_histogram() +
-  facet_grid(season~svvessel, scales = "free") +
-  labs(x = "Numlen Conversion Factor", y = "Count")
+  ggplot(aes(x = convers, color = season)) +
+  geom_boxplot() +
+  scale_color_gmri() +
+  facet_grid(season + svvessel ~  .) +
+  labs(x = "Numlen Conversion Factor", y = "Count") +
+  theme(legend.position = "bottom")
+
 ```
 
 If you plot the relationships between the length weight biomass and the survdat$BIOMASS column and account for this adjustment then the relationship looks like this:
@@ -338,3 +369,8 @@ convers_check %>%
        caption = "Dashed line depicts 1:1 relationship")
 ```
 
+#Remaining Questions 
+
+ * Why for Fall Bigelow stations is there a consistently higher conversion rate?   
+  * What situations would make it so consistently centered around ~4?   
+  * Should we be using the conversion, or un-adjusted `numlen`   

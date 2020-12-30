@@ -405,7 +405,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
 #' @export
 #'
 #' @examples
-add_lw_info <- function(survdat_clean){
+add_lw_info <- function(survdat_clean, cutoff = FALSE){
   
   
   ####__ 1. Match Species with Growth Coefficients  ####
@@ -489,6 +489,45 @@ add_lw_info <- function(survdat_clean){
   survdat_weights <- trawl_weights %>%  
     arrange(est_year, season, comname, length) %>% 
     mutate(lw_group = str_c(comname, season, catchsex)) 
+  
+  
+  
+  
+  
+  
+  ####__ 3. Drop comnames that don't align well with BIOMASS
+  
+  # these species were dropped at 50% mismatch threshold
+  # code: 02_survdat_stratification_validation
+  
+  cutoff_50 <- c(
+    "acadian redfish"          , "alewife"                  , "american plaice"         ,
+    "american shad"            , "atlantic angel shark"     , "atlantic cod"            ,
+    "atlantic croaker"         , "atlantic halibut"         , "atlantic mackerel"       ,
+    "atlantic sharpnose shark" , "atlantic spadefish"       , "atlantic sturgeon"       ,
+    "atlantic thread herring"  , "atlantic torpedo"         , "atlantic wolffish"       ,
+    "blackbelly rosefish"      , "blueback herring"         , "bluefish"                ,
+    "bluntnose stingray"       , "buckler dory"             , "bullnose ray"            ,
+    "butterfish"               , "chain dogfish"            , "cownose ray"             ,
+    "cunner"                   , "cusk"                     , "fawn cusk-eel"           ,
+    "greater amberjack"        , "haddock"                  , "longhorn sculpin"        ,
+    "northern kingfish"        , "ocean pout"               , "offshore hake"           ,
+    "pollock"                  , "rosette skate"            , "roughtail stingray"      ,
+    "round herring"            , "sand tiger"               , "sandbar shark"           ,
+    "sea raven"                , "smooth butterfly ray"     , "smooth dogfish"          ,
+    "southern kingfish"        , "spanish mackerel"         , "spanish sardine"         ,
+    "spiny butterfly ray"      , "spiny dogfish"            , "spot"                    ,
+    "striped bass"             , "tautog"                   , "thorny skate"            ,
+    "weakfish"                 , "white hake"               , "windowpane flounder"     ,
+    "winter flounder"          , "winter skate"             , "witch flounder"          ,
+    "yellowtail flounder"
+  )
+  
+  if(cutoff == TRUE){
+    survdat_weights <- survdat_weights %>% filter(comname %in% cutoff_50)
+  }
+  
+  
   
   
   return(survdat_weights)
@@ -590,9 +629,8 @@ add_area_stratification <- function(survdat_weights, include_epu = F){
 # strat_biomass <- add_area_stratification(survdat_weights = weights_20, include_epu = F)
 
 
-####__####
-####__####
-####__####
+
+####____________________####
 
 
 
@@ -781,7 +819,7 @@ agg_strat_metrics <- function(.data,
 
 #### 3. Annual Summary  ####
 # Return an annual summary
-ss_annual_summary <- function(survey_data) {
+ss_annual_summary <- function(survey_data, include_epu = F) {
 
   
   # Summarize on an individual measurement length level
@@ -797,18 +835,33 @@ ss_annual_summary <- function(survey_data) {
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_survey_abund       = sum(numlen_adj),                             # total number across species
-      strat_abundance_s        = sum(expanded_abund_s),
-      strat_abundance_epu      = sum(expanded_abund_epu),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
+      strat_abundance_s        = sum(expanded_abund_s),
       lw_strat_biomass_s       = sum(expanded_lwbio_s, na.rm = T),            # total biomass across all areas,  weighted by stratum
-      lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),          # total biomass across all areas,  weighted by epu
       fscs_strat_biomass_s     = sum(expanded_biom_s),                        # total biomass across all areas,  weighted by stratum
-      fscs_strat_biomass_epu   = sum(expanded_biom_epu),                      # total biomass across all areas, weighted by epu
       .groups = "keep"
     )  %>% 
     mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
+  
+  
+  
+  # Optional step to include EPU area aggregates
+  if(include_epu == T){
+    epu_strat <- survey_data  %>% 
+      group_by(est_year) %>% 
+      summarise(
+        strat_abundance_epu      = sum(expanded_abund_epu),               # total abundance, stratified by epu
+        lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),    # total lw biomass across all areas, weighted by epu
+        fscs_strat_biomass_epu   = sum(expanded_biom_epu),                # total biomass across all areas, weighted by epu
+        .groups = "keep") %>% 
+      ungroup()
+    
+    # Add to stratum area aggregates
+    summ_data <- bind_cols(summ_data, epu_strat)
+    
+  }
   
   return(summ_data)
   
@@ -822,17 +875,17 @@ ss_annual_summary <- function(survey_data) {
 
 
 # Include region as a group
-ss_regional_summary <- function(survey_data, epu = FALSE) {
+ss_regional_summary <- function(survey_data, epu_regions = F, include_epu = FALSE) {
   
-  if(epu == FALSE){
+  if(epu_regions == FALSE){
   summ_data <- survey_data %>% 
     group_by(est_year, survey_area) 
-  } else if(epu == TRUE){
+  } else if(epu_regions == TRUE){
     summ_data <- survey_data %>% 
       group_by(est_year, epu) 
   }
   
-  summ_data <- summ_data %>% 
+  stratum_summary <- summ_data %>% 
     summarise(
       season                   = "Spring + Fall",
       n_stations               = n_distinct(id),                              # Distinct tows
@@ -842,21 +895,35 @@ ss_regional_summary <- function(survey_data, epu = FALSE) {
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_survey_abund       = sum(numlen_adj),                             # total number across species
-      strat_abundance_s        = sum(expanded_abund_s),
-      strat_abundance_epu      = sum(expanded_abund_epu),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
-      lw_strat_biomass_s       = sum(expanded_lwbio_s, na.rm = T),              # total biomass across all areas,  weighted by stratum
-      lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),            # total biomass across all areas,  weighted by epu
-      fscs_strat_biomass_s     = sum(expanded_biom_s),                       # total biomass across all areas,  weighted by stratum
-      fscs_strat_biomass_epu   = sum(expanded_biom_epu),                     # total biomass across all areas, weighted by epu
+      strat_abundance_s        = sum(expanded_abund_s),
+      lw_strat_biomass_s       = sum(expanded_lwbio_s, na.rm = T),            # total biomass across all areas,  weighted by stratum
+      fscs_strat_biomass_s     = sum(expanded_biom_s),                        # total biomass across all areas,  weighted by stratum
       .groups = "keep"
     )  %>% 
     mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
   
   
-return(summ_data)
+  # Optional step to include EPU area aggregates
+  if(include_epu == T){
+    epu_strat <- summ_data  %>% 
+      group_by(est_year) %>% 
+      summarise(
+        strat_abundance_epu      = sum(expanded_abund_epu),               # total abundance, stratified by epu
+        lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),    # total lw biomass across all areas, weighted by epu
+        fscs_strat_biomass_epu   = sum(expanded_biom_epu),                # total biomass across all areas, weighted by epu
+        .groups = "keep") %>% 
+      ungroup()
+    
+    # Add to stratum area aggregates
+    summ_data <- bind_cols(stratum_summary, epu_strat)
+    
+  }
+  
+  return(summ_data)
+  
   
 }
 
@@ -865,7 +932,7 @@ return(summ_data)
 #### 5. Seasonal Summary  ####
 
 # Include season as a group
-ss_seasonal_summary <- function(survey_data){
+ss_seasonal_summary <- function(survey_data, include_epu = F){
   
   summ_data <- survey_data %>%
     group_by(est_year, season) %>%
@@ -879,18 +946,31 @@ ss_seasonal_summary <- function(survey_data){
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_survey_abund       = sum(numlen_adj),                             # total number across species
       strat_abundance_s        = sum(expanded_abund_s),
-      strat_abundance_epu      = sum(expanded_abund_epu),
       mean_ind_length          = weighted.mean(length, numlen_adj),           # average ind length
       mean_ind_bodymass_lw     = weighted.mean(ind_weight_kg, numlen_adj),    # average ind weight
       mean_ind_length_lw       = weighted.mean(length, numlen_adj),           # average ind length
       lw_strat_biomass_s       = sum(expanded_lwbio_s, na.rm = T),              # total biomass across all areas,  weighted by stratum
-      lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),            # total biomass across all areas,  weighted by epu
       fscs_strat_biomass_s     = sum(expanded_biom_s),                       # total biomass across all areas,  weighted by stratum
-      fscs_strat_biomass_epu   = sum(expanded_biom_epu),                     # total biomass across all areas, weighted by epu
       .groups = "keep"
     )  %>% 
     mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL"))
  
+  # Optional step to include EPU area aggregates
+  if(include_epu == T){
+    epu_strat <- survey_data  %>% 
+      group_by(est_year, season) %>% 
+      summarise(
+        strat_abundance_epu      = sum(expanded_abund_epu),               # total abundance, stratified by epu
+        lw_strat_biomass_epu     = sum(expanded_lwbio_epu, na.rm = T),    # total lw biomass across all areas, weighted by epu
+        fscs_strat_biomass_epu   = sum(expanded_biom_epu),                # total biomass across all areas, weighted by epu
+        .groups = "keep") %>% 
+      ungroup()
+    
+    # Add to stratum area aggregates
+    summ_data <- bind_cols(summ_data, epu_strat)
+    
+  }
+  
   return(summ_data)
   
 }
