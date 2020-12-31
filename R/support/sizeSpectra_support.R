@@ -102,9 +102,11 @@ group_mle_calc <- function(dataBinForLike, group_var, vecDiff = 0.5){
 group_mle_plot <- function(mle_res){
   plot <- mle_res %>% 
     ggplot(aes(Year, b, color = area, shape = season)) +
-    geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax)) +
-    labs(x = "Year",
-         y = "Size Spectrum Slope (b)") 
+    geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax),
+                    alpha = 0.6) +
+    labs(x = "",
+         y = "Size Spectrum Slope (b)") +
+    theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0.5))
   
   return(plot)
 }
@@ -276,18 +278,17 @@ ggplot_isd <- function(data_group, mle.bins.res, plot_rects = TRUE, show_pl_fit 
   # Toggle to turn on the fit lines or not
   if(show_pl_fit == TRUE) {
     p2 <- p2 +
-      geom_smooth(data = data_group,
-                  aes(x = wmin, 
-                      y = lowCount),
-                  formula = y ~ x,
-                  method = "lm", 
-                  se = T,
-                  color = "darkred")
-    
-    # # Adding the power law fit here also:
-    # geom_line(data = PLB_df, aes(x.PLB, y.PLB), color = "red") +
-    # geom_line(data = PLB_df, aes(x.PLB, confMin), color = "red", linetype = 2) +
-    # geom_line(data = PLB_df, aes(x.PLB, confMax), color = "red", linetype = 2)
+      # geom_smooth(data = data_group,
+      #             aes(x = wmin, 
+      #                 y = lowCount),
+      #             formula = y ~ x,
+      #             method = "lm", 
+      #             se = T,
+      #             color = "darkred")
+      # Adding the power law fit here also:
+      geom_line(data = PLB_df, aes(x.PLB, y.PLB), color = "darkred") +
+      geom_line(data = PLB_df, aes(x.PLB, confMin), color = "darkred", linetype = 2) +
+      geom_line(data = PLB_df, aes(x.PLB, confMax), color = "darkred", linetype = 2)
     
   }
   
@@ -322,9 +323,9 @@ strat_abund_mle_calc <- function(dataBinForLike, group_var, vecDiff = 0.5){
   # Select the right columns
   dataBinForLike = dplyr::select(dataBinForLike,
                                  SpecCode,
-                                 wmin = wmin_area_strat,
-                                 wmax = wmax_area_strat,
-                                 Number = strat_abund)
+                                 wmin,
+                                 wmax,
+                                 Number = expanded_abund_s)
   
   # Set n, xmin, xmax
   n    = sum(dataBinForLike$Number)
@@ -367,20 +368,21 @@ strat_abund_mle_calc <- function(dataBinForLike, group_var, vecDiff = 0.5){
 
 
 # Stratified abundance preparation
+# Use to prep data for Individual Size Distribution Plots
 strat_isd_prep <- function(x = dataBin){
   
   #tester: x <- strat_year_list[[1]]
   
   # arrange by bin lower weight
-  data.year <- dplyr::arrange(x, desc(wmin_area_strat))
+  data.year <- dplyr::arrange(x, desc(wmin))
   
   # Number of fish for the year
-  sumNumber <- sum(data.year$strat_abund)
+  sumNumber <- sum(data.year$expanded_abund_s)
   
   # Have to do not with dplyr:
-  wmin.vec <- data.year$wmin_area_strat    # Vector of lower weight bin limits
-  wmax.vec <- data.year$wmax_area_strat    # Vector of upper weight bin limits
-  num.vec  <- data.year$strat_abund  # Vector of corresponding counts for those bins
+  wmin.vec <- data.year$wmin    # Vector of lower weight bin limits
+  wmax.vec <- data.year$wmax    # Vector of upper weight bin limits
+  num.vec  <- data.year$expanded_abund_s  # Vector of corresponding counts for those bins
   
   # to do a manual count, start with NA's for everything
   countGTEwmin <- rep(NA, length(num.vec)) 
@@ -423,7 +425,7 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     
     # Power law parameters and summary details for that year
     b.MLE     <- group_ss_res$b
-    sumNumber <- sum(data_group$strat_abund) 
+    sumNumber <- sum(data_group$expanded_abund_s) 
     b.confMin <- group_ss_res$confMin
     b.confMax <- group_ss_res$confMax
     
@@ -465,8 +467,8 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     if(plot_rects == TRUE) {
       p1 <- p1 +
         geom_rect(data = data_group, 
-                  aes(xmin = wmin_area_strat, 
-                      xmax = wmax_area_strat, 
+                  aes(xmin = wmin, 
+                      xmax = wmax, 
                       ymin = lowCount, 
                       ymax = highCount),
                   color = "gray70",
@@ -474,8 +476,8 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     # Add line segments
     p1 <- p1 + 
       geom_segment(data = data_group,
-                   aes(x = wmin_area_strat, 
-                       xend = wmax_area_strat, 
+                   aes(x = wmin, 
+                       xend = wmax, 
                        y = countGTEwmin, 
                        yend = countGTEwmin),
                    color = "blue") +
@@ -508,8 +510,8 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     if(plot_rects == TRUE) {
       p2 <- p2 +
         geom_rect(data = data_group, 
-                  aes(xmin = wmin_area_strat, 
-                      xmax = wmax_area_strat, 
+                  aes(xmin = wmin, 
+                      xmax = wmax, 
                       ymin = lowCount, 
                       ymax = highCount),
                   color = "gray70",
@@ -518,8 +520,8 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     # Add the line segments for biomass bins
     p2 <- p2 + 
       geom_segment(data = data_group,
-                   aes(x = wmin_area_strat, 
-                       xend = wmax_area_strat, 
+                   aes(x = wmin, 
+                       xend = wmax, 
                        y = countGTEwmin, 
                        yend = countGTEwmin),
                    color = "blue") +
@@ -541,13 +543,17 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     # Toggle to turn on the fit lines or not
     if(show_pl_fit == TRUE) {
       p2 <- p2 +
-        geom_smooth(data = data_group,
-                    aes(x = wmin_area_strat, 
-                        y = lowCount),
-                    formula = y ~ x,
-                    method = "lm", 
-                    se = T,
-                    color = "darkred")
+        # geom_smooth(data = data_group,
+        #             aes(x = wmin, 
+        #                 y = lowCount),
+        #             formula = y ~ x,
+        #             method = "lm", 
+        #             se = T,
+        #             color = "darkred")
+        # Adding the power law fit here also:
+        geom_line(data = PLB_df, aes(x.PLB, y.PLB), color = "darkred") +
+        geom_line(data = PLB_df, aes(x.PLB, confMin), color = "darkred", linetype = 2) +
+        geom_line(data = PLB_df, aes(x.PLB, confMax), color = "darkred", linetype = 2)
     }
     
     
