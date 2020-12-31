@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 data/*
+
+R/09_ss_sensitivity_cache/
+R/09_ss_sensitivity_files/

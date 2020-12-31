@@ -42,12 +42,12 @@ res_path <- box_paths$res
 
 ####  Data  ####
 
-# source file: 06_nefsc_size_spectra.R
-dataBin <- read_csv(here("data/NEFSC/nefsc_ss_bins.csv"), col_types = cols())
+# # source file: 06_nefsc_size_spectra_steps.R
+# dataBin <- read_csv(here("data/NEFSC/nefsc_ss_bins.csv"), col_types = cols())
 
-# # source file: 08_nefsc_sensitivity_prep
-# dataBin <- read_csv(here("data/NEFSC/nefsc_databin_allsizes.csv"),
-#                     guess_max = 1e5, col_types = cols())
+# source file: 08_nefsc_sensitivity_prep
+dataBin <- read_csv(here("data/NEFSC/nefsc_databin_allsizes.csv"),
+                    guess_max = 1e5, col_types = cols())
 
 
 # Make some changes
@@ -70,15 +70,23 @@ dataBin <- dataBin %>%
               wmax <= 100000 ~ "10000 - 100000",
               TRUE ~ "100000+"))
 
+```
 
+Log-length and log weight bins can be created using `case_when()`
 
-# Kathy bins - on kg
+```{r}
+# Add some log bins
 dataBin <- dataBin %>% 
   mutate(
     lweight = log(wmin / 1000),
-    llen = log(LngtMin),
-    l10wt = log10(wmin / 1000),
-    # length bins
+    llen    = log(LngtClass),
+    l10wt   = log10(wmin / 1000))
+
+
+
+# length bins
+dataBin <- dataBin %>% 
+  mutate(
     lenbin = case_when(
       llen > 5    ~ 10,
       llen > 4.5  ~ 9,
@@ -90,8 +98,12 @@ dataBin <- dataBin %>%
       llen > 1.5  ~ 3,
       llen > 1    ~ 2,
       llen > 0.5  ~ 1,
-      TRUE        ~ 0),
-    # weight bins
+      TRUE        ~ 0))
+
+
+# weight bins
+dataBin <- dataBin %>% 
+  mutate(
     wtbin = case_when(
       lweight > 4   ~ 8,
       lweight > 2   ~ 7,
@@ -101,8 +113,12 @@ dataBin <- dataBin %>%
       lweight > -6  ~ 3,
       lweight > -8  ~ 2,
       lweight > -10  ~ 1,
-      lweight < -10  ~ 0),
-    # weight log10 bins
+      lweight < -10  ~ 0))
+
+
+# weight log10 bins
+dataBin <- dataBin %>% 
+  mutate(
     wt10bin =  case_when(
       l10wt > 2.5   ~ 20,
       l10wt > 2     ~ 19,
@@ -125,24 +141,27 @@ dataBin <- dataBin %>%
       l10wt > -6.5  ~ 2,
       l10wt > -7    ~ 1,
       TRUE ~ 0)) 
+```
 
+Load results from 
 
-
-
-
-# 5g min size cutoff
+```{r}
+# 5g min size cutoff results & the stratified abundance
+# SOURCE: 08_nefsc_sensitivity_prep.R
 min5g <- read_csv(here("data/size_spectra_results/nefsc_5grams.csv"))
+min5g_strat <- read_csv(here("data/size_spectra_results/nefsc_5grams_strat.csv"))
 
-
-# OISST Timeseries
+# Load OISST Timeseries for Survey Regions
 regions <- c("Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight")
 region_temps <- map(regions, function(x){
-  region_path <- str_replace_all(str_to_lower(x), " ", "_")
-  region_path <- str_c("~/Box/NSF OKN Demo Data/oisst/likelihood_timeseries/nmfs_trawl_regions/OISSTv2_anom_", 
-                       region_path, "_likelihood_ts.csv")
+  region_name <- str_replace_all(str_to_lower(x), " ", "_")
+  region_path <- str_c("~/Box/NSF OKN Demo Data/oisst/regional_timeseries/nmfs_trawl_regions/OISSTv2_anom_", 
+                       region_name, ".csv")
   region_ts <- read_csv(region_path)
-  return(region_ts)
-}) %>% setNames(regions) %>%  bind_rows(.id = "region")
+  return(region_ts) }) 
+
+# Set names, append
+region_temps <- region_temps %>% setNames(regions) %>%  bind_rows(.id = "region")
 
 
 ```
@@ -169,15 +188,18 @@ One way to address differences in catchability of different sized fishes is by s
 For a starting point in the sensitivity analysis I will use all the data and calculate slopes for all the data across an evenly spaced range of cutoff values similar to a grid search.
  
 ```{r size cutoff test, cache=TRUE}
-#range of size cutoffs
-size_cutoffs <- c(seq(0, 50, by = 2.5))
+
+# Range of size cutoffs
+size_cutoffs <- c(seq(0, 50, by = 5))
 
 # Calculate the slope/intercepts
 size_cutoff_results <- map(size_cutoffs, function(cutoff_size) {
   
+  # Filter with cutoff size
   filtered_data <- dataBin %>%  
     filter(wmin >= cutoff_size)
   
+  # Set grouping level
   grouped_data <- filtered_data %>%
     mutate(group_level = "all_data") %>%
     split(.$group_level)
@@ -193,7 +215,10 @@ size_cutoff_results <- map(size_cutoffs, function(cutoff_size) {
            C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
   return(group_results)
  
-}) %>% 
+}) 
+
+# Set the names for the list
+size_cutoff_results <- size_cutoff_results %>% 
   setNames(str_c(size_cutoffs, " grams")) %>% 
   bind_rows(.id = "cutoff_g")
 
@@ -213,7 +238,7 @@ In the Edwards vignettes a cutoff of 5g is used, which is referenced to a paper 
  
 ```{r b sensitivity}
 
-
+# Plot the differences in SS slopes
 size_cutoff_results %>% 
   ggplot(aes(x = cutoff, y = b)) +
     geom_point() +
@@ -226,23 +251,11 @@ size_cutoff_results %>%
 
 ```
 
-### C sensitivity
-
-So C is the other parameter in the power law distribution... Check back to see what it refers to.
-
-```{r c sensitivity}
-size_cutoff_results %>% 
-  ggplot(aes(x = cutoff, y = C)) +
-    geom_point() +
-    geom_smooth(formula = y ~ x, method = "lm", se = FALSE, size = 1) +
-    stat_poly_eq(formula = y ~ x, parse = TRUE,
-               label.y = "top", label.x = "left") +
-    labs(x = "Minimum Bodymass Cutoff (g)", y = "Size Spectrum Intercept? (C)")
-  
-```
 
 
 ### Biomass Bins
+
+Taking some coarse breaks in
 
 ```{r}
 # 4 plots for how the distribution looks with those cutoffs
@@ -340,16 +353,16 @@ class_cumsums <- class_totals %>%
 
 # 3. Cumulative Sums on lengths
 lmin_cumsums <- dataBin %>% 
-  group_by(Year, LngtMin) %>% 
+  group_by(Year, LngtClass) %>% 
   summarise(`Total Bin Biomass` = sum(Biomass)) %>%  
   ungroup() %>% 
   left_join(totals, by = "Year") %>% 
   mutate(`Percent of Annual Biomass (g)` = (`Total Bin Biomass` / `Total Annual Biomass`) * 100 ) %>%
-  arrange(Year, LngtMin) %>% 
+  arrange(Year, LngtClass) %>% 
   group_by(Year) %>% 
   mutate(`Cumulative Biomass (kg)` = cumsum(`Total Bin Biomass`) / 1000,
          `Proportion of Annual Biomass` = `Cumulative Biomass (kg)` / (`Total Annual Biomass` / 1000),
-         `Length (cm)` = as.numeric(factor(LngtMin)))
+         `Length (cm)` = as.numeric(factor(LngtClass)))
 
 ```
 
@@ -445,28 +458,28 @@ decade_plots_size <- size_cumsums %>%
 ```{r}
 
 # And plot
-decade_plots_size$`1980`$mass
+#decade_plots_size$`1980`$mass
 decade_plots_size$`1980`$proportion
 ```
 
 #### 1990's
 
 ```{r}
-decade_plots_size$`1990`$mass
+#decade_plots_size$`1990`$mass
 decade_plots_size$`1990`$proportion
 ```
 
 #### 2000's
 
 ```{r}
-decade_plots_size$`2000`$mass
+#decade_plots_size$`2000`$mass
 decade_plots_size$`2000`$proportion
 ```
 
 #### 2010's
 
 ```{r}
-decade_plots_size$`2010`$mass
+#decade_plots_size$`2010`$mass
 decade_plots_size$`2010`$proportion
 ```
 
@@ -526,28 +539,28 @@ decade_plots_class <- class_cumsums %>%
 
 ```{r}
 # And plot
-decade_plots_class$`1980`$mass
+#decade_plots_class$`1980`$mass
 decade_plots_class$`1980`$proportion
 ```
 
 #### 1990's
 
 ```{r}
-decade_plots_class$`1990`$mass
+#decade_plots_class$`1990`$mass
 decade_plots_class$`1990`$proportion
 ```
 
 #### 2000's
 
 ```{r}
-decade_plots_class$`2000`$mass
+#decade_plots_class$`2000`$mass
 decade_plots_class$`2000`$proportion
 ```
 
 #### 2010's
 
 ```{r}
-decade_plots_class$`2010`$mass
+#decade_plots_class$`2010`$mass
 decade_plots_class$`2010`$proportion
 ```
 
@@ -599,37 +612,36 @@ decade_plots_length <- lmin_cumsums %>%
 #### 1980's
 
 ```{r}
-
 # And plot
-decade_plots_length$`1980`$mass
+#decade_plots_length$`1980`$mass
 decade_plots_length$`1980`$proportion
 ```
 
 #### 1990's
 
 ```{r}
-decade_plots_length$`1990`$mass
+#decade_plots_length$`1990`$mass
 decade_plots_length$`1990`$proportion
 ```
 
 #### 2000's
 
 ```{r}
-decade_plots_length$`2000`$mass
+#decade_plots_length$`2000`$mass
 decade_plots_length$`2000`$proportion
 ```
 
 #### 2010's
 
 ```{r}
-decade_plots_length$`2010`$mass
+#decade_plots_length$`2010`$mass
 decade_plots_length$`2010`$proportion
 ```
 
 
 
 
-## Temperature Relationship {.tabset}
+## Regional Temperature Relationship {.tabset .tabset-pills}
 
 For these we want to create polygons using the stratum for each region, that way there is an identical area used for calculation of regional anomalies.
  
@@ -637,7 +649,7 @@ OISST Timeseries for each region are then calculated in python, and available to
 
 
 ```{r}
-# Want to  match up this df
+# Format table to pair with temperature
 results_5g <- min5g %>% 
   filter(Year != "all") %>% 
   mutate(
@@ -647,12 +659,30 @@ results_5g <- min5g %>%
       area == "GB" ~ "Georges Bank",
       area == "GoM" ~ "Gulf of Maine",
       area == "MAB" ~ "Mid-Atlantic Bight",
-      area == "SNE" ~ "Southern New England"
-    )
-  )
+      area == "SNE" ~ "Southern New England"))
+
+# Stratified Abundance Results
+strat_5g <- min5g_strat %>% 
+  filter(Year != "all") %>% 
+  mutate(
+    Year = as.numeric(Year),
+    region = case_when(
+      area == "all" ~ "All Regions",
+      area == "GB" ~ "Georges Bank",
+      area == "GoM" ~ "Gulf of Maine",
+      area == "MAB" ~ "Mid-Atlantic Bight",
+      area == "SNE" ~ "Southern New England"))
 
 
-# More formatting
+
+```
+
+
+### Temperature Timelines
+
+```{r}
+
+# Format the temperature timeseries as well
 regional_temps <- region_temps %>% 
   mutate(Year = lubridate::year(time),
          est_month = lubridate::month(time),
@@ -661,20 +691,15 @@ regional_temps <- region_temps %>%
            est_month %in% c(6:8)    ~ "SUMMER",
            est_month %in% c(9:11)   ~ "FALL",
            est_month %in% c(1,2,12) ~ "Winter" )) 
-```
 
-
-### Temperature Timelines
-
-```{r}
-# To these timelines
+# Plot regional timelines
 region_temps %>% 
   ggplot(aes(time, sst)) +
     geom_line(color = "gray50") +
     facet_wrap(~region, ncol = 2) +
     labs(x = "", y = "Sea Surface Temperature")
 
-# So some averaging to get spring/fall and annual temp and anoms
+# Do some averaging to get spring/fall and annual temp and anoms
 # and also some lagging action
 
 # Spring primarily in March, April or May, 
@@ -682,35 +707,54 @@ region_temps %>%
 ```
 
 
-### Regional Slopes & Temperature
+### Regional SS Slopes & Temperature {.tabset}
 
 ```{r}
 
-# formatting to combine with trawl data
+# Format temperature data to combine with size spectrum groups
+
+# Get the overall temperatures for the entire area
 overall_temps <- regional_temps %>% 
   mutate(region = "All Regions") %>% 
   group_by(Year, region, season) %>% 
   summarise(avg_sst = mean(sst, na.rm = T),
     avg_sst_clim = mean(sst_clim, na.rm = T),
-    avg_sst_anom = mean(sst_anom, na.rm = T))
+    avg_sst_anom = mean(sst_anom, na.rm = T)) %>% 
+  ungroup()
 
+# Get the regional and seasonal means
 seasonal_temps <- regional_temps %>% 
   group_by(Year, region, season) %>% 
   summarise(
     avg_sst = mean(sst, na.rm = T),
     avg_sst_clim = mean(sst_clim, na.rm = T),
-    avg_sst_anom = mean(sst_anom, na.rm = T))
+    avg_sst_anom = mean(sst_anom, na.rm = T)) %>% 
+  ungroup()
 
-seasonal_temps <- bind_rows(overall_temps, seasonal_temps) %>% arrange(Year, region, season) 
+# Put together
+seasonal_temps <- bind_rows(overall_temps, seasonal_temps) %>% 
+  arrange(Year, region, season) %>% 
+  mutate(season = str_to_title(season))
 
 
-# Merge them
+# Join temp to SS results
 results_w_temps <- left_join(results_5g, seasonal_temps, by = c("Year", "region", "season")) %>% 
   drop_na(avg_sst)
 
+# Join temp to stratified abundance results
+strat_w_temps <- left_join(strat_5g, seasonal_temps, by = c("Year", "region", "season")) %>% 
+  drop_na(avg_sst)
+```
 
 
-# And plot
+
+#### Survey Abundances
+
+These figures show how the size spectrum slopes vary using the observed abundances (`numlen_adj`) from the survey.
+```{r}
+
+
+# Plot Survey Abundances
 results_w_temps %>% 
   mutate(season = str_to_lower(season),
          season = factor(season, levels = c("spring", "fall"))) %>% 
@@ -722,24 +766,53 @@ results_w_temps %>%
   stat_poly_eq(formula = y ~ x, parse = TRUE,
                  label.y = "bottom", label.x = "right") +
   facet_grid(season ~ region) + 
-  labs(x = "Seasonal Temperature Anomaly", y = "Size Spectrum Slope (b)")
+  labs(x = "Seasonal Temperature Anomaly", 
+       y = "Size Spectrum Slope (b)",
+       caption = "Size Spectrum Slopes Estimated from Observed Survey Catches")
   
 
 ```
 
-### Regional Timelines
+
+#### Stratified Survey Abundances
+
+```{r}
+# Plot Survey Abundances
+strat_w_temps %>% 
+  mutate(season = str_to_lower(season),
+         season = factor(season, levels = c("spring", "fall"))) %>% 
+  ggplot(aes(avg_sst_anom, b)) +
+  geom_point() +
+  geom_smooth(formula = y ~ x,
+              size = 1,
+              method = "lm") +
+  stat_poly_eq(formula = y ~ x, parse = TRUE,
+                 label.y = "bottom", label.x = "right") +
+  facet_grid(season ~ region) + 
+  labs(x = "Seasonal Temperature Anomaly",
+       y = "Size Spectrum Slope (b)",
+       caption = "Size Spectrum Slopes Estimated from Stratified Abundances")
+```
+
+
+
+### Regional SS Slope Timelines {.tabset}
 
 These are the results from using a 5 gram bodysize cutoff.
 
+
+
+#### Survey Abundances
+
+These figures show how the size spectrum slopes vary using the observed abundances (`numlen_adj`) from the survey.
+
 ```{r}
 # # Plotting all 5gram cutoff results
-
-
 min5g <- min5g %>% 
   mutate(Year = as.numeric(as.character(Year)),
          season = case_when(season == "all" ~ "Spring + Fall",
-                            season == "SPRING" ~ "Spring",
-                            season == "FALL" ~ "Fall"),
+                            season == "Spring" ~ "Spring",
+                            season == "Fall" ~ "Fall"),
          season = factor(season, levels = c("Spring", "Fall", "Spring + Fall"))) 
 
 
@@ -751,6 +824,42 @@ min5g <- min5g %>%
 
 
 min5g %>% 
+  ggplot(aes(Year, b, color = area, shape = season)) +
+    geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax), alpha = 0.5) +
+     geom_hline(data = filter(min5g, is.na(Year)), 
+               aes(yintercept = b), linetype = 2, alpha = 0.7, size = 1) +
+    facet_grid(season ~ area) + 
+   
+    geom_smooth(method = "gam", show.legend = FALSE, se = FALSE, 
+                formula = y ~ s(x, bs = "cs")) +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, size= 6, vjust = 0.5)) +
+    scale_color_gmri() +
+    labs() + 
+    guides(shape = "none",
+           color = "none") +
+    labs(x = "", 
+         caption = "Horizontal line represents the mean across all years for facet group.",
+        y = "Size Spectrum Slope (b)") 
+```
+
+#### Stratified Survey Abundances
+
+These figures show how the size spectrum slopes vary using the area-stratified abundances. These scale out catch annual catch rates from the survey strata to the total areas.
+
+
+```{r}
+# # Plotting all 5gram cutoff results
+min5g_strat <- min5g_strat %>% 
+  mutate(Year = as.numeric(as.character(Year)),
+         season = case_when(season == "all" ~ "Spring + Fall",
+                            season == "Spring" ~ "Spring",
+                            season == "Fall" ~ "Fall"),
+         season = factor(season, levels = c("Spring", "Fall", "Spring + Fall"))) 
+
+
+
+min5g_strat %>% 
   ggplot(aes(Year, b, color = area, shape = season)) +
     geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax), alpha = 0.5) +
      geom_hline(data = filter(min5g, is.na(Year)), 

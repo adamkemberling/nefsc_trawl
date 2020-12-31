@@ -103,7 +103,7 @@ weights_summ %>%
      # calculate total biomass, make a key for the length weight coefficient sources
      bodyMass = ind_weight_kg * 1000,            # weight of an individual from that size class
      Biomass = Number * bodyMass,                # number at size times the mass
-     Stratified_Biomass = strat_abund * bodyMass, # number scaled to stratum, time the mass of ind.
+     Stratified_Biomass = expanded_abund_s * bodyMass, # number scaled to stratum, time the mass of ind.
      lw_group = str_c(SpecCode, season, catchsex)) %>% 
    arrange(Year, season, SpecCode, LngtClass)
  
@@ -112,22 +112,20 @@ weights_summ %>%
  # Pretty sure since the growth coefficients,
  # stratified numbers, and number at length are all together we can just use mutate here...
  dataBin <- data %>% 
-   mutate(
+   mutate( 
      LngtMax         = LngtClass + 1,
      Ln_wmax         = (ln_a + LWb * log(LngtMax)),
      wmin            = bodyMass,                     # minimum weight of individual
      wmax            = exp(Ln_wmax) * 1000,          # max weight of individual
      wmin_sum        = Number * wmin,                # wmin * number caught actual
-     wmax_sum        = Number * wmax,                # wmax * number caught actual  
-     wmin_area_strat = strat_abund * wmin,           # wmin * stratified abundance
-     wmax_area_strat = strat_abund * wmax            # wmax * stratified abundance
-   ) %>% 
-   filter(strat_abund != 0)
+     wmax_sum        = Number * wmax                 # wmax * number caught actual  
+    ) %>% 
+   filter(expanded_abund_s != 0)
  
  
  # # Export DataBin
  # write_csv(dataBin, here("data/NEFSC/nefsc_databin_allsizes.csv"))
- 
+ # 
  
  
  
@@ -142,7 +140,7 @@ weights_summ %>%
  
  
  ####_____________________________________________________#### 
- ####  Size Spectra Group Calculations  ####
+ ####__  Survey Abundance Group Comparisons  __####
  
  #####__ 1.  All years, every region  ####
  g1 <- dbin_5g %>% 
@@ -315,6 +313,8 @@ table_complete <- bind_rows(
   .id = "group ID")
 
 
+
+
 # # plotting all the changes
 table_complete %>% 
   mutate(Year = as.numeric(as.character(Year))) %>% 
@@ -453,4 +453,204 @@ vessel_results <- bind_rows(
 
 # # Export table
 # write_csv(vessel_results, path = here("data/size_spectra_results/nefsc_5grams_vessel.csv"))
+
+
+
+
+
+####_____________________________________________________#### 
+####_____________________________________________________#### 
+####__  Stratified Abundances  __####
+
+
+#####__ 1.  All years, every region  ####
+
+# get SS results
+strat_g1_res <- dbin_5g %>% 
+  mutate(group_level = "all_data") %>% 
+  split(.$group_level)  %>% 
+  imap_dfr(strat_abund_mle_calc) %>% 
+  mutate(Year = "all",
+         season = "all",
+         area = "all")
+
+
+# plot group comparisons
+group_mle_plot(strat_g1_res)
+
+
+
+#####__ 2. All Years, each season  ####
+
+# get SS results
+strat_g2_res <- dbin_5g  %>% 
+  mutate(group_level = season) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(strat_abund_mle_calc) %>% 
+  mutate(Year = "all",
+         season = group_var,
+         area = "all")
+
+# plot group comparisons
+group_mle_plot(strat_g2_res)
+
+
+
+
+#####__ 3. All Years, regions  ####
+
+# get SS results
+strat_g3_res <- dbin_5g  %>% 
+  mutate(group_level = survey_area) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(strat_abund_mle_calc, vecDiff = 2) %>% 
+  mutate(Year = "all",
+         season = "all",
+         area = group_var)
+
+
+
+# plot group comparisons
+group_mle_plot(strat_g3_res)
+
+
+
+
+#####__ 3. All Years, seasons * regions  ####
+
+# get SS results
+strat_g4_res <- dbin_5g  %>% 
+  mutate(group_level = str_c(season, survey_area)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = strat_abund_mle_calc) %>% 
+  mutate(Year = "all",
+         season = case_when(
+           str_detect(group_var, "Fall") ~ "Fall",
+           str_detect(group_var, "Spring") ~ "Spring"),
+         area = case_when(
+           str_detect(group_var, "GoM") ~ "GoM",
+           str_detect(group_var, "SNE") ~ "SNE",
+           str_detect(group_var, "MAB") ~ "MAB",
+           str_detect(group_var, "GB") ~ "GB"))
+
+
+# plot group comparisons
+group_mle_plot(strat_g4_res)
+
+
+#####__ 4. Every year, entire survey  ####
+
+# get SS results
+strat_g5_res <- dbin_5g  %>% 
+  mutate(group_level = Year) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = strat_abund_mle_calc) %>% 
+  mutate(Year = group_var,
+         season = "all",
+         area = "all")
+
+
+
+# plot group comparisons
+group_mle_plot(strat_g5_res)
+
+#####__ 5. every year, every region  ####
+
+# get SS results
+strat_g6_res <- dbin_5g  %>% 
+  mutate(group_level = str_c(Year, survey_area)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = strat_abund_mle_calc) %>% 
+  mutate(Year = str_sub(group_var, 1, 4),
+         season = "all",
+         area = str_sub(group_var, 5, -1))
+
+
+# plot group comparisons
+group_mle_plot(strat_g6_res)
+
+
+
+
+#####__ 6. every year, only seasons  ####
+
+# get SS results
+strat_g7_res <- dbin_5g  %>% 
+  mutate(group_level = str_c(Year, season)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = strat_abund_mle_calc, vecDiff = 2) %>% 
+  mutate(Year = str_sub(group_var, 1, 4),
+         season = str_sub(group_var, 5, -1),
+         area = "all")
+
+
+# plot group comparisons
+group_mle_plot(strat_g7_res)
+
+
+
+
+#####__ 7. every year, region * season  ####
+
+
+# get SS results
+strat_g8_res <- dbin_5g  %>% 
+  mutate(group_level = str_c(Year, season, survey_area)) %>% 
+  split(.$group_level) %>% 
+  imap_dfr(.f = strat_abund_mle_calc, vecDiff = 2) %>% 
+  mutate(Year = str_sub(group_var, 1, 4),
+         season = case_when(
+           str_detect(group_var, "Fall") ~ "Fall",
+           str_detect(group_var, "Spring") ~ "Spring"),
+         area = case_when(
+           str_detect(group_var, "GoM") ~ "GoM",
+           str_detect(group_var, "SNE") ~ "SNE",
+           str_detect(group_var, "MAB") ~ "MAB",
+           str_detect(group_var, "GB") ~ "GB"))
+
+
+# plot group comparisons
+group_mle_plot(strat_g8_res) +
+  facet_wrap(~ area) +
+  theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0.5)) +
+  xlab("")
+
+
+
+
+# super table
+strat_table_complete <- bind_rows(
+  list(
+    "Overall"                        = strat_g1_res,
+    "only seasons"                   = strat_g2_res,
+    "only regions"                   = strat_g3_res,
+    "region * seasons"               = strat_g4_res,
+    "single years"                   = strat_g5_res,
+    "single years * region"          = strat_g6_res,
+    "single years * season "         = strat_g7_res,
+    "single years * season * region" = strat_g8_res), 
+  .id = "group ID")
+
+
+
+
+# # plotting all the changes
+strat_table_complete %>% 
+  mutate(Year = as.numeric(as.character(Year))) %>% 
+  group_mle_plot() + 
+  facet_grid(season ~ area) + 
+  geom_smooth(method = "gam", show.legend = FALSE, se = FALSE, 
+              formula = y ~ s(x, bs = "cs")) +
+  geom_hline(data = filter(strat_table_complete, Year == "all"), 
+             aes(yintercept = b), linetype = 2, alpha = 0.7, size = 1) +
+  theme(axis.text.x = element_text(angle = 90, size= 6, vjust = 0.5)) +
+  labs(x = "") + 
+  guides(shape = "none",
+         color = "none")
+
+
+# # Export table
+# write_csv(strat_table_complete, path = here("data/size_spectra_results/nefsc_5grams_strat.csv"))
+
+
 

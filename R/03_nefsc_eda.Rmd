@@ -38,14 +38,16 @@ mills_path <- box_paths$mills
 res_path <- box_paths$res
 
 
-####  Load Data  ####
+####  Load NEFSC Groundfish Data  ####
 
 # Load it from csv (faster)
+# SOURCE: 02_nefsc_build_qaqc
 weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
                        col_types = cols(), guess_max = 1e4)
 
-# Load the shapefiles for the polygons
 
+
+# Load the shapefiles for the polygons
 # Load new england
 new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
 canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 

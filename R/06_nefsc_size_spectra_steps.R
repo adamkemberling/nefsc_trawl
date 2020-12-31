@@ -27,11 +27,12 @@ source(here("R/support/sizeSpectra_support.R"))
 # Previous code replaced with size spectra build code 10/26/2020
 
 
-# Source file: 02_NOAA_QAQC.R
+# Source file: 02_nefsc_build_qaqc.R
 nefsc_weights <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
                         col_types = cols(), guess_max = 1e4)
 
-
+nefsc_weights <- nefsc_weights %>% 
+  mutate(year = factor(est_year)) 
 
 
 ####_____________________####
@@ -44,7 +45,12 @@ nefsc_weights %>%
   labs(x = "Individual Bodymass (kg)", y = "Common Name")
 
 
-
+# Plot of size ranges by year, weighted by numlen_adj
+nefsc_weights %>% 
+  ggplot(aes(ind_weight_kg, fct_rev(year), weight = numlen_adj)) +
+  geom_boxplot(outlier.shape = NA) +
+  scale_x_continuous(limits = quantile(nefsc_weights$ind_weight_kg, c(0, 0.99))) +
+  labs(x = "Individual Bodymass (kg)", y = "")
 
 
 ####  SizeSpectra Setup  ####
@@ -69,9 +75,9 @@ data <- dataOrig %>%
     LWa        = a,                         # length/weight param
     LWb        = b) %>%                     # length/weight param
   mutate(
-    bodyMass           = ind_weight_kg * 1000,      # weight of an individual from that size class
+    bodyMass           = ind_weight_kg * 1000,      # weight in grams of individual
     Biomass            = Number * bodyMass,         # number at size times the mass
-    Stratified_Biomass = strat_abund * bodyMass,    # number scaled to stratum, time the mass of ind.
+    Stratified_Biomass = expanded_abund_s * bodyMass,    # number scaled to stratum, time the mass of ind.
     lw_group           = str_c(SpecCode, season, catchsex)) %>% 
   arrange(Year, season, SpecCode, LngtClass)
 
@@ -80,29 +86,29 @@ data <- dataOrig %>%
 
 
 # ####__  Group Summaries  ####
-# grouped_data <- data %>% 
-#   group_by(Year, season, SpecCode, LngtClass) %>% 
+# grouped_data <- data %>%
+#   group_by(Year, season, SpecCode, LngtClass) %>%
 #   summarise(
 #     #Divide Number / grouping_variable (numAreas),
-#     Number   = sum(Number), 
+#     Number   = sum(Number),
 #     LWa      = unique(LWa),
 #     LWb      = unique(LWb),
-#     bodyMass = unique(bodyMass)) %>% 
+#     bodyMass = unique(bodyMass)) %>%
 #   ungroup()
 # 
 # 
 # 
 # 
-# # Total number of fish 
+# # Total number of fish
 # paste0("Total Number of Fish in Analysis: ", round(sum(grouped_data$Number), 0))
 # 
 # 
 # 
-# # Track Unique Species and Length Classes 
-# dataSumm <- grouped_data %>% 
-#   group_by(Year, season) %>% 
+# # Track Unique Species and Length Classes
+# dataSumm <- grouped_data %>%
+#   group_by(Year, season) %>%
 #   summarise(uniqLngtClass = length(unique(LngtClass)),
-#             uniqSpec = length(unique(SpecCode))) %>% 
+#             uniqSpec = length(unique(SpecCode))) %>%
 #   ungroup()
 # 
 # ggplot(dataSumm) +
@@ -129,8 +135,8 @@ dataBin <- data %>%
     wmax            = exp(Ln_wmax) * 1000,          # max weight of individual
     wmin_sum        = Number * wmin,                # wmin * number caught actual
     wmax_sum        = Number * wmax,                # wmax * number caught actual  
-    wmin_area_strat = strat_abund * wmin,           # wmin * stratified abundance
-    wmax_area_strat = strat_abund * wmax            # wmax * stratified abundance
+    wmin_area_strat = expanded_abund_s * wmin,           # wmin * stratified abundance
+    wmax_area_strat = expanded_abund_s * wmax            # wmax * stratified abundance
   )
 
 
@@ -152,18 +158,18 @@ dataBin <- data %>%
 
 # Set bodymass lower limit
 # Filter for lower end of gear selectivity
-mass_cutoff <- 50 #grams
-dbin_50 <- filter(dataBin, wmin >= mass_cutoff)
+mass_cutoff <- 5 #grams
+dbin_trunc <- filter(dataBin, wmin >= mass_cutoff)
 
 # Create Grouping Var
-dbin_50 <- dbin_50 %>% 
+dbin_trunc <- dbin_trunc %>% 
   mutate(group_var = str_c(Year, season, sep = "_"))
 
 
-####  1. Survey Abundance Estimation  ####
+####  1. Survey Abundance Curves  ####
 
 # Get MLE parameters for each group
-mle_bins <- dbin_50 %>% 
+mle_bins <- dbin_trunc %>% 
   split(.$group_var) %>% 
   imap_dfr(group_mle_calc)  
 
@@ -189,7 +195,8 @@ mle_seasons %>%
   geom_smooth(formula = y ~ x,
               method = "lm") +
   labs(x = NULL,
-       y = "Size Spectrum Slope (b)") +
+       y = "Size Spectrum Slope (b)",
+       caption = paste0("Minimum Bodymass Cutoff: ", mass_cutoff)) +
   facet_wrap(~season, ncol = 1)
 
 
@@ -202,7 +209,9 @@ MLEbins.res <- mle_seasons
 # Data inputs
 
 # 1. Raw data, prepped for plotting size bins
-dataRecommend.isd <- dbin_50 %>% select(group_var, Year, season, wmin, wmax, Number) # Recommended data for ISD plots
+dataRecommend.isd <- dbin_trunc %>% 
+  select(group_var, Year, season, wmin, wmax, Number) # Recommended data for ISD plots
+
 data.year.list <- dataRecommend.isd %>% 
   split(.$group_var) %>% 
   map(isd_plot_prep)
@@ -215,7 +224,7 @@ MLEbins.res.list  <- MLEbins.res %>% split(.$group_var)
 xlim.global <- c( min(dataRecommend.isd$wmin), max(dataRecommend.isd$wmax) )
 
 # Vector of years, for naming
-group_names <- sort(unique(dbin_50$group_var))
+group_names <- sort(unique(dbin_trunc$group_var))
 
 
 # Loop through years for plots
@@ -234,14 +243,14 @@ seasonal_isd$`1975_Spring`$stacked | seasonal_isd$`1975_Fall`$stacked
 
 
 
-#### 2.  Comparing to Stratified Abundance Curves  ####
+#### 2.  Stratified Abundance Curves  ####
 
 # Issue flag
-# dbin_50 %>% filter(strat_abund == 0) %>% View("zero strat abund")
+# dbin_trunc %>% filter(strat_abund == 0) %>% View("zero strat abund")
 
 # Prep data using stratified abundance:
-mle_stratified <- dbin_50 %>% 
-  filter(strat_abund != 0) %>% 
+mle_stratified <- dbin_trunc %>% 
+  filter(expanded_abund_s != 0) %>% 
   split(.$group_var) %>% 
   imap_dfr(strat_abund_mle_calc)  
 
@@ -258,24 +267,26 @@ mle_strat_abund <- mle_stratified %>%
 # Data inputs:
 
 # Raw data to plot
-strat_isd_data  <- dbin_50 %>% 
-  select(group_var, Year, season, vessel, wmin_area_strat, wmax_area_strat, strat_abund) %>% 
-  filter(strat_abund > 0)
+strat_isd_data  <- dbin_trunc %>% 
+  select(group_var, Year, season, vessel, wmin, wmax, wmin_area_strat, wmax_area_strat, expanded_abund_s) %>% 
+  filter(expanded_abund_s > 0)
 
 # Prepped for plotting the size bins
 strat_year_list <- strat_isd_data %>% 
-  split(.$group_var) %>% map(strat_isd_prep)
-
+  split(.$group_var) %>% 
+  map(strat_isd_prep)
 
 # MLE results for fit, split into groups to match the data
-strat_res_list  <- mle_strat_abund %>% split(.$group_var) 
+strat_res_list  <- mle_strat_abund %>% 
+  split(.$group_var) 
 
 
 # Global limits for plots to compare across seasons
-xlim.global <- c( min(strat_isd_data$wmin_area_strat), max(strat_isd_data$wmax_area_strat) )
+xlim.global <- c( min(strat_isd_data$wmin), 
+                  max(strat_isd_data$wmax) )
 
 # Vector of years, for naming
-group_names <- sort(unique(dbin_50$group_var))
+group_names <- sort(unique(dbin_trunc$group_var))
 
 # Loop through years for plots
 seasonal_strat_isd <- map2(strat_year_list, 
@@ -283,5 +294,5 @@ seasonal_strat_isd <- map2(strat_year_list,
                            .f = ggplot_strat_isd) %>% setNames(group_names)
 
 # Take a peak
-seasonal_strat_isd$`2005_Spring`
+seasonal_strat_isd$`2005_Spring`$obs_y
 seasonal_strat_isd$`2005_Spring`$stacked | seasonal_strat_isd$`2005_Fall`$stacked

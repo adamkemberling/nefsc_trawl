@@ -4,6 +4,9 @@
 # size spectrum fits for varying time windows and different groups
 # for the maine and nh trawl survey as well as the NEFSC data.
 
+#### Code Status: 12/30/2020
+# Needs to be reviewed since changes upstream to data builds occurred
+
 
 ####  Packages  ####
 
@@ -24,7 +27,7 @@ source(here("R/support/sizeSpectra_support.R"))
 # Load the Catch of each station, with the length and weight bins for each species
 # there has been no biomass cutoff at this stage
 nefsc_dbin <- read_csv(here("data/NEFSC/nefsc_ss_bins.csv"), col_types = cols())
-menh_dbin <- read_csv(here("data/MENH/menh_ss_bins.csv"), col_types = cols())
+menh_dbin  <- read_csv(here("data/MENH/menh_ss_bins.csv"), col_types = cols())
 
 
 
@@ -34,7 +37,7 @@ menh_dbin <- read_csv(here("data/MENH/menh_ss_bins.csv"), col_types = cols())
 ####  Biomass Cutoff Controls  ####
 
 # Set the mass cutoff in grams
-mass_cutoff <- 400
+mass_cutoff <- 20
 
 # Filter biomass by cutoff
 nefsc_dbin <- filter(nefsc_dbin, wmin >= mass_cutoff)
