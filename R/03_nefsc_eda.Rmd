@@ -1351,66 +1351,6 @@ Concerns have been raised that the datasets obtained through the NEFSC are incon
 
 Each file was processed for size-spectra analysis using the same processing steps. This includes the same species codes, the same abundance and stratification adjustments, and the same L-W derived biomasses.
 
-**NOTE:**
-The resulting analysis has been removed to shorten the length of this markdown.
-
-```{r}
-# weights_16 <- read_csv(here::here("data/ss_prepped_data/survdat_2016_ss.csv"),
-#                        col_types = cols(),
-#                        guess_max = 1e5)
-# weights_19 <- read_csv(here::here("data/ss_prepped_data/survdat_2019_ss.csv"),
-#                        col_types = cols(),
-#                        guess_max = 1e5)
-# weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"),
-#                        col_types = cols(),
-#                        guess_max = 1e5)
-# 
-# # run summaries
-# summ_16 <- ss_regional_differences(weights_16) %>% mutate(source = "2016")
-# summ_19 <- ss_regional_differences(weights_19) %>% mutate(source = "2019")
-# summ_20 <- ss_regional_differences(weights_20) %>% mutate(source = "2020")
-# reg_summs <- bind_rows(list(summ_16, summ_19, summ_20))
-```
-
-
-```{r, fig.height=8, fig.width=8}
-
-
-
-# # Total Biomass
-# p1 <- reg_summs %>% 
-#   ggplot(aes(est_year, lw_biomass_kg, color = source)) +
-#   geom_line(show.legend = F) +
-#   scale_y_continuous(labels = scales::comma_format()) +
-#   facet_wrap(~survey_area, ncol = 1, scales = "free") +
-#   labs(x = "", y = "Total Biomass \n (L-W Regressions)")
-# 
-# # Total Biomass - FSCS
-# p2 <- reg_summs %>% 
-#   ggplot(aes(est_year, fscs_biomass_kg, color = source)) +
-#   geom_line() +
-#   scale_y_continuous(labels = scales::comma_format()) +
-#   facet_wrap(~survey_area, ncol = 1) +
-#   labs(x = "", y = "Total Biomass \n (FSCS Haul Weights)")
-# 
-# # effort
-# p3 <- reg_summs %>% 
-#   ggplot(aes(est_year, n_stations, color = source)) +
-#   geom_line(show.legend = F) +
-#   scale_y_continuous(labels = scales::comma_format()) +
-#   facet_wrap(~survey_area, ncol = 1) +
-#   labs(x = "", y = "Effort (haul count)")
-# 
-# # Species 
-# p4 <- reg_summs %>% 
-#   ggplot(aes(est_year, n_species, color = source)) +
-#   geom_line(show.legend = F) +
-#   scale_y_continuous(labels = scales::comma_format()) +
-#   facet_wrap(~survey_area, ncol = 1) +
-#   labs(x = "", y = "Distinct Species")
-# 
-# p1 + p2 + p3 + p4
-```
 
 
 `r insert_gmri_footer()`

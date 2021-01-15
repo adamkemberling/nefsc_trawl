@@ -52,7 +52,7 @@ library(tidyverse)
 ####____________________####
 
 #### Survdat Data Prep  ####
-#' @title  Survdat Size Spectrum Build Prep
+#' @title  Load survdat file with standard data filters
 #'
 #' @description Processing function to prepare survdat data for size spectra analyses. 
 #' 

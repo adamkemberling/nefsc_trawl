@@ -139,7 +139,7 @@ Looking at the weights dataset we prepared, the first obvious comparison to make
 
 
 
-## Is Biomass repeated, or divyed out
+## Are Biomass values repeated?
 
 Confusion has arisen about whether at a station the `survdat$BIOMASS` column should be summed for each species to get total biomass, or whether it is the aggregate biomass for the species and should be pulled once as a unique value.
 
@@ -359,10 +359,9 @@ cod_20 %>%
 
 Looks like the root cause is just the difference between what the mean prediction from species-specific coefficients is when compared to the biomass column in survdat.
 
-Going to plot out how each species compares individually and rank their fits.
+If we take the totals from the length-weight derived biomasses and the BIOMASS columns that match we can rank them by how often they over/underestimate biomass.
 
-**NOTE:** The data shown below has been set up to display an un-adjusted `numlen`. This should isolate cases where the regressions have poor fit, and ignore the adjustment caused by subsampling.
-
+**NOTE: 1/4/2021** Data from here through the bottom is restricted to the albatross survey, before any issues with `numlen_adj` come into play.
 
 ```{r, fig.height=10}
 # Thoughts - difference between lw biomass vs. time 
@@ -375,8 +374,9 @@ weights_all <- survdat_prep(survdat_source = "2020") %>%
   add_lw_info() %>% 
   # Validation Step:
   # Change total LW weight to ignore numlen_adjusted conversion
-  mutate(sum_weight_kg = ind_weight_kg * numlen) %>% 
-  add_area_stratification()
+  # mutate(sum_weight_kg = ind_weight_kg * numlen) %>% 
+  add_area_stratification() %>% 
+  filter(svvessel == "AL")
 
 
 # Get the total weights for each station, then do it each year for every species
@@ -490,13 +490,13 @@ fishbase_ranks %>%
 ```
 
 
-## LW Regression Fit Diagnostics {.tabset}
+# LW Regression Fit Diagnostics {.tabset .tabset-pills}
 
 
+The following tabs are an attempt to dig into what is happening with species on the extremes of the previous plots.
 
 
-
-### Subsampling Errors
+## Subsampling Errors
 
 Take the species that stood out above and plot the mismatch versus the station abundances. This should highlight whether its an issue of subsampling. Might be beneficial to  split it for seasons for dogfish and some other species.
 
@@ -521,7 +521,7 @@ all_source_ranks %>%
 ```
 
 
-### Mismatch Outliers
+## Mismatch Outliers
 
 Dig into the cases where things are really off by flagging the outliers and plotting those relationships.
 
@@ -586,7 +586,7 @@ all_source_ranks %>%
 
 ```
 
-### Haddock Issues
+## Haddock Issues
 
 Haddock is one of the most commonly caught species, particularly true in the recent years. It also has a particularly high prevalance for large deviances from the two biomass sources.
 
@@ -619,7 +619,7 @@ haddock %>%
 
 
 
-### Cutoff threshold
+## Cutoff threshold
 
 If we assume that the total biomass weighed at a station is correct then we can use some cutoff value for an unacceptable deviaiton from the known weight.
 
@@ -636,9 +636,11 @@ perc_differences <- weights_all %>%
     broken_coef  = ifelse(weight_perc_diff > 100 | weight_perc_diff < -100, "broken", "less broken"),
     .groups = "keep") %>% ungroup() 
 
+
 # Pull the ones that are flagged
 broken_coefficients <- perc_differences %>% 
   filter(broken_coef == "broken")
+
 
 # Broken Wigley Coefficientz
 broken_coefficients %>% 
@@ -648,6 +650,7 @@ broken_coefficients %>%
    geom_point() +
    labs(x = "Percent Difference in Biomass Sources", y = "",
         subtitle = "Extreme Biomass Mismatch - Wigley Coefficients")
+
 
 # Broken fishbase coefficients
 broken_coefficients %>% 
@@ -732,9 +735,14 @@ wigley_okay <- perc_differences %>%
 
 ```
 
-The species that pass the cutoff of: `r cut_percent` are the following `r length(wigley_okay)` species:
+The species that pass the cutoff of no more than `r cut_percent`% difference in biomass are the following `r length(wigley_okay)` species from the Wigley Paper:
 
 ```{r}
 wigley_okay
 ```
 
+The fishbase species that pass the cutoff are the following `r length(fishbase_okay)` species:
+
+```{r}
+fishbase_okay
+```

@@ -125,7 +125,7 @@ To account for this mismatch we use a conversion factor to scale up/down how man
 abundance_check <- haddock %>%
   group_by(id, comname, catchsex, abundance) %>%
   summarise(
-    abund_actual = sum(numlen),                
+    numlen_abund = sum(numlen),                
     n_len_class  = n_distinct(length), # number of distinct lengths caught that station
     .groups      = "keep") %>% 
   ungroup()
@@ -135,7 +135,7 @@ abundance_check <- haddock %>%
 conv_factor <- haddock %>% 
   distinct(id, comname, catchsex, length, abund_adj) %>% 
   inner_join(abundance_check) %>% 
-  mutate(convers = abund_adj / abund_actual)
+  mutate(convers = abund_adj / numlen_abund)
   
 
 
@@ -143,7 +143,7 @@ conv_factor <- haddock %>%
 haddock_clean <- haddock %>%
   left_join(conv_factor) %>%
   mutate(numlen_adj = numlen * convers, .after = numlen) # %>% 
-  #select(-c(abund_actual, convers))
+  #select(-c(numlen_abund, convers))
 ```
 
 
@@ -224,8 +224,75 @@ station_summs %>%
   scale_color_gmri() +
   labs(x = "Weight from survdat$BIOMASS", y = "Weight from LW relationship",
        caption = "Dashed line depicts 1:1 relationship",
-       subtitle = "LW Biomass using numlen")
+       subtitle = "LW Biomass using numlen | un-adjusted")
 ```
+
+
+### BIOMASS & Abundance
+
+Its possible that abundance and biomass columns have become disconnected in the Fall Bigelow surveys for some reason whether it is from subsampling or some other reason. To make sure that is not the case we can plot these relationships and try to dig into them that way.
+
+This will be tricky because it depends on the average size of fish.
+
+```{r}
+haddock_lw %>% 
+  ggplot(aes(abundance, biomass, color = svvessel)) +
+  geom_point(show.legend = F) +
+  facet_grid(season~svvessel) +
+  scale_color_gmri() +
+  scale_x_continuous(labels = scales::comma_format()) +
+  labs(x = "Station Abundance from survdat$abundance", 
+       y = "Biomass weight from survdat$biomass",
+       subtitle = "LW Biomass using numlen | un-adjusted")
+```
+
+### Fall Bigelow Inspection
+
+So it seems to me that something odd is happening with the data coming from the fall survey in the bigelow era.
+
+The following plot looks at the relationship between the average weight per fish, and how that changes with the average size for a fish species.
+
+If adjustments to BIOMASS and/or ABUNDANCE occur, they should occur in a way that they adjust together and preserve this relationship.
+
+
+
+```{r}
+fall_inspection <- haddock_lw %>% 
+  #filter(svvessel == "HB" & season == "FALL") %>% 
+  group_by(id, svvessel, season, abundance, biomass) %>% 
+  summarise(
+    bio_per_fish = mean(biomass) / mean(abundance),
+    wtd_mean_len = weighted.mean(length, numlen),
+    wtd_mean_len_adj = weighted.mean(length, numlen_adj)) %>% 
+  ungroup() 
+
+
+fall_inspection %>% 
+  ggplot(aes(wtd_mean_len, bio_per_fish, color = wtd_mean_len)) +
+  geom_point(show.legend = F) +
+  facet_grid(season~svvessel) +
+  scale_color_gmri(discrete = F) +
+  scale_x_continuous(labels = scales::comma_format()) +
+  labs(x = "Average Fish Length (cm)", 
+       y = "Average Fish Weight \n survdat$biomass / survdat$abundance")
+```
+
+And just to verify that the coefficients are consistent for Fall, just note that Fall coefficients are the same for henry bigelow and albatross stations. So either abundance or biomass are no longer in sync, or there is a different cohort with different growth relationships.
+
+```{r}
+haddock_lw %>% 
+  distinct(svvessel, season, a, b) %>% 
+  kable() %>% 
+  kable_styling()
+```
+
+*** 
+
+# Exporing Different Causes:
+
+
+The following sections are my efforts digging into the different mechanisms that may have possibly caused the patterns seen above.
+
 
 ## Is it an issue with the length classes?
 
@@ -339,7 +406,8 @@ haddock_lw %>%
   geom_boxplot() +
   scale_color_gmri() +
   facet_grid(season + svvessel ~  .) +
-  labs(x = "Numlen Conversion Factor", y = "Count") +
+  labs(x = "Numlen Conversion Factor", y = "Count",
+       caption = "Numlen Conversion Factor = survdat$abundance / sum(numlen)") +
   theme(legend.position = "bottom")
 
 ```
