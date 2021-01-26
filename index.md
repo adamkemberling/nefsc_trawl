@@ -9,3 +9,5 @@
  4. [Post-build exploratory data analysis](https://adamkemberling.github.io/nefsc_trawl/R/03_nefsc_eda.html)
 
  5. [Size spectrum slope sensitivity testing](https://adamkemberling.github.io/nefsc_trawl/R/09_ss_sensitivity.html)
+
+ 6. [SURVDAT Pull Diagnostics](https://adamkemberling.github.io/nefsc_trawl/R/survdat_pull_check.html)
