@@ -23,10 +23,14 @@ source(here("R/support/sizeSpectra_support.R"))
 # Set Theme
 theme_set(theme_minimal())
 
+# New england shape
+new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+
 
 # File Paths
-mills_path <- shared.path(os.use = "unix", group = "Mills Lab", folder = NULL)
-res_path <- shared.path(os.use = "unix", group = "RES Data", folder = NULL)
+box_paths  <- research_access_paths(os.use = "unix")
+mills_path <- box_paths$mills
+res_path   <- box_paths$res
 
 
 ####  Data  ####
@@ -65,9 +69,8 @@ strata_assigned <- survey_strata %>%
     TRUE ~ "Outside Major Study Areas"
   )) 
 
-# Plot to check
-new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
 
+# Plot to check
 ggplot() +
   geom_sf(data = new_england) +
   geom_sf(data = strata_assigned, aes(fill = area)) +
@@ -81,12 +84,16 @@ sne <- strata_assigned %>% filter(area == "Southern New England")
 
 
 # Export the collection, try and do the regional timelines by area
-# st_write(strata_assigned, here("data/polys/trawl_regions_collection.geojson"))
-# st_write(filter(strata_assigned, area == "Gulf of Maine"), here("data/polys/nmfs_trawl_gulf_of_maine.geojson"))
-# st_write(filter(strata_assigned, area == "Georges Bank"), here("data/polys/nmfs_trawl_georges_bank.geojson"))
-# st_write(filter(strata_assigned, area == "Southern New England"), here("data/polys/nmfs_trawl_southern_new_england.geojson"))
-# st_write(filter(strata_assigned, area == "Mid-Atlantic Bight"), here("data/polys/nmfs_trawl_mid_atlantic_bight.geojson"))
-
+st_write(strata_assigned, 
+         paste0(res_path, "Shapefiles/nmfs_trawl_regions/trawl_regions_collection.geojson"))
+st_write(filter(strata_assigned, area == "Gulf of Maine"), 
+         paste0(res_path, "Shapefiles/nmfs_trawl_regions/nmfs_trawl_gulf_of_maine.geojson"))
+st_write(filter(strata_assigned, area == "Georges Bank"), 
+         paste0(res_path, "Shapefiles/nmfs_trawl_regions/nmfs_trawl_georges_bank.geojson"))
+st_write(filter(strata_assigned, area == "Southern New England"), 
+         paste0(res_path, "Shapefiles/nmfs_trawl_regions/nmfs_trawl_southern_new_england.geojson"))
+st_write(filter(strata_assigned, area == "Mid-Atlantic Bight"), 
+         paste0(res_path, "Shapefiles/nmfs_trawl_regions/nmfs_trawl_mid_atlantic_bight.geojson"))
 
 
 

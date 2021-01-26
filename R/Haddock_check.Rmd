@@ -10,6 +10,12 @@ output:
     code_folding: show
 editor_options: 
   chunk_output_type: console
+params: 
+  survdat_source: 
+    label: "Select a SURVDAT File:" 
+    value: "2021"
+    input: select
+    choices: ["2016", "2020", "2021"]
 ---
 
 ```{r setup, include=FALSE}
@@ -48,19 +54,69 @@ When digging into the data for Haddock it appeared that the biomass for haddock 
 
 What gives?
 
-## Load survdat, Pull Haddock Data
 
+
+## Load survdat File
+
+I added a couple options here to select different pulls of survdat since we were seeing some issues in some of them.
 
 ```{r}
-# Load 2020 Raw survdat data from .RData file
-load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
-trawl_20 <- survdat %>% clean_names()
-rm(survdat)
 
 
+# Use parameter to select source:
+survdat_path <- switch(
+  EXPR = params$survdat_source, 
+  "2016" = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat.RData"),
+  "2020" = paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
+  "2021" = paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"))
+                       
+
+# Load any* of the survdat files
+load(survdat_path)
+
+# clean the names
+trawldat <- survdat %>% 
+    clean_names()
+
+
+
+
+# Bonus steps for the 2016 and 2021 datasets that don't have common name field
+if(params$survdat_source %in% c("2016", "2021")){
+  trawldat <- trawldat %>% 
+    mutate(svspp = as.character(svspp),
+           svspp = str_pad(svspp, 3, "left", "0"))
+  #rm(survdat)
+  
+  # Extra prep for 2016/slucey data, getting species names via svspp codes
+  spp_classes <- read_csv(here("data/kmills/sppclass.csv"),
+                          col_types = cols()) %>%
+    clean_names() %>%
+    mutate(common_name = str_to_lower(common_name),
+           scientific_name = str_to_lower(scientific_name)) %>%
+    distinct(svspp, comname = common_name, scientific_name)
+  
+  
+  # Add the common names over and format for rest of build
+  trawldat <- left_join(trawldat, clean_names(spp_classes)) %>%
+    drop_na(comname) %>%
+    mutate(cruise6 = str_pad(cruise6, 6, "left", "0"),
+           station = str_pad(station, 3, "left", "0"),
+           stratum = str_pad(stratum, 4, "left", "0"),
+           id = str_c(cruise6, station, stratum)) %>%
+    select(id, est_year = year, station, stratum, svvessel, season, lat, lon, depth,
+           surftemp, surfsalin, bottemp, botsalin, svspp, comname, scientific_name, everything()) %>%
+    mutate(comname = str_to_lower(comname),
+           scientific_name = str_to_lower(scientific_name))
+}
+```
+
+## Clean up Dataset
+
+```{r}
 
 # Do normal cleanup steps
-trawl_20 <- trawl_20 %>% 
+trawldat <- trawldat %>% 
   mutate(
     # Text Formatting 
     comname = tolower(comname),
@@ -82,8 +138,10 @@ trawl_20 <- trawl_20 %>%
   
   # Bump biomass/abundance above 0 if there is a complementary measurement
   # Shouldn't have biomass and no fish etc.
-  mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), .after = biomass) %>% 
-  mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), .after = abundance)
+  mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), 
+         .after = biomass) %>% 
+  mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), 
+         .after = abundance)
   
 
 
@@ -94,7 +152,7 @@ trawl_20 <- trawl_20 %>%
 
 
 # Filter Data Down to isolate issues
-haddock <- trawl_20 %>% 
+haddock <- trawldat %>% 
   filter(
     # Filter to just Spring and Fall
     season %in% c("SPRING", "FALL"),
@@ -288,7 +346,7 @@ haddock_lw %>%
 
 *** 
 
-# Exporing Different Causes:
+# Exploring Different Causes:
 
 
 The following sections are my efforts digging into the different mechanisms that may have possibly caused the patterns seen above.
