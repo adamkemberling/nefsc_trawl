@@ -97,7 +97,7 @@ trawldat_21 <- survdat_prep(survdat = survdat_21, survdat_source = "2021") %>%
 rm(survdat_16, survdat_19, survdat_20, survdat_21)
 ```
 
-## Conversion Factor Comparisons
+## Conversion Factor Comparisons {.tabset}
 
 The "conversion factor" is a number representing the scale of mismatch between the abundance of a species caught at in a tow when measured using the `survdat$avundance` column compared to the sum of `survdat$numlen` across all the lengths caught.
 
@@ -143,8 +143,11 @@ trawldat_combined <- bind_rows(
     "2021" = get_convers(trawldat_21)), 
   .id = "survdat_source"
 )
+```
 
+### All Species
 
+```{r}
 trawldat_combined %>% 
   mutate(season = fct_rev(season)) %>% 
   ggplot(aes(y = convers, 
@@ -153,10 +156,27 @@ trawldat_combined %>%
   geom_boxplot() +
   facet_grid(season ~ svvessel) + 
   scale_color_gmri() +
-  labs(subtitle = "numlen to abundance conversion Value",
+  labs(subtitle = "numlen to abundance conversion value - All Species",
        y = "(survdat$abundance / sum(numlen))",
        x = "",
        caption = "Conversion value calculated at each station for each species & sex.\nMay reflect change in catch composition.")
+```
+### Haddock Only
+
+```{r}
+trawldat_combined %>% 
+  filter(comname == "haddock") %>% 
+  mutate(season = fct_rev(season)) %>% 
+  ggplot(aes(y = convers, 
+             x  = survdat_source, 
+             color = survdat_source)) +
+  geom_boxplot() +
+  facet_grid(season ~ svvessel) + 
+  scale_color_gmri() +
+  labs(subtitle = "numlen to abundance conversion value - Haddock only",
+       y = "(survdat$abundance / sum(numlen))",
+       x = "",
+       caption = "Conversion value calculated at each station/sex for haddock.")
 ```
 
 
