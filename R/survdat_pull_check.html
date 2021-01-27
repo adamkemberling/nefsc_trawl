@@ -496,6 +496,7 @@ rm(survdat)</code></pre>
 <h2>Run Cleanup Function</h2>
 <p>The cleanup function does a number of steps to each survdat source. This includes the removal of specific strata, the removal of non-spring/fall seasons, removal of vessels other than the Albatross or Bigelow, the dropping of NA biomass and abundance events, and the removal of certain species like shrimp.</p>
 <p>It also matches up the stations with larger regions they fall within and the survey effort within each of those. This should not have an impact on any of the things we are tracking below.</p>
+<p>The code for the cleanup function can be found <a href="https://github.com/adamkemberling/nefsc_trawl/blob/master/R/01_nefsc_ss_build.R">here</a></p>
 <pre class="r"><code># Cleanup functions
 source(here(&quot;R/01_nefsc_ss_build.R&quot;))
 
@@ -513,7 +514,7 @@ rm(survdat_16, survdat_19, survdat_20, survdat_21)</code></pre>
 </div>
 <div id="conversion-factor-comparisons" class="section level2 tabset">
 <h2 class="tabset">Conversion Factor Comparisons</h2>
-<p>The “conversion factor” is a number representing the scale of mismatch between the abundance of a species caught at in a tow when measured using the <code>survdat$avundance</code> column compared to the sum of <code>survdat$numlen</code> across all the lengths caught.</p>
+<p>The “conversion factor” is a number representing the scale of mismatch between the abundance of a species caught at in a tow when measured using the <code>survdat$abundance</code> column compared to the sum of <code>survdat$numlen</code> across all the lengths caught.</p>
 <p>In theory they should be equal. Numbers greater than 1 indicate that the abundance column was greater than the sum of individuals at the different lengths.</p>
 <pre class="r"><code># This is the same code used to make numlen_adj in the build:
 get_convers &lt;- function(trawldat){

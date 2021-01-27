@@ -80,6 +80,8 @@ The cleanup function does a number of steps to each survdat source. This include
 
 It also matches up the stations with larger regions they fall within and the survey effort within each of those. This should not have an impact on any of the things we are tracking below.
 
+The code for the cleanup function can be found [here](https://github.com/adamkemberling/nefsc_trawl/blob/master/R/01_nefsc_ss_build.R)
+
 ```{r}
 # Cleanup functions
 source(here("R/01_nefsc_ss_build.R"))
@@ -99,7 +101,7 @@ rm(survdat_16, survdat_19, survdat_20, survdat_21)
 
 ## Conversion Factor Comparisons {.tabset}
 
-The "conversion factor" is a number representing the scale of mismatch between the abundance of a species caught at in a tow when measured using the `survdat$avundance` column compared to the sum of `survdat$numlen` across all the lengths caught.
+The "conversion factor" is a number representing the scale of mismatch between the abundance of a species caught at in a tow when measured using the `survdat$abundance` column compared to the sum of `survdat$numlen` across all the lengths caught.
 
 In theory they should be equal. Numbers greater than 1 indicate that the abundance column was greater than the sum of individuals at the different lengths.
 
