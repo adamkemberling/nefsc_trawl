@@ -60,13 +60,15 @@ What gives?
 
 I added a couple options here to select different pulls of survdat since we were seeing some issues in some of them.
 
+The selected survdat pull is **`r params$survdat_source`**
+
 ```{r}
 
 
 # Use parameter to select source:
 survdat_path <- switch(
   EXPR = params$survdat_source, 
-  "2016" = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat.RData"),
+  "2016" = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
   "2020" = paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
   "2021" = paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"))
                        
@@ -82,14 +84,14 @@ trawldat <- survdat %>%
 
 
 # Bonus steps for the 2016 and 2021 datasets that don't have common name field
-if(params$survdat_source %in% c("2016", "2021")){
+if(params$survdat_source %in% c("2021")){
   trawldat <- trawldat %>% 
     mutate(svspp = as.character(svspp),
            svspp = str_pad(svspp, 3, "left", "0"))
   #rm(survdat)
   
   # Extra prep for 2016/slucey data, getting species names via svspp codes
-  spp_classes <- read_csv(here("data/kmills/sppclass.csv"),
+  spp_classes <- read_csv(paste0(res_path, "NMFS_trawl/spp_keys/sppclass.csv"),
                           col_types = cols()) %>%
     clean_names() %>%
     mutate(common_name = str_to_lower(common_name),
@@ -105,9 +107,7 @@ if(params$survdat_source %in% c("2016", "2021")){
            stratum = str_pad(stratum, 4, "left", "0"),
            id = str_c(cruise6, station, stratum)) %>%
     select(id, est_year = year, station, stratum, svvessel, season, lat, lon, depth,
-           surftemp, surfsalin, bottemp, botsalin, svspp, comname, scientific_name, everything()) %>%
-    mutate(comname = str_to_lower(comname),
-           scientific_name = str_to_lower(scientific_name))
+           surftemp, surfsalin, bottemp, botsalin, svspp, comname, scientific_name, everything())
 }
 ```
 
@@ -500,3 +500,8 @@ convers_check %>%
  * Why for Fall Bigelow stations is there a consistently higher conversion rate?   
   * What situations would make it so consistently centered around ~4?   
   * Should we be using the conversion, or un-adjusted `numlen`   
+  
+  
+  
+  
+`r insert_gmri_footer()`
