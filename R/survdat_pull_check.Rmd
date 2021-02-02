@@ -16,7 +16,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 
 
-knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = NA)
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = NA, fig.height = 6, fig.width = 8)
 options(knitr.kable.NA = '')
 
 ###__ Packages  ####
@@ -27,6 +27,7 @@ library(patchwork)
 library(tidyverse)
 library(knitr)
 library(kableExtra)
+library(ggforce)
 library(waldo)
 
 
@@ -65,9 +66,35 @@ survdat_19 <- clean_names(survdat) %>% filter(est_year >= 2000)
 load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
 survdat_20 <- clean_names(survdat) %>% filter(est_year >=  2000)
 
+# Double check of 2020 from Janet on 01282021
+load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020_check01282021.RData"))
+survdat_20_check <- clean_names(survdat) %>% filter(est_year >=  2000)
+
 # 2021
 load(paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"))
 survdat_21 <- clean_names(survdat) %>% filter(year >= 2000)
+
+# # Julek / Paul Kostovik
+# survdat_julek <- readxl::read_xls(paste0(res_path, "NMFS_trawl/GMRI_cod_haddock_yt_1970-2016station_catch_length.xls")) %>%
+#   clean_names()
+# 
+# # this file is somewhere between the rest on names so a few renames are in order
+# # names(survdat_julek)
+# survdat_julek <- survdat_julek %>%
+#   rename(cruise6     = cruise,
+#          svvessel    = vessel,
+#          lat         = decdeg_beglat,
+#          lon         = decdeg_beglon,
+#          depth       = avg_depth,
+#          surftemp    = suface_temperature,
+#          surfsalin   = surface_salininty,
+#          bottemp     = bottom_temperature,
+#          botsalin    = bottom_salinity,
+#          est_towdate = begin_gmt_towdate,
+#          biomass     = expanded_catch_wt,
+#          abundance   = expanded_catch_number,
+#          comname     = logged_species_name,
+#          numlen      = expanded_number_at_length)
 
 # remove survdat
 rm(survdat)
@@ -87,16 +114,23 @@ The code for the cleanup function can be found [here](https://github.com/adamkem
 source(here("R/01_nefsc_ss_build.R"))
 
 # Clean each up using the survdat prep function
-trawldat_16 <- survdat_prep(survdat = survdat_16, survdat_source = "2016") %>% 
+trawldat_16 <- survdat_prep(survdat = survdat_16) %>% 
   mutate(survdat_source = "2016")
-trawldat_19 <- survdat_prep(survdat = survdat_19, survdat_source = "2019") %>% 
+trawldat_19 <- survdat_prep(survdat = survdat_19) %>% 
   mutate(survdat_source = "2019")
-trawldat_20 <- survdat_prep(survdat = survdat_20, survdat_source = "2020") %>% 
+trawldat_20 <- survdat_prep(survdat = survdat_20) %>% 
   mutate(survdat_source = "2020")
-trawldat_21 <- survdat_prep(survdat = survdat_21, survdat_source = "2021") %>% 
+trawldat_20_check <- survdat_prep(survdat = survdat_20_check) %>% 
+  mutate(survdat_source = "2020_check")
+trawldat_21 <- survdat_prep(survdat = survdat_21) %>% 
   mutate(survdat_source = "2021")
 
-rm(survdat_16, survdat_19, survdat_20, survdat_21)
+# # try the julek dataset, can't pass it through build without sex column
+# trawldat_julek <- survdat_prep(survdat = survdat_julek) %>%
+#   mutate(survdat_source = "julek")
+
+
+rm(survdat_16, survdat_19, survdat_20, survdat_20_check, survdat_21)
 ```
 
 ## Conversion Factor Comparisons {.tabset}
@@ -121,14 +155,14 @@ get_convers <- function(trawldat){
   # for them to add up to that "abundance" column
   conv_factor <- trawldat %>% 
     distinct(id, comname, catchsex, length, abundance) %>% 
-    inner_join(abundance_check) %>% 
+    inner_join(abundance_check, by = c("id", "comname", "catchsex", "abundance")) %>% 
     mutate(convers = abundance / numlen_abund)
     
   
   
   # Merge back and convert the numlen field
   trawldat_adjusted <- trawldat %>%
-    left_join(conv_factor) %>%
+    left_join(conv_factor, by = c("id", "comname", "catchsex", "length", "abundance", "n_len_class")) %>%
     mutate(numlen_adj = numlen * convers, .after = numlen) 
   
   return(trawldat_adjusted)
@@ -137,12 +171,15 @@ get_convers <- function(trawldat){
 
 
 # Put all the groups together to compare conversion factors
-trawldat_combined <- bind_rows(
-  list(
+trawldat_list <- list(
     "2016" = get_convers(trawldat_16),
     "2019" = get_convers(trawldat_19),
     "2020" = get_convers(trawldat_20),
-    "2021" = get_convers(trawldat_21)), 
+    "2020 re-check" = get_convers(trawldat_20_check),
+    "2021" = get_convers(trawldat_21))
+
+trawldat_combined <- bind_rows(
+  trawldat_list, 
   .id = "survdat_source"
 )
 ```
@@ -191,14 +228,20 @@ For each of the following species we are comparing 4 main things across the diff
  2. The total number of fish, as tallied from the survdat$numlen column   
  3. The total abundance of fish as the sum of survdat$abundance from distinct stations and the species caught at them      
  4. The total biomass for each year as the sum of survdat$biomass from distinct stations and the species caught at them   
+ 
+ 
+**NOTE:** The Below code chunk details the functions used to isolate a given species and pull its information for display. Subsequent tabs will detail the differences among the different survdat pulls.
+
 ```{r}
 
 # Funciton to pull single species data
 species_select <- function(species_choice){
   
   # Combine data from each source for plotting
-  source_list <- list(trawldat_16, trawldat_19, 
-                      trawldat_20, trawldat_21)
+  # source_list <- list(trawldat_16, trawldat_19, 
+  #                     trawldat_20, trawldat_21)
+  
+  source_list <- trawldat_list
   
   # Use map to not repeat so much code
   select_species <- map_dfr(source_list, function(surv_source){
@@ -347,6 +390,83 @@ plot_stations(single_species, species_choice)
 
 ```{r}
 plot_biomass(single_species, species_choice)
+```
+
+## Dataset Contents
+
+This section will detail how each data set compares along a handful of common metrics. How many stations there are, how much biomass there is, which strata are present etc.
+
+These should all be about the same, but may point us in the direction of what might be causing these differences.
+
+```{r}
+trawldat_combined %>% 
+  group_by(survdat_source) %>% 
+  summarise(
+    n_years = n_distinct(est_year),
+    n_strata = n_distinct(stratum),
+    n_species = n_distinct(comname))%>% 
+  kable() %>% 
+  kable_styling()
+```
+
+
+
+
+## Summary
+
+Datasets seem to fall into 3 distinct groups:
+
+**1. Pre-2020**
+
+**2. 2020 Survdat Nye Data**
+
+**3. 2021 Survdat pull**
+
+```{r}
+species_choice <- "atlantic cod"
+single_species <- species_select(species_choice) 
+
+
+
+cod_sources <- single_species %>% 
+  mutate(`survdat group` = case_when(
+    survdat_source %in% c("2016", "2019") ~ "Pre-2020 Data",
+    str_detect(survdat_source, "2020") ~ "2020 Data",
+    survdat_source == "2021" ~ "Sean's 2021 Data"),
+    `survdat group` = factor(`survdat group`, 
+                             levels = c("Pre-2020 Data", "2020 Data", "Sean's 2021 Data"))) %>% 
+  distinct(`survdat group`, survdat_source, est_year, season, id, abundance, biom_adj) %>% 
+  group_by(`survdat group`, survdat_source, est_year, season) %>% 
+  summarise(n_stations = n_distinct(id),
+            abundance = sum(abundance, na.rm = T),
+            biomass = sum(biom_adj, na.rm = T),
+            .groups = "keep") %>%  
+    ungroup() %>% 
+    mutate(season = fct_rev(season))
+  
+
+#ellipse marker
+mark1 <- cod_sources %>% 
+  filter(season == "FALL", survdat_source == "2021", est_year == 2010) 
+
+cod_sources %>% 
+  filter(season == "FALL") %>% 
+  ggplot(aes(est_year, abundance)) +
+  geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
+  geom_jitter(aes(group = survdat_source, color = `survdat group`, shape = survdat_source), 
+              width = 0.15) +
+  geom_mark_ellipse(data = mark1, 
+                    aes(est_year, abundance, label = "Separation of the 3 groups"), 
+                    linetype = 2) +
+  scale_color_gmri() +
+  facet_zoom(xlim = c(2007:2013)) +
+  labs(x = "", 
+       y = "Total survdat$abundance", 
+       title = "Data Mismatches Following Vessel Switch", 
+       subtitle = "Inconsistency in Bigelow data over time.", 
+       caption = paste0(species_choice, " only"),
+       shape = "Pull Source",
+       color = "Consistent Grouping") 
 ```
 
 `r insert_gmri_footer()`
