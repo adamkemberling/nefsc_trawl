@@ -412,15 +412,22 @@ trawldat_combined %>%
 
 
 
-## Summary
+## Summary {.tabset}
 
-Datasets seem to fall into 3 distinct groups:
+Datasets seem to fall into 3 distinct groups when looking at abundance:
 
 **1. Pre-2020**
 
 **2. 2020 Survdat Nye Data**
 
-**3. 2021 Survdat pull**
+**3. 2021 Survdat Pull**
+
+
+And two different groups when looking at biomass:
+
+**1. 2021 Survdat Pull**
+
+**2. Everything else**
 
 ```{r}
 species_choice <- "atlantic cod"
@@ -447,8 +454,14 @@ cod_sources <- single_species %>%
 
 #ellipse marker
 mark1 <- cod_sources %>% 
-  filter(season == "FALL", survdat_source == "2021", est_year == 2010) 
+  filter(season == "FALL", survdat_source == "2021", est_year == 2009) 
+```
 
+### Abundance
+
+```{r}
+
+# Abundance
 cod_sources %>% 
   filter(season == "FALL") %>% 
   ggplot(aes(est_year, abundance)) +
@@ -459,9 +472,36 @@ cod_sources %>%
                     aes(est_year, abundance, label = "Separation of the 3 groups"), 
                     linetype = 2) +
   scale_color_gmri() +
-  facet_zoom(xlim = c(2007:2013)) +
+  facet_zoom(xlim = c(2008:2011)) +
   labs(x = "", 
        y = "Total survdat$abundance", 
+       title = "Data Mismatches Following Vessel Switch", 
+       subtitle = "Inconsistency in Bigelow data over time.", 
+       caption = paste0(species_choice, " only"),
+       shape = "Pull Source",
+       color = "Consistent Grouping") 
+
+```
+
+
+### Biomass
+
+```{r}
+
+# Biomass
+cod_sources %>% 
+  filter(season == "FALL") %>% 
+  ggplot(aes(est_year, biomass)) +
+  geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
+  geom_jitter(aes(group = survdat_source, color = `survdat group`, shape = survdat_source), 
+              width = 0.15) +
+  geom_mark_ellipse(data = mark1, 
+                    aes(est_year, biomass, label = "Separation of the 2 groups"), 
+                    linetype = 2) +
+  scale_color_gmri() +
+  facet_zoom(xlim = c(2007:2013)) +
+  labs(x = "", 
+       y = "Total survdat$biomass", 
        title = "Data Mismatches Following Vessel Switch", 
        subtitle = "Inconsistency in Bigelow data over time.", 
        caption = paste0(species_choice, " only"),
