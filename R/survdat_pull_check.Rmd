@@ -49,6 +49,8 @@ Digging into differences in the fall Bigelow survey data across different pulls 
 
 Objective is to isolate which main columns are inconsistent across the datasets and whether the problem is isolated to specific species.
 
+For convenience we also limited the data to include years 2000-present.
+
 ## Load SURVDAT Sources {.tabset}
 
 ### SURVDAT Pulls
@@ -229,7 +231,12 @@ For each of the following species we are comparing 4 main things across the diff
  4. The total biomass for each year as the sum of survdat$biomass from distinct stations and the species caught at them   
  
  
- This should tell us whether some datasets are missing stations completely, and whether the differences exist in the `numlen`, `abundance`, or `biomass` columns, and for what time periods.
+This should tell us whether some datasets are missing stations completely, and whether the differences exist in the `numlen`, `abundance`, or `biomass` columns, and for what time periods.
+ 
+For each of the following plots the drawing order of the lines is top to bottom as they appear in the key. If lines do not appear they likely are prefectly masked by some of the more recent pulls, which is good.
+
+Differences in datasets are more apparent in the `biomass` and `abundance` totals during the Bigelow survey years.
+ 
  
 **NOTE:** The Below code chunk details the functions used to isolate a given species and pull its information for display. Subsequent tabs will detail the differences among the different survdat pulls.
 
@@ -258,30 +265,37 @@ species_select <- function(species_choice){
 ####  Plotting Numlen Totals and Station counts  ####
 plot_stations <- function(combined_data, species_choice){
   
-  # Total numlen fish
+  # Total numlen fish summary
   species_numlens <- combined_data %>% 
     group_by(survdat_source, est_year, season) %>% 
     summarise(n_stations = n_distinct(id),
               sum_numlen = sum(numlen, na.rm = T),
-              .groups = "keep")  %>%  
-    ungroup() %>% 
+              .groups = "keep")  %>% ungroup() %>% 
     mutate(season = fct_rev(season))
   
   
-  
+  # Plot for station presence
   station_plot <- ggplot(species_numlens, 
                          aes(est_year, n_stations, color = survdat_source)) +
     geom_line() +
+    geom_jitter(aes(group = survdat_source, color = survdat_source, 
+                  shape = survdat_source), size = 1.25, 
+              width = 0.15) +
     facet_wrap(~season) +
     scale_color_gmri() +
-    labs(x = "", y = "total stations")
+    labs(x = "", y = "Total Stations of Species Presence")
   
+  
+  # Plot for numlen
   numlen_plot <- ggplot(species_numlens, 
                         aes(est_year, sum_numlen, color = survdat_source)) +
     geom_line() +
+    geom_jitter(aes(group = survdat_source, color = survdat_source, 
+                  shape = survdat_source), size = 1.25, 
+              width = 0.15) +
     facet_wrap(~season) +
     scale_color_gmri() +
-    labs(x = "", y = "total numlen abundance", 
+    labs(x = "", y = "Total Abundance using survdat$numlen", 
          caption = paste0(species_choice, " only"))
   
   plot_out <- station_plot / numlen_plot
@@ -294,7 +308,8 @@ plot_stations <- function(combined_data, species_choice){
 
 ####  Plotting Biomass and Abundances  ####
 plot_biomass <- function(combined_data, species_choice){
-  # Abundance and Biomass
+  
+  # Abundance and Biomass Summary
   species_abund_bio <- combined_data %>% 
     distinct(survdat_source, est_year, season, id, abundance, biom_adj) %>% 
     group_by(survdat_source, est_year, season) %>% 
@@ -305,16 +320,24 @@ plot_biomass <- function(combined_data, species_choice){
     ungroup() %>% 
     mutate(season = fct_rev(season))
   
+  
+  # Plot for abundance
   abund_plot <- ggplot(species_abund_bio, 
                        aes(est_year, abundance, color = survdat_source)) +
     geom_line() +
+    geom_jitter(aes(group = survdat_source, color = survdat_source, 
+                    shape = survdat_source), size = 1.25, 
+              width = 0.15) +
     facet_wrap(~season) +
     scale_color_gmri() +
     labs(x = "", y = "Total survdat$abundance")
   
-  
+  # plot for biomass
   bio_plot <- ggplot(species_abund_bio, aes(est_year, biomass, color = survdat_source)) +
     geom_line() +
+    geom_jitter(aes(group = survdat_source, color = survdat_source, 
+                    shape = survdat_source), size = 1.25, 
+              width = 0.15) +
     facet_wrap(~season) +
     scale_color_gmri() +
     labs(x = "", y = "Total survdat$biomass", 
@@ -327,10 +350,7 @@ plot_biomass <- function(combined_data, species_choice){
 
 ```
 
-For each of the following plots the drawing order of the lines is top to bottom as they appear in the key. If lines do not appear they likely are prefectly masked by some of the more recent pulls, which is good.
-
-Differences in datasets are more apparent in the `biomass` and `abundance` totals during the Bigelow survey years.
-
+**NOTE:** The following plots have had their points jittered to expose situations of overlap.
 
 ### Haddock {.tabset}
 
@@ -410,11 +430,13 @@ These should all be about the same, but may point us in the direction of what mi
 
 ```{r}
 trawldat_combined %>% 
-  group_by(survdat_source) %>% 
+  rename(`Survdat Source` = survdat_source) %>% 
+  group_by(`Survdat Source`) %>% 
   summarise(
-    n_years = n_distinct(est_year),
-    n_strata = n_distinct(stratum),
-    n_species = n_distinct(comname))%>% 
+    `n Years` = n_distinct(est_year),
+    `n Stations` = n_distinct(id),
+    `n Strata` = n_distinct(stratum),
+    `n Species` = n_distinct(comname)) %>% 
   kable() %>% 
   kable_styling()
 ```
@@ -442,7 +464,7 @@ And two different groups when looking at `biomass`:
   2. **Everything else**
 
 
-**NOTE:** The following plots have had their points jittered to expose situations of overlap.
+
 
 ```{r}
 species_choice <- "atlantic cod"
@@ -483,7 +505,7 @@ cod_sources %>%
   ggplot(aes(est_year, abundance)) +
   geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
   geom_jitter(aes(group = survdat_source, color = `survdat group`, 
-                  shape = survdat_source), size = 1, 
+                  shape = survdat_source), size = 1.25, 
               width = 0.15) +
   geom_mark_ellipse(data = mark1, 
                     aes(est_year, abundance, label = "Separation of the 3 groups"), 
@@ -512,7 +534,7 @@ cod_sources %>%
   ggplot(aes(est_year, biomass)) +
   geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
   geom_jitter(aes(group = survdat_source, color = `survdat group`, 
-                  shape = survdat_source), size = 1,
+                  shape = survdat_source), size = 1.25,
               width = 0.15) +
   geom_mark_ellipse(data = mark1, 
                     aes(est_year, biomass, label = "Separation of the 2 groups"), 
