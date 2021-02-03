@@ -7,7 +7,7 @@ output:
     toc: TRUE
     toc_float:
         collapsed: FALSE
-    code_folding: show
+    code_folding: hide
 editor_options: 
   chunk_output_type: console
 ---
@@ -49,7 +49,17 @@ Digging into differences in the fall Bigelow survey data across different pulls 
 
 Objective is to isolate which main columns are inconsistent across the datasets and whether the problem is isolated to specific species.
 
-## Load SURVDAT Sources
+## Load SURVDAT Sources {.tabset}
+
+### SURVDAT Pulls
+
+For the following report we looked at 5 candidate survdat datasets.
+
+  1. A 2016 survdat dataset   
+  2. A 2019 survdat dataset   
+  3. An August 2020 survdat dataset   
+  4. A second 2020 survdat dataset obtained from Janet Nye to double check our 2020   
+  5. The most recent 2021 pull from Sean   
 
 ```{r}
 
@@ -74,31 +84,12 @@ survdat_20_check <- clean_names(survdat) %>% filter(est_year >=  2000)
 load(paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"))
 survdat_21 <- clean_names(survdat) %>% filter(year >= 2000)
 
-# # Julek / Paul Kostovik
-# survdat_julek <- readxl::read_xls(paste0(res_path, "NMFS_trawl/GMRI_cod_haddock_yt_1970-2016station_catch_length.xls")) %>%
-#   clean_names()
-# 
-# # this file is somewhere between the rest on names so a few renames are in order
-# # names(survdat_julek)
-# survdat_julek <- survdat_julek %>%
-#   rename(cruise6     = cruise,
-#          svvessel    = vessel,
-#          lat         = decdeg_beglat,
-#          lon         = decdeg_beglon,
-#          depth       = avg_depth,
-#          surftemp    = suface_temperature,
-#          surfsalin   = surface_salininty,
-#          bottemp     = bottom_temperature,
-#          botsalin    = bottom_salinity,
-#          est_towdate = begin_gmt_towdate,
-#          biomass     = expanded_catch_wt,
-#          abundance   = expanded_catch_number,
-#          comname     = logged_species_name,
-#          numlen      = expanded_number_at_length)
-
 # remove survdat
 rm(survdat)
 ```
+
+
+
 
 
 ## Run Cleanup Function
@@ -125,13 +116,12 @@ trawldat_20_check <- survdat_prep(survdat = survdat_20_check) %>%
 trawldat_21 <- survdat_prep(survdat = survdat_21) %>% 
   mutate(survdat_source = "2021")
 
-# # try the julek dataset, can't pass it through build without sex column
-# trawldat_julek <- survdat_prep(survdat = survdat_julek) %>%
-#   mutate(survdat_source = "julek")
+
 
 
 rm(survdat_16, survdat_19, survdat_20, survdat_20_check, survdat_21)
 ```
+
 
 ## Conversion Factor Comparisons {.tabset}
 
@@ -176,7 +166,8 @@ trawldat_list <- list(
     "2019" = get_convers(trawldat_19),
     "2020" = get_convers(trawldat_20),
     "2020 re-check" = get_convers(trawldat_20_check),
-    "2021" = get_convers(trawldat_21))
+    "2021" = get_convers(trawldat_21)
+    )
 
 trawldat_combined <- bind_rows(
   trawldat_list, 
@@ -185,6 +176,8 @@ trawldat_combined <- bind_rows(
 ```
 
 ### All Species
+
+
 
 ```{r}
 trawldat_combined %>% 
@@ -202,6 +195,8 @@ trawldat_combined %>%
 ```
 
 ### Haddock Only
+
+
 
 ```{r}
 trawldat_combined %>% 
@@ -222,6 +217,10 @@ trawldat_combined %>%
 
 ## Single Species Checks {.tabset .tabset-pills}
 
+The conversion factor is helpful for identifying consistency in behavior across the different pulls, but doesn't really explain the how/why of the differences among them.
+
+To get at the differences that contribute to them we use four commonly caught species to compare different components of the datasets.
+
 For each of the following species we are comparing 4 main things across the different survdat sources:
 
  1. The number of unique station id's each year   
@@ -230,17 +229,16 @@ For each of the following species we are comparing 4 main things across the diff
  4. The total biomass for each year as the sum of survdat$biomass from distinct stations and the species caught at them   
  
  
+ This should tell us whether some datasets are missing stations completely, and whether the differences exist in the `numlen`, `abundance`, or `biomass` columns, and for what time periods.
+ 
 **NOTE:** The Below code chunk details the functions used to isolate a given species and pull its information for display. Subsequent tabs will detail the differences among the different survdat pulls.
 
 ```{r}
 
-# Funciton to pull single species data
+# Function to pull single species data
 species_select <- function(species_choice){
   
-  # Combine data from each source for plotting
-  # source_list <- list(trawldat_16, trawldat_19, 
-  #                     trawldat_20, trawldat_21)
-  
+  # Use list of sources to pull select species from each
   source_list <- trawldat_list
   
   # Use map to not repeat so much code
@@ -254,7 +252,10 @@ species_select <- function(species_choice){
   return(select_species)
 }
 
-# Plotting Numlen Totals and Station counts
+
+
+
+####  Plotting Numlen Totals and Station counts  ####
 plot_stations <- function(combined_data, species_choice){
   
   # Total numlen fish
@@ -287,7 +288,11 @@ plot_stations <- function(combined_data, species_choice){
   return(plot_out)
 }
 
-# Plotting Biomass and Abundances
+
+
+
+
+####  Plotting Biomass and Abundances  ####
 plot_biomass <- function(combined_data, species_choice){
   # Abundance and Biomass
   species_abund_bio <- combined_data %>% 
@@ -321,6 +326,11 @@ plot_biomass <- function(combined_data, species_choice){
 }
 
 ```
+
+For each of the following plots the drawing order of the lines is top to bottom as they appear in the key. If lines do not appear they likely are prefectly masked by some of the more recent pulls, which is good.
+
+Differences in datasets are more apparent in the `biomass` and `abundance` totals during the Bigelow survey years.
+
 
 ### Haddock {.tabset}
 
@@ -414,34 +424,40 @@ trawldat_combined %>%
 
 ## Summary {.tabset}
 
-Datasets seem to fall into 3 distinct groups when looking at abundance:
+Based on the visualizations above there appears to be some inconsistency in the different datasets centered around data collected after 2008 on the RV Henry Bigelow.
 
-**1. Pre-2020**
+These datasets seem to fall into 3 distinct groups when looking at `abundance`:
 
-**2. 2020 Survdat Nye Data**
+  1. **Pre-2020**
 
-**3. 2021 Survdat Pull**
+  2. **2020 Survdat Nye Data**
+
+  3. **2021 Survdat Pull**
 
 
-And two different groups when looking at biomass:
+And two different groups when looking at `biomass`:
 
-**1. 2021 Survdat Pull**
+  1. **2021 Survdat Pull**
 
-**2. Everything else**
+  2. **Everything else**
+
+
+**NOTE:** The following plots have had their points jittered to expose situations of overlap.
 
 ```{r}
 species_choice <- "atlantic cod"
 single_species <- species_select(species_choice) 
 
 
-
+# Label the groups that we identified as behaving similarly:
 cod_sources <- single_species %>% 
   mutate(`survdat group` = case_when(
     survdat_source %in% c("2016", "2019") ~ "Pre-2020 Data",
     str_detect(survdat_source, "2020") ~ "2020 Data",
     survdat_source == "2021" ~ "Sean's 2021 Data"),
     `survdat group` = factor(`survdat group`, 
-                             levels = c("Pre-2020 Data", "2020 Data", "Sean's 2021 Data"))) %>% 
+                             levels = c("Pre-2020 Data", "2020 Data", 
+                                        "Sean's 2021 Data"))) %>% 
   distinct(`survdat group`, survdat_source, est_year, season, id, abundance, biom_adj) %>% 
   group_by(`survdat group`, survdat_source, est_year, season) %>% 
   summarise(n_stations = n_distinct(id),
@@ -466,12 +482,14 @@ cod_sources %>%
   filter(season == "FALL") %>% 
   ggplot(aes(est_year, abundance)) +
   geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
-  geom_jitter(aes(group = survdat_source, color = `survdat group`, shape = survdat_source), 
+  geom_jitter(aes(group = survdat_source, color = `survdat group`, 
+                  shape = survdat_source), size = 1, 
               width = 0.15) +
   geom_mark_ellipse(data = mark1, 
                     aes(est_year, abundance, label = "Separation of the 3 groups"), 
                     linetype = 2) +
   scale_color_gmri() +
+  facet_wrap(~season) +
   facet_zoom(xlim = c(2008:2011)) +
   labs(x = "", 
        y = "Total survdat$abundance", 
@@ -493,12 +511,14 @@ cod_sources %>%
   filter(season == "FALL") %>% 
   ggplot(aes(est_year, biomass)) +
   geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
-  geom_jitter(aes(group = survdat_source, color = `survdat group`, shape = survdat_source), 
+  geom_jitter(aes(group = survdat_source, color = `survdat group`, 
+                  shape = survdat_source), size = 1,
               width = 0.15) +
   geom_mark_ellipse(data = mark1, 
                     aes(est_year, biomass, label = "Separation of the 2 groups"), 
                     linetype = 2) +
   scale_color_gmri() +
+  facet_wrap(~season) +
   facet_zoom(xlim = c(2007:2013)) +
   labs(x = "", 
        y = "Total survdat$biomass", 

@@ -91,11 +91,14 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   if(is.null(survdat) == FALSE){ 
     trawldat <- survdat %>% clean_names() 
   } else if(is.null(survdat) == TRUE){
+    # If not then load using the correct path
     load(survdat_path)
     if(survdat_source == "bigelow"){
+      # Bigelow data doesn't load in as "survdat"
       survdat <- survdat.big
-      rm(survdat.big)
-    }
+      rm(survdat.big)}
+    
+    # clean names up for convenience
     trawldat <- survdat %>% clean_names() 
     }
 
@@ -106,9 +109,30 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   
   ####__ 1.  Special Steps for Different SURVDAT versions  ####
   
-  ####____ a. Missing comname  ####
+  ####____ a. Missing column flags
+  
+  # Flags for missing columns that need to be merged in or built
+  has_comname  <- "comname" %in% names(trawldat)
+  has_id_col   <- "id" %in% names(trawldat)
+  has_towdate  <- "est_towdate" %in% names(trawldat)
+  has_month    <- "est_month" %in% names(trawldat)
+  
+  # Flags for renaming or subsetting the data due to presence/absence of columns
+  has_year     <- "est_year" %in% names(trawldat)
+  has_catchsex <- "catchsex" %in% names(trawldat)
+  has_decdeg   <- "decdeg_beglat" %in% names(trawldat)
+  has_avg_depth <- "avgdepth" %in% names(trawldat)
+  
+  
+  
+  
+  
+  
+  
+  ####____ b. Missing comname  ####
+  
   # Use SVSPP to get common names for species
-  if(("comname" %in% names(trawldat)) == FALSE){
+  if(has_comname == FALSE){
     message("no comnames found, merging records in with NMFS_trawl/spp_keys/sppclass.csv")
     # Load sppclass codes and common names
     spp_classes <- read_csv(
@@ -124,12 +148,15 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
     trawldat <- mutate(trawldat, svspp = str_pad(svspp, 3, "left", "0")) %>% 
       left_join(spp_classes, by = "svspp") #%>% 
       # drop_na(comname) # double check if we want this to drop
-      #TESTING ####
+    #  TESTING ####
+    # originally things with no comname were dropped, 
+    #could lose data here compared to survdat with comname columns
+      
     }
   
   
   ####____ b. Missing ID  ####
-  if(("id" %in% names(trawldat)) == FALSE) {
+  if(has_id_col == FALSE) {
     message("creating station id from cruise-station-stratum fields")
     trawldat <- trawldat %>%
       
@@ -141,23 +168,25 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
       
   
   ####____ c. common field renaming  ####
-  if(("est_year" %in% names(trawldat)) == FALSE)      {
+  
+  # Rename select columns for consistency
+  if(has_year == FALSE)      {
     message("renaming year column to est_year")
     trawldat <- rename(trawldat, est_year = year) }
-  if(("decdeg_beglat" %in% names(trawldat)) == FALSE) {
+  if(has_decdeg == FALSE) {
     message("renaming lat column to decdeg_beglat")
     trawldat <- rename(trawldat, decdeg_beglat = lat) }
-  if(("decdeg_beglon" %in% names(trawldat)) == FALSE) {
+  if(has_decdeg == FALSE) {
     message("renaming lon column to decdeg_beglon")
     trawldat <- rename(trawldat, decdeg_beglon = lon) }
-  if(("avgdepth" %in% names(trawldat)) == FALSE)      {
+  if(has_avg_depth == FALSE)      {
     message("renaming depth column to avgdepth")
     trawldat <- rename(trawldat, avgdepth = depth) }
 
 
     
-  ####____ d. date structure
-  if("est_towdate" %in% names(trawldat)) {
+  ####____ d. buikld date structure
+  if(has_towdate == TRUE) {
     message("building month/day columns from est_towdate")
     trawldat <- mutate(trawldat,
                        est_month = str_sub(est_towdate, 6,7),
@@ -170,23 +199,23 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   ####__ 2. Column Changes  ####
   trawldat <- trawldat %>% 
     mutate(
+      
       # Text Formatting 
       comname = tolower(comname),
       id      = format(id, scientific = FALSE),
       svspp   = as.character(svspp),
       svspp   = str_pad(svspp, 3, "left", "0"),
       
-      # Biomass and abundance NA substitutions
-      # changed to only perform for 'adj' cols
-      #biomass   = ifelse(is.na(biomass) == TRUE & abundance > 0, 0.0001, biomass),
-      #abundance = ifelse(is.na(abundance) == TRUE & biomass > 0, 1, abundance),
-      
-      # Sratum number, excluding leading and trailing codes for inshore/offshore, for matching
+      # Sratum number, 
+      #excluding leading and trailing codes for inshore/offshore, 
+      #for matching to stratum areas
       strat_num = str_sub(stratum, 2, 3)) %>%  
     
     # Replace NA's where there is some biomass/abundance
-    mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), .after = biomass) %>% 
-    mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), .after = abundance)
+    mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), 
+           .after = biomass) %>% 
+    mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), 
+           .after = abundance)
   
   
   
@@ -211,7 +240,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   
   
   # Toggle for different survdat resources
-  if("est_month" %in% names(trawldat)){
+  if(has_month ==TRUE){
     message("Month/day data found, pulling long column list.")
     important_cols <- long_list
   } else {
@@ -226,6 +255,8 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   
   
   ####__ 4. Row Filtering  ####
+  
+  # Things filtered:
   # 1. Strata
   # 2. Seasons
   # 3. Year limits
@@ -272,6 +303,9 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   
   ####__ 5. Spatial Filtering  ####
   
+  # This section assigns EPU's via overlay using Sean Lucey's code,
+  # And also merges with stratum area information,
+  # these are used to relate catch/effort to physical areas in km squared
   
   #### EPU assignment for survdat stations - function from Sean Luceys "RSurvey" repo
   source(here("R/kathy_ss_code/slucey_survdat_functions.R"))
@@ -279,14 +313,15 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   epu_sp <- suppressWarnings(as_Spatial(epu_sf))
   
   
-  # assign EPU labels
+  # Rename columns to match expected formats for Sean Lucey's poststrat()
   trawldat <- trawldat %>% 
     rename(CRUISE6 = cruise6,
            STATION = station,
            STRATUM = stratum,
            LAT     = decdeg_beglat,
-           LON     = decdeg_beglon) %>% 
-    # Post stratify the station positions using EPU bounds
+           LON     = decdeg_beglon)
+  # Post stratify the station positions using EPU bounds
+  trawldat <- trawldat %>% 
     poststrat(survdat = ., stratum = epu_sp, strata.col = "EPU") %>% 
     rename(epu           = newstrata,
            cruise6       = CRUISE6,
@@ -296,14 +331,14 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
            decdeg_beglon = LON)
     
   
-  # Stratum Key for filtering specific areas
+  # Stratum Key for which stratum correspond to larger regions
   strata_key <- list(
     "Georges Bank"          = as.character(13:23),
     "Gulf of Maine"         = as.character(24:40),
     "Southern New England"  = str_pad(as.character(1:12), width = 2, pad = "0", side = "left"),
     "Mid-Atlantic Bight"    = as.character(61:76))
 
-  # Add labels to the data
+  # Add the labels to the data
   trawldat <- trawldat %>%
     mutate(
       survey_area =  case_when(
@@ -386,27 +421,35 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
 
 
   ####__ 7. Adjusted NumLength  ####
-  # Sometimes there are more/less measured than initially tallied*
+  # Sometimes there are more/less measured than initially tallied* in abundance
+  if(has_catchsex == TRUE){
+    abundance_groups <- c("id", "comname", "catchsex")
+  } else {
+    message("catchsex column not found, ignoring sex for numlen adjustments")
+    abundance_groups <- c("id", "comname")}
   
   # Get the abundance value for each sex arrived at by summing across each length
   abundance_check <- trawldat %>%
-    group_by(id, comname, catchsex, abundance) %>%
+    group_by(!!!syms(abundance_groups), abundance) %>%
     summarise(
       abund_actual = sum(numlen),               
-      n_len_class = n_distinct(length),
-      .groups     = "keep") %>% ungroup()
+      n_len_class  = n_distinct(length),
+      .groups      = "keep") %>% ungroup()
   
   # Get the ratio between the abundance column and the sum of numlen
   conv_factor <- trawldat %>% 
-    distinct(id, comname, catchsex, length, abund_adj) %>% 
-    inner_join(abundance_check, by = c("id", "comname", "catchsex")) %>% 
+    #distinct(id, comname, catchsex, length, abund_adj) %>% 
+    distinct(!!!syms(abundance_groups), length, abund_adj) %>% 
+    #inner_join(abundance_check, by = c("id", "comname", "catchsex")) %>% 
+    inner_join(abundance_check, by = abundance_groups) %>% 
     mutate(convers = abund_adj / abund_actual)
   
 
 
   # Merge back and convert the numlen field
   survdat_processed <- trawldat %>%
-    left_join(conv_factor, by = c("id", "comname", "catchsex", "length", "abundance", "abund_adj")) %>%
+    #left_join(conv_factor, by = c("id", "comname", "catchsex", "length", "abundance", "abund_adj")) %>%
+    left_join(conv_factor, by = c(abundance_groups, "length", "abundance", "abund_adj")) %>%
     mutate(numlen_adj = numlen * convers, .after = numlen) %>% 
     select(-c(abund_actual, convers))
 
