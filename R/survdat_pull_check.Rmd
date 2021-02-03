@@ -125,9 +125,9 @@ rm(survdat_16, survdat_19, survdat_20, survdat_20_check, survdat_21)
 ```
 
 
-## Conversion Factor Comparisons {.tabset}
+## ABUND/sum(NUMLEN) Comparisons {.tabset}
 
-The "conversion factor" is a number representing the scale of mismatch between the abundance of a species caught at in a tow when measured using the `survdat$abundance` column compared to the sum of `survdat$numlen` across all the lengths caught.
+The ratio of `survdat$abundance` and `sum(survdat$numlen)` represents the scale of mismatch between the abundance of a species caught at in a tow when measured using the `survdat$abundance` column compared to the sum of `survdat$numlen` across all the lengths caught.
 
 In theory they should be equal. Numbers greater than 1 indicate that the abundance column was greater than the sum of individuals at the different lengths.
 
@@ -162,7 +162,7 @@ get_convers <- function(trawldat){
 
 
 
-# Put all the groups together to compare conversion factors
+# Put all the groups together to compare abundance ratios
 trawldat_list <- list(
     "2016" = get_convers(trawldat_16),
     "2019" = get_convers(trawldat_19),
@@ -190,10 +190,10 @@ trawldat_combined %>%
   geom_boxplot() +
   facet_grid(season ~ svvessel) + 
   scale_color_gmri() +
-  labs(subtitle = "numlen to abundance conversion value - All Species",
+  labs(subtitle = "numlen to abundance ratio - All Species",
        y = "(survdat$abundance / sum(numlen))",
        x = "",
-       caption = "Conversion value calculated at each station for each species & sex.\nMay reflect change in catch composition.")
+       caption = "Ratios calculated at each station for each species & sex.\nMay reflect change in catch composition.")
 ```
 
 ### Haddock Only
@@ -210,18 +210,18 @@ trawldat_combined %>%
   geom_boxplot() +
   facet_grid(season ~ svvessel) + 
   scale_color_gmri() +
-  labs(subtitle = "numlen to abundance conversion value - Haddock only",
+  labs(subtitle = "numlen to abundance ratio - Haddock only",
        y = "(survdat$abundance / sum(numlen))",
        x = "",
-       caption = "Conversion value calculated at each station/sex for haddock.")
+       caption = "Ratio value calculated at each station/sex for haddock.")
 ```
 
 
 ## Single Species Checks {.tabset .tabset-pills}
 
-The conversion factor is helpful for identifying consistency in behavior across the different pulls, but doesn't really explain the how/why of the differences among them.
+The abund/numlen ratio is helpful for identifying consistency in behavior across the different pulls, but doesn't really explain the how/why of the differences among them.
 
-To get at the differences that contribute to them we use four commonly caught species to compare different components of the datasets.
+To get at the differences that contribute to them we use four commonly caught species to compare different components of the data sets.
 
 For each of the following species we are comparing 4 main things across the different survdat sources:
 
