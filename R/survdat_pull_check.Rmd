@@ -279,8 +279,8 @@ plot_stations <- function(combined_data, species_choice){
                          aes(est_year, n_stations, color = survdat_source)) +
     geom_line() +
     geom_jitter(aes(group = survdat_source, color = survdat_source, 
-                  shape = survdat_source), size = 1.25, 
-              width = 0.15) +
+                  shape = survdat_source), size = 1.5, 
+              width = 0.25) +
     facet_wrap(~season) +
     scale_color_gmri() +
     labs(x = "", y = "Total Stations of Species Presence")
@@ -291,8 +291,8 @@ plot_stations <- function(combined_data, species_choice){
                         aes(est_year, sum_numlen, color = survdat_source)) +
     geom_line() +
     geom_jitter(aes(group = survdat_source, color = survdat_source, 
-                  shape = survdat_source), size = 1.25, 
-              width = 0.15) +
+                  shape = survdat_source), size = 1.5, 
+              width = 0.25) +
     facet_wrap(~season) +
     scale_color_gmri() +
     labs(x = "", y = "Total Abundance using survdat$numlen", 
@@ -421,6 +421,24 @@ plot_stations(single_species, species_choice)
 ```{r}
 plot_biomass(single_species, species_choice)
 ```
+
+### American Lobster {.tabset}
+
+#### Stations and Numlen Totals
+
+```{r}
+species_choice <- "american lobster"
+single_species <- species_select(species_choice)
+plot_stations(single_species, species_choice)
+
+```
+
+#### Abundance and Biomass
+
+```{r}
+plot_biomass(single_species, species_choice)
+```
+
 
 ## Dataset Contents
 
