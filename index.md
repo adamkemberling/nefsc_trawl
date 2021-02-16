@@ -11,3 +11,5 @@
  5. [Size spectrum slope sensitivity testing](https://adamkemberling.github.io/nefsc_trawl/R/09_ss_sensitivity.html)
 
  6. [SURVDAT Pull Diagnostics](https://adamkemberling.github.io/nefsc_trawl/R/survdat_pull_check.html)
+ 
+ 7. [Comparing Albatross to Bigelow Data](https://adamkemberling.github.io/nefsc_trawl/R/albatross_bigelow_conversions.html)
