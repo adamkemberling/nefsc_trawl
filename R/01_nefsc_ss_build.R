@@ -146,11 +146,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
     
     # Add the common names over and format for rest of build
     trawldat <- mutate(trawldat, svspp = str_pad(svspp, 3, "left", "0")) %>% 
-      left_join(spp_classes, by = "svspp") #%>% 
-      # drop_na(comname) # double check if we want this to drop
-    #  TESTING ####
-    # originally things with no comname were dropped, 
-    #could lose data here compared to survdat with comname columns
+      left_join(spp_classes, by = "svspp") 
       
     }
   
