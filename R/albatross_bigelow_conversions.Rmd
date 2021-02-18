@@ -73,11 +73,27 @@ survdat_2021 <- survdat %>% clean_names() %>%
     filter(year >= 2008)
 rm(survdat)
   
-# 2021 Bigelow only
+# 2021 Bigelow only, un-adjusted
 load(paste0(res_path,   "NMFS_trawl/survdat_Bigelow_slucey_01152021.RData"))
 survdat_bigelow <- survdat.big %>% clean_names()%>% 
     filter(year >= 2008)
 rm(survdat.big)
+
+
+
+####  02-18-2021
+load(paste0(res_path,   "NMFS_trawl/Survdat_02182021.RData"))
+feb_2021 <- survdat %>% clean_names()%>% 
+    filter(year >= 2008)
+rm(survdat)
+
+# # Same one but with better documentation
+# load(paste0(res_path,   "NMFS_trawl/NEFSC_BTS_02182021.RData"))
+# feb_2021_2 <- survey$survdat %>% 
+#   clean_names() %>% 
+#   filter(year >= 2008)
+# rm(survey)
+
 ```
 
 
@@ -98,7 +114,8 @@ source(here("R/01_nefsc_ss_build.R"))
 # Put in list to apply all steps to  each
 survdat_sources <- list("2020" = survdat_2020,
                         "2021" = survdat_2021,
-                        "2021 Bigelow" = survdat_bigelow)
+                        "2021 Bigelow" = survdat_bigelow,
+                        "2021 DBI Fix" = feb_2021)
 
 
 # Run them through cleanup and add length weight info
@@ -106,8 +123,7 @@ sources_clean <- survdat_sources %>% map(function(survdat){
   survdat %>% 
     survdat_prep() %>% 
     add_lw_info() %>% 
-    filter(comname == "haddock")
-})
+    filter(comname == "haddock")})
 
 
 ```
@@ -140,7 +156,9 @@ annual_summary %>%
     facet_wrap(~season) +
     theme(legend.position = "bottom", legend.title = element_blank(),
           axis.text.x = element_text(angle = 90)) +
-    labs(x = "", y = "Total Biomass", caption = "Species = Haddock")
+    labs(x = "", 
+         y = "Total Biomass", 
+         caption = "Species = Haddock")
 ```
 
 
@@ -158,7 +176,9 @@ annual_summary %>%
     facet_wrap(~season) +
     theme(legend.position = "bottom", legend.title = element_blank(),
           axis.text.x = element_text(angle = 90)) +
-    labs(x = "", y = "Total Abundance", caption = "Species = Haddock")
+    labs(x = "", 
+         y = "Total Abundance", 
+         caption = "Species = Haddock")
 ```
 
 
@@ -172,13 +192,7 @@ survdat_readjust <- annual_summary %>%
     adjusted_abundance = case_when(
       survdat_pull == "2021 Bigelow" & season == "Spring" ~ total_abundance * 0.972,
       survdat_pull == "2021 Bigelow" & season == "Fall" ~ total_abundance * 1.816,
-      TRUE ~ total_abundance
-    ),
-    adjusted_biomass = case_when(
-      survdat_pull == "2021 Bigelow" & season == "Spring" ~ total_biomass * 0.972,
-      survdat_pull == "2021 Bigelow" & season == "Fall" ~ total_biomass * 1.816,
-      TRUE ~ total_biomass
-    ))
+      TRUE ~ total_abundance))
 
 
 # Abundance
@@ -193,20 +207,7 @@ abund <- survdat_readjust %>%
     labs(x = "", y = "Total Abundance\nBigelow Adjustment Added")
 
 
-# Biomass
-bio <- survdat_readjust %>% 
-  ggplot(aes(year, adjusted_biomass, color = survdat_pull)) +
-    geom_line(aes(linetype = survdat_pull, group = survdat_pull), size = 1) +
-    geom_jitter(width = 0.25, size = 1) +
-    scale_color_gmri() +
-    facet_wrap(~season) +
-    theme(legend.position = "bottom", legend.title = element_blank(),
-          axis.text.x = element_text(angle = 90)) +
-    labs(x = "", y = "Total Biomass\nBigelow Adjustment Added", 
-         caption = "Species = Haddock")
-
-
-abund / bio
+abund
 ```
 
 `r insert_gmri_footer()`
