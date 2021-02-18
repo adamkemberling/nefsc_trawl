@@ -522,15 +522,15 @@ single_species <- species_select(species_choice)
 cod_sources <- single_species %>% 
   mutate(
     `survdat group` = case_when(
-      survdat_source %in% c("2016 - 2019") ~ "Pre-2020 Data",
+      survdat_source == "2016 - 2019" ~ "Pre-2020 Data",
       str_detect(survdat_source, "2020") ~ "2020 Data",
       survdat_source == "2021" ~ "2021 w/ DBI Error",
-      survdat_source == "Feb 2021" ~ "2021 w/o DBI Erorr"),
+      survdat_source == "Feb 2021" ~ "2021 w/o DBI Error"),
     `survdat group` = factor(`survdat group`, 
                              levels = c("Pre-2020 Data", 
-                                        "2021 w/ DBI Error", 
-                                        "Sean's 2021 Data",
-                                        "2021 w/o DBI Erorr"))) %>% 
+                                        "2020 Data", 
+                                        "2021 w/ DBI Error",
+                                        "2021 w/o DBI Error"))) %>% 
   distinct(`survdat group`, survdat_source, 
            est_year, season, id, abundance, biom_adj) %>% 
   group_by(`survdat group`, survdat_source, est_year, season) %>% 
