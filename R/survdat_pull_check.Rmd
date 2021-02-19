@@ -197,13 +197,16 @@ trawldat_list <- list(
     "2020" = get_convers(trawldat_20),
     #"2020 re-check" = get_convers(trawldat_20_check),
     "2021" = get_convers(trawldat_21),
-    "Feb 2021" = get_convers(trawldat_feb))
+    "Feb 2021" = get_convers(trawldat_feb)) %>% 
+  map(~ .x %>% 
+  mutate(season = str_to_title(season),
+         season = fct_rev(season)))
 
 
 # Big table of all of them
 trawldat_combined <- bind_rows(
   trawldat_list, 
-  .id = "survdat_source")
+  .id = "survdat_source") 
 ```
 
 ### All Species
@@ -544,7 +547,7 @@ cod_sources <- single_species %>%
 
 #ellipse marker
 mark1 <- cod_sources %>% 
-  filter(season == "FALL", survdat_source == "2021", est_year == 2009) 
+  filter(season == "Fall", survdat_source == "2021", est_year == 2009) 
 ```
 
 ### Abundance
@@ -553,7 +556,7 @@ mark1 <- cod_sources %>%
 
 # Abundance
 cod_sources %>% 
-  filter(season == "FALL") %>% 
+  filter(season == "Fall") %>% 
   ggplot(aes(est_year, abundance)) +
   geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
   geom_point(aes(group = survdat_source, color = `survdat group`, 
@@ -581,7 +584,7 @@ cod_sources %>%
 
 # Biomass
 cod_sources %>% 
-  filter(season == "FALL") %>% 
+  filter(season == "Fall") %>% 
   ggplot(aes(est_year, biomass)) +
   geom_line(aes(group = survdat_source, color = `survdat group`), alpha = 0.3) +
   geom_point(aes(group = survdat_source, color = `survdat group`, 
@@ -599,6 +602,156 @@ cod_sources %>%
        caption = paste0(species_choice, " only"),
        shape = "Pull Source",
        color = "Consistent Grouping") 
+```
+
+## Abundance/Biomass Data Source Ratios {.tabset .tabset-pills}
+
+For the following figures the annual totals for biomass and abundance were compared pairwise between data source using a single species to isolate if the behavior exists across them or is isolated to specific ones.
+
+
+```{r}
+####  Data Prep and Plotting Functions
+
+
+# Pull a species, pivot and plot
+pull_pivot_plot <- function(target_comname = "haddock", comparison = c("Jan 2021", "2016-2019")){
+  
+  
+  # Pull annual abundance and biomass totals for haddock
+  annual_totals <- trawldat_combined %>% 
+    filter(survdat_source %in% c("2019", "2021", "Feb 2021"), 
+           comname == target_comname) %>% 
+      distinct(survdat_source, est_year, season, id, abundance, biom_adj) %>% 
+      group_by(survdat_source, est_year, season) %>% 
+      summarise(abundance = sum(abundance, na.rm = T),
+                biomass = sum(biom_adj, na.rm = T),
+                .groups = "keep") %>%  
+     ungroup() 
+  
+  
+  
+  
+  # Get Ratios for between sources for abundance / biomass
+  yr_ratios <- annual_totals %>% 
+    pivot_wider(names_from = survdat_source, 
+                values_from = c(abundance, biomass)) %>% 
+    mutate(
+      b_ratio_febto2021 = `biomass_Feb 2021` / biomass_2021,
+      b_ratio_febto2019 = `biomass_Feb 2021` / biomass_2019,
+      a_ratio_febto2021 = `abundance_Feb 2021` / biomass_2021,
+      a_ratio_febto2019 = `abundance_Feb 2021` / biomass_2019)
+  
+  
+  
+  ####  Plot the biomass
+  ylab_b <- paste0("BIOM Ratio\nFeb 2021 : ", comparison)
+  ylab_a <- paste0("ABUND Ratio\nFeb 2021 : ", comparison)
+  
+  # y column for biomass
+  ycol_b = switch(EXPR = comparison,
+                "Jan 2021"  = sym("b_ratio_febto2021"),
+                "2016-2019" = sym("b_ratio_febto2019"))
+  
+   # y column for abundance
+  ycol_a = switch(EXPR = comparison,
+                "Jan 2021"  = sym("a_ratio_febto2021"),
+                "2016-2019" = sym("a_ratio_febto2019"))
+  
+  
+  caption <- switch(
+    comparison,
+    "Jan 2021" = "With the idea that bigelow conversions were not applied in the previous pull from Jan 15th.\nWe would assume a consistent ratio between the two sources, equaling the biomass/abundance conversion rate.",
+    "2016-2019" = "The idea with these is that bigelow conversions were not correctly applied, which was corrected after 2019.\nWe would  still expect a consistent ratio between the two sources across years, equaling the difference in the conversions used.")
+  
+  
+  # Plot the biomass
+  bio_ratio <- ggplot(yr_ratios, aes(est_year)) +
+  geom_line(aes(est_year, !!ycol_b)) +
+  facet_wrap(~season) + 
+  labs(x = "", 
+       y = ylab_b,
+       title = str_to_title(target_comname),
+       subtitle = "Biomass Ratios")
+  
+  
+  # Plot the abundance
+  abund_ratio <- ggplot(yr_ratios, aes(est_year)) +
+    geom_line(aes(est_year, !!ycol_a)) +
+    facet_wrap(~season) + 
+    labs(x = "", 
+         y = ylab_a,
+         subtitle = "Abundance Ratios",
+         caption = caption)
+
+  plot_out <- bio_ratio / abund_ratio
+  return(plot_out)
+  
+  
+}
+
+
+```
+
+
+
+### Haddock {.tabset}
+
+
+
+#### Feb 2021 : Jan 2021
+
+```{r}
+
+pull_pivot_plot(target_comname = "haddock", comparison = "Jan 2021")
+
+
+
+```
+
+####  Feb 2021 : Pre-2020 Data
+
+```{r}
+pull_pivot_plot(target_comname = "haddock", comparison = "2016-2019")
+```
+
+### Cod {.tabset}
+
+
+
+#### Feb 2021 : Jan 2021
+
+```{r}
+
+pull_pivot_plot(target_comname = "atlantic cod", comparison = "Jan 2021")
+
+
+
+```
+
+####  Feb 2021 : Pre-2020 Data
+
+```{r}
+pull_pivot_plot(target_comname = "atlantic cod", comparison = "2016-2019")
+```
+
+### Lobster {.tabset}
+
+
+
+#### Feb 2021 : Jan 2021
+
+```{r}
+
+pull_pivot_plot(target_comname = "american lobster", comparison = "Jan 2021")
+
+
+
+```
+
+####  Feb 2021 : Pre-2020 Data
+
+```{r}
+pull_pivot_plot(target_comname = "american lobster", comparison = "2016-2019")
 ```
 
 `r insert_gmri_footer()`

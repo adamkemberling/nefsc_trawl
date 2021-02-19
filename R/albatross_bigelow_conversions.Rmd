@@ -89,8 +89,8 @@ rm(survdat)
 
 # # Same one but with better documentation
 # load(paste0(res_path,   "NMFS_trawl/NEFSC_BTS_02182021.RData"))
-# feb_2021_2 <- survey$survdat %>% 
-#   clean_names() %>% 
+# feb_2021_2 <- survey$survdat %>%
+#   clean_names() %>%
 #   filter(year >= 2008)
 # rm(survey)
 
