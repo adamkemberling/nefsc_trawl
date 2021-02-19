@@ -638,8 +638,8 @@ pull_pivot_plot <- function(target_comname = "haddock", comparison = c("Jan 2021
     mutate(
       b_ratio_febto2021 = `biomass_Feb 2021` / biomass_2021,
       b_ratio_febto2019 = `biomass_Feb 2021` / biomass_2019,
-      a_ratio_febto2021 = `abundance_Feb 2021` / biomass_2021,
-      a_ratio_febto2019 = `abundance_Feb 2021` / biomass_2019)
+      a_ratio_febto2021 = `abundance_Feb 2021` / abundance_2021,
+      a_ratio_febto2019 = `abundance_Feb 2021` / abundance_2019)
   
   
   
