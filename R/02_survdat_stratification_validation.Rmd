@@ -51,13 +51,18 @@ The goal of this markdown is to validate consistency of outcomes for various agg
 ```{r}
 ####__  Data  ####
 
-# Load 2020 Raw survdat data from .RData file
-load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
-trawl_20 <- survdat %>% clean_names()
-rm(survdat)
+# # Load 2020 Raw survdat data from .RData file
+# load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
+# trawldat <- survdat %>% clean_names()
+# rm(survdat)
+
+####  Load Feb 23rd starting data, 2021
+load(paste0(res_path, "NMFS_trawl/NEFSC_BTS_02242021.RData"))
+trawldat <- survey$survdat %>% clean_names() %>% rename(est_year = year)
+rm(survey)
 
 # And filter
-trawl_20 <- filter(trawl_20, est_year >= 2006 & est_year <= 2010)
+trawldat <- filter(trawldat, est_year >= 2006 & est_year <= 2010)
 ```
 
 ## Clean up Function
@@ -77,7 +82,7 @@ The size spectra clean up function does any data prep including:
 source(here("R/01_nefsc_ss_build.R"))
 
 # Clean/Prep Survdat 2006-2010
-survdat_20 <- survdat_prep(survdat = trawl_20, survdat_source = "tester")
+survdat_20 <- survdat_prep(survdat = trawldat)
 
 # Add LW coefficients
 survdat_lw <- add_lw_info(survdat_clean = survdat_20)
@@ -119,7 +124,12 @@ show_comparison <- function(x, test_station, test_species, names = "original"){
   }
 
 }
-t_raw <- show_comparison(trawl_20, test_station, test_species, names = "original")
+```
+
+Took this part out because we confirmed this step and there is no ID col in newer data, and more code than its worth.
+
+```{r, eval = FALSE}
+t_raw   <- show_comparison(trawldat, test_station, test_species, names = "original")
 t_clean <- show_comparison(weights_20, test_station, test_species, names = "cleaned")
 
 
@@ -505,7 +515,9 @@ Take the species that stood out above and plot the mismatch versus the station a
 
 
 #species that are caught in large numbers
-subsampling_suspects <- c("spiny dogfish", "haddock", "blueback herring", "american shad", "windowpane", "silver rag", "atlantic cod", "pollock", "smooth dogfish", "acadian redfish")
+subsampling_suspects <- c("spiny dogfish", "haddock", "blueback herring", 
+                          "american shad", "windowpane", "silver rag", "atlantic cod", 
+                          "pollock", "smooth dogfish", "acadian redfish", "butterfish")
 
 
 
@@ -679,7 +691,7 @@ Certain coefficients seem to be really off and contributing to some really big d
 ```{r}
 
 # Cutoff Threshold
-cut_percent <- 50
+cut_percent <- 25
 
 fishbase_cutoffs <- perc_differences %>% 
   filter(source == "fishbase",

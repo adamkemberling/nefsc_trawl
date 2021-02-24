@@ -15,7 +15,7 @@ params:
     label: "Select a SURVDAT File:" 
     value: "2021"
     input: select
-    choices: ["2016", "2020", "2021"]
+    choices: ["2016", "2020", "2021", "Feb 23 2021"]
 ---
 
 ```{r setup, include=FALSE}
@@ -37,9 +37,9 @@ library(ruler)
 
 
 # Load the build code and stratification function
-box_paths <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
-res_path <- box_paths$res
+res_path   <- box_paths$res
 
 #### Set theme  ####
 theme_set(theme_minimal())
@@ -70,11 +70,19 @@ survdat_path <- switch(
   EXPR = params$survdat_source, 
   "2016" = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
   "2020" = paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
-  "2021" = paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"))
+  "2021" = paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"),
+  "Feb 23 2021" = paste0(res_path, "NMFS_trawl/NEFSC_BTS_02242021.RData")
+  )
                        
+
 
 # Load any* of the survdat files
 load(survdat_path)
+
+# February 2021 following DBI package fix
+if(params$survdat_source == "Feb 23 2021"){
+  survdat <- survey$survdat 
+  rm(survey)}
 
 # clean the names
 trawldat <- survdat %>% 
@@ -84,11 +92,10 @@ trawldat <- survdat %>%
 
 
 # Bonus steps for the 2016 and 2021 datasets that don't have common name field
-if(params$survdat_source %in% c("2021")){
+if(params$survdat_source %in% c("2021", "Feb 23 2021")){
   trawldat <- trawldat %>% 
     mutate(svspp = as.character(svspp),
            svspp = str_pad(svspp, 3, "left", "0"))
-  #rm(survdat)
   
   # Extra prep for 2016/slucey data, getting species names via svspp codes
   spp_classes <- read_csv(paste0(res_path, "NMFS_trawl/spp_keys/sppclass.csv"),
