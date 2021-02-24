@@ -110,7 +110,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   
   ####__ 1.  Special Steps for Different SURVDAT versions  ####
   
-  ####____ a. Missing column flags
+  ####____ a. Missing data flags  ####
   
   # Flags for missing columns that need to be merged in or built
   has_comname  <- "comname" %in% names(trawldat)
@@ -119,9 +119,9 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   has_month    <- "est_month" %in% names(trawldat)
   
   # Flags for renaming or subsetting the data due to presence/absence of columns
-  has_year     <- "est_year" %in% names(trawldat)
-  has_catchsex <- "catchsex" %in% names(trawldat)
-  has_decdeg   <- "decdeg_beglat" %in% names(trawldat)
+  has_year      <- "est_year" %in% names(trawldat)
+  has_catchsex  <- "catchsex" %in% names(trawldat)
+  has_decdeg    <- "decdeg_beglat" %in% names(trawldat)
   has_avg_depth <- "avgdepth" %in% names(trawldat)
   
   
@@ -152,7 +152,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
     }
   
   
-  ####____ b. Missing ID  ####
+  ####____ c. Missing ID  ####
   if(has_id_col == FALSE) {
     message("creating station id from cruise-station-stratum fields")
     trawldat <- trawldat %>%
@@ -164,7 +164,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
              id = str_c(cruise6, station, stratum))}
       
   
-  ####____ c. common field renaming  ####
+  ####____ d. Field renaming  ####
   
   # Rename select columns for consistency
   if(has_year == FALSE)      {
@@ -182,7 +182,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
 
 
     
-  ####____ d. buikld date structure
+  ####____ d. build date structure
   if(has_towdate == TRUE) {
     message("building month/day columns from est_towdate")
     trawldat <- mutate(trawldat,
@@ -203,9 +203,9 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
       svspp   = as.character(svspp),
       svspp   = str_pad(svspp, 3, "left", "0"),
       
-      # Sratum number, 
-      #excluding leading and trailing codes for inshore/offshore, 
-      #for matching to stratum areas
+      # Stratum number, 
+      # exclude leading and trailing codes for inshore/offshore, 
+      # used for matching to stratum areas
       strat_num = str_sub(stratum, 2, 3)) %>%  
     
     # Replace NA's where there is some biomass/abundance
@@ -261,6 +261,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
   # 5. Species Exclusion
   trawldat <- trawldat %>%
     filter(
+      
       # Eliminate Canadian Strata and Strata No longer in Use 
       stratum >= 01010,
       stratum <= 01760,
