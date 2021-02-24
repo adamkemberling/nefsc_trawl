@@ -311,8 +311,7 @@ plot_stations <- function(combined_data, species_choice){
     group_by(survdat_source, est_year, season) %>% 
     summarise(n_stations = n_distinct(id),
               sum_numlen = sum(numlen, na.rm = T),
-              .groups = "keep")  %>% ungroup() %>% 
-    mutate(season = fct_rev(season))
+              .groups = "keep")  %>% ungroup()
   
   
   # Plot for station presence
@@ -362,8 +361,7 @@ plot_biomass <- function(combined_data, species_choice){
               abundance = sum(abundance, na.rm = T),
               biomass = sum(biom_adj, na.rm = T),
               .groups = "keep") %>%  
-    ungroup() %>% 
-    mutate(season = fct_rev(season))
+    ungroup()
   
   
   # Plot for abundance
