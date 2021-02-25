@@ -784,7 +784,7 @@ The following table displays the ratio of total annual abundance between data so
 ```{r}
 # Pull annual abundance and biomass totals for haddock
 species_totals <- trawldat_combined %>% 
-  filter(survdat_source %in% c("Jan 2021", "Feb 2021", "Feb 23 2021"),
+  filter(survdat_source %in% c("Jan 2021",  "Feb 23 2021"),
          est_year >= 2009,
          comname != "0") %>% 
     distinct(comname, svspp, survdat_source, est_year, season, id, abundance, biom_adj) %>% 
@@ -803,21 +803,21 @@ species_totals <- trawldat_combined %>%
         pivot_wider(names_from = survdat_source, 
                     values_from = c(abundance, biomass)) %>% 
         mutate(feb_23_bratio = `biomass_Feb 23 2021` / `biomass_Jan 2021`,
-               feb_18_bratio = `biomass_Feb 2021`    / `biomass_Jan 2021`,
-               feb_23_aratio = `abundance_Feb 23 2021`  / `abundance_Jan 2021`,
-               feb_18_aratio = `abundance_Feb 2021`     / `abundance_Jan 2021`) %>% 
-          group_by(comname, svspp) %>% 
+               feb_23_aratio = `abundance_Feb 23 2021`  / `abundance_Jan 2021`) %>% 
+          group_by(comname, svspp, season) %>% 
           summarise(`Biomass Conv. Factor -  Feb, 23 : Jan, 21` = round(1 / mean(feb_23_bratio), 3),
-                    `Biomass Conv. Factor -  Feb, 18 : Jan, 21` = round(1 / mean(feb_18_bratio), 3),
                     `Abundance Conv. Factor Feb, 23 : Jan, 21`  = round(1 / mean(feb_23_aratio), 3),
-                    `Abundance Conv. Factor Feb, 18 : Jan, 21`  = round(1 / mean(feb_18_aratio), 3),
                     .groups = "keep") %>% 
           ungroup() 
       }) %>% arrange(svspp)
 
 # Fancy table  
-DT::datatable(species_ratios, rownames = FALSE,
-              caption = "Conversion Factors for SVSPP numbers >= 100 Likely to mismatch Miller Paper.")
+DT::datatable(species_ratios, 
+              rownames = FALSE, 
+              caption = "Conversion Factors for species with SVSPP numbers > 100 likely to not match Miller Paper.",
+              options = list(
+                pageLength = 10
+              ))
 ```
 
 
