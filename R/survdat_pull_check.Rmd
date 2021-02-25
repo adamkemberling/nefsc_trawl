@@ -731,11 +731,7 @@ pull_pivot_plot(target_comname = "haddock", numerator = "Feb 2021", denominator 
 ```
 
 
-####  Feb 23rd : Pre-2020 Data
 
-```{r}
-pull_pivot_plot(target_comname = "haddock", numerator = "Feb 23 2021", denominator = "2019")
-```
 
 ### Cod {.tabset}
 
@@ -758,11 +754,7 @@ pull_pivot_plot(target_comname = "atlantic cod", numerator = "Feb 23 2021", deno
 pull_pivot_plot(target_comname = "atlantic cod", numerator = "Feb 2021", denominator = "Jan 2021")
 ```
 
-####  Feb 23rd : Pre-2020 Data
 
-```{r}
-pull_pivot_plot(target_comname = "atlantic cod", numerator = "Feb 23 2021", denominator = "2019")
-```
 
 ### Lobster {.tabset}
 
@@ -785,10 +777,48 @@ pull_pivot_plot(target_comname = "american lobster", numerator = "Feb 23 2021", 
 pull_pivot_plot(target_comname = "american lobster", numerator = "Feb 2021", denominator = "Jan 2021")
 ```
 
-####  Feb 23rd : Pre-2020 Data
+### Species Lookup Table
+
+The following table displays the ratio of total annual abundance between data sources for each species. The conversion factors shown are the inverse of the ratios plotted above to match how they are in the Miller paper. For abundance conversion factors I expect some deviation from the values to rounding to whole fish and across years, but they should still center around the values in the report.
 
 ```{r}
-pull_pivot_plot(target_comname = "american lobster", numerator = "Feb 23 2021", denominator = "2019")
+# Pull annual abundance and biomass totals for haddock
+species_totals <- trawldat_combined %>% 
+  filter(survdat_source %in% c("Jan 2021", "Feb 2021", "Feb 23 2021"),
+         est_year >= 2009,
+         comname != "0") %>% 
+    distinct(comname, svspp, survdat_source, est_year, season, id, abundance, biom_adj) %>% 
+    group_by(comname, svspp, survdat_source, est_year, season) %>% 
+    summarise(abundance = sum(abundance, na.rm = T),
+              biomass = sum(biom_adj, na.rm = T),
+              .groups = "keep") %>% ungroup() 
+
+
+# Split out species, pivot wider, summarize comparisons
+ # Get Ratios for between sources for abundance / biomass
+  species_ratios <- species_totals %>% 
+    split(.$comname) %>% 
+    map_dfr(function(species_dat){
+      species_dat %>% 
+        pivot_wider(names_from = survdat_source, 
+                    values_from = c(abundance, biomass)) %>% 
+        mutate(feb_23_bratio = `biomass_Feb 23 2021` / `biomass_Jan 2021`,
+               feb_18_bratio = `biomass_Feb 2021`    / `biomass_Jan 2021`,
+               feb_23_aratio = `abundance_Feb 23 2021`  / `abundance_Jan 2021`,
+               feb_18_aratio = `abundance_Feb 2021`     / `abundance_Jan 2021`) %>% 
+          group_by(comname, svspp) %>% 
+          summarise(`Biomass Conv. Factor -  Feb, 23 : Jan, 21` = round(1 / mean(feb_23_bratio), 3),
+                    `Biomass Conv. Factor -  Feb, 18 : Jan, 21` = round(1 / mean(feb_18_bratio), 3),
+                    `Abundance Conv. Factor Feb, 23 : Jan, 21`  = round(1 / mean(feb_23_aratio), 3),
+                    `Abundance Conv. Factor Feb, 18 : Jan, 21`  = round(1 / mean(feb_18_aratio), 3),
+                    .groups = "keep") %>% 
+          ungroup() 
+      }) %>% arrange(svspp)
+
+# Fancy table  
+DT::datatable(species_ratios, rownames = FALSE,
+              caption = "Conversion Factors for SVSPP numbers >= 100 Likely to mismatch Miller Paper.")
 ```
+
 
 `r insert_gmri_footer()`
