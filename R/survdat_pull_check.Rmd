@@ -13,9 +13,6 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
-
 knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = NA, fig.height = 6, fig.width = 8)
 options(knitr.kable.NA = '')
 

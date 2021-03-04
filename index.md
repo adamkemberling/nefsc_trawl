@@ -13,3 +13,6 @@
  6. [SURVDAT Pull Diagnostics](https://adamkemberling.github.io/nefsc_trawl/R/survdat_pull_check.html)
  
  7. [Comparing Albatross to Bigelow Data](https://adamkemberling.github.io/nefsc_trawl/R/albatross_bigelow_conversions.html)
+ 
+ 
+ 8. [Abundance and Biomass Retrospective Check](https://adamkemberling.github.io/nefsc_trawl/R/survdat_ab_bio_check.html)
