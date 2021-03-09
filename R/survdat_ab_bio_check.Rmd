@@ -28,13 +28,13 @@ library(kableExtra)
 
 
 # Load the build code and stratification function
-box_paths <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
-res_path <- box_paths$res
-nmfs_path <- shared.path("unix", "RES_Data", "NMFS_Trawl")
+res_path   <- box_paths$res
+nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 #### Set theme  ####
-theme_set(theme_bw()) + theme(axis.text.y = element_text(size = 14))
+theme_set(theme_bw() + theme(axis.text.y = element_text(size = 14)))
 ```
 
 
@@ -53,13 +53,27 @@ source(here("R/01_nefsc_ss_build.R"))
 ####  Survdat resource Load Data
 
 
-# Data used in 2020 paper
+# 2019 Data used in 2020 paper
 load(paste0(nmfs_path, "Survdat_Nye_allseason.RData"))
 survdat_nye  <- survdat %>% clean_names()
 
 # Run cleanup
 survdat_nye <- survdat_prep(survdat = survdat_nye) %>% 
   mutate(survdat_source = "survdat_nye")
+
+
+
+
+# 2020 data received last august
+load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
+survdat_20 <- clean_names(survdat) 
+
+
+# Run cleanup
+survdat_20 <- survdat_prep(survdat = survdat_20) %>% 
+  mutate(survdat_source = "survdat_nye2020")
+
+
 
 
 # Data we just received in 2021 with errors located and corrected
@@ -74,7 +88,8 @@ survdat_21 <- survdat_prep(survdat = survdat_21) %>%
 rm(survdat, survey)
 
 ####  Load the species list
-species_check <- read_csv(here("data/andrew_species/Assesmentfishspecies.csv"))
+species_check <- read_csv(here("data/andrew_species/Assesmentfishspecies.csv"), 
+                          col_types = cols())
 species_check <- species_check %>% 
   clean_names() %>% 
   mutate(svspp = str_pad(svspp, 3, pad = "0", side = "left"),
@@ -83,7 +98,10 @@ species_check <- species_check %>%
   arrange(svspp)
 
 
-
+# Put in a list
+source_list <- list("survdat_nye_2019" = survdat_nye,
+                    "survdat_nye_2020" = survdat_20,
+                    "survdat_2021"     = survdat_21)
 ```
 
 
@@ -95,18 +113,21 @@ species_check <- species_check %>%
 
 ```{r}
 # Make years comparable
-survdat_21 <- survdat_21 %>% 
-  filter(est_year %in% unique(survdat_nye$est_year))
-
-
 # Filter species down for both
-survdat_nye <- filter(survdat_nye, svspp %in% species_check$svspp)
-survdat_21  <- filter(survdat_21,  svspp %in% species_check$svspp)
+
+source_list <- map(source_list, function(survdat_data){
+  survdat_data %>% 
+    filter(est_year <= 2017,
+           svspp %in% species_check$svspp)
+
+  })
 
 
-# Do some gross abundance or biomass comparisons by species
-species_nye <- survdat_nye %>% split(.$comname)
-species_21  <- survdat_21 %>% split(.$comname)
+# Split them each by comname
+source_splits <- map(source_list, function(source_data){
+  source_split <- source_data %>% split(.$comname)
+})
+
 
 
 
@@ -119,53 +140,93 @@ andrew_species <- species_check$comname %>% setNames(species_check$svspp)
 species_comparisons <- imap(andrew_species, function(species_comname, species_svspp){
   
   # there are some name mismatches, so catch those
-  in_nye <- species_comname %in% names(species_nye)
-  in_21  <- species_comname %in% names(species_21)
+  in_nye  <- species_comname %in% names(source_splits$survdat_nye_2019)
+  in_20   <- species_comname %in% names(source_splits$survdat_nye_2020)
+  in_21   <- species_comname %in% names(source_splits$survdat_2021)
   in_both <- in_nye & in_21
+  in_all  <- in_nye & in_20 & in_21
+  
   if(in_both == FALSE){
-    return(list("in_nye" = in_nye, 
-                "in_21" = in_21,
-                "data" = data.frame(),
+    return(list("in_nye"  = in_nye, 
+                "in_21"   = in_21,
+                "in_all"  = in_all,
+                "data"    = data.frame(),
                 "metrics" = data.frame()))
   }
   
-  # Pull just that species from the old data
-  old_data_summ <- survdat_nye %>% 
-    filter(svspp == species_svspp) %>% 
-    group_by(comname, est_year) %>% 
-    summarise(old_abundance = sum(abundance, na.rm = T),
-              old_biomass   = sum(biom_adj, na.rm = T),
-              .groups = "keep")
   
-   # Pull just that species from the new data
-  new_data_summ <- survdat_21 %>% 
+  
+  # Pull just that species from the 2019 data
+  summ_19 <- source_list$survdat_nye_2019 %>% 
     filter(svspp == species_svspp) %>% 
     group_by(comname, est_year) %>% 
-    summarise(new_abundance = sum(abundance, na.rm = T),
-              new_biomass   = sum(biom_adj, na.rm = T),
-              .groups = "keep")
+    summarise(abund_19 = sum(abundance, na.rm = T),
+              biom_19  = sum(biom_adj, na.rm = T),
+              .groups  = "keep") %>% ungroup()
+  
+  # same for 2020 data
+  summ_20 <- source_list$survdat_nye_2020 %>% 
+    filter(svspp == species_svspp) %>% 
+    group_by(comname, est_year) %>% 
+    summarise(abund_20 = sum(abundance, na.rm = T),
+              biom_20  = sum(biom_adj, na.rm = T),
+              .groups = "keep") %>% ungroup()
+  
+  
+   # and 2021 data
+  summ_21 <- source_list$survdat_2021 %>% 
+    filter(svspp == species_svspp) %>% 
+    group_by(comname, est_year) %>% 
+    summarise(abund_21 = sum(abundance, na.rm = T),
+              biom_21  = sum(biom_adj, na.rm = T),
+              .groups = "keep") %>% ungroup()
   
   # join them for side-by-side data
-  combined_data <- left_join(old_data_summ, new_data_summ, by = c("comname", "est_year")) %>% 
-    mutate(relative_abund_change = ((new_abundance - old_abundance) / old_abundance) * 100,
-           relative_biom_change  = ((new_biomass - old_biomass) / old_biomass) * 100) 
+  combined_data <- left_join(summ_19, summ_20, by = c("comname", "est_year")) %>% 
+    left_join(summ_21, by = c("comname", "est_year")) %>% 
+    mutate(abund_change_19to21 = ((abund_21 - abund_19) / abund_19) * 100,
+           biom_change_19to21  = ((biom_21 - biom_19) / biom_19) * 100,
+           abund_change_20to21 = ((abund_21 - abund_20) / abund_20) * 100,
+           biom_change_20to21  = ((biom_21 - biom_20) / biom_20) * 100) 
   
-  # correlation
-  abund_cor   <- cor(combined_data$new_abundance, combined_data$old_abundance, use = "pairwise.complete.obs")
-  biomass_cor <- cor(combined_data$new_biomass, combined_data$old_biomass,   use = "pairwise.complete.obs")
+  #return(combined_data)
+  
+  # abunndance correlation
+  abund_cor_19to21   <- cor(combined_data$abund_21, 
+                            combined_data$abund_19, 
+                            use = "pairwise.complete.obs")
+  abund_cor_20to21   <- cor(combined_data$abund_21, 
+                            combined_data$abund_20, 
+                            use = "pairwise.complete.obs")
+  
+  # biomass correlation
+  biomass_cor_19to21 <- cor(combined_data$biom_21, 
+                            combined_data$biom_19,   
+                            use = "pairwise.complete.obs")
+  biomass_cor_20to21 <- cor(combined_data$biom_21, 
+                            combined_data$biom_20,   
+                            use = "pairwise.complete.obs")
   
   # average relative shift
-  abund_shift <- mean(combined_data$relative_abund_change, na.rm = T)
-  biom_shift  <- mean(combined_data$relative_biom_change, na.rm = T)
+  abund_shift_19to21 <- mean(combined_data$abund_change_19to21, na.rm = T)
+  biom_shift_19to21  <- mean(combined_data$biom_change_19to21, na.rm = T)
+  abund_shift_20to21 <- mean(combined_data$abund_change_20to21, na.rm = T)
+  biom_shift_20to21  <- mean(combined_data$biom_change_20to21, na.rm = T)
   
   # put in list to export
   list("data" = combined_data,
-       "metrics" = data.frame("comname"                  = species_comname,
-                              "svspp"                    = species_svspp,
-                              "abundance_correlation"    = abund_cor,
-                              "biomass_correlation"      = biomass_cor,
-                              "abundance_percent_change" = abund_shift,
-                              "biomass_percent_change"   = biom_shift))
+       "metrics" = data.frame(
+         "comname"            = species_comname,
+         "svspp"              = species_svspp,
+         "abund_corr_19to21"  = abund_cor_19to21,
+         "abund_corr_20to21"  = abund_cor_20to21,
+         "biom_corr_19to21"   = biomass_cor_19to21,
+         "biom_corr_20to21"   = biomass_cor_20to21,
+         "perc_abund_19to21"  = abund_shift_19to21,
+         "perc_abund_20to21"  = abund_shift_20to21,
+         "perc_biom_19to21"   = biom_shift_19to21,
+         "perc_biom_20to21"   = biom_shift_20to21)
+       )
   })
 
 
@@ -175,14 +236,17 @@ comparison_metrics <- map_dfr(species_comparisons, ~.x[["metrics"]])
 ```
 
 
-### Abundance {.tabset .tabset-pills}
+
+## Comparing 2019 to 2021 {.tabset .tabset-pills}
+
+### Abundance {.tabset}
 
 ####  Correlation
 
 ```{r}
 comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, abundance_correlation, max, .desc = F)) %>% 
-  ggplot(aes(x = abundance_correlation, y = comname)) +
+  mutate(comname = fct_reorder(comname, abund_corr_19to21, max, .desc = F)) %>% 
+  ggplot(aes(x = abund_corr_19to21, y = comname)) +
     geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
     geom_point(color = gmri_cols("gmri blue")) +
     labs(y = "", x = "Correlation Between Total Annual Abundances")
@@ -195,8 +259,8 @@ comparison_metrics %>%
 
 ```{r}
 comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, abundance_percent_change, max, .desc = F)) %>% 
-  ggplot(aes(x = abundance_percent_change, y = comname)) +
+  mutate(comname = fct_reorder(comname, perc_abund_19to21, max, .desc = F)) %>% 
+  ggplot(aes(x = perc_abund_19to21, y = comname)) +
     geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
     geom_point(color = gmri_cols("gmri blue")) +
     scale_x_continuous(labels = scales::percent_format()) +
@@ -215,7 +279,7 @@ comparison_metrics %>%
 # correlation
 corr_cutoff <- 0.8
 corr_species <- comparison_metrics %>% 
-  filter(abundance_correlation <= corr_cutoff) %>% 
+  filter(abund_corr_19to21 <= corr_cutoff) %>% 
    mutate(comname = fct_drop(comname)) %>% 
   pull(comname)
 
@@ -232,8 +296,8 @@ corr_sub %>%
   filter(comname %in% p1) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   ggplot() +
-  geom_line(aes(est_year, old_abundance, color = "Survdat Nye")) +
-  geom_line(aes(est_year, new_abundance, color = "Newest Survdat")) +
+  geom_line(aes(est_year, abund_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(est_year, abund_21, color = "Newest Survdat")) +
   facet_wrap(~comname, ncol = 1, scales = "free" ) +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_color_gmri() +
@@ -249,8 +313,8 @@ corr_sub %>%
   filter(comname %in% p2) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   ggplot() +
-  geom_line(aes(est_year, old_abundance, color = "Survdat Nye")) +
-  geom_line(aes(est_year, new_abundance, color = "Newest Survdat")) +
+  geom_line(aes(est_year, abund_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(est_year, abund_21, color = "Newest Survdat")) +
   facet_wrap(~comname, ncol = 1, scales = "free" ) +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_color_gmri() +
@@ -268,7 +332,7 @@ corr_sub %>%
 # percent change
 perc_cutoff <- 25
 perc_species <- comparison_metrics %>% 
-  filter(abundance_percent_change >= perc_cutoff) %>% 
+  filter(perc_abund_19to21 >= perc_cutoff) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   pull(comname) 
 
@@ -277,8 +341,8 @@ comparison_data %>%
   filter(comname %in% perc_species) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   ggplot() +
-  geom_line(aes(est_year, old_abundance, color = "Survdat Nye")) +
-  geom_line(aes(est_year, new_abundance, color = "Newest Survdat")) +
+  geom_line(aes(est_year, abund_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(est_year, abund_21, color = "Newest Survdat")) +
   facet_wrap(~comname, ncol = 1, scales = "free") +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_color_gmri() +
@@ -299,8 +363,8 @@ comparison_data %>%
 
 ```{r}
 comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, biomass_correlation, max, .desc = F)) %>% 
-  ggplot(aes(x = biomass_correlation, y = comname)) +
+  mutate(comname = fct_reorder(comname, biom_corr_19to21, max, .desc = F)) %>% 
+  ggplot(aes(x = biom_corr_19to21, y = comname)) +
     geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
     geom_point(color = gmri_cols("gmri blue")) +
     labs(y = "", x = "Correlation Between Total Annual Biomasses")
@@ -312,8 +376,8 @@ comparison_metrics %>%
 
 ```{r}
 comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, biomass_percent_change, max, .desc = F)) %>% 
-  ggplot(aes(x = biomass_percent_change, y = comname)) +
+  mutate(comname = fct_reorder(comname, perc_biom_19to21, max, .desc = F)) %>% 
+  ggplot(aes(x = perc_biom_19to21, y = comname)) +
     geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
     geom_point(color = gmri_cols("gmri blue")) +
     labs(y = "", x = "Avg. Percent Change in Annual Biomasses\nMoving from Old Data -> New Data")
@@ -330,17 +394,18 @@ comparison_metrics %>%
 # correlation
 corr_cutoff <- 0.8
 corr_species <- comparison_metrics %>% 
-  filter(biomass_correlation <= corr_cutoff) %>% 
+  filter(biom_corr_19to21 <= corr_cutoff) %>% 
    mutate(comname = fct_drop(comname)) %>% 
   pull(comname)
 
 # plot
+if(length(corr_species) > 0) {
 comparison_data %>% 
   filter(comname %in% corr_species) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   ggplot() +
-  geom_line(aes(est_year, old_biomass, color = "Survdat Nye")) +
-  geom_line(aes(est_year, new_biomass, color = "Newest Survdat")) +
+  geom_line(aes(est_year, biom_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(est_year, biom_21, color = "Newest Survdat")) +
   facet_wrap(~comname, ncol = 1, scales = "free" ) +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_color_gmri() +
@@ -348,6 +413,7 @@ comparison_data %>%
        y = "Annual Biomass", 
        title = paste0("Species with Annual Biomass Correlation <= ", corr_cutoff),
        color = "Survdat Source")
+}
 ```
 
 
@@ -358,7 +424,7 @@ comparison_data %>%
 # percent change
 perc_cutoff <- 25
 perc_species <- comparison_metrics %>% 
-  filter(biomass_percent_change >= perc_cutoff) %>% 
+  filter(perc_biom_19to21 >= perc_cutoff) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   pull(comname) 
 
@@ -367,8 +433,8 @@ comparison_data %>%
   filter(comname %in% perc_species) %>% 
   mutate(comname = fct_drop(comname)) %>% 
   ggplot() +
-  geom_line(aes(est_year, old_biomass, color = "Survdat Nye")) +
-  geom_line(aes(est_year, new_biomass, color = "Newest Survdat")) +
+  geom_line(aes(est_year, biom_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(est_year, biom_21, color = "Newest Survdat")) +
   facet_wrap(~comname, ncol = 1, scales = "free") +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_color_gmri() +
@@ -378,5 +444,204 @@ comparison_data %>%
        color = "Survdat Source")
 
 ```
+
+
+
+## Comparing 2020 to 2021 {.tabset .tabset-pills}
+
+### Abundance {.tabset}
+
+####  Correlation
+
+```{r}
+comparison_metrics %>% 
+  mutate(comname = fct_reorder(comname, abund_corr_20to21, max, .desc = F)) %>% 
+  ggplot(aes(x = abund_corr_20to21, y = comname)) +
+    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
+    geom_point(color = gmri_cols("gmri blue")) +
+    labs(y = "", x = "Correlation Between Total Annual Abundances")
+
+```
+
+
+####  Annual Percent Change
+
+
+```{r}
+comparison_metrics %>% 
+  mutate(comname = fct_reorder(comname, perc_abund_20to21, max, .desc = F)) %>% 
+  ggplot(aes(x = perc_abund_20to21, y = comname)) +
+    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
+    geom_point(color = gmri_cols("gmri blue")) +
+    scale_x_continuous(labels = scales::percent_format()) +
+    labs(y = "", x = "Avg. Percent Change in Annual Abundance\nMoving from Old Data -> New Data")
+```
+
+
+### Problem Species {.tabset}
+
+
+
+#### Poor Correlation
+
+
+```{r}
+# correlation
+corr_cutoff <- 0.8
+corr_species <- comparison_metrics %>% 
+  filter(abund_corr_20to21 <= corr_cutoff) %>% 
+   mutate(comname = fct_drop(comname)) %>% 
+  pull(comname)
+
+# filter species
+corr_sub <- comparison_data %>% 
+  filter(comname %in% corr_species) 
+
+# how many species per plot
+p1 <- corr_species[1:6]
+#p2 <- corr_species[-c(1:6)]
+
+# p1
+corr_sub %>% 
+  filter(comname %in% p1) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
+  ggplot() +
+  geom_line(aes(est_year, abund_20, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(est_year, abund_21, color = "Newest Survdat")) +
+  facet_wrap(~comname, ncol = 1, scales = "free" ) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Annual Abundance", 
+       title = paste0("Species with Annual Abundance Correlation <= ", corr_cutoff),
+       color = "Survdat Source",
+       subtitle = "Subset 1")
+
+
+
+```
+
+
+#### Large Percent Change
+
+```{r}
+# percent change
+perc_cutoff <- 25
+perc_species <- comparison_metrics %>% 
+  filter(perc_abund_20to21 >= perc_cutoff) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
+  pull(comname) 
+
+
+comparison_data %>% 
+  filter(comname %in% perc_species) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
+  ggplot() +
+  geom_line(aes(est_year, abund_20, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(est_year, abund_21, color = "Newest Survdat")) +
+  facet_wrap(~comname, ncol = 1, scales = "free") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Annual Abundance",
+       title = paste0("Species with Avg. Shift in Abundance >= ", perc_cutoff, "%"),
+       color = "Survdat Source")
+
+```
+
+
+
+### Biomass {.tabset .tabset-pills}
+
+
+####  Correlation
+
+
+```{r}
+comparison_metrics %>% 
+  mutate(comname = fct_reorder(comname, biom_corr_20to21, max, .desc = F)) %>% 
+  ggplot(aes(x = biom_corr_20to21, y = comname)) +
+    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
+    geom_point(color = gmri_cols("gmri blue")) +
+    labs(y = "", x = "Correlation Between Total Annual Biomasses")
+
+```
+
+####  Annual Percent Change
+
+
+```{r}
+comparison_metrics %>% 
+  mutate(comname = fct_reorder(comname, perc_biom_20to21, max, .desc = F)) %>% 
+  ggplot(aes(x = perc_biom_20to21, y = comname)) +
+    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
+    geom_point(color = gmri_cols("gmri blue")) +
+    labs(y = "", x = "Avg. Percent Change in Annual Biomasses\nMoving from Old Data -> New Data")
+```
+
+
+
+
+### Problem Species {.tabset}
+
+#### Poor Correlation
+
+```{r}
+# correlation
+corr_cutoff <- 0.8
+corr_species <- comparison_metrics %>% 
+  filter(biom_corr_20to21 <= corr_cutoff) %>% 
+   mutate(comname = fct_drop(comname)) %>% 
+  pull(comname)
+
+# plot
+if(length(corr_species) > 0){
+comparison_data %>% 
+  filter(comname %in% corr_species) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
+  ggplot() +
+  geom_line(aes(est_year, biom_20, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(est_year, biom_21, color = "Newest Survdat")) +
+  facet_wrap(~comname, ncol = 1, scales = "free" ) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Annual Biomass", 
+       title = paste0("Species with Annual Biomass Correlation <= ", corr_cutoff),
+       color = "Survdat Source")
+}
+```
+
+
+#### Large Percent Change
+
+
+```{r}
+# percent change
+perc_cutoff <- 25
+perc_species <- comparison_metrics %>% 
+  filter(perc_biom_20to21 >= perc_cutoff) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
+  pull(comname) 
+
+
+comparison_data %>% 
+  filter(comname %in% perc_species) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
+  ggplot() +
+  geom_line(aes(est_year, biom_20, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(est_year, biom_21, color = "Newest Survdat")) +
+  facet_wrap(~comname, ncol = 1, scales = "free") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Annual Biomass",
+       title = paste0("Species with Avg. Shift in Biomass >= ", perc_cutoff, "%"),
+       color = "Survdat Source")
+
+```
+
+
+
 
 `r insert_gmri_footer()`
