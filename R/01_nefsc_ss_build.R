@@ -277,7 +277,7 @@ survdat_prep <- function(survdat = NULL, survdat_source = "2020"){
       season %in% c("SPRING", "FALL"),
       
       # Only the Albatross and Henry Bigelow
-      svvessel %in% c("AL", "HB"),
+      #svvessel %in% c("AL", "HB"),
       est_year >= 1970,
       est_year < 2020,
       

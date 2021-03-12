@@ -34,7 +34,7 @@ res_path   <- box_paths$res
 nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 #### Set theme  ####
-theme_set(theme_bw() + theme(axis.text.y = element_text(size = 14)))
+theme_set(theme_bw() + theme(axis.text.y = element_text(size = 12)))
 ```
 
 
@@ -45,7 +45,7 @@ While investigating some discrepancies among different datasets a handful of cor
 The two datasets being compared here are the `survdat_Nye_allseasons.RData` and the more recent `NEFSC_BTS_all_seasons_03032021.RData`.
 
 
-```{r}
+```{r load and clean survdat}
 
 # Cleanup functions
 source(here("R/01_nefsc_ss_build.R"))
@@ -86,8 +86,13 @@ survdat_21 <- survdat_prep(survdat = survdat_21) %>%
   mutate(survdat_source = "survdat_2021")
 
 rm(survdat, survey)
+```
 
-####  Load the species list
+
+
+
+```{r load species list}
+####  Load the species list from Andrew
 species_check <- read_csv(here("data/andrew_species/Assesmentfishspecies.csv"), 
                           col_types = cols())
 species_check <- species_check %>% 
@@ -111,14 +116,20 @@ source_list <- list("survdat_nye_2019" = survdat_nye,
 ##  Making Comparisons
 
 
-```{r}
+```{r compare datasets}
 # Make years comparable
 # Filter species down for both
 
 source_list <- map(source_list, function(survdat_data){
-  survdat_data %>% 
+  
+  # filter years
+  sdat <- survdat_data %>% 
     filter(est_year <= 2017,
            svspp %in% species_check$svspp)
+  
+  # Pull distinct station abundance and biomass for each species
+  sdat <- sdat %>% 
+    distinct(id, est_year, season, svvessel, comname, svspp, catchsex, abundance, biom_adj)
 
   })
 
@@ -139,7 +150,8 @@ andrew_species <- species_check$comname %>% setNames(species_check$svspp)
 # Pull the species
 species_comparisons <- imap(andrew_species, function(species_comname, species_svspp){
   
-  # there are some name mismatches, so catch those
+  # there are some name mismatches, so catch those and return an error 
+  # that explains which data it was not in
   in_nye  <- species_comname %in% names(source_splits$survdat_nye_2019)
   in_20   <- species_comname %in% names(source_splits$survdat_nye_2020)
   in_21   <- species_comname %in% names(source_splits$survdat_2021)
@@ -151,8 +163,7 @@ species_comparisons <- imap(andrew_species, function(species_comname, species_sv
                 "in_21"   = in_21,
                 "in_all"  = in_all,
                 "data"    = data.frame(),
-                "metrics" = data.frame()))
-  }
+                "metrics" = data.frame())) }
   
   
   
@@ -184,14 +195,17 @@ species_comparisons <- imap(andrew_species, function(species_comname, species_sv
   # join them for side-by-side data
   combined_data <- left_join(summ_19, summ_20, by = c("comname", "est_year")) %>% 
     left_join(summ_21, by = c("comname", "est_year")) %>% 
-    mutate(abund_change_19to21 = ((abund_21 - abund_19) / abund_19) * 100,
-           biom_change_19to21  = ((biom_21 - biom_19) / biom_19) * 100,
-           abund_change_20to21 = ((abund_21 - abund_20) / abund_20) * 100,
-           biom_change_20to21  = ((biom_21 - biom_20) / biom_20) * 100) 
+    mutate(
+      # 2019-2021 comparison
+      abund_change_19to21 = ((abund_21 - abund_19) / abund_19) * 100,
+      biom_change_19to21  = ((biom_21 - biom_19) / biom_19) * 100,
+      # 2020-2021 comparison
+      abund_change_20to21 = ((abund_21 - abund_20) / abund_20) * 100,
+      biom_change_20to21  = ((biom_21 - biom_20) / biom_20) * 100) 
   
   #return(combined_data)
   
-  # abunndance correlation
+  # abundance correlation
   abund_cor_19to21   <- cor(combined_data$abund_21, 
                             combined_data$abund_19, 
                             use = "pairwise.complete.obs")
@@ -269,6 +283,30 @@ comparison_metrics %>%
 
 
 ### Problem Species {.tabset}
+
+
+#### Haddock Spotlight
+
+```{r}
+ab_abund <- comparison_data %>% 
+  filter(comname == "haddock") %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = abund_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = abund_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Abundance", subtitle = "Haddock Absolue Abundance", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- comparison_data %>% 
+  filter(comname == "haddock") %>% 
+  ggplot(aes(est_year, abund_change_19to21)) +
+  geom_line() +
+  labs(y = "Percent Change in Abundance\n2019 -> 2021", x = "")
+
+ab_abund / p_change
+```
+
 
 
 
@@ -387,6 +425,30 @@ comparison_metrics %>%
 
 
 ### Problem Species {.tabset}
+
+
+
+#### Haddock Spotlight
+
+```{r}
+ab_biom <- comparison_data %>% 
+  filter(comname == "haddock") %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = biom_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = biom_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Biomass", subtitle = "Haddock Absolue Biomass", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- comparison_data %>% 
+  filter(comname == "haddock") %>% 
+  ggplot(aes(est_year, biom_change_19to21)) +
+  geom_line() +
+  labs(y = "Percent Change in Biomass\n2019 -> 2021", x = "")
+
+ab_biom / p_change
+```
 
 #### Poor Correlation
 

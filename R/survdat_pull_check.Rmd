@@ -99,14 +99,22 @@ survdat_21 <- clean_names(survdat) %>% filter(year >= 2006)
 
 # February 2021 following DBI package fix
 load(paste0(res_path,   "NMFS_trawl/Survdat_02182021.RData"))
-feb_2021 <- survdat %>% clean_names()%>% 
+feb_2021 <- survdat %>% clean_names() %>% 
     filter(year >= 2006)
 
 
 # February 2021 following DBI package fix
 load(paste0(res_path,   "NMFS_trawl/NEFSC_BTS_02242021.RData"))
-feb_23_2021 <- survey$survdat %>% clean_names()%>% 
+feb_23_2021 <- survey$survdat %>% clean_names() %>% 
     filter(year >= 2006)
+
+
+# Data we just received in March, 2021 with errors located and corrected
+load(paste0(res_path, "NMFS_trawl/NEFSC_BTS_all_seasons_03032021.RData"))
+mar_3_2021 <- survey$survdat %>% clean_names() %>% 
+  filter(year >= 2006)
+
+
 
 # remove survdat
 rm(survdat, survey)
@@ -143,6 +151,8 @@ trawldat_feb <- survdat_prep(survdat = feb_2021) %>%
   mutate(survdat_source = "Feb 2021")
 trawldat_feb23 <- survdat_prep(survdat = feb_23_2021) %>% 
   mutate(survdat_source = "Feb 23 2021")
+trawldat_mar3 <- survdat_prep(survdat = mar_3_2021) %>% 
+  mutate(survdat_source = "Mar 3 2021")
 
 
 
@@ -153,7 +163,8 @@ rm(#survdat_16,
    survdat_20, #survdat_20_check, 
    survdat_21, 
    feb_2021,
-   feb_23_2021)
+   feb_23_2021,
+   mar_3_2021)
 ```
 
 
@@ -205,16 +216,21 @@ trawldat_list <- list(
     # "2020 re-check" = get_convers(trawldat_20_check),
     "Jan 2021"           = get_convers(trawldat_21),
     "Feb 2021"       = get_convers(trawldat_feb),
-    "Feb 23 2021"    = get_convers(trawldat_feb23)) %>% 
+    "Feb 23 2021"    = get_convers(trawldat_feb23),
+    "Mar 3 2021"     =  get_convers(trawldat_mar3)) %>% 
   map(~ .x %>% 
   mutate(season = str_to_title(season),
          season = factor(season, levels = c("Spring", "Fall"))))
 
 
+# set levels for plotting
+source_levels <- c("2019", "2020", "Jan 2021", "Feb 2021", "Feb 23 2021", "Mar 3 2021")
+
 # Big table of all of them
 trawldat_combined <- bind_rows(
   trawldat_list, 
-  .id = "survdat_source") 
+  .id = "survdat_source") %>% 
+  mutate(survdat_source = factor(survdat_source, levels = source_levels))
 ```
 
 ### All Species
@@ -223,9 +239,8 @@ trawldat_combined <- bind_rows(
 
 ```{r}
 trawldat_combined %>% 
-  mutate(season = fct_rev(season)) %>% 
   ggplot(aes(x = convers, 
-             y  = survdat_source, 
+             y  = fct_rev(survdat_source), 
              color = survdat_source)) +
   geom_boxplot() +
   facet_grid(season ~ svvessel) + 
@@ -242,9 +257,8 @@ trawldat_combined %>%
 ```{r}
 trawldat_combined %>% 
   filter(comname == "haddock") %>% 
-  mutate(season = fct_rev(season)) %>% 
   ggplot(aes(x = convers, 
-             y  = survdat_source, 
+             y  = fct_rev(survdat_source), 
              color = survdat_source)) +
   geom_boxplot() +
   facet_grid(season ~ svvessel) + 
@@ -540,14 +554,16 @@ cod_sources <- single_species %>%
       str_detect(survdat_source, "2020") ~ "2020 Data",
       survdat_source == "Jan 2021"       ~ "2021 w/ DBI Error",
       survdat_source == "Feb 2021"       ~ "2021 w/o DBI Error",
-      survdat_source == "Feb 23 2021"    ~ "Feb 2021 newest"),
+      survdat_source == "Feb 23 2021"    ~ "Feb 23 2021",
+      survdat_source == "Mar 3 2021"     ~ "Mar 3 2021"),
     `survdat group` = factor(
       `survdat group`, 
       levels = c("Pre-2020 Data", 
                  "2020 Data", 
                  "2021 w/ DBI Error",
                  "2021 w/o DBI Error",
-                 "Feb 2021 newest"))) %>% 
+                 "Feb 23 2021",
+                 "Mar 3 2021"))) %>% 
   distinct(`survdat group`, survdat_source, 
            est_year, season, id, abundance, biom_adj) %>% 
   group_by(`survdat group`, survdat_source, est_year, season) %>% 
@@ -561,7 +577,7 @@ cod_sources <- single_species %>%
 
 #ellipse marker
 mark1 <- cod_sources %>% 
-  filter(season == "Fall", survdat_source == "Feb 23 2021", est_year == 2009) 
+  filter(season == "Fall", survdat_source == "Jan 2021", est_year == 2009) 
 ```
 
 ### Abundance
