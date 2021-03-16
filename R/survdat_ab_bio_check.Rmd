@@ -38,12 +38,17 @@ theme_set(theme_bw() + theme(axis.text.y = element_text(size = 12)))
 ```
 
 
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+
 # Checking Species Abundance and Biomass for Previous Works
 
 While investigating some discrepancies among different datasets a handful of corrections were made. This document is intended to see if any of those changes have important implications for some of the species-specific reports that have been done recently.
 
 The two datasets being compared here are the `survdat_Nye_allseasons.RData` and the more recent `NEFSC_BTS_all_seasons_03032021.RData`.
 
+
+**Load SURVDAT Sources**
 
 ```{r load and clean survdat}
 
@@ -89,7 +94,7 @@ rm(survdat, survey)
 ```
 
 
-
+**Load List of Published Species**
 
 ```{r load species list}
 ####  Load the species list from Andrew
@@ -110,11 +115,12 @@ source_list <- list("survdat_nye_2019" = survdat_nye,
 ```
 
 
-`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
-
 
 ##  Making Comparisons
 
+In this code chunk the different sources are put together in a list, and the same cleanup steps are applied to each. The years are limited to before 2017 so there are no extra years in some not available in others. The SVSPP codes are also limited to just the ones in the list Andrew provided.
+
+After that repeated records for abundance and biomass are dropped. These repeats exist to acommodate the length and number at length details. We don't need them for this so they are dropped here.
 
 ```{r compare datasets}
 # Make years comparable
@@ -124,7 +130,8 @@ source_list <- map(source_list, function(survdat_data){
   
   # filter years
   sdat <- survdat_data %>% 
-    filter(est_year <= 2017,
+    filter(est_year >= 2008,
+           est_year <= 2017,
            svspp %in% species_check$svspp)
   
   # Pull distinct station abundance and biomass for each species
@@ -134,23 +141,27 @@ source_list <- map(source_list, function(survdat_data){
   })
 
 
-# Split them each by comname
+# Split each survdat set into a list of single species tables
 source_splits <- map(source_list, function(source_data){
-  source_split <- source_data %>% split(.$comname)
-})
+  source_split <- source_data %>% split(.$comname) })
+```
+
+To make comparisons between the different data sets I first check that the svspp code is present in the dataset. Then for each source I get a total annual value for biomass and abundance. Then across data sources I calculate the correlation between these values, and the percent change from one data source to the most recently revised data pull.
+
+The table itself is retained in addition to some overall summary metrics.
 
 
-
-
+```{r}
 # Make  Comparisons
 
 # Vector of species and their common names, atleast the common names Andrew used
 andrew_species <- species_check$comname %>% setNames(species_check$svspp)
 
-# Pull the species
+
+# Pulling out details for the species
 species_comparisons <- imap(andrew_species, function(species_comname, species_svspp){
   
-  # there are some name mismatches, so catch those and return an error 
+  # there are some name mismatches in common name, so catch those and return an error 
   # that explains which data it was not in
   in_nye  <- species_comname %in% names(source_splits$survdat_nye_2019)
   in_20   <- species_comname %in% names(source_splits$survdat_nye_2020)
@@ -242,12 +253,124 @@ species_comparisons <- imap(andrew_species, function(species_comname, species_sv
          "perc_biom_20to21"   = biom_shift_20to21)
        )
   })
+```
 
+
+For simplicity I then append the tables together so they are single data frames and not lists.
+
+
+```{r}
 
 # put data and metrics into a table
 comparison_data    <- map_dfr(species_comparisons, ~.x[["data"]]) 
 comparison_metrics <- map_dfr(species_comparisons, ~.x[["metrics"]]) 
 ```
+
+
+## Visualizing the three data sources Abundance/Biomass {.tabset}
+
+As a quick visual reference, here is how total annual abundance and biomasses compare across data sources. The species have been split into groups to make paneling less crowded.
+
+```{r}
+
+# How many species are there, and how many can we panel well - 84
+#unique(andrew_species)
+
+# make even number groups
+even_groups <- list(
+  group_1 = sort(andrew_species)[1:17],
+  group_2 = sort(andrew_species)[18:34],
+  group_3 = sort(andrew_species)[35:51],
+  group_4 = sort(andrew_species)[52:68],
+  group_5 = sort(andrew_species)[69:84])
+
+```
+
+**Building plots**
+
+```{r}
+timeseries_plots <- map(even_groups, function(species_subset){
+  
+  species_subset_dat <- comparison_data %>% 
+    filter(comname %in% species_subset) %>% 
+    mutate(comname = str_to_title(comname),
+           comname = fct_drop(comname),
+           comname = fct_inorder(comname))
+  
+  
+  # abundance plot
+  abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_line(aes(y = abund_19, color = "Survdat Nye Allseason 2019"), group = 1) +
+    geom_line(aes(y = abund_20, color = "Survdat Nye - August 2020"), group = 1) +
+    geom_line(aes(y = abund_21, color = "Newest Survdat"), group = 1) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    scale_color_gmri() +
+    facet_wrap(~comname, scales = "free") +
+    labs(x  = "", y = "Annual Abundance", color = "Survdat Retrieval") +
+    theme(legend.position = "none")
+  
+  
+  biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_line(aes(y = biom_19, color = "Survdat Nye Allseason 2019"), group = 1) +
+    geom_line(aes(y = biom_20, color = "Survdat Nye - August 2020"), group = 1) +
+    geom_line(aes(y = biom_21, color = "Newest Survdat"), group = 1) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    scale_color_gmri() +
+    facet_wrap(~comname, scales = "free") +
+    labs(x  = "", y = "Annual Biomass", color = "Survdat Retrieval") +
+    theme(legend.position = "bottom")
+  
+  return(list(a_plot = abundance_plot, b_plot = biomass_plot,
+              stacked = (abundance_plot / biomass_plot)))
+  
+  
+})
+```
+
+
+
+###  Group 1
+
+
+
+```{r, fig.height=10}
+timeseries_plots$group_1$stacked
+```
+
+
+###  Group 2
+
+```{r, fig.height=10}
+timeseries_plots$group_2$stacked
+
+```
+
+
+###  Group 3
+
+
+```{r, fig.height=10}
+timeseries_plots$group_3$stacked
+
+```
+
+
+###  Group 4
+
+
+```{r, fig.height=10}
+timeseries_plots$group_4$stacked
+
+```
+
+
+### Group 5
+
+```{r, fig.height=10}
+timeseries_plots$group_5$stacked
+
+```
+
 
 
 
@@ -552,14 +675,19 @@ comparison_metrics %>%
 corr_cutoff <- 0.8
 corr_species <- comparison_metrics %>% 
   filter(abund_corr_20to21 <= corr_cutoff) %>% 
-   mutate(comname = fct_drop(comname)) %>% 
+  mutate(comname = fct_drop(comname)) %>% 
   pull(comname)
+
 
 # filter species
 corr_sub <- comparison_data %>% 
   filter(comname %in% corr_species) 
 
-# how many species per plot
+
+if(length(corr_species) != 0){
+  
+  
+  # how many species per plot
 p1 <- corr_species[1:6]
 #p2 <- corr_species[-c(1:6)]
 
@@ -578,6 +706,10 @@ corr_sub %>%
        title = paste0("Species with Annual Abundance Correlation <= ", corr_cutoff),
        color = "Survdat Source",
        subtitle = "Subset 1")
+  
+}
+
+
 
 
 
@@ -701,6 +833,11 @@ comparison_data %>%
        title = paste0("Species with Avg. Shift in Biomass >= ", perc_cutoff, "%"),
        color = "Survdat Source")
 
+```
+
+
+```{r, eval = FALSE}
+write_csv(comparison_data, here("data/survdat_biom_abund_compare.csv"))
 ```
 
 

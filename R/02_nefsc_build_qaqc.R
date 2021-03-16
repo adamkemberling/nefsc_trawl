@@ -20,7 +20,7 @@ library(tidyverse)
 box_paths <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
 res_path <- box_paths$res
-
+nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 
 ####__  Data  ####
@@ -30,6 +30,24 @@ res_path <- box_paths$res
 
 # Load data build function
 source(here("R/01_nefsc_ss_build.R"))
+
+
+# Data we just received in 2021 with errors located and corrected
+load(paste0(nmfs_path, "NEFSC_BTS_all_seasons_03032021.RData"))
+survdat_21 <- survey$survdat %>% clean_names()
+
+
+# Run cleanup
+survdat_21 <- survdat_prep(survdat = survdat_21) %>% 
+  mutate(survdat_source = "survdat_2021")
+
+
+
+# export for lindsay 3/15/2021
+#write_csv(survdat_21, here("data/march_2021_survdat_filtered.csv"))
+
+
+
 
 # Load cleaned data, and drop species with off coefficients
 weights_20 <- survdat_prep(survdat_source = "2020") %>% 
