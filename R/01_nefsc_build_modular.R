@@ -802,56 +802,6 @@ add_area_stratification <- function(survdat_weights, include_epu = F){
 
 
 
-####____________________####
-
-####  Taking Out Individual Components  ####
-
-
-# Grab all station location and other abiotic details
-# with and without filters
-pull_station_details <- function(survdat_raw, filter = TRUE){
-  
-  # filter if you want
-  if(filter == TRUE){
-    survdat_raw <- survdat_raw %>% 
-      filter()
-  }
-  
-  # If not, just pull distinct values
-  
-  
-  
-}
-
-# Pull station totals for things that do not change across a
-# single station for each species i.e. station totals for a species for either sex
-pull_station_totals <- function(){
-  
-  survdat_weights %>% 
-    distinct(id, station, svvessel, season, 
-             svspp, comname, catchsex, 
-             abundance, biom_adj, sum_weight_kg,
-             expanded_abund_s, expanded_biom_s, expanded_lwbio_s)
-  
-}
-
-
-
-
-# Pull the length specific totals
-# i.e. how many of each length are caught, and what that biomass should be
-pull_numlen_details <- function(){
-  survdat_weights %>% 
-    distinct(id, station, svvessel, season, 
-             svspp, comname, catchsex, numlen_adj, lw_biom)
-}
-
-
-
-
-
-
-
 
 
 
