@@ -30,21 +30,28 @@ nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 # Load data build function
 source(here("R/01_nefsc_ss_build.R"))
+source(here("R/01_nefsc_ss_build_nodrop.R"))
+
 
 
 # Data we just received in 2021 with errors located and corrected
 load(paste0(nmfs_path, "NEFSC_BTS_all_seasons_03032021.RData"))
-survdat_21 <- survey$survdat %>% clean_names()
+survdat_raw <- survey$survdat %>% clean_names()
 
 
 # Run cleanup
-survdat_21 <- survdat_prep(survdat = survdat_21) %>% 
+survdat_21 <- survdat_prep(survdat = survdat_raw) %>% 
   mutate(survdat_source = "survdat_2021")
 
+# Run the no drop cleanup
+allcols_21 <- survdat_prep_nodrop(survdat = survdat_raw)
 
+# leftovers
+lefties <- anti_join(survdat_21, allcols_21)
 
 # export for lindsay 3/15/2021
 #write_csv(survdat_21, here("data/march_2021_survdat_filtered.csv"))
+#write_csv(allcols_21, here("data/march_2021_survdat_allcols.csv"))
 
 
 

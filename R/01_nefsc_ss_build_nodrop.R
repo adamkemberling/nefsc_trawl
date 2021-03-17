@@ -441,7 +441,7 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   # Do we want to just keep all the station info here as well?
   # question to answer is whether any other columns repeat,
   # or if these are the only ones
-  trawl_spectra_test <- trawl_lens %>%
+  trawl_spectra <- trawl_lens %>%
     distinct(id, svspp, comname, catchsex, abundance, n_len_class,
              length, numlen, numlen_adj, biom_adj, .keep_all = TRUE)
   
