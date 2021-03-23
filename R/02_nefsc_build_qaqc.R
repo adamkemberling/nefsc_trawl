@@ -17,9 +17,9 @@ library(tidyverse)
 
 
 # Load the build code and stratification function
-box_paths <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
-res_path <- box_paths$res
+res_path   <- box_paths$res
 nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 
@@ -35,19 +35,33 @@ source(here("R/01_nefsc_ss_build_nodrop.R"))
 
 
 # Data we just received in 2021 with errors located and corrected
-load(paste0(nmfs_path, "NEFSC_BTS_all_seasons_03032021.RData"))
+# load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"))
+
+# Update, newer Data:
+load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
 survdat_raw <- survey$survdat %>% clean_names()
 
+# 1. clean - keep columns
+survdat_clean <- survdat_prep_nodrop(survdat = survdat_raw)
 
-# Run cleanup
-survdat_21 <- survdat_prep(survdat = survdat_raw) %>% 
-  mutate(survdat_source = "survdat_2021")
+# 2. add LW info
+lw_21 <- add_lw_info(survdat_clean, cutoff = F)
 
-# Run the no drop cleanup
-allcols_21 <- survdat_prep_nodrop(survdat = survdat_raw)
+# 3. add area stratified abundance/biomass
+weights_21 <-  add_area_stratification(lw_21, include_epu = F)
 
-# leftovers
-lefties <- anti_join(survdat_21, allcols_21)
+
+
+
+# # Run cleanup functions (drop or not drop) for comparison
+# survdat_21 <- survdat_prep(survdat = survdat_raw) %>% 
+#   mutate(survdat_source = "survdat_2021")
+# 
+# # Run the no drop cleanup
+# allcols_21 <- survdat_prep_nodrop(survdat = survdat_raw)
+# 
+# # leftovers
+# lefties <- anti_join(survdat_21, allcols_21)
 
 # export for lindsay 3/15/2021
 #write_csv(survdat_21, here("data/march_2021_survdat_filtered.csv"))
@@ -56,32 +70,25 @@ lefties <- anti_join(survdat_21, allcols_21)
 
 
 
-# Load cleaned data, and drop species with off coefficients
-weights_20 <- survdat_prep(survdat_source = "2020") %>% 
-  add_lw_info(cutoff = T) %>% 
-  add_area_stratification(include_epu = F)
 
 
 
-# Here are the main columns for weights, stratified weights, etc
-weights_20 %>% select(
-  est_year, stratum, epu, id, comname, biom_adj, # station and catch info
-  numlen_adj, ind_weight_kg, sum_weight_kg,      # number at length, individual and group weights
-  abund_tow_s, #abund_tow_epu,                    # abundance / number of tows in that strata that year
-  biom_tow_s, #biom_tow_epu,                      # biomass / number of tows in that strata that year
-  expanded_abund_s, #expanded_abund_epu,         # projected abundance, weighted by stratum cpue, expanded to total area
-  expanded_biom_s, #expanded_biom_epu,           # projected biomass, weighted by stratum cpue, expanded to total area
-  expanded_lwbio_s#, expanded_lwbio_epu          # projected biomass as l-w biomass of individuals * stratified abundance
-)
 
 
 
-####__  Export SS Prepped Data  ####
+####__  Export SS Prepped Length-Weight Data  ####
+
+
+# # Load cleaned data, and drop species with off coefficients
+# weights_20 <- survdat_prep(survdat = survdat_raw) %>% 
+#   add_lw_info(cutoff = T) %>% 
+#   add_area_stratification(include_epu = F)
 
 # # export for speedy recovery
 # write_csv(weights_16, here::here("data/ss_prepped_data/survdat_2016_ss.csv"))
 # write_csv(weights_19, here::here("data/ss_prepped_data/survdat_2019_ss.csv"))
 # write_csv(weights_20, here::here("data/ss_prepped_data/survdat_2020_ss.csv"))
+# write_csv(weights_21, here::here("data/ss_prepped_data/survdat_2021_ss.csv"))
 
 
 ####____________________####
@@ -91,6 +98,7 @@ weights_20 %>% select(
 # summ_16 <- agg_species_metrics(weights_16, est_year, include_epu = F) %>% mutate(source = "2016 survdat")
 # summ_19 <- agg_species_metrics(weights_19, est_year, include_epu = F) %>% mutate(source = "2019 survdat")
 summ_20 <- agg_strat_metrics(weights_20, est_year, area_stratification = "stratum") %>% mutate(source = "2020 survdat")
+summ_21 <- agg_strat_metrics(weights_21, est_year, area_stratification = "stratum") %>% mutate(source = "2021 survdat")
 # summs <- bind_rows(list(summ_16, summ_19, summ_20))
 # summs <- bind_rows(list(summ_19, summ_20))
 summs <- bind_rows(summ_20)

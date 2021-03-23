@@ -31,9 +31,10 @@ library(ruler)
 
 
 # Load the build code and stratification function
-box_paths <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
-res_path <- box_paths$res
+res_path   <- box_paths$res
+nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 #### Set theme  ####
 theme_set(theme_minimal())
@@ -56,12 +57,19 @@ The goal of this markdown is to validate consistency of outcomes for various agg
 # trawldat <- survdat %>% clean_names()
 # rm(survdat)
 
-####  Load Feb 23rd starting data, 2021
-load(paste0(res_path, "NMFS_trawl/NEFSC_BTS_02242021.RData"))
+# ####  Load Feb 23rd starting data, 2021
+# load(paste0(res_path, "NMFS_trawl/NEFSC_BTS_02242021.RData"))
+# trawldat <- survey$survdat %>% clean_names() %>% rename(est_year = year)
+# rm(survey)
+
+# Update, newer Data 03/19/2021:
+load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
 trawldat <- survey$survdat %>% clean_names() %>% rename(est_year = year)
 rm(survey)
 
-# And filter
+
+
+# And filter years
 trawldat <- filter(trawldat, est_year >= 2006 & est_year <= 2010)
 ```
 
@@ -80,20 +88,23 @@ The size spectra clean up function does any data prep including:
 
 # Cleanup functions
 source(here("R/01_nefsc_ss_build.R"))
+source(here("R/01_nefsc_ss_build_nodrop.R"))
 
 # Clean/Prep Survdat 2006-2010
-survdat_20 <- survdat_prep(survdat = trawldat)
+# survdat_20 <- survdat_prep(survdat = trawldat)
+survdat_21 <- survdat_prep_nodrop(survdat = trawldat)
 
 # Add LW coefficients
-survdat_lw <- add_lw_info(survdat_clean = survdat_20)
+survdat_lw <- add_lw_info(survdat_clean = survdat_21)
 
-# Validation Step:
-# Change total LW weight to ignore numlen_adjusted conversion
-# This will isolate whether the coefficients are bad or whether its the adjustment
-survdat_lw$sum_weight_kg <- survdat_lw$ind_weight_kg * survdat_lw$numlen
+# # Validation Step:
+# # Change total LW weight to ignore numlen_adjusted conversion
+# # This will isolate whether the coefficients are bad or whether its the adjustment
+# survdat_lw$sum_weight_kg <- survdat_lw$ind_weight_kg * survdat_lw$numlen
 
 # Get stratified Biomass
-weights_20 <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
+# weights_20 <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
+weights_21 <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
 
 
 ```
@@ -103,8 +114,9 @@ weights_20 <- add_area_stratification(survdat_weights = survdat_lw, include_epu 
 The cleanup function retains the station-level information of the raw data, so its possible to compare individual stations across the raw and prepped data:
 
 ```{r}
-test_station <- weights_20$id[1]
-test_species <- unique(weights_20$comname)[4]
+# test_station <- weights_20$id[1]
+test_station <- weights_21$id[1]
+test_species <- unique(weights_21$comname)[2]
 
 print(paste0("The test station is: ", test_station))
 print(paste0("The test species is: ", test_species))
@@ -128,9 +140,9 @@ show_comparison <- function(x, test_station, test_species, names = "original"){
 
 Took this part out because we confirmed this step and there is no ID col in newer data, and more code than its worth.
 
-```{r, eval = FALSE}
+```{r, eval = T}
 t_raw   <- show_comparison(trawldat, test_station, test_species, names = "original")
-t_clean <- show_comparison(weights_20, test_station, test_species, names = "cleaned")
+t_clean <- show_comparison(weights_21, test_station, test_species, names = "cleaned")
 
 
 bind_rows(list("raw data" = t_raw, "cleaned data" = t_clean), .id = "Data Source") %>% 
@@ -159,7 +171,7 @@ As an added check I flagged the number of length classes per tow and created a n
 
 ```{r}
 important_species <- c("atlantic cod", "haddock", "spiny dogfish", "pollock")
-focal_species <- weights_20 %>% filter(comname %in% important_species)
+focal_species <- weights_21 %>% filter(comname %in% important_species)
 
 # Biomass treated as the total biomass for that species, pulled once for each tow
 biomass_as_total <- focal_species %>% 
@@ -215,7 +227,7 @@ Due to subsampling of large catches and inherent variability around the mean wei
 
 #BIOMASS
 # Because we are taking distinct records for BIOMASS we use biom_adj not per_lclass
-ann_summ_bio <- weights_20 %>% 
+ann_summ_bio <- weights_21 %>% 
   distinct(est_year, id, comname, catchsex, biom_adj, biom_per_lclass, expanded_biom_s) %>% 
   group_by(est_year) %>% 
   summarise(`Bulk Biomass` = sum(biom_adj),
@@ -224,7 +236,7 @@ ann_summ_bio <- weights_20 %>%
             
 
 # L-W
-ann_summ_lw <- weights_20 %>% 
+ann_summ_lw <- weights_21 %>% 
   group_by(est_year) %>% 
   summarise(`L-W Biomass` = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(expanded_lwbio_s),
@@ -238,13 +250,13 @@ ann_summs <- left_join(ann_summ_bio, ann_summ_lw)
 ####  Annual Summary, seperate seasons  ####
 
 #BIOMASS
-seas_summ_bio <-  weights_20  %>% 
+seas_summ_bio <-  weights_21  %>% 
   distinct(est_year, season, id, comname, catchsex, biom_adj, biom_per_lclass, expanded_biom_s) %>% 
   group_by(est_year, season) %>% 
   summarise(`Bulk Biomass` = sum(biom_adj),
             `Area Stratified Total BIOMASS` = sum(expanded_biom_s))
 # L-W
-seas_summ_lw <- weights_20 %>% 
+seas_summ_lw <- weights_21%>% 
   group_by(est_year, season) %>% 
   summarise(`L-W Biomass` = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(expanded_lwbio_s))
@@ -302,7 +314,7 @@ The way the size spectra build code is written catch rates for each length caugh
 In this way, using the example above there are catch per tow estimates for American Plaice of lengths 15, 16, and 30 cm.
 
 ```{r}
-weights_20 %>% 
+weights_21 %>% 
     filter(id == test_station, 
            comname == tolower(test_species)) %>% 
       select("Species"                                      = comname, 
@@ -330,10 +342,10 @@ agg_species_metrics
 ### Aggregate After
 
 ```{r}
-cod_20 <- weights_20 %>% filter(comname == "atlantic cod")
+cod_21 <- weights_21 %>% filter(comname == "atlantic cod")
 
 # adding up stratified weights at the end
-cod_20 %>% 
+cod_21 %>% 
   group_by(est_year, season, comname) %>% 
   summarise(stratified_abundance = sum(expanded_abund_s),
             stratified_lwbio     = sum(expanded_lwbio_s),
@@ -353,7 +365,7 @@ cod_20 %>%
 ```{r}
 
 # Aggregating then calculating the catch rates etc.
-cod_20 %>% 
+cod_21 %>% 
   agg_species_metrics(est_year, season) %>% 
   select(Year                     = est_year, 
          Season                   = season, 
@@ -380,13 +392,15 @@ If we take the totals from the length-weight derived biomasses and the BIOMASS c
 # good way to flag species that are way off
 
 # Load all years and species
-weights_all <- survdat_prep(survdat_source = "2020") %>% 
+weights_all <- survdat_prep_nodrop(survdat_source = "most recent") %>% 
   add_lw_info() %>% 
   # Validation Step:
   # Change total LW weight to ignore numlen_adjusted conversion
   # mutate(sum_weight_kg = ind_weight_kg * numlen) %>% 
-  add_area_stratification() %>% 
-  filter(svvessel == "AL")
+  add_area_stratification() 
+
+# During troubleshooting we filtered down to just use albatross data
+# weights_all <- weights_all %>% filter(svvessel == "AL")
 
 
 # Get the total weights for each station, then do it each year for every species
@@ -396,7 +410,7 @@ mismatch_ranks <- function(x){
     summarise(number_caught = sum(numlen_adj),
               length_weight_biomass = sum(sum_weight_kg),
               ship_measured_biomass = sum(biom_per_lclass),
-              lw_underestimate = ship_measured_biomass - length_weight_biomass) %>% 
+              lw_underestimate = ship_measured_biomass - length_weight_biomass, .groups = "keep") %>% 
     ungroup()
   
   
@@ -473,7 +487,7 @@ These species got a priority pass when matching with L-W coefficients because th
 
 ```{r, fig.height=8}
 # Get ranks for everything
-all_source_ranks <- weights_20 %>%
+all_source_ranks <- weights_21 %>%
   mismatch_ranks() 
 
 # Just Wigley
@@ -508,7 +522,7 @@ The following tabs are an attempt to dig into what is happening with species on 
 
 ## Subsampling Errors
 
-Take the species that stood out above and plot the mismatch versus the station abundances. This should highlight whether its an issue of subsampling. Might be beneficial to  split it for seasons for dogfish and some other species.
+Take the species that stood out above and plot the mismatch versus the station abundances. This should highlight whether its an issue of sub-sampling. Might be beneficial to  split it for seasons for dogfish and some other species.
 
 
 ```{r, fig.height=10}
@@ -617,7 +631,8 @@ haddock <- weights_all %>%
 haddock %>% 
   group_by(id, est_year, season, svvessel, catchsex, a, b, ln_a) %>% 
   summarise(lw_bio = sum(sum_weight_kg),
-            biomass_col = sum(biom_per_lclass)) %>% 
+            biomass_col = sum(biom_per_lclass),
+            .groups = "keep") %>% 
   ggplot(aes(biomass_col, lw_bio, 
              color = svvessel)) +
   geom_point(show.legend = F) +
@@ -745,6 +760,11 @@ wigley_okay <- perc_differences %>%
   pull(comname)
 
 
+wigley_bad <- perc_differences %>% 
+  filter(source == "wigley",
+         weight_perc_diff > cut_percent) %>% 
+  pull(comname)
+
 ```
 
 The species that pass the cutoff of no more than `r cut_percent`% difference in biomass are the following `r length(wigley_okay)` species from the Wigley Paper:
@@ -752,6 +772,15 @@ The species that pass the cutoff of no more than `r cut_percent`% difference in 
 ```{r}
 wigley_okay
 ```
+
+
+Species from the Wigley paper that did not meet the standards of the cutoff threshold were:
+
+```{r}
+wigley_bad
+```
+
+
 
 The fishbase species that pass the cutoff are the following `r length(fishbase_okay)` species:
 

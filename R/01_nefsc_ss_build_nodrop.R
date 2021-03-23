@@ -1,4 +1,22 @@
+####
+#### NEFSC Trawl Data - Size Spectra Build
+#### 3/24/2021
+####
+#### Objective: 
+#### Load and clean any survdat pull, without loss of columns. Additional steps to add LW information
+#### And to get area expanded (stratified) abundances and biomasses
 
+
+
+
+####  Load Packages  ####
+library(janitor)
+library(magrittr)
+library(here)
+library(gmRi)
+library(sf)
+library(data.table)
+library(tidyverse)
 
 #### Survdat Data Prep No Column Drop  ####
 #' @title  Load survdat file with standard data filters, keep all columns
@@ -58,9 +76,9 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
                          "2016"        = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
                          "2019"        = paste0(res_path,   "NMFS_trawl/Survdat_Nye_allseason.RData"),
                          "2020"        = paste0(res_path,   "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
-                         "2021"        = paste0(res_path,   "NMFS_trawl/survdat_slucey_01152021.RData"),
-                         "bigelow"     = paste0(res_path,   "NMFS_trawl/survdat_Bigelow_slucey_01152021.RData"),
-                         "most recent" = paste0(res_path, "NMFS_trawl/NEFSC_BTS_all_seasons_03032021.RData") )
+                         "2021"        = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_slucey_01152021.RData"),
+                         "bigelow"     = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
+                         "most recent" = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
   
   
   
@@ -460,3 +478,315 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   return(trawl_spectra)
   
 }
+
+
+
+
+####____________________####
+#### Length to Bodymass Conversions  ####
+
+# testing data
+# survdat_clean <- survdat_prep(survdat_source = "2020")
+
+#' @title Add species length weight information, calculate expected biomass
+#'
+#' @param survdat_clean Survdat data, after usual preparations are completed.
+#' These include removal of old strata, labeling of areas of interest, and inclusion
+#' of the annual effort in each.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+add_lw_info <- function(survdat_clean, cutoff = FALSE){
+  
+  
+  ####__ 1. Match Species with Growth Coefficients  ####
+  
+  # This table is a combined table of wigley and fishbase L-W coefficients
+  lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"), col_types = cols()) %>% 
+    mutate(svspp = str_pad(svspp, 3, "left", "0"))
+  
+  
+  # Do a priority pass with the filter(lw_combined, source == "wigley)
+  # merge on comname, season, and catchsex
+  wigley_coefficients <- filter(lw_combined, source == "wigley") %>% 
+    select(source, season, svspp, comname, scientific_name, spec_class, 
+           hare_group, fishery, catchsex, a, b, ln_a)
+  
+  
+  # Do a second pass with the filter(lw_combined, source == "fishbase")
+  # merge on common names only
+  fishbase_coefficients <- filter(lw_combined, source == "fishbase") %>% 
+    select(source, -svspp, comname, scientific_name, spec_class, 
+           hare_group, fishery, a, b, ln_a)  
+  
+  
+  # First Pass - Wigley
+  # Join just by svspp to account for name changes
+  pass_1 <- survdat_clean %>% 
+    select(-comname) %>% 
+    inner_join(wigley_coefficients)
+  
+  # Want to pick up stragglers here
+  # testing approaches to not lose the rest of these :
+  # length(unique(wigley_coefficients$comname))
+  # length(unique(pass_1$comname))
+  survdat_clean %>% 
+    filter(svspp %not in% pass_1$svspp) %>% 
+    mutate(comname = ifelse(comname == "windowpane", "windowpane flounder", comname)) %>% 
+    inner_join(select(wigley_coefficients, -svspp)) %>% 
+    distinct(comname, svspp)
+  
+  # windowpane is taken care of already, so double counting is occurring
+  
+  
+  
+  # Second Pass - Fishbase, for the stragglers if any
+  # currently has potential for double matching in event of name changes
+  pass_2 <- survdat_clean %>% 
+    filter(comname %not in% wigley_coefficients$comname,
+           svspp %not in% pass_1$svspp) %>% 
+    inner_join(fishbase_coefficients) 
+  
+  # common names of fishes coming from fishbase
+  sort(unique(pass_2$comname))
+  
+  
+  # Join them with bind rows (implicitly drops things that don't have growth coefs)
+  trawl_weights <- bind_rows(pass_1, pass_2) %>% 
+    arrange(est_year, season) %>% 
+    mutate(
+      b             = as.numeric(b),
+      a             = as.numeric(a),
+      a             = ifelse(is.na(a) & !is.na(ln_a), exp(ln_a), a),
+      ln_a          = ifelse(is.na(ln_a), log(a), ln_a),  # log of a used if ln_a is isn't already there (some fish just had ln_a reported)
+      llen          = log(length),
+      ind_log_wt    = ln_a + (b * llen),
+      ind_weight_kg = exp(ind_log_wt),                    # weight of an individual in size class
+      sum_weight_kg = ind_weight_kg * numlen_adj) %>%     # Individual weight * adjusted numlen
+    drop_na(ind_weight_kg) %>% 
+    select(-ind_log_wt, -llen)
+  
+  
+  # clean up environment
+  rm(pass_1, pass_2, fishbase_coefficients, wigley_coefficients)
+  
+  
+  
+  
+  ####__ 2. Use Coefficients to Re-calculate Biomass  ####
+  
+  # calculate total biomass again using weights from key 
+  # make a key for the length weight coefficient sources
+  survdat_weights <- trawl_weights %>%  
+    arrange(est_year, season, comname, length) %>% 
+    mutate(lw_group = str_c(comname, season, catchsex)) 
+  
+  
+  
+  
+  
+  
+  ####__ 3. Drop comnames that don't align well with BIOMASS
+  
+  # these species were dropped at 50% mismatch threshold
+  # code: 02_survdat_stratification_validation
+  # list updated : 3/24/2021
+  cutoff_25 <- c(
+    "acadian redfish"          ,      "alewife"                 ,
+    "american plaice"          ,      "american shad"           ,
+    "atlantic angel shark"     ,      "atlantic cod"            ,
+    "atlantic croaker"         ,      "atlantic halibut"        ,
+    "atlantic herring"         ,      "atlantic mackerel"       ,
+    "atlantic sharpnose shark" ,      "atlantic sturgeon"       ,
+    "atlantic wolffish"        ,      "barndoor skate"          ,
+    "black sea bass"           ,      "bluefish"                ,
+    "bluntnose stingray"       ,      "buckler dory"            ,
+    "bullnose ray"             ,      "butterfish"              ,
+    "chain dogfish"            ,      "clearnose skate"         ,
+    "cownose ray"              ,      "cunner"                  ,
+    "cusk"                     ,      "fawn cusk-eel"           ,
+    "fourspot flounder"        ,      "haddock"                 ,
+    "little skate"             ,      "longhorn sculpin"        ,
+    "northern kingfish"        ,      "northern searobin"       ,
+    "ocean pout"               ,      "offshore hake"           ,
+    "pollock"                  ,      "red hake"                ,
+    "rosette skate"            ,      "roughtail stingray"      ,
+    "round herring"            ,      "sandbar shark"           ,
+    "sea raven"                ,      "silver hake"             ,
+    "smooth butterfly ray"     ,      "smooth dogfish"          ,
+    "smooth skate"             ,      "southern stingray"       ,
+    "spanish mackerel"         ,      "spiny butterfly ray"     ,
+    "spiny dogfish"            ,      "spot"                    ,
+    "spotted hake"             ,      "striped bass"            ,
+    "summer flounder"          ,      "tautog"                  ,
+    "thorny skate"             ,      "weakfish"                ,
+    "white hake"               ,      "windowpane flounder"     ,
+    "winter flounder"          ,      "winter skate"            ,
+    "witch flounder"           ,      "yellowtail flounder" 
+  )
+  
+  # Filter to use species that meet cutoff criteria
+  # source: 02_survdat_stratification_validation
+  if(cutoff == TRUE){
+    survdat_weights <- survdat_weights %>% filter(comname %in% cutoff_25)
+  }
+  
+  
+  
+  
+  return(survdat_weights)
+}
+
+
+
+
+
+####____________________####
+####  Area Stratified Abundance / Biomass  ####
+
+
+# Add area stratified biomass function
+#' @title Add Survey Area Stratified Abundances and Biomasses
+#' 
+#' @description Take the survdat data paired with length weight relationships and
+#' return estimates of area stratified catch rates and their expected abundances and
+#' biomasses when applied to the total areas of stratum.
+#'
+#' @param survdat_weights Input dataframe, produced by add_lw_info
+#' @param include_epu Flag for calculating the EPU rates in addition to the stratum regions we use.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+add_area_stratification <- function(survdat_weights, include_epu = F){ 
+  
+  # Constants:
+  # average area covered by an albatross standard tow in km2
+  alb_tow_km2 <- 0.0384 
+  
+  # catchability coefficient, ideally should shift for different species guilds
+  q <- 1                
+  
+  
+  # Derived Estimates:
+  survdat_weights <- survdat_weights  %>% 
+    mutate(
+      # Abundance per tow
+      # abundance / ntows for the year within that strata/epu
+      abund_tow_s   = numlen_adj / strat_ntows,    
+      
+      # Biomass is repeated across length classes at each station by species
+      # the number of length classes is tallied where the conversion factor is done
+      biom_per_lclass = (biom_adj / n_len_class),
+      
+      # Mean biomass/tow for the "biomass" column
+      biom_tow_s      = biom_per_lclass / strat_ntows,
+      
+      # Stratified mean abundance, weighted by the stratum areas
+      wt_abund_s     = abund_tow_s * st_ratio, 
+      
+      # Stratified mean BIOMASS
+      wt_biom_s   = biom_tow_s * st_ratio,
+      
+      # convert from catch rate by area swept to total catch for entire stratum
+      # So catch/tow times the total area, divided by how many tows would cover that area
+      expanded_abund_s   = round((wt_abund_s * tot_s_area / alb_tow_km2) / q),
+      
+      # Total BIOMASS from the weighted biomass
+      expanded_biom_s   = round((wt_biom_s * tot_s_area / alb_tow_km2) / q), 
+      
+      # Total lw-biomass from Projected abundances: Biomass = abundance * lw_weight
+      expanded_lwbio_s    = sum_weight_kg * expanded_abund_s
+      
+    ) 
+  
+  ####  Optional - weighted by EPU areas
+  if(include_epu == TRUE){
+    survdat_weights <- survdat_weights  %>% 
+      mutate(
+        # Abundance per tow
+        abund_tow_epu = numlen_adj / epu_ntows,       
+        # Mean biomass/tow for the BIOMASS column
+        biom_tow_epu    = biom_per_lclass / epu_ntows,
+        # Stratified mean abundances, weighted by the stratum areas
+        wt_abund_epu   = abund_tow_epu * epu_ratio,
+        # Stratified mean BIOMASS
+        wt_biom_epu = biom_tow_epu * epu_ratio,
+        # Total catch for entire stratum
+        expanded_abund_epu = round((wt_abund_epu * tot_epu_area/ alb_tow_km2) / q),
+        # Total Biomass from the weighted biomass
+        expanded_biom_epu = round((wt_biom_epu * tot_epu_area/ alb_tow_km2) / q),
+        # LW Biomass from Expanded abundances: Biomass = abundance * lw_weight
+        expanded_lwbio_epu  = sum_weight_kg * expanded_abund_epu)} 
+  
+  
+  # Remove instances where there were fish that were measured but not weighed
+  survdat_weights <- survdat_weights %>% 
+    filter(expanded_lwbio_s != -Inf)
+  
+  return(survdat_weights)
+}
+
+# survdat_clean <- survdat_prep(survdat_source = "2020")
+# weights_20 <- add_lw_info(survdat_clean = survdat_clean)
+# strat_biomass <- add_area_stratification(survdat_weights = weights_20, include_epu = F)
+
+
+
+
+####____________________####
+
+####  Taking Out Individual Components  ####
+
+
+# Grab all station location and other abiotic details
+# with and without filters
+pull_station_details <- function(survdat_raw, filter = TRUE){
+  
+  # filter if you want
+  if(filter == TRUE){
+    survdat_raw <- survdat_raw %>% 
+      filter()
+  }
+  
+  # If not, just pull distinct values
+  
+  
+  
+}
+
+# Pull station totals for things that do not change across a
+# single station for each species i.e. station totals for a species for either sex
+pull_station_totals <- function(){
+  
+  survdat_weights %>% 
+    distinct(id, station, svvessel, season, 
+             svspp, comname, catchsex, 
+             abundance, biom_adj, sum_weight_kg,
+             expanded_abund_s, expanded_biom_s, expanded_lwbio_s)
+  
+}
+
+
+
+
+# Pull the length specific totals
+# i.e. how many of each length are caught, and what that biomass should be
+pull_numlen_details <- function(){
+  survdat_weights %>% 
+    distinct(id, station, svvessel, season, 
+             svspp, comname, catchsex, numlen_adj, lw_biom)
+}
+
+
+
+
+
+
+
+
+
+

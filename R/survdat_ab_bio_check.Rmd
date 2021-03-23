@@ -55,7 +55,8 @@ The three datasets being compared here are the `survdat_Nye_allseasons.RData`,
 ```{r load and clean survdat}
 
 # Cleanup functions
-source(here("R/01_nefsc_ss_build.R"))
+# source(here("R/01_nefsc_ss_build.R"))
+source(here("R/01_nefsc_ss_build_nodrop.R"))
 
 ####  Survdat resource Load Data
 
@@ -65,32 +66,36 @@ load(paste0(nmfs_path, "Survdat_Nye_allseason.RData"))
 survdat_nye  <- survdat %>% clean_names()
 
 # Run cleanup
-survdat_nye <- survdat_prep(survdat = survdat_nye) %>% 
+survdat_nye <- survdat_prep_nodrop(survdat = survdat_nye) %>% 
   mutate(survdat_source = "survdat_nye")
 
 
 
 
 # 2020 data received last august
-load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
+load(paste0(nmfs_path, "Survdat_Nye_Aug 2020.RData"))
 survdat_20 <- clean_names(survdat) 
 
 
 # Run cleanup
-survdat_20 <- survdat_prep(survdat = survdat_20) %>% 
+survdat_20 <- survdat_prep_nodrop(survdat = survdat_20) %>% 
   mutate(survdat_source = "survdat_nye2020")
 
 
 
 
 # Data we just received in 2021 with errors located and corrected
-load(paste0(nmfs_path, "NEFSC_BTS_all_seasons_03032021.RData"))
+# load(paste0(nmfs_path, "NEFSC_BTS_all_seasons_03032021.RData"))
+# survdat_21 <- survey$survdat %>% clean_names()
+
+# Same file but with additional columns from Sean
+load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
 survdat_21 <- survey$survdat %>% clean_names()
 
 
 # Run cleanup
-survdat_21 <- survdat_prep(survdat = survdat_21) %>% 
-  mutate(survdat_source = "survdat_2021")
+survdat_21 <- survdat_prep_nodrop(survdat = survdat_21) %>% 
+  mutate(survdat_source = "survdat_2021") 
 
 rm(survdat, survey)
 ```
@@ -270,7 +275,7 @@ comparison_metrics <- map_dfr(species_comparisons, ~.x[["metrics"]])
 ```
 
 
-## Visualizing the three data sources Abundance/Biomass {.tabset}
+## Visualizing the three data sources Abundance/Biomass {.tabset .tabset-pills}
 
 As a quick visual reference, here is how total annual abundance and biomasses compare across data sources. The species have been split into groups to make paneling less crowded.
 
@@ -289,7 +294,7 @@ even_groups <- list(
 
 ```
 
-**Building plots**
+**Building Plots for Actual Abundance/Biomass**
 
 ```{r}
 timeseries_plots <- map(even_groups, function(species_subset){
@@ -305,13 +310,16 @@ timeseries_plots <- map(even_groups, function(species_subset){
   abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
     geom_line(aes(y = abund_19, 
                   color = "Survdat Nye Allseason 2019", 
-                  linetype = "Survdat Nye Allseason 2019"), group = 1) +
+                  linetype = "Survdat Nye Allseason 2019"), 
+              group = 1, alpha = 0.7) +
     geom_line(aes(y = abund_20, 
                   color = "Survdat Nye - August 2020",
-                  linetype = "Survdat Nye - August 2020"), group = 1) +
+                  linetype = "Survdat Nye - August 2020"), 
+              group = 1, alpha = 0.7) +
     geom_line(aes(y = abund_21, 
                   color = "Newest Survdat",
-                  linetype = "Newest Survdat"), group = 1) +
+                  linetype = "Newest Survdat"), 
+              group = 1, alpha = 0.7) +
     scale_y_continuous(labels = scales::comma_format()) +
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     scale_color_gmri() +
@@ -325,13 +333,16 @@ timeseries_plots <- map(even_groups, function(species_subset){
   biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
     geom_line(aes(y = biom_19, 
                   color = "Survdat Nye Allseason 2019", 
-                  linetype = "Survdat Nye Allseason 2019"), group = 1) +
+                  linetype = "Survdat Nye Allseason 2019"), 
+              group = 1, alpha = 0.7) +
     geom_line(aes(y = biom_20, 
                   color = "Survdat Nye - August 2020",
-                  linetype = "Survdat Nye - August 2020"), group = 1) +
+                  linetype = "Survdat Nye - August 2020"), 
+              group = 1, alpha = 0.7) +
     geom_line(aes(y = biom_21, 
                   color = "Newest Survdat",
-                  linetype = "Newest Survdat"), group = 1) +
+                  linetype = "Newest Survdat"), 
+              group = 1, alpha = 0.7) +
     scale_y_continuous(labels = scales::comma_format()) +
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     scale_color_gmri() +
@@ -348,50 +359,136 @@ timeseries_plots <- map(even_groups, function(species_subset){
 })
 ```
 
+**Building Plots for Differences in Abundance/Biomass**
 
+```{r}
+timeseries_diff_plots <- map(even_groups, function(species_subset){
+  
+  species_subset_dat <- comparison_data %>% 
+    filter(comname %in% species_subset) %>% 
+    mutate(comname = str_to_title(comname),
+           comname = fct_drop(comname),
+           comname = fct_inorder(comname))
+  
+  
+  # abundance plot
+  abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_line(aes(y = abund_change_19to21, 
+                  color = "Abundance Change 2019 to 2021", 
+                  linetype = "Abundance Change 2019 to 2021"), 
+              group = 1, alpha = 0.7) +
+    geom_line(aes(y = abund_change_20to21, 
+                  color = "Abundance Change 2020 to 2021",
+                  linetype = "Abundance Change 2020 to 2021"), 
+              group = 1, alpha = 0.7) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    scale_x_continuous(breaks = scales::pretty_breaks()) +
+    scale_color_gmri() +
+    facet_wrap(~comname, scales = "free") +
+    labs(x  = "", y = "Difference in Annual Abundance", 
+         color = "Survdat Retrieval Comparison", 
+         linetype = "Survdat Retrieval Comparison") +
+    theme(legend.position = "none")
+  
+  
+  biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_line(aes(y = biom_change_19to21, 
+                  color = "Biomass Change 2019 to 2021", 
+                  linetype = "Biomass Change 2019 to 2021"), 
+              group = 1, alpha = 0.7) +
+    geom_line(aes(y = biom_change_20to21, 
+                  color = "Biomass Change 2020 to 2021",
+                  linetype = "Biomass Change 2020 to 2021"), 
+              group = 1, alpha = 0.7) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    scale_x_continuous(breaks = scales::pretty_breaks()) +
+    scale_color_gmri() +
+    facet_wrap(~comname, scales = "free") +
+    labs(x  = "", y = "Difference in Annual Biomass", 
+         color = "Survdat Retrieval Comparison", 
+         linetype = "Survdat Retrieval Comparison") +
+    theme(legend.position = "bottom")
+  
+  return(list(a_plot = abundance_plot, b_plot = biomass_plot,
+              stacked = (abundance_plot / biomass_plot)))
+  
+  
+})
+```
 
-###  Group 1
+###  Group 1 {.tabset}
 
-
+#### Observations
 
 ```{r, fig.height=10}
 timeseries_plots$group_1$stacked
 ```
 
+#### Differences
 
-###  Group 2
+```{r, fig.height=10}
+timeseries_diff_plots$group_1$stacked
+```
+
+
+###  Group 2 {.tabset}
+
+#### Observations
 
 ```{r, fig.height=10}
 timeseries_plots$group_2$stacked
 
 ```
+#### Differences
+
+```{r, fig.height=10}
+timeseries_diff_plots$group_2$stacked
+```
 
 
-###  Group 3
+###  Group 3 {.tabset}
+
+#### Observations
 
 
 ```{r, fig.height=10}
 timeseries_plots$group_3$stacked
 
 ```
+#### Differences
 
+```{r, fig.height=10}
+timeseries_diff_plots$group_3$stacked
+```
 
-###  Group 4
+###  Group 4 {.tabset}
+
+#### Observations
 
 
 ```{r, fig.height=10}
 timeseries_plots$group_4$stacked
 
 ```
+#### Differences
 
+```{r, fig.height=10}
+timeseries_diff_plots$group_4$stacked
+```
 
-### Group 5
+### Group 5 {.tabset}
+
+#### Observations
 
 ```{r, fig.height=10}
 timeseries_plots$group_5$stacked
 
 ```
+#### Differences
 
+```{r, fig.height=10}
+timeseries_diff_plots$group_5$stacked
+```
 
 
 
@@ -427,16 +524,15 @@ comparison_metrics %>%
 ```
 
 
-### Problem Species {.tabset}
-
-
 #### Haddock Spotlight
 
 ```{r}
-ab_abund <- comparison_data %>% 
-  filter(comname == "haddock") %>% 
+haddock_data <- comparison_data %>% 
+  filter(comname == "haddock")
+
+ab_abund <- haddock_data %>% 
   ggplot(aes(est_year)) +
-  geom_line(aes(y = abund_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = abund_19, color = "Survdat Nye - August 2020")) +
   geom_line(aes(y = abund_21, color = "Newest Survdat")) +
   scale_color_gmri() +
   scale_y_continuous(labels = scales::comma_format()) +
@@ -444,8 +540,7 @@ ab_abund <- comparison_data %>%
   labs(x = "", y = "Abundance", subtitle = "Haddock Absolue Abundance", color = "") +
   theme(legend.position = "bottom")
 
-p_change <- comparison_data %>% 
-  filter(comname == "haddock") %>% 
+p_change <- haddock_data %>% 
   ggplot(aes(est_year, abund_change_19to21)) +
   geom_line() +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
@@ -453,6 +548,36 @@ p_change <- comparison_data %>%
 
 ab_abund / p_change
 ```
+
+#### Lobster Spotlight
+
+```{r}
+lob_data <- comparison_data %>% 
+  filter(comname == "american lobster")
+
+ab_abund <- lob_data %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = abund_19, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(y = abund_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(x = "", y = "Abundance", subtitle = "American Lobster Absolue Abundance", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- lob_data %>% 
+  ggplot(aes(est_year, abund_change_19to21)) +
+  geom_line() +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(y = "Percent Change in Abundance\n2019 -> 2021", x = "")
+
+ab_abund / p_change
+```
+
+### Problem Species {.tabset}
+
+
+
 
 
 
@@ -689,6 +814,55 @@ comparison_metrics %>%
     geom_point(color = gmri_cols("gmri blue")) +
     scale_x_continuous(labels = scales::percent_format()) +
     labs(y = "", x = "Avg. Percent Change in Annual Abundance\nMoving from Old Data -> New Data")
+```
+
+
+#### Haddock Spotlight
+
+```{r}
+
+ab_abund <- haddock_data %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = abund_20, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = abund_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(x = "", y = "Abundance", subtitle = "Haddock Absolue Abundance", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- haddock_data %>% 
+  ggplot(aes(est_year, abund_change_20to21)) +
+  geom_line() +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(y = "Percent Change in Abundance\n2019 -> 2021", x = "")
+
+ab_abund / p_change
+```
+
+#### Lobster Spotlight
+
+```{r}
+lob_data <- comparison_data %>% 
+  filter(comname == "american lobster")
+
+ab_abund <- lob_data %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = abund_20, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = abund_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(x = "", y = "Abundance", subtitle = "American Lobster Absolue Abundance", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- lob_data %>% 
+  ggplot(aes(est_year, abund_change_20to21)) +
+  geom_line() +
+  scale_x_continuous(breaks = scales::pretty_breaks()) +
+  labs(y = "Percent Change in Abundance\n2019 -> 2021", x = "")
+
+ab_abund / p_change
 ```
 
 

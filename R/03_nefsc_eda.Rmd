@@ -31,24 +31,24 @@ library(knitr)
 ####  Support Functions  ####
 source(here("R/support/sizeSpectra_support.R"))
 source(here("R/01_nefsc_ss_build.R"))
+source(here("R/01_nefsc_ss_build_nodrop.R"))
 
 ####  Resource Paths  ####
-box_paths <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
-res_path <- box_paths$res
+res_path   <- box_paths$res
 
 
 ####  Load NEFSC Groundfish Data  ####
 
 # Load it from csv (faster)
 # SOURCE: 02_nefsc_build_qaqc
-weights_20 <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
-                       col_types = cols(), guess_max = 1e4)
+weights_21 <- read_csv(here::here("data/ss_prepped_data/survdat_2021_ss.csv"),
+                       col_types = cols(), guess_max = 1e5)
 
 
 
 # Load the shapefiles for the polygons
-# Load new england
 new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
 canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
 
@@ -66,7 +66,7 @@ Exploration of spatial and temporal patterns in abundance, and bodymass of fishe
 ```{r group summaries}
 
 # Do some formatting
-weights_20 <- weights_20 %>% 
+weights_21 <- weights_21 %>% 
   mutate(
     id = as.character(id),
     season = ifelse(season %in% c("SPRING", "Spring"), "Spring", "Fall"),
@@ -74,8 +74,8 @@ weights_20 <- weights_20 %>%
   )
 
 # Run Summary Functions
-ann_means <- ss_annual_summary(weights_20, include_epu = F)
-seasonals <- ss_seasonal_summary(weights_20, include_epu = F) 
+ann_means <- ss_annual_summary(weights_21, include_epu = F)
+seasonals <- ss_seasonal_summary(weights_21, include_epu = F) 
 
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
@@ -83,8 +83,8 @@ summs <- bind_rows(ann_means, seasonals) %>%
 
 
 #drop haddock to see if that changes the bump
-haddock_ann  <- ss_annual_summary(filter(weights_20, comname != "haddock"))
-haddock_seas <- ss_seasonal_summary(filter(weights_20, comname != "haddock"))
+haddock_ann  <- ss_annual_summary(filter(weights_21, comname != "haddock"))
+haddock_seas <- ss_seasonal_summary(filter(weights_21, comname != "haddock"))
 no_haddock <- bind_rows(haddock_ann, haddock_seas) %>% 
   mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
 ```
@@ -249,8 +249,6 @@ strat_1 <- ann_means %>%
   ggplot() +
     geom_line(aes(est_year, fscs_strat_biomass_s/1000000, 
                   color = season, linetype = "NMFS Stratum Weighted")) +
-    # geom_line(aes(est_year, fscs_strat_biomass_epu/1000000, 
-    #               color = season, linetype = "EPU Area Weights")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~`Research Vessel`, scales = "free") +
@@ -303,7 +301,7 @@ Relative contribution to overall biomass by species group based on management an
 
 ```{r, fig.height = 8}
 # Species Class Bins Data Prep
-class_totals <- weights_20 %>% 
+class_totals <- weights_21 %>% 
   group_by(est_year, spec_class) %>% 
   summarise(`Total Class Biomass` = sum(sum_weight_kg)) %>% 
   ungroup() %>% 
@@ -315,6 +313,8 @@ class_totals <- weights_20 %>%
 ```
 
 #### Proportion of Total Catch
+
+**Class Totals**
 
 ```{r, fig.height=6}
 # Class Proportions
@@ -331,12 +331,9 @@ class_totals %>%
 
 ```
 
-
-#### Pelagics
-
-
+**Plotting Individual Guilds**
 ```{r, fig.height=6}
-guild_plots <- weights_20 %>% 
+guild_plots <- weights_21 %>% 
   split(.$spec_class) %>% 
   imap(function(guild, guild_name){
     
@@ -422,7 +419,14 @@ guild_plots <- weights_20 %>%
     
     
   })
+```
 
+
+
+
+#### Pelagics
+
+````{r}
 
 guild_plots$pel
 ```
@@ -497,7 +501,7 @@ Since 2008 there has been a large increase in the amount of total biomass caught
 ```{r}
 
 # Pull top 5 species from each year, by biomass
-top_5 <- weights_20 %>% 
+top_5 <- weights_21 %>% 
   filter(est_year >= 2004) %>% 
   group_by(est_year, comname) %>% 
   summarise(n_fish = sum(numlen_adj),
@@ -566,7 +570,7 @@ Bodymass size cutoffs are used to plot the timelines of total fish biomass below
 
 ```{r}
 max_weight_plot <- function(size_cutoff){
-  weights_20 %>% 
+  weights_21 %>% 
     filter(ind_weight_kg < size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
@@ -623,7 +627,7 @@ To Take a look at what species contributed the most to this, I will maintain the
 
 
 # Compare total biomass and cpue across vessels
-svp <- weights_20 %>% 
+svp <- weights_21 %>% 
     filter(ind_weight_kg < .125) %>% 
     group_by(svvessel, comname) %>% 
     summarise(bio = sum(sum_weight_kg),
@@ -722,7 +726,7 @@ Same idea for the larger fish, but the opposite. A minimum cutoff for the indivi
 
 # plotting function
 min_weight_plot <- function(size_cutoff){
-  weights_20 %>% 
+  weights_21 %>% 
     filter(ind_weight_kg > size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
@@ -770,7 +774,7 @@ Plots of minimum bodysize cutoff at 5kg and 10kg seem to have a big upswing in t
 ```{r}
 # annual biomasses for top 10 species, ordered by total biomass that year
 # Minimum individual bodymass of 5k
-y_plots <- weights_20 %>% 
+y_plots <- weights_21 %>% 
     filter(ind_weight_kg > 5,
            est_year >= 2016) %>% 
     group_by(est_year, comname) %>% 
@@ -799,7 +803,7 @@ Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further in
 ```{r}
 
 # How many cownose rays, and how suspicious is that number?
- cownose <- weights_20 %>% 
+ cownose <- weights_21 %>% 
   filter(comname == "cownose ray") %>% 
    group_by(comname, est_year, season, id) %>% 
    summarise(total_biomass_lw = sum(sum_weight_kg),
@@ -809,7 +813,7 @@ Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further in
 cownose %>% kable()
  
 # Get summary metrics for cownose
-weights_20 %>% 
+weights_21 %>% 
   filter(comname == "cownose ray") %>% 
   agg_species_metrics(est_year, season) %>% 
   mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL")) %>% 
@@ -838,7 +842,7 @@ One thing that was brought up in my discussion with [Andrew Edwards](https://git
 
 # NOTE: case_when is greedy so once something is assigned it is out of the pool of candidates
 # In this case you want to count down    
-weights_20 <- weights_20 %>% 
+weights_21 <- weights_21 %>% 
   mutate(
     lweight = log(ind_weight_kg),
     llen = log(length),
@@ -848,7 +852,7 @@ weights_20 <- weights_20 %>%
 
 
  # Length bins for log() scale
-weights_20 <- weights_20 %>% 
+weights_21 <- weights_21 %>% 
   mutate(
     # Bin Numbers
     lenbin2 = case_when(
@@ -881,7 +885,7 @@ weights_20 <- weights_20 %>%
 
 
 # Weight bins on log() scale
-weights_20 <- weights_20 %>% 
+weights_21 <- weights_21 %>% 
   mutate(
     # Bin numbers
     wtbin = case_when(
@@ -914,7 +918,7 @@ weights_20 <- weights_20 %>%
 
 
 # Weight Bins on log10 scale
-weights_20 <- weights_20 %>% 
+weights_21 <- weights_21 %>% 
   mutate(
     #Bin Numbers
     wt10bin =  case_when(
@@ -969,7 +973,7 @@ weights_20 <- weights_20 %>%
 
 
 # Summarise bins to get counts and normalizeed counts
-bin_summs <- weights_20 %>% 
+bin_summs <- weights_21 %>% 
   group_by(svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
   summarise(n_group = sum(numlen_adj),
             .groups = "keep") %>% 
@@ -1060,7 +1064,7 @@ wt10_1 | wt10_2
 #### Annual
 
 ```{r}
-ann_summs <- weights_20 %>% 
+ann_summs <- weights_21 %>% 
   group_by(est_year, svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
   summarise(n_group = sum(numlen_adj),
             .groups = "keep") %>% 
@@ -1169,7 +1173,7 @@ survey_strata <- survey_strata %>%
 
 
 # Make trawl data an sf dataset
-trawl_sf <- weights_20 %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
+trawl_sf <- weights_21 %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
 
 ```
 
@@ -1214,7 +1218,7 @@ ggplot() +
 ```{r}
 
 # Just Area, all seasona
-area_summs <- weights_20 %>% 
+area_summs <- weights_21 %>% 
   group_by(survey_area) %>% 
   summarise(
     season = "Spring + Fall",
@@ -1228,7 +1232,7 @@ area_summs <- weights_20 %>%
   ungroup()
 
 # Area x Season
-seas_area <- weights_20 %>% 
+seas_area <- weights_21 %>% 
   group_by(survey_area, season) %>% 
   summarise(
     lw_biomass_kg = sum(sum_weight_kg, na.rm = T),
@@ -1252,7 +1256,7 @@ summs_combined %>%
 
 
 # Year x Area
-area_summs_y <- weights_20 %>% 
+area_summs_y <- weights_21 %>% 
   group_by(est_year, survey_area) %>% 
   summarise(
     season                 = "Spring + Fall",
@@ -1269,7 +1273,7 @@ area_summs_y <- weights_20 %>%
   ungroup()
 
 
-# weights_20 %>% 
+# weights_21 %>% 
 #   ggplot(aes(est_year, sum_weight_kg)) +
 #   geom_boxplot(aes(group = est_year))
 ```
@@ -1345,11 +1349,7 @@ fscs | lw
            
 ```
 
-# Comparisons to Older Data
 
-Concerns have been raised that the datasets obtained through the NEFSC are inconsistent in some areas over time. The following plots seek to identify differences in a dataset obtained in 2016 from what we currently are exploring with the 2020 dataset.
-
-Each file was processed for size-spectra analysis using the same processing steps. This includes the same species codes, the same abundance and stratification adjustments, and the same L-W derived biomasses.
 
 
 

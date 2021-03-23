@@ -20,19 +20,35 @@ library(tidyverse)
 
 ####  Support Functions  ####
 source(here("R/support/sizeSpectra_support.R"))
+source(here("R/01_nefsc_ss_build_nodrop.R"))
 
+nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 ####  Data  ####
 
-# Previous code replaced with size spectra build code 10/26/2020
 
+# Update, newer Data 03/19/2021:
+load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
+trawldat <- survey$survdat %>% clean_names()
+rm(survey)
 
-# Source file: 02_nefsc_build_qaqc.R
-nefsc_weights <- read_csv(here::here("data/ss_prepped_data/survdat_2020_ss.csv"), 
-                        col_types = cols(), guess_max = 1e4)
+# Run cleanup
+survdat_21 <- survdat_prep_nodrop(survdat = trawldat)
 
+# Add LW coefficients, filter species with bad fits
+survdat_lw <- add_lw_info(survdat_clean = survdat_21, cutoff = TRUE)
+
+# Get stratified Biomass
+nefsc_weights <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
+
+# stop pretending that you prefer est_year to year
 nefsc_weights <- nefsc_weights %>% 
   mutate(year = factor(est_year)) 
+
+
+
+
+
 
 
 ####_____________________####
@@ -62,6 +78,7 @@ dataOrig <- nefsc_weights %>% filter(is.na(ind_weight_kg) == FALSE)
 # Keep desired columns, name them for the vignette
 # NOTE: names do not reflect NEFSC survey design: CPUE_bio_per_hour not biomass per hour
 data <- dataOrig %>%  
+  as_tibble() %>% 
   mutate(season = str_to_title(season),
          season = factor(season, levels = c("Spring", "Fall"))) %>%
   rename(
@@ -82,40 +99,6 @@ data <- dataOrig %>%
   arrange(Year, season, SpecCode, LngtClass)
 
 
-
-
-
-# ####__  Group Summaries  ####
-# grouped_data <- data %>%
-#   group_by(Year, season, SpecCode, LngtClass) %>%
-#   summarise(
-#     #Divide Number / grouping_variable (numAreas),
-#     Number   = sum(Number),
-#     LWa      = unique(LWa),
-#     LWb      = unique(LWb),
-#     bodyMass = unique(bodyMass)) %>%
-#   ungroup()
-# 
-# 
-# 
-# 
-# # Total number of fish
-# paste0("Total Number of Fish in Analysis: ", round(sum(grouped_data$Number), 0))
-# 
-# 
-# 
-# # Track Unique Species and Length Classes
-# dataSumm <- grouped_data %>%
-#   group_by(Year, season) %>%
-#   summarise(uniqLngtClass = length(unique(LngtClass)),
-#             uniqSpec = length(unique(SpecCode))) %>%
-#   ungroup()
-# 
-# ggplot(dataSumm) +
-#   geom_line(aes(Year, uniqLngtClass, color = "Unique Length Classes")) +
-#   geom_line(aes(Year, uniqSpec, color = "Unique Species")) +
-#   labs(y = "Count", x = NULL) +
-#   facet_wrap(~season, ncol = 1)
 
 
 
@@ -228,7 +211,10 @@ group_names <- sort(unique(dbin_trunc$group_var))
 
 
 # Loop through years for plots
-seasonal_isd <- map2(data.year.list, MLEbins.res.list, .f = ggplot_isd) %>% setNames(group_names)
+seasonal_isd <- map2(data.year.list, MLEbins.res.list, .f = ggplot_isd) %>% 
+  setNames(group_names)
+
+
 
 # Take a peak
 seasonal_isd$`2005_Spring`$stacked | seasonal_isd$`2005_Fall`$stacked
