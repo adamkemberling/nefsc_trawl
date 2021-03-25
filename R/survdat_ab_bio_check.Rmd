@@ -532,12 +532,13 @@ haddock_data <- comparison_data %>%
 
 ab_abund <- haddock_data %>% 
   ggplot(aes(est_year)) +
-  geom_line(aes(y = abund_19, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(y = abund_19, color = "Survdat Nye Allseason 2019")) +
   geom_line(aes(y = abund_21, color = "Newest Survdat")) +
   scale_color_gmri() +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
-  labs(x = "", y = "Abundance", subtitle = "Haddock Absolue Abundance", color = "") +
+  labs(x = "", y = "Abundance", 
+       subtitle = "Haddock Absolute Abundance", color = "") +
   theme(legend.position = "bottom")
 
 p_change <- haddock_data %>% 
@@ -557,12 +558,13 @@ lob_data <- comparison_data %>%
 
 ab_abund <- lob_data %>% 
   ggplot(aes(est_year)) +
-  geom_line(aes(y = abund_19, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(y = abund_19, color = "Survdat Nye Allseason 2019")) +
   geom_line(aes(y = abund_21, color = "Newest Survdat")) +
   scale_color_gmri() +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
-  labs(x = "", y = "Abundance", subtitle = "American Lobster Absolue Abundance", color = "") +
+  labs(x = "", y = "Abundance", 
+       subtitle = "American Lobster Absolute Abundance", color = "") +
   theme(legend.position = "bottom")
 
 p_change <- lob_data %>% 
@@ -575,10 +577,6 @@ ab_abund / p_change
 ```
 
 ### Problem Species {.tabset}
-
-
-
-
 
 
 
@@ -668,7 +666,7 @@ comparison_data %>%
 
 
 
-### Biomass {.tabset .tabset-pills}
+### Biomass {.tabset}
 
 
 ####  Correlation
@@ -696,34 +694,54 @@ comparison_metrics %>%
     labs(y = "", x = "Avg. Percent Change in Annual Biomasses\nMoving from Old Data -> New Data")
 ```
 
-
-
-
-### Problem Species {.tabset}
-
-
-
 #### Haddock Spotlight
 
 ```{r}
-ab_biom <- comparison_data %>% 
-  filter(comname == "haddock") %>% 
+ab_biom <- haddock_data %>% 
   ggplot(aes(est_year)) +
   geom_line(aes(y = biom_19, color = "Survdat Nye Allseason 2019")) +
   geom_line(aes(y = biom_21, color = "Newest Survdat")) +
   scale_color_gmri() +
   scale_y_continuous(labels = scales::comma_format()) +
-  labs(x = "", y = "Biomass", subtitle = "Haddock Absolue Biomass", color = "") +
+  labs(x = "", y = "Biomass", subtitle = "Haddock Absolute Biomass", color = "") +
   theme(legend.position = "bottom")
 
-p_change <- comparison_data %>% 
-  filter(comname == "haddock") %>% 
+p_change <- haddock_data %>% 
   ggplot(aes(est_year, biom_change_19to21)) +
   geom_line() +
   labs(y = "Percent Change in Biomass\n2019 -> 2021", x = "")
 
 ab_biom / p_change
 ```
+
+
+
+#### Lobster Spotlight
+
+```{r}
+ab_biom <- lob_data %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = biom_19, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = biom_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Biomass", subtitle = "American Lobster Absolute Biomass", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- lob_data %>% 
+  ggplot(aes(est_year, biom_change_19to21)) +
+  geom_line() +
+  labs(y = "Percent Change in Biomass\n2019 -> 2021", x = "")
+
+ab_biom / p_change
+```
+
+
+### Problem Species {.tabset}
+
+
+
+
 
 #### Poor Correlation
 
@@ -823,19 +841,19 @@ comparison_metrics %>%
 
 ab_abund <- haddock_data %>% 
   ggplot(aes(est_year)) +
-  geom_line(aes(y = abund_20, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = abund_20, color = "Survdat Nye - August 202")) +
   geom_line(aes(y = abund_21, color = "Newest Survdat")) +
   scale_color_gmri() +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
-  labs(x = "", y = "Abundance", subtitle = "Haddock Absolue Abundance", color = "") +
+  labs(x = "", y = "Abundance", subtitle = "Haddock Absolute Abundance", color = "") +
   theme(legend.position = "bottom")
 
 p_change <- haddock_data %>% 
   ggplot(aes(est_year, abund_change_20to21)) +
   geom_line() +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
-  labs(y = "Percent Change in Abundance\n2019 -> 2021", x = "")
+  labs(y = "Percent Change in Abundance\n2020 -> 2021", x = "")
 
 ab_abund / p_change
 ```
@@ -848,19 +866,20 @@ lob_data <- comparison_data %>%
 
 ab_abund <- lob_data %>% 
   ggplot(aes(est_year)) +
-  geom_line(aes(y = abund_20, color = "Survdat Nye Allseason 2019")) +
+  geom_line(aes(y = abund_20, color = "Survdat Nye - August 2020")) +
   geom_line(aes(y = abund_21, color = "Newest Survdat")) +
   scale_color_gmri() +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
-  labs(x = "", y = "Abundance", subtitle = "American Lobster Absolue Abundance", color = "") +
+  labs(x = "", y = "Abundance", 
+       subtitle = "American Lobster Absolute Abundance", color = "") +
   theme(legend.position = "bottom")
 
 p_change <- lob_data %>% 
   ggplot(aes(est_year, abund_change_20to21)) +
   geom_line() +
   scale_x_continuous(breaks = scales::pretty_breaks()) +
-  labs(y = "Percent Change in Abundance\n2019 -> 2021", x = "")
+  labs(y = "Percent Change in Abundance\n2020 -> 2021", x = "")
 
 ab_abund / p_change
 ```
@@ -950,7 +969,7 @@ comparison_data %>%
 
 
 
-### Biomass {.tabset .tabset-pills}
+### Biomass {.tabset}
 
 
 ####  Correlation
@@ -976,6 +995,50 @@ comparison_metrics %>%
     geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
     geom_point(color = gmri_cols("gmri blue")) +
     labs(y = "", x = "Avg. Percent Change in Annual Biomasses\nMoving from Old Data -> New Data")
+```
+
+
+
+#### Haddock Spotlight
+
+```{r}
+ab_biom <- haddock_data %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = biom_20, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(y = biom_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Biomass", subtitle = "Haddock Absolute Biomass", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- haddock_data %>% 
+  ggplot(aes(est_year, biom_change_20to21)) +
+  geom_line() +
+  labs(y = "Percent Change in Biomass\n2020 -> 2021", x = "")
+
+ab_biom / p_change
+```
+
+
+
+#### Lobster Spotlight
+
+```{r}
+ab_biom <- lob_data %>% 
+  ggplot(aes(est_year)) +
+  geom_line(aes(y = biom_20, color = "Survdat Nye - August 2020")) +
+  geom_line(aes(y = biom_21, color = "Newest Survdat")) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  labs(x = "", y = "Biomass", subtitle = "American Lobster Absolute Biomass", color = "") +
+  theme(legend.position = "bottom")
+
+p_change <- lob_data %>% 
+  ggplot(aes(est_year, biom_change_20to21)) +
+  geom_line() +
+  labs(y = "Percent Change in Biomass\n2020 -> 2021", x = "")
+
+ab_biom / p_change
 ```
 
 
