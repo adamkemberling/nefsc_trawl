@@ -26,7 +26,7 @@ library(tidyverse)
 #' Options to select various survdat pulls, or provide your own available.
 #' 
 #'
-#' @param survdat optional candidate dataframe in the R environment to run through size spectra build.
+#' @param survdat optional starting dataframe in the R environment to run through size spectra build.
 #' @param survdat_source String indicating which survdat file to load from box
 #'
 #' @return Returns a dataframe filtered and tidy-ed for size spectrum analysis.
