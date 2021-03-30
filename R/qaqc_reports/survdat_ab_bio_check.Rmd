@@ -34,7 +34,9 @@ res_path   <- box_paths$res
 nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 #### Set theme  ####
-theme_set(theme_bw() + theme(axis.text.y = element_text(size = 11)))
+theme_set(theme_bw() + theme(
+  axis.text.y = element_text(size = 11),
+  axis.text.x = element_text(angle = 90, vjust = 0.5)))
 ```
 
 
@@ -87,10 +89,6 @@ survdat_20 <- survdat_prep_nodrop(survdat = survdat_20) %>%
 # Data we just received in 2021 with errors located and corrected
 load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"))
 survdat_21 <- survey$survdat %>% clean_names()
-
-# # Same file but with additional bio columns from Sean
-# load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
-# survdat_21 <- survey$survdat %>% clean_names()
 
 
 # Run cleanup
@@ -211,8 +209,10 @@ species_comparisons <- imap(andrew_species, function(species_comname, species_sv
               biom_21  = sum(biom_adj, na.rm = T),
               .groups = "keep") %>% ungroup()
   
-  # join them for side-by-side data
-  combined_data <- left_join(summ_19, summ_20, by = c("comname", "est_year")) %>% 
+  # join them for side-by-side datar_
+  yr_df <- data.frame("est_year" = c("2008":"2017"))
+  combined_data <- left_join(yr_df, summ_19, by = "est_year") %>% 
+    left_join(summ_20, by = c("comname", "est_year")) %>% 
     left_join(summ_21, by = c("comname", "est_year")) %>% 
     mutate(
       # 2019-2021 comparison
@@ -308,6 +308,12 @@ timeseries_plots <- map(even_groups, function(species_subset){
   
   # abundance plot
   abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_jitter(aes(y = abund_19, color = "Survdat Nye Allseason 2019"), 
+                size = 0.8, height = 0, width = 0.05) +
+    geom_jitter(aes(y = abund_20, color = "Survdat Nye - August 2020"), 
+                size = 0.8, height = 0, width = 0.05) +
+    geom_jitter(aes(y = abund_21, color = "Newest Survdat"), 
+                size = 0.8, height = 0, width = 0.05) +
     geom_line(aes(y = abund_19, 
                   color = "Survdat Nye Allseason 2019", 
                   linetype = "Survdat Nye Allseason 2019"), 
@@ -331,6 +337,12 @@ timeseries_plots <- map(even_groups, function(species_subset){
   
   
   biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_jitter(aes(y = biom_19, color = "Survdat Nye Allseason 2019"), 
+                size = 0.8, height = 0, width = 0.1) +
+    geom_jitter(aes(y = biom_20, color = "Survdat Nye - August 2020"), 
+                size = 0.8, height = 0, width = 0.1) +
+    geom_jitter(aes(y = biom_21, color = "Newest Survdat"), 
+                size = 0.8, height = 0, width = 0.1) +
     geom_line(aes(y = biom_19, 
                   color = "Survdat Nye Allseason 2019", 
                   linetype = "Survdat Nye Allseason 2019"), 
@@ -373,10 +385,14 @@ timeseries_diff_plots <- map(even_groups, function(species_subset){
   
   # abundance plot
   abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_jitter(aes(y = abund_change_19to21, color = "Abundance Change 2019 to 2021"), 
+                size = 0.8, height = 0, width = 0.1) +
     geom_line(aes(y = abund_change_19to21, 
                   color = "Abundance Change 2019 to 2021", 
                   linetype = "Abundance Change 2019 to 2021"), 
               group = 1, alpha = 0.7) +
+    geom_jitter(aes(y = abund_change_20to21, color = "Abundance Change 2020 to 2021"), 
+                size = 0.8, height = 0, width = 0.1) +
     geom_line(aes(y = abund_change_20to21, 
                   color = "Abundance Change 2020 to 2021",
                   linetype = "Abundance Change 2020 to 2021"), 
@@ -392,10 +408,14 @@ timeseries_diff_plots <- map(even_groups, function(species_subset){
   
   
   biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
+    geom_jitter(aes(y = biom_change_19to21, color = "Biomass Change 2019 to 2021"), 
+                size = 0.8, height = 0, width = 0.1) +
     geom_line(aes(y = biom_change_19to21, 
                   color = "Biomass Change 2019 to 2021", 
                   linetype = "Biomass Change 2019 to 2021"), 
               group = 1, alpha = 0.7) +
+    geom_jitter(aes(y = biom_change_20to21, color = "Biomass Change 2020 to 2021"), 
+                size = 0.8, height = 0, width = 0.1) +
     geom_line(aes(y = biom_change_20to21, 
                   color = "Biomass Change 2020 to 2021",
                   linetype = "Biomass Change 2020 to 2021"), 
@@ -497,31 +517,7 @@ timeseries_diff_plots$group_5$stacked
 
 ### Abundance {.tabset}
 
-####  Correlation
 
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, abund_corr_19to21, max, .desc = F)) %>% 
-  ggplot(aes(x = abund_corr_19to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    labs(y = "", x = "Correlation Between Total Annual Abundances")
-
-```
-
-
-####  Annual Percent Change
-
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, perc_abund_19to21, max, .desc = F)) %>% 
-  ggplot(aes(x = perc_abund_19to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    scale_x_continuous(labels = scales::percent_format()) +
-    labs(y = "", x = "Avg. Percent Change in Annual Abundance\nMoving from Old Data -> New Data")
-```
 
 
 #### Haddock Spotlight
@@ -669,30 +665,6 @@ comparison_data %>%
 ### Biomass {.tabset}
 
 
-####  Correlation
-
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, biom_corr_19to21, max, .desc = F)) %>% 
-  ggplot(aes(x = biom_corr_19to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    labs(y = "", x = "Correlation Between Total Annual Biomasses")
-
-```
-
-####  Annual Percent Change
-
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, perc_biom_19to21, max, .desc = F)) %>% 
-  ggplot(aes(x = perc_biom_19to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    labs(y = "", x = "Avg. Percent Change in Annual Biomasses\nMoving from Old Data -> New Data")
-```
 
 #### Haddock Spotlight
 
@@ -808,31 +780,6 @@ comparison_data %>%
 
 ### Abundance {.tabset}
 
-####  Correlation
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, abund_corr_20to21, max, .desc = F)) %>% 
-  ggplot(aes(x = abund_corr_20to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    labs(y = "", x = "Correlation Between Total Annual Abundances")
-
-```
-
-
-####  Annual Percent Change
-
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, perc_abund_20to21, max, .desc = F)) %>% 
-  ggplot(aes(x = perc_abund_20to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    scale_x_continuous(labels = scales::percent_format()) +
-    labs(y = "", x = "Avg. Percent Change in Annual Abundance\nMoving from Old Data -> New Data")
-```
 
 
 #### Haddock Spotlight
@@ -971,31 +918,6 @@ comparison_data %>%
 
 ### Biomass {.tabset}
 
-
-####  Correlation
-
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, biom_corr_20to21, max, .desc = F)) %>% 
-  ggplot(aes(x = biom_corr_20to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    labs(y = "", x = "Correlation Between Total Annual Biomasses")
-
-```
-
-####  Annual Percent Change
-
-
-```{r}
-comparison_metrics %>% 
-  mutate(comname = fct_reorder(comname, perc_biom_20to21, max, .desc = F)) %>% 
-  ggplot(aes(x = perc_biom_20to21, y = comname)) +
-    geom_segment(aes(xend = 0, yend = comname), color = gmri_cols("gmri blue")) +
-    geom_point(color = gmri_cols("gmri blue")) +
-    labs(y = "", x = "Avg. Percent Change in Annual Biomasses\nMoving from Old Data -> New Data")
-```
 
 
 

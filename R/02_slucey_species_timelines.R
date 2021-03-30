@@ -193,7 +193,7 @@ andrew_species <- sort(andrew_species)
 # loop through
 all_check <- map(andrew_species, function(andrew_spec){
   annual_plots(survdat1 = survdat_nye, 
-               survdat2 = survdat_21_bio, 
+               survdat2 = survdat_21, 
                spec_name = andrew_spec, 
                source1 = "2019", 
                source2 = "2021") }) 
@@ -209,10 +209,14 @@ all_check$`alewife`
 all_check$`longfin squid`
 all_check$`striped bass`
 all_check$`spiny dogfish`
+all_check$`blue crab`
+all_check$
 
 
 # are we losing it duting filtering?
+check_raw(survdat_21_raw, "spiny dogfish")
 check_raw(survdat_21_bio_raw, "spiny dogfish")
+check_raw(survdat_21_raw, "longfin squid")
 check_raw(survdat_21_bio_raw, "longfin squid")
 
 
