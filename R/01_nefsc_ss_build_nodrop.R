@@ -18,6 +18,10 @@ library(sf)
 library(data.table)
 library(tidyverse)
 
+
+
+
+
 #### Survdat Data Prep No Column Drop  ####
 #' @title  Load survdat file with standard data filters, keep all columns
 #' 
@@ -78,7 +82,8 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
                          "2020"        = paste0(res_path,   "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
                          "2021"        = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_slucey_01152021.RData"),
                          "bigelow"     = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
-                         "most recent" = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
+                         "most recent" = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_all_seasons_03032021.RData"), 
+                         "bio"         = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
   
   
   
@@ -203,6 +208,7 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
       id      = format(id, scientific = FALSE),
       svspp   = as.character(svspp),
       svspp   = str_pad(svspp, 3, "left", "0"),
+      season  = tolower(season), 
       
       # Stratum number, 
       # exclude leading and trailing codes for inshore/offshore, 
@@ -243,10 +249,12 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
       stratum != 1490,
       
       # Filter to just Spring and Fall
-      season %in% c("SPRING", "FALL"),
+      season %in% c("spring", "fall"),
       
       # Only the Albatross and Henry Bigelow
       #svvessel %in% c("AL", "HB"),
+      
+      # Filter years
       est_year >= 1970,
       est_year < 2020,
       

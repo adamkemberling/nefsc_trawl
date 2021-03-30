@@ -85,12 +85,12 @@ survdat_20 <- survdat_prep_nodrop(survdat = survdat_20) %>%
 
 
 # Data we just received in 2021 with errors located and corrected
-# load(paste0(nmfs_path, "NEFSC_BTS_all_seasons_03032021.RData"))
-# survdat_21 <- survey$survdat %>% clean_names()
-
-# Same file but with additional columns from Sean
-load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
+load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"))
 survdat_21 <- survey$survdat %>% clean_names()
+
+# # Same file but with additional bio columns from Sean
+# load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
+# survdat_21 <- survey$survdat %>% clean_names()
 
 
 # Run cleanup
