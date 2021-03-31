@@ -52,19 +52,12 @@ The goal of this markdown is to validate consistency of outcomes for various agg
 ```{r}
 ####__  Data  ####
 
-# # Load 2020 Raw survdat data from .RData file
-# load(here("data/NEFSC/Survdat_Nye_Aug 2020.RData"))
-# trawldat <- survdat %>% clean_names()
-# rm(survdat)
-
-# ####  Load Feb 23rd starting data, 2021
-# load(paste0(res_path, "NMFS_trawl/NEFSC_BTS_02242021.RData"))
-# trawldat <- survey$survdat %>% clean_names() %>% rename(est_year = year)
-# rm(survey)
 
 # Update, newer Data 03/19/2021:
-load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
-trawldat <- survey$survdat %>% clean_names() %>% rename(est_year = year)
+load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"))
+trawldat <- survey$survdat %>% clean_names() %>% 
+  rename(est_year = year) 
+
 rm(survey)
 
 
@@ -91,10 +84,10 @@ source(here("R/01_nefsc_ss_build.R"))
 source(here("R/01_nefsc_ss_build_nodrop.R"))
 
 # Clean/Prep Survdat 2006-2010
-# survdat_20 <- survdat_prep(survdat = trawldat)
 survdat_21 <- survdat_prep_nodrop(survdat = trawldat)
 
 # Add LW coefficients
+# cutoff species from: 
 survdat_lw <- add_lw_info(survdat_clean = survdat_21)
 
 # # Validation Step:
@@ -103,9 +96,7 @@ survdat_lw <- add_lw_info(survdat_clean = survdat_21)
 # survdat_lw$sum_weight_kg <- survdat_lw$ind_weight_kg * survdat_lw$numlen
 
 # Get stratified Biomass
-# weights_20 <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
 weights_21 <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
-
 
 ```
 
@@ -116,31 +107,35 @@ The cleanup function retains the station-level information of the raw data, so i
 ```{r}
 # test_station <- weights_20$id[1]
 test_station <- weights_21$id[1]
-test_species <- unique(weights_21$comname)[2]
+test_species <- "haddock"
 
 print(paste0("The test station is: ", test_station))
 print(paste0("The test species is: ", test_species))
+```
 
+
+```{r}
+# Function to pull and data for side-by-side comparison
 show_comparison <- function(x, test_station, test_species, names = "original"){
   if(names == "original"){
     x %>% 
       mutate(id = as.character(id)) %>% 
       filter(id == test_station, 
              comname == toupper(test_species)) %>% 
-      select(id, comname, length, numlen, biomass, abundance,)
+      select(id, comname, length, numlen, biomass, abundance)
     } else{
     x %>% 
       filter(id == test_station, 
              comname == tolower(test_species)) %>% 
-      select(id, comname, length, numlen, numlen_adj, biom_adj, abundance, n_len_class, biom_per_lclass)
-  }
+      select(id, comname, length, numlen, numlen_adj, biom_adj, 
+             abundance, n_len_class, biom_per_lclass) }
 
 }
 ```
 
 Took this part out because we confirmed this step and there is no ID col in newer data, and more code than its worth.
 
-```{r, eval = T}
+```{r, eval = F}
 t_raw   <- show_comparison(trawldat, test_station, test_species, names = "original")
 t_clean <- show_comparison(weights_21, test_station, test_species, names = "cleaned")
 
@@ -177,7 +172,8 @@ focal_species <- weights_21 %>% filter(comname %in% important_species)
 biomass_as_total <- focal_species %>% 
   distinct(est_year,id, comname, catchsex, biom_adj) %>% 
   group_by(est_year, comname) %>% 
-  summarise(`Biomass as Bulk Total` = sum(biom_adj))
+  summarise(`Biomass as Bulk Total` = sum(biom_adj),
+            .groups = "keep")
 
 
 # Biomass treated as a total divided evenly among the number of length classes
@@ -194,7 +190,7 @@ biomass_spread_out  <- focal_species %>%
             `Length Weight Biomass Total` = sum(sum_weight_kg))
 
 
-
+# and plot
 ggplot() +
   geom_line(data = biomass_as_total, 
             aes(est_year, `Biomass as Bulk Total`, 
@@ -208,8 +204,10 @@ ggplot() +
   geom_line(data = biomass_spread_out,
             aes(est_year, `Biomass Readjusted for n Length Classes`,
                 color = "Biomass Readjusted for n Length Classes")) +
-  labs(x = "", y = "Biomass (kg)") + 
-  facet_wrap(~comname)
+  labs(x = "", y = "Biomass (kg)", color = "") + 
+  facet_wrap(~comname) +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(ncol = 2))
 
 
 ```
@@ -226,28 +224,32 @@ Due to subsampling of large catches and inherent variability around the mean wei
 ####  Annual Summary, summer and fall  ####
 
 #BIOMASS
-# Because we are taking distinct records for BIOMASS we use biom_adj not per_lclass
+# Because we are taking distinct records for BIOMASS 
+# we use biom_adj not per_lclass
 ann_summ_bio <- weights_21 %>% 
   distinct(est_year, id, comname, catchsex, biom_adj, biom_per_lclass, expanded_biom_s) %>% 
   group_by(est_year) %>% 
   summarise(`Bulk Biomass` = sum(biom_adj),
             `Area Stratified Total BIOMASS` = sum(expanded_biom_s),
-            season = "SPRING + FALL")
+            season = "spring + fall")
             
 
 # L-W
 ann_summ_lw <- weights_21 %>% 
+  distinct(est_year, id, comname, length, catchsex, biom_adj, 
+           biom_per_lclass, expanded_biom_s, sum_weight_kg, 
+           expanded_lwbio_s) %>% 
   group_by(est_year) %>% 
   summarise(`L-W Biomass` = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(expanded_lwbio_s),
-            season = "SPRING + FALL")
+            season = "spring + fall")
 
 # Join them
 ann_summs <- left_join(ann_summ_bio, ann_summ_lw)
 
 
 
-####  Annual Summary, seperate seasons  ####
+####  Annual Summary, separate seasons  ####
 
 #BIOMASS
 seas_summ_bio <-  weights_21  %>% 
@@ -262,7 +264,7 @@ seas_summ_lw <- weights_21%>%
             `Area Stratified Total L-W` = sum(expanded_lwbio_s))
 
 # Join them
-seas_summs <- left_join(seas_summ_bio, seas_summ_lw)
+seas_summs <- left_join(seas_summ_bio, seas_summ_lw, by = c("est_year", "season"))
 
 
 # reformat for plotting
@@ -273,7 +275,7 @@ summaries_long <- bind_rows(ann_summs, seas_summs) %>%
   pivot_longer(names_to = "Stratified Biomass Source", 
                values_to = "Area Projected Biomass (kg)", 
                cols = c(`Area Stratified Total L-W`,`Area Stratified Total BIOMASS`)) %>% 
-  mutate(season = factor(season, levels = c("SPRING + FALL", "SPRING", "FALL")))
+  mutate(season = factor(season, levels = c("spring + fall", "spring", "fall")))
 
 
 # Total Biomass from survey
@@ -292,8 +294,10 @@ ggplot(summaries_long, aes(est_year, `Area Projected Biomass (kg)`, color = `Str
   facet_grid(`Stratified Biomass Source`~season, scales = "free") +
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
-  labs(x = "") +
-  theme(legend.position = "bottom")
+  labs(x = "", caption = "All available species coefficients used (wigley & fishbase)") +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  guides(color = guide_legend(title.position = "top", title.hjust = 0.5))
 
 ```
 
@@ -316,7 +320,7 @@ In this way, using the example above there are catch per tow estimates for Ameri
 ```{r}
 weights_21 %>% 
     filter(id == test_station, 
-           comname == tolower(test_species)) %>% 
+           comname == test_species) %>% 
       select("Species"                                      = comname, 
              "Length"                                       = length, 
              "Number at Length"                             = numlen_adj, 
@@ -328,6 +332,7 @@ weights_21 %>%
              "Projected Abundance (stratum)"                = expanded_abund_s) %>% 
   mutate(`Weight (g)` = `Weight (g)` * 1000) %>% 
   mutate_if(is.numeric, round, 3) %>% 
+  head(10) %>% 
   kable() %>%  
   kable_styling(font_size = 10, )
 ```
@@ -383,24 +388,19 @@ Looks like the root cause is just the difference between what the mean predictio
 
 If we take the totals from the length-weight derived biomasses and the BIOMASS columns that match we can rank them by how often they over/underestimate biomass.
 
-**NOTE: 1/4/2021** Data from here through the bottom is restricted to the albatross survey, before any issues with `numlen_adj` come into play.
 
-```{r, fig.height=10}
-# Thoughts - difference between lw biomass vs. time 
-# (i.e. is their relationship changing)
-# how does that relate to temperature and survey change'
-# good way to flag species that are way off
+```{r}
 
-# Load all years and species
+
+# Load all years and species using most recent data
 weights_all <- survdat_prep_nodrop(survdat_source = "most recent") %>% 
   add_lw_info() %>% 
-  # Validation Step:
-  # Change total LW weight to ignore numlen_adjusted conversion
-  # mutate(sum_weight_kg = ind_weight_kg * numlen) %>% 
   add_area_stratification() 
+```
 
-# During troubleshooting we filtered down to just use albatross data
-# weights_all <- weights_all %>% filter(svvessel == "AL")
+**Summary and Plotting Functions**
+
+```{r}
 
 
 # Get the total weights for each station, then do it each year for every species
@@ -698,7 +698,7 @@ broken_coefficients %>%
 
 
 
-## Removing bad fits with Cutoff
+# Removing Bad Fits with Cutoff
 
 Certain coefficients seem to be really off and contributing to some really big differences in stratified abundances/biomasses. If we set a reasonable cutoff threshold of 50%, these are what the timelines now look like and how many species get dropped from each source.
 
@@ -744,9 +744,10 @@ ggplot(new_totals, aes(est_year)) +
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
   labs(x = "", 
+       color = "",
        subtitle = paste0("Species Removed at ", cut_percent, "% Difference Cutoff"),
        caption = paste(length(fishbase_cutoffs),"Fishbase Species Removed.",    length(wigley_cutoffs), "Wigley Species Removed")) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "top")
 
 
 fishbase_okay <- perc_differences %>% 

@@ -64,10 +64,6 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   ####  Import SURVDAT Data  ####
   
   # Testing:
-  #survdat_source <- "2016"        ; survdat <- NULL
-  #survdat_source <- "2019"        ; survdat <- NULL
-  #survdat_source <- "2020"        ; survdat <- NULL
-  #survdat_source <- "2021"        ; survdat <- NULL
   #survdat_source <- "bigelow"     ; survdat <- NULL
   #survdat_source <- "most recent" ; survdat <- NULL
   
@@ -82,7 +78,7 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
                          "2020"        = paste0(res_path,   "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
                          "2021"        = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_slucey_01152021.RData"),
                          "bigelow"     = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
-                         "most recent" = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_all_seasons_03032021.RData"), 
+                         "most recent" = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"), 
                          "bio"         = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
   
   
@@ -513,7 +509,8 @@ add_lw_info <- function(survdat_clean, cutoff = FALSE){
   
   # This table is a combined table of wigley and fishbase L-W coefficients
   lw_combined <- read_csv(here::here("data/biomass_key_combined.csv"), col_types = cols()) %>% 
-    mutate(svspp = str_pad(svspp, 3, "left", "0"))
+    mutate(svspp = str_pad(svspp, 3, "left", "0"),
+           season = tolower(season))
   
   
   # Do a priority pass with the filter(lw_combined, source == "wigley)

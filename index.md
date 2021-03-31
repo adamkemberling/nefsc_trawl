@@ -4,9 +4,11 @@
  
 A look at the overall data trends following "normal" data prep for the nefsc bottom trawl data. Includes overall abundance and biomass as well as the catch composition and stratified area abundances.
  
-[Aggregation Level validation](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/02_survdat_stratification_validation.html)
+[Aggregation Level Validation & LW Relationship Fits](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/02_survdat_stratification_validation.html)
 
 Report confirming the validity of getting area stratified abundance and biomass at an individual or size level, and then aggregating by year or season later. Basically, can area stratified catch rates be applied for numbers at length and will they compare well to overall abundance and biomass.
+
+End of report details how aggregate biomass compares to length-weight relationships from wigley 2006 paper and fishbase coefficients. Concludes with timeline that omits species that don't meet cutoff.
 
 [Identifying Possible Issues with Fall Haddock Numbers](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/Haddock_check.html)
 
