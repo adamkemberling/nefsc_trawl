@@ -28,6 +28,10 @@ Side by Side comparison of all the survdat pulls we have in inventory. Aim was t
  
 This report seeks to check the accuracy of the spring and fall conversions of haddock biomass from the nefsc groundfish survey data. This really identifies the inconsistent application of conversion factors for fall haddock.
  
-[Abundance and Biomass Retrospective Check](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/survdat_ab_bio_check.html)
+[2019 Abundance and Biomass Retrospective Check](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/abundance_biomass_check_2019.html)
+
+&
+
+[2020 Abundance and Biomass Retrospective Check](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/abundance_biomass_check_2020.html) 
  
- This report seeks to identify for which species of which we have published literature there are notable differences in abundance and biomass from using the newest survdat pull which has corrected conversion issues.
+ These two reports seeks to identify for which species of which we have published literature there are notable differences in abundance and biomass from using the newest survdat pull which has corrected conversion issues.
