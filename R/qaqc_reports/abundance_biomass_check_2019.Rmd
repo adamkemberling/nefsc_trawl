@@ -236,9 +236,9 @@ comparison_metrics <- map_dfr(species_comparisons, ~.x[["metrics"]])
 ```
 
 
-## Visualizing the three data sources Abundance/Biomass {.tabset .tabset-pills}
+## Abundance/Biomass Comparisons {.tabset .tabset-pills}
 
-As a quick visual reference, here is how total annual abundance and biomasses compare across data sources. The species have been split into groups to make paneling less crowded.
+As a quick visual reference, here is how total annual abundance and biomass compare across data sources. The species have been split into groups to make paneling less crowded.
 
 ```{r}
 

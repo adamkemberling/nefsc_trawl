@@ -50,8 +50,7 @@ While investigating some discrepancies among different datasets a handful of cor
 This report compares two datasets:    
   1. `Survdat_Nye_Aug_2020.RData` = August 2020 Survdat   
   2. `NEFSC_BTS_all_seasons_03032021.RData` = March 2021 Survdat
-  
-, and the more recent 
+
 
 
 
@@ -238,9 +237,9 @@ comparison_metrics <- map_dfr(species_comparisons, ~.x[["metrics"]])
 ```
 
 
-## Visualizing the three data sources Abundance/Biomass {.tabset .tabset-pills}
+## Abundance/Biomass Comparisons {.tabset .tabset-pills}
 
-As a quick visual reference, here is how total annual abundance and biomasses compare across data sources. The species have been split into groups to make paneling less crowded.
+As a quick visual reference, here is how total annual abundance and biomass compare across data sources. The species have been split into groups to make paneling less crowded.
 
 ```{r}
 
