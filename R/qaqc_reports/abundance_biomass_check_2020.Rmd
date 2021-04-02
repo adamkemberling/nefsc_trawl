@@ -16,6 +16,27 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = NA, fig.height = 8, fig.width = 8)
 options(knitr.kable.NA = '')
 
+library(gmRi)
+```
+
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+
+# Species Abundance and Biomass Check for 2020 Survdat
+
+We discovered that vessel conversion factors had been applied incorrectly in past retrievals of the federal bottom trawl survey data that we obtained from the NEFSC. After resolving these problems, we set up this document to show whether any of the changes may have important implications for analyses that have recently been conducted using earlier datasets.
+
+This report compares two datasets:  
+
+  1. `Survdat_Nye_Aug_2020.RData` = August 2020 Survdat   
+  
+  2. `NEFSC_BTS_all_seasons_03032021.RData` = March 2021 Survdat
+  
+
+**Load Packages Paths and Themes**
+
+```{r}
 ###__ Packages  ####
 library(here)
 library(janitor)
@@ -25,9 +46,7 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 
-
-
-# Load the build code and stratification function
+# Set Paths to Box Resources
 box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
 res_path   <- box_paths$res
@@ -38,19 +57,6 @@ theme_set(theme_bw() + theme(
   axis.text.y = element_text(size = 11),
   axis.text.x = element_text(angle = 90, vjust = 0.5)))
 ```
-
-
-`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
-
-
-# Species Abundance and Biomass Check for 2020 Survdat
-
-While investigating some discrepancies among different datasets a handful of corrections were made. This document is intended to see if any of those changes have important implications for some of the species-specific reports that have been done recently.
-
-This report compares two datasets:    
-  1. `Survdat_Nye_Aug_2020.RData` = August 2020 Survdat   
-  2. `NEFSC_BTS_all_seasons_03032021.RData` = March 2021 Survdat
-
 
 
 
@@ -110,9 +116,9 @@ source_list <- list("survdat_nye_2020" = survdat_20,
 
 ##  Making Comparisons
 
-In this code chunk the different sources are put together in a list, and the same cleanup steps are applied to each. The years are limited to before 2019 so there are no extra years in some not available in others. The SVSPP codes are also limited to just the ones in the list Andrew provided.
+In this code chunk the different sources are put together in a list, and the same cleanup steps are applied to each. The years are limited to before 2019 so there are no extra years in some not available in others. The SVSPP codes are also limited to just the ones in the list used by Andrew for Allyn et al. (2020).
 
-After that repeated records for abundance and biomass are dropped. These repeats exist to accommodate the length and number at length details. We don't need them for this so they are dropped here.
+After that, repeated records for abundance and biomass are dropped. These repeats exist to accommodate the length and number at length details. We don’t need them for this so they are dropped here.
 
 ```{r compare datasets}
 # Make years comparable
@@ -148,6 +154,7 @@ The table itself is retained in addition to some overall summary metrics.
 # Make  Comparisons
 
 # Vector of species and their common names, atleast the common names Andrew used
+# names are the svspp codes, passed to imap below as "species_svspp"
 andrew_species <- species_check$comname %>% setNames(species_check$svspp)
 
 
@@ -185,30 +192,28 @@ species_comparisons <- imap(andrew_species, function(species_comname, species_sv
               biom_21  = sum(biom_adj, na.rm = T),
               .groups = "keep") %>% ungroup()
   
-  # join them for side-by-side datar_
+  # join them for side-by-side dataframe
   yr_df <- data.frame("est_year" = c("2008":"2019"))
   
   combined_data <- yr_df %>% 
     left_join(summ_20, by = "est_year") %>% 
     left_join(summ_21, by = c("comname", "est_year")) %>% 
     mutate(
-      # 2020-2021 comparison
       abund_change_20to21 = ((abund_21 - abund_20) / abund_20) * 100,
       biom_change_20to21  = ((biom_21 - biom_20) / biom_20) * 100) 
   
-  #return(combined_data)
   
-  # abundance correlation
+  # overall abundance correlation
   abund_cor_20to21   <- cor(combined_data$abund_21, 
                             combined_data$abund_20, 
                             use = "pairwise.complete.obs")
   
-  # biomass correlation
+  # overall biomass correlation
   biomass_cor_20to21 <- cor(combined_data$biom_21, 
                             combined_data$biom_20,   
                             use = "pairwise.complete.obs")
   
-  # average relative shift
+  # overall average shifts
   abund_shift_20to21 <- mean(combined_data$abund_change_20to21, na.rm = T)
   biom_shift_20to21  <- mean(combined_data$biom_change_20to21, na.rm = T)
   
@@ -259,6 +264,7 @@ even_groups <- list(
 **Building Plots for Actual Abundance/Biomass**
 
 ```{r}
+# Build list of abundance and biomass observations
 timeseries_plots <- map(even_groups, function(species_subset){
   
   species_subset_dat <- comparison_data %>% 
@@ -268,12 +274,12 @@ timeseries_plots <- map(even_groups, function(species_subset){
            comname = fct_inorder(comname))
   
   
-  # abundance plot
+  # Abundance plot
   abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
    geom_jitter(aes(y = abund_20, color = "Survdat Nye - August 2020"), 
-                size = 0.8, height = 0, width = 0.05) +
+                size = 1, height = 0, width = 0.1) +
     geom_jitter(aes(y = abund_21, color = "Newest Survdat"), 
-                size = 0.8, height = 0, width = 0.05) +
+                size = 1, height = 0, width = 0.1) +
     geom_line(aes(y = abund_20, 
                   color = "Survdat Nye - August 2020",
                   linetype = "Survdat Nye - August 2020"), 
@@ -291,12 +297,12 @@ timeseries_plots <- map(even_groups, function(species_subset){
          linetype = "Survdat Retrieval") +
     theme(legend.position = "none")
   
-  
+  # Biomass Plot
   biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
     geom_jitter(aes(y = biom_20, color = "Survdat Nye - August 2020"), 
-                size = 0.8, height = 0, width = 0.1) +
+                size = 1, height = 0, width = 0.1) +
     geom_jitter(aes(y = biom_21, color = "Newest Survdat"), 
-                size = 0.8, height = 0, width = 0.1) +
+                size = 1, height = 0, width = 0.1) +
     geom_line(aes(y = biom_20, 
                   color = "Survdat Nye - August 2020",
                   linetype = "Survdat Nye - August 2020"), 
@@ -321,9 +327,10 @@ timeseries_plots <- map(even_groups, function(species_subset){
 })
 ```
 
-**Building Plots for Differences in Abundance/Biomass**
+**Building Plots for Percent Change in Abundance/Biomass**
 
 ```{r}
+# build list of percent difference plots
 timeseries_diff_plots <- map(even_groups, function(species_subset){
   
   species_subset_dat <- comparison_data %>% 
@@ -333,10 +340,10 @@ timeseries_diff_plots <- map(even_groups, function(species_subset){
            comname = fct_inorder(comname))
   
   
-  # abundance plot
+  # Abundance plot
   abundance_plot <- ggplot(species_subset_dat, aes(est_year)) +
     geom_jitter(aes(y = abund_change_20to21, color = "Abundance Change 2020 to 2021"), 
-                size = 0.8, height = 0, width = 0.1) +
+                size = 1, height = 0, width = 0.1) +
     geom_line(aes(y = abund_change_20to21, 
                   color = "Abundance Change 2020 to 2021",
                   linetype = "Abundance Change 2020 to 2021"), 
@@ -345,15 +352,16 @@ timeseries_diff_plots <- map(even_groups, function(species_subset){
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     scale_color_gmri() +
     facet_wrap(~comname, scales = "free") +
-    labs(x  = "", y = "Difference in Annual Abundance", 
+    labs(x  = "", 
+         y = "Percent Difference in Annual Abundance", 
          color = "Survdat Retrieval Comparison", 
          linetype = "Survdat Retrieval Comparison") +
     theme(legend.position = "none")
   
-  
+  # Biomass plot
   biomass_plot <- ggplot(species_subset_dat, aes(est_year)) +
     geom_jitter(aes(y = biom_change_20to21, color = "Biomass Change 2020 to 2021"), 
-                size = 0.8, height = 0, width = 0.1) +
+                size = 1, height = 0, width = 0.1) +
     geom_line(aes(y = biom_change_20to21, 
                   color = "Biomass Change 2020 to 2021",
                   linetype = "Biomass Change 2020 to 2021"), 
@@ -362,7 +370,8 @@ timeseries_diff_plots <- map(even_groups, function(species_subset){
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     scale_color_gmri() +
     facet_wrap(~comname, scales = "free") +
-    labs(x  = "", y = "Difference in Annual Biomass", 
+    labs(x  = "", 
+         y = "Percent Difference in Annual Biomass", 
          color = "Survdat Retrieval Comparison", 
          linetype = "Survdat Retrieval Comparison") +
     theme(legend.position = "bottom")
@@ -382,7 +391,7 @@ timeseries_diff_plots <- map(even_groups, function(species_subset){
 timeseries_plots$group_1$stacked
 ```
 
-#### Differences
+#### Percent Differences
 
 ```{r, fig.height=10}
 timeseries_diff_plots$group_1$stacked
@@ -397,7 +406,7 @@ timeseries_diff_plots$group_1$stacked
 timeseries_plots$group_2$stacked
 
 ```
-#### Differences
+#### Percent Differences
 
 ```{r, fig.height=10}
 timeseries_diff_plots$group_2$stacked
@@ -413,7 +422,7 @@ timeseries_diff_plots$group_2$stacked
 timeseries_plots$group_3$stacked
 
 ```
-#### Differences
+#### Percent Differences
 
 ```{r, fig.height=10}
 timeseries_diff_plots$group_3$stacked
@@ -428,7 +437,7 @@ timeseries_diff_plots$group_3$stacked
 timeseries_plots$group_4$stacked
 
 ```
-#### Differences
+#### Percent Differences
 
 ```{r, fig.height=10}
 timeseries_diff_plots$group_4$stacked
@@ -442,7 +451,7 @@ timeseries_diff_plots$group_4$stacked
 timeseries_plots$group_5$stacked
 
 ```
-#### Differences
+#### Percent Differences
 
 ```{r, fig.height=10}
 timeseries_diff_plots$group_5$stacked
@@ -452,7 +461,7 @@ timeseries_diff_plots$group_5$stacked
 
 
 
-## Comparing 2020 to 2021 
+## Poor Correlation and Percent Change Comparisons
 
 ### Abundance {.tabset .tabset-pills}
 
