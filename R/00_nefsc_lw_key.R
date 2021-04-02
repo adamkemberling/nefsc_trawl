@@ -1,9 +1,8 @@
 ####  NEFSC Trawl Data Access  ####
 
 # COMMENTS:
-# This script goes over where the trawl data is stored and where it has been resaved locally
-# Also contained is the processing code for the length weight coefficient key
-
+# This script contains the processing code for the length weight coefficient key
+# it combines the Wigley06 coefficients with the values found on fishbase
 
 ####  Packages  ####
 library(janitor)
@@ -11,6 +10,7 @@ library(here)
 library(gmRi)
 library(tidyverse)
 library(patchwork)
+library(rfishbase)
 
 
 ####  Data  ####
@@ -52,7 +52,7 @@ load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
 
 
 
-# Fishbase Growth Coefficients
+# Fishbase Growth Coefficients - Manually found
 fishbase_lw <- read_csv(here("data/NEFSC/nefsc_lw_key_filled.csv"),
                      guess_max = 1e3,
                      col_types = cols())
@@ -295,7 +295,7 @@ lw_combined %>%
 
 ####  Double checking Fishbase coefficients  ####
 
-library(rfishbase)
+
 fb_manual <- filter(lw_combined, source == "fishbase")
 fb_species <- data.frame("ComName" = unique(fb_manual$comname))
 
