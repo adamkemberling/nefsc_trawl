@@ -1,9 +1,16 @@
+# User data and project settings/data
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
 data/*
 
+# Intermediate files and image caches
 R/qaqc_reports/09_ss_sensitivity_cache/
 R/qaqc_reports/09_ss_sensitivity_files/
 R/survdat_pull_check_files/
+
+# Ignore _targets files
+_targets*/
+_targetsdm*/
+_targets_flow/*

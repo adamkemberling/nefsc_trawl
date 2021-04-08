@@ -13,7 +13,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = NA)
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = "")
 options(knitr.kable.NA = '')
 
 ###__ Packages  ####
@@ -45,7 +45,7 @@ theme_set(theme_minimal())
 
 # About
 
-The goal of this markdown is to validate consistency of outcomes for various aggregation scales. The approach is to take 4 years from the survey data, 2006-2010 to cover the change in survey design. Then we will track comparisons between estimating biomasses at a station level or in aggregate.
+The goal of this markdown is to validate consistency of outcomes for various aggregation scales. The approach is to take 4 years from the survey data, 2006-2010 to cover the change in survey design. Then we will track comparisons between methods for estimating biomass at a station level or in aggregate.
 
 ## Starting Data
 
@@ -61,9 +61,9 @@ trawldat <- survey$survdat %>% clean_names() %>%
 rm(survey)
 
 
-
 # And filter years
-trawldat <- filter(trawldat, est_year >= 2006 & est_year <= 2010)
+trawldat <- filter(trawldat, est_year >= 2006 & est_year <= 2010) %>% 
+  mutate(comname = tolower(comname))
 ```
 
 ## Clean up Function
@@ -80,7 +80,7 @@ The size spectra clean up function does any data prep including:
 ```{r}
 
 # Cleanup functions
-source(here("R/01_nefsc_ss_build.R"))
+# source(here("R/01_old_nefsc_ss_build.R"))
 source(here("R/01_nefsc_ss_build_nodrop.R"))
 
 # Clean/Prep Survdat 2006-2010
@@ -113,41 +113,6 @@ print(paste0("The test station is: ", test_station))
 print(paste0("The test species is: ", test_species))
 ```
 
-
-```{r}
-# Function to pull and data for side-by-side comparison
-show_comparison <- function(x, test_station, test_species, names = "original"){
-  if(names == "original"){
-    x %>% 
-      mutate(id = as.character(id)) %>% 
-      filter(id == test_station, 
-             comname == toupper(test_species)) %>% 
-      select(id, comname, length, numlen, biomass, abundance)
-    } else{
-    x %>% 
-      filter(id == test_station, 
-             comname == tolower(test_species)) %>% 
-      select(id, comname, length, numlen, numlen_adj, biom_adj, 
-             abundance, n_len_class, biom_per_lclass) }
-
-}
-```
-
-Took this part out because we confirmed this step and there is no ID col in newer data, and more code than its worth.
-
-```{r, eval = F}
-t_raw   <- show_comparison(trawldat, test_station, test_species, names = "original")
-t_clean <- show_comparison(weights_21, test_station, test_species, names = "cleaned")
-
-
-bind_rows(list("raw data" = t_raw, "cleaned data" = t_clean), .id = "Data Source") %>% 
-  mutate_if(is.numeric, round, 1) %>% 
-  mutate_if(is.character, tolower) %>% 
-  kable() %>%  
-  kable_styling(font_size = 10)
-```
-
-This example is good because it shows how abundance does not always equal what the sum of the column `numlen` returns. `numlen_adj` is then an adjustment to convert the numbers found in `numlen` to total the observed "abundance".
 
 
 # Raw Comparisons
@@ -188,9 +153,13 @@ biomass_spread_out  <- focal_species %>%
   summarise(`Biomass Divided Among Length Classes` = sum(biom_adj),
             `Biomass Readjusted for n Length Classes` = sum(biomass_divided),
             `Length Weight Biomass Total` = sum(sum_weight_kg))
+```
 
 
-# and plot
+
+```{r}
+
+# Plotting different ways to treat biomass
 ggplot() +
   geom_line(data = biomass_as_total, 
             aes(est_year, `Biomass as Bulk Total`, 
@@ -294,7 +263,8 @@ ggplot(summaries_long, aes(est_year, `Area Projected Biomass (kg)`, color = `Str
   facet_grid(`Stratified Biomass Source`~season, scales = "free") +
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
-  labs(x = "", caption = "All available species coefficients used (wigley & fishbase)") +
+  labs(x = "", 
+       caption = "All available species coefficients used (wigley & fishbase)") +
   theme(legend.position = "top",
         axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   guides(color = guide_legend(title.position = "top", title.hjust = 0.5))
@@ -391,10 +361,9 @@ If we take the totals from the length-weight derived biomasses and the BIOMASS c
 
 ```{r}
 
-
 # Load all years and species using most recent data
 weights_all <- survdat_prep_nodrop(survdat_source = "most recent") %>% 
-  add_lw_info() %>% 
+  add_lw_info(cutoff = FALSE) %>% 
   add_area_stratification() 
 ```
 
@@ -410,7 +379,8 @@ mismatch_ranks <- function(x){
     summarise(number_caught = sum(numlen_adj),
               length_weight_biomass = sum(sum_weight_kg),
               ship_measured_biomass = sum(biom_per_lclass),
-              lw_underestimate = ship_measured_biomass - length_weight_biomass, .groups = "keep") %>% 
+              lw_underestimate = ship_measured_biomass - length_weight_biomass, 
+              .groups = "keep") %>% 
     ungroup()
   
   
@@ -448,7 +418,6 @@ mismatch_plot <- function(x){
     filter(extremes == "Extreme Under-Estimation") %>% 
     ggplot(aes(lw_underestimate, comname)) +
       geom_boxplot(aes(group = species_rank), color = gmri_cols("orange")) +
-      #geom_vline(xintercept = 0, size = 0.5, color = "black", linetype = 2) +
       scale_color_gmri() +
       scale_x_continuous(labels = comma_format()) +
       labs(x = "",
@@ -461,7 +430,6 @@ mismatch_plot <- function(x){
     filter(extremes == "Extreme Over-Estimation") %>% 
     ggplot(aes(lw_underestimate, comname)) +
       geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
-      #geom_vline(xintercept = 0, size = 0.5, color = "black", linetype = 2) +
       scale_color_gmri() +
       scale_x_continuous(labels = comma_format()) +
       labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
@@ -614,9 +582,9 @@ all_source_ranks %>%
 
 ## Haddock Issues
 
-Haddock is one of the most commonly caught species, particularly true in the recent years. It also has a particularly high prevalance for large deviances from the two biomass sources.
+Haddock is one of the most commonly caught species, particularly true in the recent years. It also **had** a particularly high prevalence for large deviance from the two biomass sources.
 
-Looking more closely it looks like there are two distinct groups in the fall, whereas the spring seems to match up fairly well.
+Here is how it looks following come corrections to the survdat build.
 
 ```{r}
 
@@ -706,7 +674,7 @@ Certain coefficients seem to be really off and contributing to some really big d
 ```{r}
 
 # Cutoff Threshold
-cut_percent <- 25
+cut_percent <- 15
 
 fishbase_cutoffs <- perc_differences %>% 
   filter(source == "fishbase",

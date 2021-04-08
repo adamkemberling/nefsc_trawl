@@ -3,7 +3,6 @@
 ####_____________________####
 ####  Functions  ####
 
-
 library(sizeSpectra)
 library(tidyverse)
 
@@ -26,7 +25,6 @@ make_bin_key <- function(species_df){
     mutate(
       LngtMax = LngtClass + 1, 
       wmax    = exp(log(LWa) + LWb * log(LngtMax)) * 1000,
-      # Correction for the species that were in grams
       wmax    = ifelse(SpecCode %in% gram_species, wmax / 1000, wmax))  %>%
     select(SpecCode, LWa, LWb, LngtMin = LngtClass, wmin = bodyMass, LngtMax, wmax,
            -c(Number, Biomass))
@@ -278,13 +276,6 @@ ggplot_isd <- function(data_group, mle.bins.res, plot_rects = TRUE, show_pl_fit 
   # Toggle to turn on the fit lines or not
   if(show_pl_fit == TRUE) {
     p2 <- p2 +
-      # geom_smooth(data = data_group,
-      #             aes(x = wmin, 
-      #                 y = lowCount),
-      #             formula = y ~ x,
-      #             method = "lm", 
-      #             se = T,
-      #             color = "darkred")
       # Adding the power law fit here also:
       geom_line(data = PLB_df, aes(x.PLB, y.PLB), color = "darkred") +
       geom_line(data = PLB_df, aes(x.PLB, confMin), color = "darkred", linetype = 2) +

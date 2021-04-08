@@ -12,33 +12,22 @@ library(tidyverse)
 
 ####  Support Functions  ####
 source(here("R/support/sizeSpectra_support.R"))
+source(here("R/support/maine_nh_trawl_build.R"))
 
+# Paths
+res_path <- shared.path(os.use = "unix", group = "res data", folder = "")
 
 ####  Data  ####
 
 # https://mainedmr.shinyapps.io/MaineDMR_Trawl_Survey_Portal/
-menh_len <- read_csv(here("data/MENH/shiny_length_freq.csv"), guess_max = 1e6, col_types = cols()) %>% clean_names()
+# menh_len <- read_csv(here("data/MENH/shiny_length_freq.csv"), guess_max = 1e6, col_types = cols()) %>% clean_names()
 
-# Length Weight Relationships via fishbase, compiled by Ben Resek, REU
-lw_coef <- read_csv("data/MENH/listfishusingfishbase.csv", col_types = cols()) %>% 
-  clean_names() %>% select(1:5) %>% arrange(common_name)
+# Load length frequencies using build code
+menh_len <- load_menh_data("length frequencies")
 
-# # More thorough one from fishbase again
-# lw_coef <- read_csv(here("data/NEFSC/nefsc_lw_key_filled.csv"),
-#                      guess_max = 1e3,
-#                      col_types = cols())
-# 
-# # Fill in NA growth coefficients for related species
-# lw_coef <- lw_coef %>% 
-#   mutate(common_name = str_to_title(comname),
-#          a = as.numeric(a),
-#          b = as.numeric(b),
-#          ln_a = log(a),
-#          related_ln_a = log(related_a),
-#          ln_a = ifelse(is.na(ln_a), related_ln_a, ln_a)) %>% 
-#   select(common_name, b, a, ln_a)
 
-# Parameters from wigley paper
+
+
 
 
 
@@ -47,12 +36,22 @@ lw_coef <- read_csv("data/MENH/listfishusingfishbase.csv", col_types = cols()) %
 ####  Setup  ####
 
 ###__  Calculating Weights  ####
-menh_weights <- left_join(menh_len, lw_coef, by = "common_name") %>% 
-  select(common_name, ln_a, a, b, everything())  %>% 
-  mutate(ln_weight = (ln_a + b * log(length)),
-         weight_kg = exp(ln_weight),
-         freq_weigth = weight_kg * frequency)
 
+# Using Ben's Coefficients
+
+# # Length Weight Relationships via fishbase, compiled by Ben Resek, REU
+# lw_coef <- read_csv("data/MENH/listfishusingfishbase.csv", col_types = cols()) %>% 
+#   clean_names() %>% select(1:5) %>% 
+#   arrange(common_name)
+# 
+# menh_weights <- left_join(menh_len, lw_coef, by = "common_name") %>% 
+#   select(common_name, ln_a, a, b, everything())  %>% 
+#   mutate(ln_weight = (ln_a + b * log(length)),
+#          weight_kg = exp(ln_weight),
+#          freq_weigth = weight_kg * frequency)
+
+# Using Wigley & Fishbase
+menh_weights <- add_lw_to_menh(menh_length_frequencies = menh_len, os.use = "unix")
 
 
 ####__  Checking Weights  ####
@@ -60,21 +59,22 @@ menh_weights <- left_join(menh_len, lw_coef, by = "common_name") %>%
 # filter to only use cm
 menh_weights <- menh_weights %>% 
   filter(unit_of_length == "CM",
-         common_name != "Sea Urchins Green",
-         weight_kg > 0) %>% 
-  mutate(common_name = fct_drop(common_name))
+         comname != "sea urchins green",
+         ind_weight_kg > 0) %>% 
+  mutate(comname = fct_drop(comname))
 
 # test species
-test_species <- c("Alewife", "Herring Atlantic", "Cod Atlantic", "Alligatorfish", "Smelt Rainbow")
+test_species <- c("alewife", "atlantic herring", "atlantic cod", "alligatorfish", "smelt rainbow")
 menh_weights %>% 
-  filter(common_name %in% test_species) %>% 
-  ggplot(aes(length, weight_kg)) +
+  filter(comname %in% test_species) %>% 
+  ggplot(aes(length, ind_weight_kg)) +
   geom_point() +
-  facet_wrap(~common_name)
+  facet_wrap(~comname)
 
 # Visualizing average weights by species
 menh_weights %>% 
-  ggplot( aes( y = fct_reorder(common_name, weight_kg, .fun = mean, .desc = TRUE), x = weight_kg)) + 
+  ggplot( aes(y = fct_reorder(comname, ind_weight_kg, .fun = mean, .desc = TRUE), 
+              x = ind_weight_kg)) + 
   geom_boxplot() + 
   labs(x = "Mean Weight (kg)", y = "Common Name")
 
@@ -101,12 +101,12 @@ gram_species <- c(
 
 # Change those species to kg to be consistent
 menh_weights <- menh_weights %>% 
-  mutate(weight_kg = ifelse(common_name %in% gram_species, weight_kg/1000, weight_kg),
+  mutate(weight_kg = ifelse(comname %in% gram_species, weight_kg/1000, weight_kg),
          freq_weight = weight_kg * frequency)
 
 # check plot again
 menh_weights %>% 
-  ggplot( aes( y = fct_reorder(common_name, weight_kg, .fun = mean, .desc = TRUE), x = weight_kg)) + 
+  ggplot( aes( y = fct_reorder(comname, weight_kg, .fun = mean, .desc = TRUE), x = weight_kg)) + 
   geom_boxplot() + 
   labs(x = "Mean Weight (kg)", y = "Common Name")
 
@@ -124,7 +124,7 @@ data <- dataOrig %>%
     weight_g = weight_kg * 1000) %>% 
   select(
     Year = year,                           # year
-    SpecCode = common_name,                # common name
+    SpecCode = comname,                # common name
     LngtClass = length,                    # length bin
     Number = frequency,                    # CPUE in n/effort
     LWa = a,                               # length/weight param
@@ -305,7 +305,7 @@ data <- dataOrig %>%
   select(
     Year = year,                     # year
     season = season,                 # season
-    SpecCode = common_name,          # common name
+    SpecCode = comname,          # common name
     LngtClass = length,              # length bin
     Number = frequency,              # CPUE in n/effort
     LWa = a,                         # length/weight param

@@ -30,12 +30,6 @@ res_path   <- box_paths$res
 # 2020 edition
 load(paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"))
 
-
-
-
-
-
-
 # Gonna save it locally for convenience/laziness
 # write_csv(survdat, here("data/NEFSC/2020survdat_nye.csv"))
 

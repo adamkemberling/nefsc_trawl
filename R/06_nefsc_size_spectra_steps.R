@@ -10,7 +10,7 @@
 
 ####_____________________####
 ####  Packages  ####
-
+library(targets)
 library(here)
 library(gmRi)
 library(janitor)
@@ -20,33 +20,19 @@ library(tidyverse)
 
 ####  Support Functions  ####
 source(here("R/support/sizeSpectra_support.R"))
-source(here("R/01_nefsc_ss_build_nodrop.R"))
+source(here("R/support/nefsc_ss_build_nodrop.R"))
 
+# data paths
 nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 
 ####  Data  ####
 
-
-# Update, newer Data 03/19/2021:
-load(paste0(nmfs_path, "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData"))
-trawldat <- survey$survdat %>% clean_names()
-rm(survey)
-
-# Run cleanup
-survdat_21 <- survdat_prep_nodrop(survdat = trawldat)
-
-# Add LW coefficients, filter species with bad fits
-survdat_lw <- add_lw_info(survdat_clean = survdat_21, cutoff = TRUE)
-
-# Get stratified Biomass
-nefsc_weights <- add_area_stratification(survdat_weights = survdat_lw, include_epu = F)
+# Use targets to load data
+tar_load(nefsc_stratified)
 
 # stop pretending that you prefer est_year to year
-nefsc_weights <- nefsc_weights %>% 
+nefsc_weights <- nefsc_stratified %>% 
   mutate(year = factor(est_year)) 
-
-
-
 
 
 
@@ -54,9 +40,10 @@ nefsc_weights <- nefsc_weights %>%
 ####_____________________####
 ####  Exploratory Plots  ####
 
-# Exploratory plot of individual bodymass by species
+# Exploratory plot of individual body mass by species
 nefsc_weights %>% 
-  ggplot( aes( y = fct_reorder(comname, ind_weight_kg, .fun = mean, .desc = TRUE), x = ind_weight_kg)) + 
+  ggplot( aes( y = fct_reorder(comname, ind_weight_kg, .fun = mean, .desc = FALSE), 
+               x = ind_weight_kg)) + 
   geom_boxplot() + 
   labs(x = "Individual Bodymass (kg)", y = "Common Name")
 
@@ -67,6 +54,8 @@ nefsc_weights %>%
   geom_boxplot(outlier.shape = NA) +
   scale_x_continuous(limits = quantile(nefsc_weights$ind_weight_kg, c(0, 0.99))) +
   labs(x = "Individual Bodymass (kg)", y = "")
+
+
 
 
 ####  SizeSpectra Setup  ####
@@ -109,7 +98,8 @@ data <- dataOrig %>%
 # and maximum weight for what a fish could weigh
 
 # Pretty sure since the growth coefficients,
-# stratified numbers, and number at length are all together we can just use mutate here...
+# stratified numbers, and number at length are all together we can 
+# just use mutate here...
 dataBin <- data %>% 
   mutate(
     LngtMax         = LngtClass + 1,
@@ -140,8 +130,9 @@ dataBin <- data %>%
 ####  Set Bodymass Cutoff and Groups  ####
 
 # Set bodymass lower limit
+mass_cutoff <- 1 #grams
+
 # Filter for lower end of gear selectivity
-mass_cutoff <- 5 #grams
 dbin_trunc <- filter(dataBin, wmin >= mass_cutoff)
 
 # Create Grouping Var
@@ -159,11 +150,11 @@ mle_bins <- dbin_trunc %>%
 
 # Make formatting changes for labels
 mle_seasons <- mle_bins %>% 
-  mutate(#stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
-         Year = str_sub(group_var, 1, 4),
+  mutate(Year = str_sub(group_var, 1, 4),
          Year = as.numeric(as.character(Year)),
          season = str_sub(group_var, 6, -1),
          season = factor(season, levels = c("Spring", "Fall")),
+         #stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
          #C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin))
          )
 
@@ -275,9 +266,8 @@ xlim.global <- c( min(strat_isd_data$wmin),
 group_names <- sort(unique(dbin_trunc$group_var))
 
 # Loop through years for plots
-seasonal_strat_isd <- map2(strat_year_list, 
-                           strat_res_list, 
-                           .f = ggplot_strat_isd) %>% setNames(group_names)
+seasonal_strat_isd <- map2(strat_year_list, strat_res_list, .f = ggplot_strat_isd) %>% 
+  setNames(group_names)
 
 # Take a peak
 seasonal_strat_isd$`2005_Spring`$obs_y
