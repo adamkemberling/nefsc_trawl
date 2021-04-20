@@ -29,7 +29,7 @@ nmfs_path  <- shared.path("unix", "RES_Data", "NMFS_Trawl")
 ####__  Size Spectra Builds  ####
 
 # Load data build function
-source(here("R/01_nefsc_ss_build_nodrop.R"))
+source(here("R/support/nefsc_ss_build_nodrop.R"))
 
 
 
@@ -40,7 +40,7 @@ source(here("R/01_nefsc_ss_build_nodrop.R"))
 #   mutate(survdat_source = "survdat_2021")
 # 
 # # Run the no drop cleanup
-# allcols_21 <- survdat_prep_nodrop(survdat = survdat_raw)
+allcols_21 <- survdat_prep_nodrop(survdat_source = "most recent")
 # 
 # # leftovers
 # lefties <- anti_join(survdat_21, allcols_21)

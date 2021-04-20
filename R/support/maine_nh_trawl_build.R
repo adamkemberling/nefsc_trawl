@@ -35,7 +35,10 @@ load_menh_data <- function(data_option = c("length frequencies", "biological"), 
 }
 
 
-####  Cleanup Functions  ####
+
+######################################################_
+
+
 
 # Match length frequencies to lw relationship coefficients
 add_lw_to_menh <- function(menh_length_frequencies = menh_lens, os.use = "unix"){
@@ -46,7 +49,8 @@ add_lw_to_menh <- function(menh_length_frequencies = menh_lens, os.use = "unix")
   # Format columns
   menh_data <- menh_length_frequencies %>% 
     rename(est_year = year,
-           comname = common_name) %>% 
+           comname = common_name,
+           numlen_adj = frequency) %>% 
     mutate(catchsex = case_when(
       sex == "Male"    ~ 1,
       sex == "Female"  ~ 2,
@@ -57,11 +61,8 @@ add_lw_to_menh <- function(menh_length_frequencies = menh_lens, os.use = "unix")
   # clean up names to be consistent with NMFS Common names
   # common pattern of fish adjective, example: cod atlantic
   # this needs to be fixed
-  
-  
-  
-  
-  
+
+  ####  WORKING HERE:  ####
  
   # Length Weight Lookup using Wigley and Fishbase
   lw_combined <- read_csv(paste0(nmfs_path, "length_weight_keys/fishbase_wigley_combined_key.csv"), col_types = cols()) %>% 
@@ -71,7 +72,7 @@ add_lw_to_menh <- function(menh_length_frequencies = menh_lens, os.use = "unix")
 
   
 
-  ####__ 1. Pair LW Coefficients to Maine New Hampshire Data  ####
+  ####__ 1. Pair LW Coefficients to Maine New Hampshire Data 
 
   
   
@@ -110,7 +111,7 @@ add_lw_to_menh <- function(menh_length_frequencies = menh_lens, os.use = "unix")
       llen          = log(length),
       ind_log_wt    = ln_a + (b * llen),
       ind_weight_kg = exp(ind_log_wt),                    # weight of an individual in size class
-      sum_weight_kg = ind_weight_kg * frequency) %>%     # Individual weight * adjusted numlen
+      sum_weight_kg = ind_weight_kg * numlen_adj) %>%     # Individual weight * adjusted numlen
     drop_na(ind_weight_kg) %>% 
     select(-ind_log_wt, -llen) %>%  
     arrange(est_year, season, comname, length) %>% 
@@ -129,4 +130,4 @@ add_lw_to_menh <- function(menh_length_frequencies = menh_lens, os.use = "unix")
 
 
 
-
+######################################################_

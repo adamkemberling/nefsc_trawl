@@ -24,8 +24,13 @@ library(tidyverse)
 # Size Spectra Build Functions
 source(here("R/support/nefsc_ss_build_nodrop.R"))
 source(here("R/support/maine_nh_trawl_build.R"))
+source(here("R/support/sizeSpectra_support.R"))
 
 
+####  Resource Paths  
+box_paths   <- research_access_paths(os.use = "unix")
+mills_path  <- box_paths$mills
+res_path    <- box_paths$res
 
 
 ####  Targets Pipeline  ####
@@ -54,18 +59,36 @@ list(
     command = survdat_prep_nodrop(survdat_source = "bio") ),
 
 
-  # Preparing Maine + NH Survey Data
-  # name matching super broken 4/8/2021
+  ####  Prepping Size Spectrum Groups  #####
+  
+  # nmfs size spectra
   tar_target(
-    name = menh_lens,
-    command = load_menh_data(data_option = "length frequencies", os.use = "unix") ),
+    name = nefsc_filtered_lens,
+    command = min_length_cutoff(trawl_lens = nefsc_stratified, cutoff_cm = 1) ),
   tar_target(
-    name = menh_weights,
-    command = add_lw_to_menh(menh_length_frequencies = menh_lens, os.use = "unix")
+    name = nefsc_databin,
+    command = prep_wmin_wmax(lw_trawl_data = nefsc_filtered_lens)
   )
   
-  # Prepping Size Spectrum Groups
   
+  
+  # # Preparing Maine + NH Survey Data
+  # # name matching super broken 4/8/2021
+  # tar_target(
+  #   name = menh_lens,
+  #   command = load_menh_data(data_option = "length frequencies", os.use = "unix") ),
+  # tar_target(
+  #   name = menh_weights,
+  #   command = add_lw_to_menh(menh_length_frequencies = menh_lens, os.use = "unix")
+  # ),
+  # 
+  # # menh
+  # tar_target(
+  #   name = menh_filtered_lens,
+  #   command = min_length_cutoff(trawl_lens = menh_weights, cutoff_cm = 1) ),
+  # tar_target(
+  #   name = menh_databin,
+  #   command = prep_wmin_wmax(lw_trawl_data = menh_filtered_lens) )
   
 )
 

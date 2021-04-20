@@ -21,8 +21,12 @@ library(tidyverse)
 
 
 
-####____________________####
-#### 1. Survdat Data Prep No Column Drop  ####
+######################################################_
+
+######################################################__####
+
+######################################################_
+
 #' @title  Load survdat file with standard data filters, keep all columns
 #' 
 #'
@@ -37,30 +41,17 @@ library(tidyverse)
 #' @export
 #'
 #' @examples
-survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
+survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "most recent"){
   
   ####  Resource Paths  
   box_paths   <- research_access_paths(os.use = "unix")
   mills_path  <- box_paths$mills
   res_path    <- box_paths$res
-  
-  
-  ####  Import supplemental data  ####
-  
-  # # Load Survey Stratum Area Info - old and in nautical miles (with errors)
-  # stratum_area <- read_csv(str_c(caccel_path, "strata area.csv"), col_types = cols())
-  
-  # Load fresh stratum areas
-  stratum_area <- read_csv(str_c(res_path, "NMFS_trawl/Metadata/strata_areas_km2.csv"), col_types = cols())  %>% 
-    mutate(stratum = as.character(stratum))
-  
-  # EPU are info: source slucey_survdat_functions.R and {ecodata}
-  epu_areas <- read_csv(str_c(res_path, "NMFS_trawl/Metadata/EPU_areas_km2.csv"), col_types = cols())
+  nmfs_path   <- paste0(res_path, "NMFS_trawl/")
   
   
   
-  
-  ####  Import SURVDAT Data  ####
+  ####  1. Import SURVDAT File  ####
   
   # Testing:
   #survdat_source <- "bigelow"     ; survdat <- NULL
@@ -73,12 +64,12 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   # Build Paths to survdat for standard options
   survdat_path <- switch(EXPR = survdat_source,
                          "2016"        = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
-                         "2019"        = paste0(res_path,   "NMFS_trawl/prior_survdat_data/Survdat_Nye_allseason.RData"),
-                         "2020"        = paste0(res_path,   "NMFS_trawl/prior_survdat_data/Survdat_Nye_Aug 2020.RData"),
-                         "2021"        = paste0(res_path,   "NMFS_trawl/prior_survdat_data/survdat_slucey_01152021.RData"),
-                         "bigelow"     = paste0(res_path,   "NMFS_trawl/2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
-                         "most recent" = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"), 
-                         "bio"         = paste0(res_path,   "NMFS_trawl/2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
+                         "2019"        = paste0(nmfs_path,  "prior_survdat_data/Survdat_Nye_allseason.RData"),
+                         "2020"        = paste0(nmfs_path,  "prior_survdat_data/Survdat_Nye_Aug 2020.RData"),
+                         "2021"        = paste0(nmfs_path,  "prior_survdat_data/survdat_slucey_01152021.RData"),
+                         "bigelow"     = paste0(nmfs_path,  "2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
+                         "most recent" = paste0(nmfs_path,  "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"), 
+                         "bio"         = paste0(nmfs_path,  "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
   
   
   
@@ -109,9 +100,9 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  ####_ 1.  Special Steps for Different SURVDAT versions  ####
+  #### 2.  Column Detection  ####
   
-  ####__ a. Missing data flags  ####
+  ####__ a. Missing column flags  ####
   
   # Flags for missing columns that need to be merged in or built
   has_comname  <- "comname" %in% names(trawldat)
@@ -135,10 +126,10 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   
   # Use SVSPP to get common names for species
   if(has_comname == FALSE){
-    message("no comnames found, merging records in with NMFS_trawl/spp_keys/sppclass.csv")
+    message("no comnames found, merging records in with spp_keys/sppclass.csv")
     # Load sppclass codes and common names
     spp_classes <- read_csv(
-      paste0(res_path, "NMFS_trawl/spp_keys/sppclass.csv"), 
+      paste0(nmfs_path, "spp_keys/sppclass.csv"), 
       col_types = cols()) %>%
       clean_names() %>%
       mutate(comname         = str_to_lower(common_name),
@@ -194,7 +185,7 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  ####_ 2. Column Changes  ####
+  #### 4. Column Changes  ####
   trawldat <- trawldat %>% 
     mutate(
       
@@ -205,23 +196,21 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
       svspp   = str_pad(svspp, 3, "left", "0"),
       season  = tolower(season), 
       
-      # Stratum number, 
+      # Format Stratum number, 
       # exclude leading and trailing codes for inshore/offshore, 
       # used for matching to stratum areas
       strat_num = str_sub(stratum, 2, 3)) %>%  
     
     # Replace NA's where there is some biomass/abundance
-    mutate(biom_adj  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass), 
-           .after = biomass) %>% 
-    mutate(abund_adj = ifelse(abundance == 0 & biomass > 0, 1, abundance), 
-           .after = abundance)
+    mutate(biomass  = ifelse(biomass == 0 & abundance > 0, 0.0001, biomass),
+           abundance = ifelse(abundance == 0 & biomass > 0, 1, abundance))
   
   
   
   
 
   
-  ####_ 3. Row Filtering  ####
+  #### 5. Row Filtering  ####
   
   # Things filtered:
   # 1. Strata
@@ -271,47 +260,18 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   
   
   
-  ####_ 4. Spatial Filtering  ####
+  #### 6. Spatial Filtering - Stratum  ####
   
-  # This section assigns EPU's via overlay using Sean Lucey's code,
-  # And also merges with stratum area information,
+  # This section merges stratum area info in
+  # And drops stratum that are not sampled or in Canada
   # these are used to relate catch/effort to physical areas in km squared
-  
-  #### EPU assignment for survdat stations - function from Sean Luceys "RSurvey" repo
-  
-  # Area stratification code from Sean Lucey's Repo, renamed to signify what it is
-  source(paste0(res_path, "NMFS_trawl/slucey_functions/slucey_survdat_functions.R"))
-  
-  
-  # EPU shapefiles can be loaded from ecodata package
-  epu_sf <- ecodata::epu_sf
-  epu_sp <- suppressWarnings(as_Spatial(epu_sf))
-  
-  
-  # Rename columns to match expected formats for Sean Lucey's poststrat()
-  trawldat <- trawldat %>% 
-    rename(CRUISE6 = cruise6,
-           STATION = station,
-           STRATUM = stratum,
-           LAT     = decdeg_beglat,
-           LON     = decdeg_beglon)
-  
-  # Post stratify the station positions using EPU polygons
-  trawldat <- trawldat %>% 
-    poststrat(survdat = ., stratum = epu_sp, strata.col = "EPU") %>% 
-    rename(epu           = newstrata,
-           cruise6       = CRUISE6,
-           station       = STATION,
-           stratum       = STRATUM,
-           decdeg_beglat = LAT,
-           decdeg_beglon = LON)
-  
   
   # Stratum Area Key for which stratum correspond to larger regions we use
   strata_key <- list(
     "Georges Bank"          = as.character(13:23),
     "Gulf of Maine"         = as.character(24:40),
-    "Southern New England"  = str_pad(as.character(1:12), width = 2, pad = "0", side = "left"),
+    "Southern New England"  = str_pad(as.character(1:12), 
+                                      width = 2, pad = "0", side = "left"),
     "Mid-Atlantic Bight"    = as.character(61:76))
   
   
@@ -326,126 +286,71 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
         TRUE                                             ~ "stratum not in key"))
   
   
-  # Optional, Use strata_select to pull the strata we want individually
-  strata_select <- c(strata_key$`Georges Bank`, strata_key$`Gulf of Maine`,
-                     strata_key$`Southern New England`, strata_key$`Mid-Atlantic Bight`)
+  # Use strata_select to pull the strata we want individually
+  strata_select <- c(strata_key$`Georges Bank`, 
+                     strata_key$`Gulf of Maine`,
+                     strata_key$`Southern New England`, 
+                     strata_key$`Mid-Atlantic Bight`)
   
   
-  # Filtering with strata_select
-  trawldat <- trawldat %>% filter(strat_num %in% strata_select) %>% 
+  # Filtering areas using strata_select
+  trawldat <- trawldat %>% 
+    filter(strat_num %in% strata_select) %>% 
     mutate(stratum = as.character(stratum))
   
   
   
-  ####_ 5. Stratum Area/Effort Ratios  ####
-  # Stratum area ratio is the ratio between the area of the select 
-  # stratum to the total area of all stratum sampled that year
-  
-  # Join to the files containing area of each stratum, epu
-  trawldat <- trawldat %>% 
-    left_join(stratum_area, by = "stratum") %>% 
-    left_join(epu_areas, by = "epu") %>% 
-    arrange(trawldat, id)
   
   
+  #### 8. Adjusting NumLength  ####
   
-  
-  # Get Total stratum area of all strata sampled in a year
-  # (excludes ones we do not care about via left join)
-  total_stratum_areas <- trawldat %>% 
-    group_by(est_year) %>% 
-    distinct(stratum, .keep_all = T) %>%  
-    summarise(tot_s_area =  sum(s_area_km2, na.rm = T),
-              .groups = "keep") %>% ungroup()
-  
-  # Get total area of EPU's sampled in a year
-  total_epu_areas <- trawldat %>% 
-    group_by(est_year) %>% 
-    distinct(epu, .keep_all = T) %>%  
-    summarise(tot_epu_area =  sum(epu_area_km2, na.rm = T), 
-              .groups = "keep") %>% ungroup()
-  
-  
-  # Calculate strata area relative to total area i.e. stratio or stratum weights
-  trawldat <- trawldat %>% 
-    left_join(total_stratum_areas, by = "est_year") %>% 
-    left_join(total_epu_areas, by = "est_year") %>% 
-    mutate(st_ratio   = s_area_km2 / tot_s_area,
-           epu_ratio  = epu_area_km2 / tot_epu_area) 
-  
-  # We have to total areas, now we want effort in each
-  # Number of unique tows per stratum
-  yr_strat_effort <- trawldat %>% 
-    group_by(est_year, stratum) %>% 
-    summarise(strat_ntows = n_distinct(id), 
-              .groups = "keep") %>% ungroup()
-  
-  # Number of unique tows per EPU
-  yr_epu_effort <-  trawldat %>% 
-    group_by(est_year, epu) %>% 
-    summarise(epu_ntows = n_distinct(id), 
-              .groups = "keep") %>% ungroup()
-  
-  
-  # Add those yearly effort counts back for later 
-  #(area stratified abundance)
-  trawldat <- trawldat %>% 
-    left_join(yr_strat_effort, by = c("est_year", "stratum")) %>% 
-    left_join(yr_epu_effort, by = c("est_year", "epu"))
-  
-  
-  
-  
-  
-  ####_ 6. Adjusting NumLength to Match Abundance  ####
   # Sometimes there are more/less measured than initially tallied* in abundance
+  # This section ensures that numlen totals out to be the same
   
   
   # If catchsex is not a column then total abundance is assumed pooled
   if(has_catchsex == TRUE){
-    abundance_groups <- c("id", "comname", "catchsex")
+    abundance_groups <- c("id", "comname", "catchsex", "abundance")
   } else {
     message("catchsex column not found, ignoring sex for numlen adjustments")
-    abundance_groups <- c("id", "comname")}
-  
+    abundance_groups <- c("id", "comname", "abundance")}
   
   
   # Get the abundance value for each sex 
   # arrived at by summing across each length
   abundance_check <- trawldat %>%
-    group_by(!!!syms(abundance_groups), abundance) %>%
+    group_by(!!!syms(abundance_groups)) %>%
     summarise(
       abund_actual = sum(numlen),               
       n_len_class  = n_distinct(length),
-      .groups      = "keep") %>% ungroup()
+      .groups      = "keep") %>% 
+    ungroup()
+  
   
   # Get the ratio between the original abundance column 
   # and the sum of numlen we just grabbed
   conv_factor <- trawldat %>% 
-    #distinct(id, comname, catchsex, length, abund_adj) %>% 
-    distinct(!!!syms(abundance_groups), length, abund_adj) %>% 
-    #inner_join(abundance_check, by = c("id", "comname", "catchsex")) %>% 
+    distinct(!!!syms(abundance_groups), length) %>% 
     inner_join(abundance_check, by = abundance_groups) %>% 
-    mutate(convers = abund_adj / abund_actual)
+    mutate(convers = abundance / abund_actual)
   
   
   
   # Merge back and convert the numlen field
   # original numlen * conversion factor = numlength adjusted
   survdat_processed <- trawldat %>%
-    #left_join(conv_factor, by = c("id", "comname", "catchsex", "length", "abundance", "abund_adj")) %>%
-    left_join(conv_factor, by = c(abundance_groups, "length", "abundance", "abund_adj")) %>%
+    left_join(conv_factor, by = c(abundance_groups, "length")) %>%
     mutate(numlen_adj = numlen * convers, .after = numlen) %>% 
     select(-c(abund_actual, convers))
   
   # remove conversion factor from environment
-  rm(abundance_check, conv_factor, strata_key, strata_select, stratum_area, epu_areas, epu_sf, epu_sp)
+  rm(abundance_check, conv_factor, strata_key, strata_select)
   
   
   
   
   
-  ####_ 7. Distinct Station & Species Length Info   ####
+  #### 9. Distinct Station & Species Length Info   ####
   
   # For each station we need unique combinations of
   # station_id, species, catchsex, length, adjusted_numlen
@@ -464,20 +369,13 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
   # or if these are the only ones
   trawl_spectra <- trawl_lens %>%
     distinct(id, svspp, comname, catchsex, abundance, n_len_class,
-             length, numlen, numlen_adj, biom_adj, .keep_all = TRUE)
-  
-  
-  
-  
-  
-  # Reorder the main columns
-  
+             length, numlen, numlen_adj, biomass, .keep_all = TRUE)
   
   
   
   
   # Return the dataframe
-  # Row for each length class of every species caught
+  # Contains 1 Row for each length class of every species caught
   return(trawl_spectra)
   
 }
@@ -485,8 +383,17 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
 
 
 
-####____________________####
-#### 2. Length to Bodymass Conversions  ####
+######################################################_
+
+# Test
+# test_survdat <- survdat_prep_nodrop(survdat_source = "most recent")
+
+
+
+######################################################__####
+
+######################################################_
+
 
 # testing data
 # survdat_clean <- survdat_prep(survdat_source = "2020")
@@ -504,10 +411,12 @@ survdat_prep_nodrop <- function(survdat = NULL, survdat_source = "2020"){
 add_lw_info <- function(survdat_clean, cutoff = FALSE){
   
   
-  ####__ 1. Match Species with Growth Coefficients  ####
+  #### 1. Match Species with Growth Coefficients  ####
   
   # This table is a combined table of wigley and fishbase L-W coefficients
-  lw_combined <- read_csv(paste0(res_path, "NMFS_trawl/length_weight_keys/fishbase_wigley_combined_key.csv"), col_types = cols()) %>% 
+  nmfs_path <- shared.path(group = "RES_Data", folder = "NMFS_trawl")
+  lw_key_path <- paste0(nmfs_path, "length_weight_keys/fishbase_wigley_combined_key.csv")
+  lw_combined <- read_csv(lw_key_path, col_types = cols()) %>% 
     mutate(svspp = str_pad(svspp, 3, "left", "0"),
            season = tolower(season))
   
@@ -562,7 +471,7 @@ add_lw_info <- function(survdat_clean, cutoff = FALSE){
   
   
   
-  ####__ 2. Use Coefficients to Re-calculate Biomass  ####
+  ####  2. Use Coefficients to Re-calculate Biomass  ####
   
   # calculate total biomass again using weights from key 
   # make a key for the length weight coefficient sources
@@ -575,7 +484,8 @@ add_lw_info <- function(survdat_clean, cutoff = FALSE){
   
   
   
-  ####__ 3. Drop comnames that don't align well with BIOMASS
+  ####  3. Filter Bad Fits  #### 
+  # Drop comnames that don't align well with BIOMASS
   
   # these species were dropped at 50% mismatch threshold
   # code: 02_survdat_stratification_validation
@@ -630,8 +540,110 @@ add_lw_info <- function(survdat_clean, cutoff = FALSE){
 
 
 
-####____________________####
-####  3. Area Stratified Abundance / Biomass  ####
+######################################################_
+# test
+# test_lw        <- add_lw_info(survdat_clean = test_survdat)
+# test_lw_cutoff <- add_lw_info(survdat_clean = test_survdat, cutoff = T)
+
+######################################################__####
+
+######################################################_
+
+
+
+#' @title Add EPU Details to Station Info
+#'
+#' @param trawldat Survdat data with decdeg_beglat and decdeg_beglon coordinates
+#' 
+#' @description Uses Sean Lucey's "poststrat" function to overlay EPU's. Tried to
+#' replace it with sf steps, but it wasn't worth the effort. This function exists to
+#' reduce clutter in the area stratification function
+#'
+#' @return
+#' @export
+#'
+#' @examples
+add_epu_info <- function(trawldat){
+  
+  
+  #### EPU assignment for survdat stations - function from Sean Luceys "RSurvey" repo
+  # This section assigns EPU's via overlay using Sean Lucey's code,
+  # Area stratification code from Sean Lucey's Repo, renamed to signify what it is
+  nmfs_path <- shared.path(group = "RES_Data", folder = "NMFS_trawl")
+  source(paste0(nmfs_path, "slucey_functions/slucey_survdat_functions.R"))
+
+
+  # EPU shapefiles can be loaded from ecodata package
+  epu_sf <- ecodata::epu_sf
+  epu_sp <- suppressWarnings(as_Spatial(epu_sf))
+
+
+  # Rename columns to match expected formats for Sean Lucey's poststrat()
+  trawldat <- trawldat %>%
+    rename(CRUISE6 = cruise6,
+           STATION = station,
+           STRATUM = stratum,
+           LAT     = decdeg_beglat,
+           LON     = decdeg_beglon)
+
+  # Post stratify the station positions using EPU polygons
+  trawldat <- trawldat %>%
+    poststrat(survdat = .,
+              stratum = epu_sp,
+              strata.col = "EPU") 
+  
+  # re-name everything back to where it was
+  trawldat <- trawldat %>%
+    rename(epu           = newstrata,
+           cruise6       = CRUISE6,
+           station       = STATION,
+           stratum       = STRATUM,
+           decdeg_beglat = LAT,
+           decdeg_beglon = LON)
+  
+  return(trawldat)
+  
+  
+  
+  
+  # # Begin my take
+  # 
+  # # explain what is taking so long:
+  # message("Joining EPU Fields for Area Stratification.")
+  # 
+  # # Put EPU pairing here: 
+  # # preferrably using our code and not Sean's so debugging is easier
+  # 
+  # # Load EPU - CRS known from ecodata::epu_sf
+  # epu_path <- shared.path(group = "RES_Data", folder = "Shapefiles/EPU")
+  # epu_sf <- read_sf(paste0(epu_path, "EPU_extended.shp")) %>% st_set_crs(4269)
+  # epu_sf <- ecodata::epu_sf
+  # 
+  # # Convert Survdat to sf
+  # survdat_weights_sf <- st_as_sf(survdat_weights, 
+  #                                coords = c("decdeg_beglat", "decdeg_beglon"), 
+  #                                crs = 4326, 
+  #                                remove = FALSE)
+  # 
+  # 
+  # # Convert both to lambert for overlay
+  # 
+  # #Lambert Conformal Conic
+  # lcc <- st_crs("+proj=lcc +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-72 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0 ") 
+  # 
+  # survdat_nad <- st_transform(survdat_weights_sf, crs = 4269)
+  # survdat_lambert <- st_transform(survdat_nad, crs = lcc)
+  # epu_lambert     <- st_transform(epu_sf, crs = lcc)
+  # 
+  # 
+  # # Use overlay to assign EPU
+  # in_epu <- st_intersects(survdat_lambert, epu_lambert)
+}
+
+
+
+
+
 
 
 # Add area stratified biomass function
@@ -650,81 +662,201 @@ add_lw_info <- function(survdat_clean, cutoff = FALSE){
 #' @examples
 add_area_stratification <- function(survdat_weights, include_epu = F){ 
   
-  # Constants:
-  # average area covered by an albatross standard tow in km2
+  ####  1. Import supplemental files  ####
+  nmfs_path <- shared.path(group = "RES_Data", folder = "NMFS_trawl")
+  
+  # Stratum Area Information
+  stratum_area_path <- str_c(nmfs_path, "Metadata/strata_areas_km2.csv")
+  stratum_area      <- read_csv(stratum_area_path, col_types = cols())  %>% 
+    mutate(stratum = as.character(stratum))
+  
+  
+  
+  ####  2. Set Constants:  ####
+  
+  # Area covered by an albatross standard tow in km2
   alb_tow_km2 <- 0.0384 
   
-  # catchability coefficient, ideally should shift for different species guilds
+  # catchability coefficient - ideally should change for species guilds
   q <- 1                
   
   
-  # Derived Estimates:
+  
+  ####  Get Annual Stratum Effort, and Area Ratios
+  # number of tows in each stratum by year
+  # area of a stratum relative to total area of all stratum sampled that year
+  
+  
+  ####  3. Stratum Area/Effort Ratios  ####
+  
+  # Merge in the area of strata in km2
+  # (excludes ones we do not care about via left join)
+  survdat_weights <- survdat_weights %>% 
+    left_join(stratum_area, by = "stratum") %>% 
+    arrange(survdat_weights, id)
+  
+  
+  # Get Total stratum area of all strata sampled in a year
+  total_stratum_areas <- survdat_weights %>% 
+    group_by(est_year) %>% 
+    distinct(stratum, .keep_all = T) %>%  
+    summarise(tot_s_area =  sum(s_area_km2, na.rm = T),
+              .groups = "keep") %>% 
+    ungroup()
+  
+  
+  # Calculate strata area relative to total area i.e. stratio or stratum weights
+  survdat_weights <- survdat_weights %>% 
+    left_join(total_stratum_areas, by = "est_year") %>% 
+    mutate(st_ratio   = s_area_km2 / tot_s_area) 
+  
+  
+  # We have to total areas, now we want effort in each
+  # Number of unique tows per stratum
+  yr_strat_effort <- survdat_weights %>% 
+    group_by(est_year, stratum) %>% 
+    summarise(strat_ntows = n_distinct(id), 
+              .groups = "keep") %>% ungroup()
+
+  
+  
+  # Add those yearly effort counts back for later 
+  #(area stratified abundance)
+  survdat_weights <- survdat_weights %>% 
+    left_join(yr_strat_effort, by = c("est_year", "stratum"))
+  
+  
+  
+  
+  ####  4. Derived Stratum Area Estimates ####
   survdat_weights <- survdat_weights  %>% 
     mutate(
-      # Abundance per tow
-      # abundance / ntows for the year within that strata/epu
+      # Abundance / ntows for the year within that strata/epu
       abund_tow_s   = numlen_adj / strat_ntows,    
       
       # Biomass is repeated across length classes at each station by species
       # the number of length classes is tallied where the conversion factor is done
-      biom_per_lclass = (biom_adj / n_len_class),
+      biom_per_lclass = (biomass / n_len_class),
       
       # Mean biomass/tow for the "biomass" column
-      biom_tow_s      = biom_per_lclass / strat_ntows,
+      biom_tow_s = biom_per_lclass / strat_ntows,
       
       # Stratified mean abundance, weighted by the stratum areas
-      wt_abund_s     = abund_tow_s * st_ratio, 
+      wt_abund_s = abund_tow_s * st_ratio, 
       
       # Stratified mean BIOMASS
-      wt_biom_s   = biom_tow_s * st_ratio,
+      wt_biom_s = biom_tow_s * st_ratio,
       
       # convert from catch rate by area swept to total catch for entire stratum
       # So catch/tow times the total area, divided by how many tows would cover that area
-      expanded_abund_s   = round((wt_abund_s * tot_s_area / alb_tow_km2) / q),
+      expanded_abund_s = round((wt_abund_s * tot_s_area / alb_tow_km2) / q),
       
       # Total BIOMASS from the weighted biomass
-      expanded_biom_s   = round((wt_biom_s * tot_s_area / alb_tow_km2) / q), 
+      expanded_biom_s = (wt_biom_s * tot_s_area / alb_tow_km2) / q, 
       
-      # Total lw-biomass from Projected abundances: Biomass = abundance * lw_weight
-      expanded_lwbio_s    = sum_weight_kg * expanded_abund_s
+      # Two options for lw biomass
+      # Result is the same 4/20/2021
       
-    ) 
+      # Option 1: Individual LW Biomass * expanded abundance at length
+      expanded_lwbio_s = ind_weight_kg * expanded_abund_s, 
+      
+      # # Option 2: Size specific lw biomass / tow, expanded to total area
+      # lwbio_tow_s       = sum_weight_kg / strat_ntows,
+      # wt_lwbio_s        = lwbio_tow_s * st_ratio,
+      # expanded_lwbio_s = (wt_lwbio_s * tot_s_area / alb_tow_km2) / q
+      ) 
   
-  ####  Optional - weighted by EPU areas
+  
+  
+  
+  
+  ####  5. BONUS: EPU Stratifications  ####
   if(include_epu == TRUE){
-    survdat_weights <- survdat_weights  %>% 
+    
+    # Explain what is taking so long:
+    message("Joining EPU Fields for Area Stratification.")
+    
+    
+    # Add EPU details using sp::over() and Sean's code
+    survdat_epu <- add_epu_info(survdat_weights)
+    
+    
+    # EPU area information: source slucey_survdat_functions.R and {ecodata}
+    epu_area_path <- str_c(nmfs_path, "Metadata/EPU_areas_km2.csv")
+    epu_areas     <- read_csv(epu_area_path, col_types = cols())
+    
+    # Join to the file containing EPU areas in km2
+    survdat_epu <- survdat_epu %>% 
+      left_join(epu_areas, by = "epu") 
+    
+    
+    # Get total area of EPU's sampled in each year
+    total_epu_areas <- survdat_epu %>% 
+      group_by(est_year) %>% 
+      distinct(epu, .keep_all = T) %>%  
+      summarise(tot_epu_area =  sum(epu_area_km2, na.rm = T), 
+                .groups = "keep") %>% ungroup()
+    
+    
+    
+    # Calculate epu area relative to total area i.e. epu_ratio or area weights
+    survdat_epu <- survdat_epu %>% 
+      left_join(total_epu_areas, by = "est_year") %>% 
+      mutate(epu_ratio  = epu_area_km2 / tot_epu_area) 
+    
+    # Number of unique tows per EPU
+    yr_epu_effort <-  survdat_epu %>% 
+      group_by(est_year, epu) %>% 
+      summarise(epu_ntows = n_distinct(id), .groups = "keep") %>% 
+      ungroup()
+    
+    # join back
+    survdat_epu <- survdat_epu %>% 
+      left_join(yr_epu_effort, by = c("est_year", "epu"))
+    
+    
+    # Process Area Stratified values
+    survdat_weights <- survdat_epu  %>% 
       mutate(
         # Abundance per tow
         abund_tow_epu = numlen_adj / epu_ntows,       
         # Mean biomass/tow for the BIOMASS column
-        biom_tow_epu    = biom_per_lclass / epu_ntows,
+        biom_tow_epu = biom_per_lclass / epu_ntows,
         # Stratified mean abundances, weighted by the stratum areas
-        wt_abund_epu   = abund_tow_epu * epu_ratio,
+        wt_abund_epu = abund_tow_epu * epu_ratio,
         # Stratified mean BIOMASS
         wt_biom_epu = biom_tow_epu * epu_ratio,
         # Total catch for entire stratum
         expanded_abund_epu = round((wt_abund_epu * tot_epu_area/ alb_tow_km2) / q),
         # Total Biomass from the weighted biomass
-        expanded_biom_epu = round((wt_biom_epu * tot_epu_area/ alb_tow_km2) / q),
+        expanded_biom_epu = (wt_biom_epu * tot_epu_area/ alb_tow_km2) / q,
         # LW Biomass from Expanded abundances: Biomass = abundance * lw_weight
-        expanded_lwbio_epu  = sum_weight_kg * expanded_abund_epu)} 
+        expanded_lwbio_epu  = ind_weight_kg * expanded_abund_epu)} 
   
   
   # Remove instances where there were fish that were measured but not weighed
-  survdat_weights <- survdat_weights %>% 
-    filter(expanded_lwbio_s != -Inf)
+  # survdat_weights <- survdat_weights %>% filter(expanded_lwbio_s != -Inf)
   
   return(survdat_weights)
 }
 
-# survdat_clean <- survdat_prep(survdat_source = "2020")
-# weights_20 <- add_lw_info(survdat_clean = survdat_clean)
-# strat_biomass <- add_area_stratification(survdat_weights = weights_20, include_epu = F)
 
 
 
 
-####____________________####
+
+######################################################_
+
+# # Tests
+# strat_biomass <- add_area_stratification(survdat_weights = test_lw, include_epu = F)
+# strat_bio_epu <- add_area_stratification(survdat_weights = test_lw, include_epu = T)
+
+
+#########__________________________________________####
+
+######################################################_
+
+
 
 ####  Taking Out Individual Components  ####
 
@@ -752,7 +884,7 @@ pull_station_totals <- function(){
   survdat_weights %>% 
     distinct(id, station, svvessel, season, 
              svspp, comname, catchsex, 
-             abundance, biom_adj, sum_weight_kg,
+             abundance, biomass, sum_weight_kg,
              expanded_abund_s, expanded_biom_s, expanded_lwbio_s)
   
 }
@@ -769,9 +901,11 @@ pull_numlen_details <- function(){
 }
 
 
+######################################################_
 
+######################################################__####
 
-####____________________####
+######################################################_
 
 ####  Aggregation Summary Functions  ####
 
@@ -779,10 +913,8 @@ pull_numlen_details <- function(){
 # dat_2020 <- strat_biomass
 
 
-####____________________####
 
 
-#### 1. Group Stratified Species Summaries  ####
 
 #' @title Stratified Means by Species from Size Spectrum Data
 #'
@@ -861,8 +993,8 @@ agg_species_metrics <- function(.data = data, ..., include_epu = FALSE){
 
 
 
+######################################################_
 
-####  2. Aggregate Stratified Means and Totals  ####
 
 
 # This function can be used as a double-check for whether or not the abundances/biomasses
@@ -893,7 +1025,7 @@ agg_strat_metrics <- function(.data,
   # subset columns to speed everything up:
   focus_data <- .data %>% 
     select(id, est_year, est_month, svvessel, season, stratum, s_area_km2, epu, epu_area_km2, 
-           comname, catchsex, length, numlen_adj, sum_weight_kg, biom_adj, biom_per_lclass)
+           comname, catchsex, length, numlen_adj, sum_weight_kg, biomass, biom_per_lclass)
   
   
   
@@ -956,7 +1088,9 @@ agg_strat_metrics <- function(.data,
 
 
 
-#### 3. Annual Summary  ####
+######################################################_
+
+
 # Return an annual summary
 ss_annual_summary <- function(survey_data, include_epu = F) {
   
@@ -1009,7 +1143,8 @@ ss_annual_summary <- function(survey_data, include_epu = F) {
 # test: ss_annual_summary(dat_2020)
 
 
-#### 4. Regional Summary####
+
+######################################################_
 
 
 
@@ -1069,7 +1204,6 @@ ss_regional_summary <- function(survey_data, epu_regions = F, include_epu = FALS
 
 
 
-#### 5. Seasonal Summary  ####
 
 # Include season as a group
 ss_seasonal_summary <- function(survey_data, include_epu = F){
@@ -1081,7 +1215,7 @@ ss_seasonal_summary <- function(survey_data, include_epu = F){
       n_stations               = n_distinct(id),                              # Distinct tows
       n_species                = n_distinct(comname),                         # Distinct species
       lw_biomass_kg            = sum(sum_weight_kg),                          # sum weight across species
-      fscs_biomass_kg          = sum(biom_adj),
+      fscs_biomass_kg          = sum(biomass),
       lw_biomass_per_station   = lw_biomass_kg / n_stations,                  # total weight / tows
       fscs_biomass_per_station = fscs_biomass_kg /n_stations,
       total_survey_abund       = sum(numlen_adj),                             # total number across species

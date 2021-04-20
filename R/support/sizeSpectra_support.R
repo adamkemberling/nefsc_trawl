@@ -1,36 +1,89 @@
 ####  sizeSpectra Support Functions  ####
 
 ####_____________________####
-####  Functions  ####
+####  Load Libraries  ####
 
 library(sizeSpectra)
 library(tidyverse)
 
 
+####  Filter Min Length
 
-# Takes a list of each species, pulls distinct length bins
-# returns a key of what the wmin and wmax is for each
-# corrects wmin and wmax to kg for trouble species
-make_bin_key <- function(species_df){
+# set minimum size cutoff
+min_length_cutoff <- function(trawl_lens, cutoff_cm = 1){
+  dplyr::filter(trawl_lens,
+                is.na(length) == FALSE, 
+                length >= cutoff_cm)
+}
+
+
+
+# Build dataOrig
+prep_wmin_wmax <- function(lw_trawl_data){
   
-  #pull the distinct length bins
-  species_df <- species_df %>% 
-    distinct(LngtClass, .keep_all = T) %>% 
-    arrange(LngtClass)
+  # Filter out empty weights
+  ss_dat <- lw_trawl_data  %>% 
+    filter(is.na(ind_weight_kg) == FALSE)
+    
   
+  # Format columns for consistency downstream
+  ss_dat <- ss_dat %>% 
+    mutate(season = str_to_title(season),
+           season = factor(season, levels = c("Spring", "Fall"))) %>%
+    rename(
+      Year       = est_year,                  # year
+      # turn these off b/c unnecessary
+      # samp_month = est_month,                 # month of sampling
+      # samp_day   = est_day,                   # day of sampling
+      # vessel     = svvessel,                  # survey vessel
+      SpecCode   = comname,                   # common name
+      LngtClass  = length,                    # length bin
+      Number     = numlen_adj,                # adjusted number at length
+      LWa        = a,                         # length/weight parameter
+      LWb        = b)                         # length/weight parameter
   
-  
-  # Add the max length for the bin, and its weight
-  binned_df <- species_df %>% 
+  # Get bodymass in kg, and the biomass from the catch frequencies
+  ss_dat <- ss_dat %>%                     
     mutate(
-      LngtMax = LngtClass + 1, 
-      wmax    = exp(log(LWa) + LWb * log(LngtMax)) * 1000,
-      wmax    = ifelse(SpecCode %in% gram_species, wmax / 1000, wmax))  %>%
-    select(SpecCode, LWa, LWb, LngtMin = LngtClass, wmin = bodyMass, LngtMax, wmax,
-           -c(Number, Biomass))
+      bodyMass           = ind_weight_kg * 1000,              # weight in grams of individual
+      Biomass            = Number * bodyMass,                 # number at size times the mass
+      lw_group           = str_c(SpecCode, season, catchsex)) 
   
-  # return the clean data
-  return(binned_df)}
+
+  
+  
+  
+  # Get Upper Length Bin Weights
+  # Assumes that for all species the lengths only jump in 1 cm increments
+  # Captures min/max predicted weight across that length increment
+  ss_dat <- ss_dat %>% 
+    mutate(
+      LngtMax         = LngtClass + 1,
+      Ln_wmax         = (ln_a + LWb * log(LngtMax)),
+      wmin            = bodyMass,                     # minimum weight of individual
+      wmax            = exp(Ln_wmax) * 1000,          # max weight of individual
+      wmin_sum        = Number * wmin,                # wmin * number caught actual
+      wmax_sum        = Number * wmax)                # wmax * number caught actual  
+      
+  
+  # If available do stratified abundance as well
+  if("expanded_abund_s" %in% names(ss_dat)){
+    ss_dat <- ss_dat %>% 
+    mutate(
+      Stratified_Biomass = expanded_abund_s * bodyMass,
+      wmin_area_strat    = expanded_abund_s * wmin,           # wmin * stratified abundance
+      wmax_area_strat    = expanded_abund_s * wmax            # wmax * stratified abundance
+    )
+  }
+  
+  # Arrange
+  ss_dat <- ss_dat %>% 
+    arrange(Year, season, SpecCode, LngtClass)
+  
+  # return data prepped for sizeSpectra
+  return(ss_dat)
+  
+}
 
 
 
@@ -534,14 +587,6 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     # Toggle to turn on the fit lines or not
     if(show_pl_fit == TRUE) {
       p2 <- p2 +
-        # geom_smooth(data = data_group,
-        #             aes(x = wmin, 
-        #                 y = lowCount),
-        #             formula = y ~ x,
-        #             method = "lm", 
-        #             se = T,
-        #             color = "darkred")
-        # Adding the power law fit here also:
         geom_line(data = PLB_df, aes(x.PLB, y.PLB), color = "darkred") +
         geom_line(data = PLB_df, aes(x.PLB, confMin), color = "darkred", linetype = 2) +
         geom_line(data = PLB_df, aes(x.PLB, confMax), color = "darkred", linetype = 2)
@@ -563,3 +608,33 @@ ggplot_strat_isd <- function(data_group, group_ss_res, plot_rects = TRUE, show_p
     return(plot_list)
   
 }
+
+
+
+
+####__________________________________####
+####  Phased Out  ####
+
+# # Takes a list of each species, pulls distinct length bins
+# # returns a key of what the wmin and wmax is for each
+# # corrects wmin and wmax to kg for trouble species
+# make_bin_key <- function(species_df){
+#   
+#   #pull the distinct length bins
+#   species_df <- species_df %>% 
+#     distinct(LngtClass, .keep_all = T) %>% 
+#     arrange(LngtClass)
+#   
+#   
+#   
+#   # Add the max length for the bin, and its weight
+#   binned_df <- species_df %>% 
+#     mutate(
+#       LngtMax = LngtClass + 1, 
+#       wmax    = exp(log(LWa) + LWb * log(LngtMax)) * 1000,
+#       wmax    = ifelse(SpecCode %in% gram_species, wmax / 1000, wmax))  %>%
+#     select(SpecCode, LWa, LWb, LngtMin = LngtClass, wmin = bodyMass, LngtMax, wmax,
+#            -c(Number, Biomass))
+#   
+#   # return the clean data
+#   return(binned_df)}
