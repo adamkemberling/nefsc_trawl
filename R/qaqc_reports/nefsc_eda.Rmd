@@ -38,25 +38,17 @@ box_paths  <- research_access_paths(os.use = "unix")
 mills_path <- box_paths$mills
 res_path   <- box_paths$res
 
-
-####  Load NEFSC Groundfish Data  ####
-
-# Loading from targets:
-# Load the area-stratified biomass/abundances that used species cutoffs
-withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(nefsc_stratified))
-weights_21 <- nefsc_stratified
-
-
 # Load the shapefiles for the polygons
 new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
 canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
 
 #### Set theme  ####
-theme_set(theme_classic())
+theme_set(theme_bw())
 
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
 
 # Exporatory Data Analysis of NEFSC Bottom Trawl Survey Data
 
@@ -65,10 +57,20 @@ Exploration of spatial and temporal patterns in abundance, and bodymass of fishe
 
 Build code containing data wrangling and conversions can be accessed [here.](https://github.com/adamkemberling/nefsc_trawl/blob/master/R/support/nefsc_ss_build_nodrop.R)
 
+
+Data loaded for this markdown is pulled directly from the {[targets](https://github.com/ropensci/targets)} pipeline for data consistency with a developing codebase.
+
 ```{r group summaries}
 
-# Do some formatting
-weights_21 <- weights_21 %>% 
+####  Load NEFSC Groundfish Data  ####
+
+# Loading from targets:
+# Load the area-stratified biomass/abundances that used species cutoffs
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(nefsc_stratified))
+
+
+# Do some text formatting
+nefsc_stratified <- nefsc_stratified %>% 
   mutate(
     id = as.character(id),
     season = ifelse(season %in% c("spring"), "Spring", "Fall"),
@@ -76,8 +78,8 @@ weights_21 <- weights_21 %>%
   )
 
 # Run Summary Functions
-ann_means <- ss_annual_summary(weights_21, include_epu = F)
-seasonals <- ss_seasonal_summary(weights_21, include_epu = F) 
+ann_means <- ss_annual_summary(nefsc_stratified, include_epu = F)
+seasonals <- ss_seasonal_summary(nefsc_stratified, include_epu = F) 
 
 # bind them so you can facet
 summs <- bind_rows(ann_means, seasonals) %>% 
@@ -85,8 +87,8 @@ summs <- bind_rows(ann_means, seasonals) %>%
 
 
 #drop haddock to see if that changes the bump
-haddock_ann  <- ss_annual_summary(filter(weights_21, comname != "haddock"))
-haddock_seas <- ss_seasonal_summary(filter(weights_21, comname != "haddock"))
+haddock_ann  <- ss_annual_summary(filter(nefsc_stratified, comname != "haddock"))
+haddock_seas <- ss_seasonal_summary(filter(nefsc_stratified, comname != "haddock"))
 no_haddockn  <- bind_rows(haddock_ann, haddock_seas) %>% 
   mutate(season = factor(season, levels = c("Spring", "Fall", "Spring + Fall")))
 ```
@@ -94,12 +96,12 @@ no_haddockn  <- bind_rows(haddock_ann, haddock_seas) %>%
 
 ## Temporal Trends {.tabset .tabset-pills}
 
-Patterns in annual abundance or CPUE of High Profile Species at annual and/or seasonal levels.
+Patterns in annual abundance or CPUE of High Profile Species at annual and seasonal scales.
 
 
 ### Total Biomass {.tabset}
 
-Biomass of a given species from a station is a function of the adjusted number caught, their lengths, and the corresponding weights at-length using the species specific length-weight relationship coefficients. sex-specific coefficients and seasonal growth coefficients are used when available.
+Biomass of a given species from a station is a function of the adjusted number caught, their lengths, and the corresponding weights at-length using the species specific length-weight relationship coefficients. Sex-specific coefficients and seasonal growth coefficients are used when available.
 
 Total biomass in the following plots represent the total of all individual biomass estimates from all species with available growth coefficients, for each year and within each survey season.
 
@@ -109,6 +111,8 @@ Total biomass in the following plots represent the total of all individual bioma
 Species specific length-weight relationships allow us to look at where biomass is across different lengths. When aggregating up to total biomass using these expected relationships we get this timeseries.
 
 ```{r, fig.height = 8}
+
+# Annual Timeline
 bio_1 <- ann_means %>% 
   ggplot(aes(est_year, lw_biomass_kg, 
              color = season, 
@@ -126,6 +130,7 @@ bio_1 <- ann_means %>%
          color = "Season")
 
 
+# Seasonal Timeline
 bio_2 <- seasonals %>% 
   ggplot(aes(est_year, lw_biomass_kg, color = season)) +
     geom_line() +
@@ -135,6 +140,7 @@ bio_2 <- seasonals %>%
          color = "Season",
          caption = "Biomass totals from actual catch, not stratified to represent survey areas.")
 
+# Stack them with patchwork
 bio_1 / bio_2
 
 ```
@@ -142,7 +148,9 @@ bio_1 / bio_2
 
 #### Gross Shipboard Weight
 
-Alternatively, we can also get the total biomass from the actual weights recorded on the ship. Not all fishes are measured (length) but total biomass for a species is recorded. We would expect with accurrate length-weight relationships that this plot should resemble the length-weight timeline.
+As a comparison, we can also get the total biomass from the weights recorded on the ship. Not all fishes are weighed individually, but total biomass for a species is recorded for each station. 
+
+We would expect with accurate length-weight relationships that this plot should resemble the length-weight time line.
 
 ```{r, fig.height = 8}
 ship_1 <- ann_means %>% 
@@ -163,9 +171,9 @@ ship_2 <- seasonals %>%
 ship_1 / ship_2
 ```
 
-#### Stratification {.tabset}
+#### Area Stratification {.tabset}
 
-Area stratified totals  for abundance and biomass are calculated according to the following formulas in accordance with code found [here, courtesy of Sean Lucey](https://github.com/slucey/RSurvey/blob/master/Survdat/R/survdat_functions.R)
+Area stratified totals for abundance and biomass are calculated according to the following formulas in accordance with code found [here, courtesy of Sean Lucey](https://github.com/slucey/RSurvey/blob/master/Survdat/R/survdat_functions.R)
 
 
 The stratum area ratio is the area of strata:  $1,2,3, ...s$ relative to the total area of all strata sampled that year (only stratum with data we use is included).
@@ -243,16 +251,18 @@ lw_strat_1 <-  ggplot(ann_means) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
-         y = "Area Expanded Biomass\nl-W Regressions (million kg)",
-         color = "") 
+         y = "Area Expanded Biomass\n l-W Regressions (million kg)",
+         color = "") +
+  theme(legend.position = "bottom")
 
 lw_strat_2 <- ggplot(seasonals) +
     geom_line(aes(est_year, lw_strat_biomass_s/1000000, color = season)) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
-         y = "Area Expanded Biomass\nL-W Regressions (million kg)", 
-         color = "")
+         y = "Area Expanded Biomass\n L-W Regressions (million kg)", 
+         color = "")+
+  theme(legend.position = "bottom")
 
 lw_strat_1 / lw_strat_2
 ```
@@ -269,16 +279,18 @@ strat_1 <-  ggplot(ann_means) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
-         y = "Area Expanded Biomass \n Shipboard Weight (million kg)",
-         color = "Season")
+         y = "Area Expanded Biomass \n survdat$BIOMASS (million kg)",
+         color = "Season") +
+  theme(legend.position = "bottom")
 
 strat_2 <-  ggplot(seasonals) +
     geom_line(aes(est_year, fscs_strat_biomass_s/1000000, color = season)) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
-         y = "Area Expanded Biomass \n Shipboard Weight (million kg)",
-         color = "Season")
+         y = "Area Expanded Biomass \n survdat$BIOMASS (million kg)",
+         color = "Season") +
+  theme(legend.position = "bottom")
 
 strat_1 / strat_2
 ```
@@ -305,7 +317,8 @@ cpue_1 <- ann_means %>%
     labs(x = "", 
          y = "LW Biomass / Station\n(kg)",
          linetype = "",
-         color = "Season")
+         color = "Season") +
+  theme(legend.position = "bottom")
 
 cpue_2<- seasonals %>% 
   ggplot(aes(est_year, lw_biomass_per_station, color = season)) +
@@ -313,7 +326,8 @@ cpue_2<- seasonals %>%
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
          y = "LW Biomass / Station\n(kg)", 
-         color = "Season")
+         color = "Season") +
+  theme(legend.position = "bottom")
 
 cpue_1 / cpue_2
 ```
@@ -328,7 +342,7 @@ Relative contribution to overall biomass by species group based on management an
 
 ```{r, fig.height = 8}
 # Species Class Bins Data Prep
-class_totals <- weights_21 %>% 
+class_totals <- nefsc_stratified %>% 
   group_by(est_year, spec_class) %>% 
   summarise(`Total Class Biomass` = sum(sum_weight_kg),
             .groups = "keep") %>% 
@@ -362,7 +376,7 @@ class_totals %>%
 **Plotting Individual Guilds**
 
 ```{r, fig.height=6}
-guild_plots <- weights_21 %>% 
+guild_plots <- nefsc_stratified %>% 
   split(.$spec_class) %>% 
   imap(function(guild, guild_name){
     
@@ -528,7 +542,7 @@ Since 2008 there has been a large increase in the amount of total biomass caught
 ```{r}
 
 # Pull top 5 species from each year, by biomass
-top_5 <- weights_21 %>% 
+top_5 <- nefsc_stratified %>% 
   filter(est_year >= 2004) %>% 
   group_by(est_year, comname) %>% 
   summarise(n_fish = sum(numlen_adj),
@@ -537,8 +551,7 @@ top_5 <- weights_21 %>%
   split(.$est_year) %>% 
   map_dfr(function(yr_group){
     yr_group  %>% 
-      slice_max(order_by = lw_biomass, n = 5)
-  })
+      slice_max(order_by = lw_biomass, n = 5) })
   
 
 # Plot each year, re-ordered by biomass
@@ -554,6 +567,8 @@ t5_plots <- top_5 %>%
       scale_x_continuous(labels = scales::comma_format()) +
       labs(x = "Total Biomass (kg) - From LW Relationship", y = "")
 })
+
+
 
 # Assemble 4-panel plots displaying years in groups of 4
 t1 <- ((t5_plots$`2004` | t5_plots$`2005`) / (t5_plots$`2006` | t5_plots$`2007`))
@@ -597,7 +612,7 @@ Bodymass size cutoffs are used to plot the timelines of total fish biomass below
 
 ```{r}
 max_weight_plot <- function(size_cutoff){
-  weights_21 %>% 
+  nefsc_stratified %>% 
     filter(ind_weight_kg < size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
@@ -646,14 +661,14 @@ max_weight_plot(1)
 
 Maximum size plots show a huge increase in biomass of small fishes corresponding with the vessel change from the RV Albatross to the RV Henry Bigelow. 
 
-To Take a look at what species contributed the most to this, I will maintain the maximum bodysize filter of .125 kg, and compare the difference in catch/tow for species across research vessel. The following plots will highlight the top & bottom ten species experiencing positive/negative changes to their catch rates. Temporal differences are ignored here, and may play a bigger role than vessel changes.
+To Take a look at what species contributed the most to this, I will maintain the maximum body size filter of .125 kg, and compare the difference in catch/tow for species across research vessel. The following plots will highlight the top & bottom ten species experiencing positive/negative changes to their catch rates. Temporal differences are ignored here, and may play a bigger role than vessel changes.
 
 ```{r}
 # annual biomasses for top 10 species, ordered by total biomass that year
 # Minimum individual bodymass of 5k
 
 # Compare total biomass and cpue across vessels
-svp <- weights_21 %>% 
+svp <- nefsc_stratified %>% 
     filter(ind_weight_kg < .125) %>% 
     group_by(svvessel, comname) %>% 
     summarise(bio = sum(sum_weight_kg),
@@ -753,7 +768,7 @@ Same idea for the larger fish, but the opposite. A minimum cutoff for the indivi
 
 # plotting function
 min_weight_plot <- function(size_cutoff){
-  weights_21 %>% 
+  nefsc_stratified %>% 
     filter(ind_weight_kg > size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
@@ -796,12 +811,12 @@ min_weight_plot(10)
 
 #### Recent Upswings
 
-Plots of minimum bodysize cutoff at 5kg and 10kg seem to have a big upswing in the last couple years, the following plot looks to highlight where the most biomass resides in those years with that same minimum bodymass cutoff.
+Plots of minimum bodysize cutoff at 5kg and 10kg seem to have a big upswing in the last couple years, the following plot looks to highlight where the most biomass resides in those years with that same minimum bodymass cutoff of 5g.
 
 ```{r}
 # annual biomasses for top 10 species, ordered by total biomass that year
 # Minimum individual bodymass of 5k
-y_plots <- weights_21 %>% 
+y_plots <- nefsc_stratified %>% 
     filter(ind_weight_kg > 5,
            est_year >= 2016) %>% 
     group_by(est_year, comname) %>% 
@@ -817,7 +832,7 @@ y_plots <- weights_21 %>%
       geom_segment(aes(x = 0, xend = total_biomass_lw, comname, yend = comname)) +
       geom_point() +
       facet_wrap(~est_year) +
-      labs(x = "Total Biomass (kg)", y = NULL)})
+      labs(x = "Total LW Biomass (kg)", y = NULL)})
 
 y_plots$`2016` | y_plots$`2017`
 y_plots$`2018` | y_plots$`2019`
@@ -830,7 +845,7 @@ Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further in
 ```{r}
 
 # How many cownose rays, and how suspicious is that number?
- cownose <- weights_21 %>% 
+ cownose <- nefsc_stratified %>% 
    filter(comname == "cownose ray") %>% 
    group_by(comname, est_year, season, id) %>% 
    summarise(total_biomass_lw = sum(sum_weight_kg),
@@ -839,14 +854,6 @@ Big jumps in 2018 and 2019 seem to stem from catches of cownose rays. Further in
 
 cownose %>% kable()
  
-# # Get summary metrics for cownose
-# weights_21 %>% 
-#   filter(comname == "cownose ray") %>% 
-#   agg_species_metrics(est_year, season) %>% 
-#   mutate(`Research Vessel` = ifelse(est_year > 2008, "HB", "AL")) %>% 
-#   ggplot(aes(est_year, abundance, fill = season)) +
-#   geom_col() +
-#   labs(x = "", y = "Seasonal Abundance", fill = "")
 
 ```
 
@@ -858,7 +865,7 @@ Using the same bodymass bins as in Kathy's code `cleaned up size spectra code.R`
 One thing that was brought up in my discussion with [Andrew Edwards](https://github.com/andrew-edwards) was that I should be standardizing the bin heights by their width because evenly spaced values on a log scale are increasingly large on the untransformed scale. For example for bins using log10() scale, the bin width from 2 < log10(x) < 3 is 900, and the next bin 3 < log10(x) < 4 has a width of 9,000.
 
 
-```{r}
+```{r manual binning}
 
 # Set up bins for plotting normalized size specra
 
@@ -868,17 +875,17 @@ One thing that was brought up in my discussion with [Andrew Edwards](https://git
 
 # NOTE: case_when is greedy so once something is assigned it is out of the pool of candidates
 # In this case you want to count down    
-weights_21 <- weights_21 %>% 
+nefsc_stratified <- nefsc_stratified %>% 
   mutate(
     lweight = log(ind_weight_kg),
-    llen = log(length),
-    l10wt = log10(ind_weight_kg))
+    llen    = log(length),
+    l10wt   = log10(ind_weight_kg))
 
 
 
 
  # Length bins for log() scale
-weights_21 <- weights_21 %>% 
+nefsc_stratified <- nefsc_stratified %>% 
   mutate(
     # Bin Numbers
     lenbin2 = case_when(
@@ -896,22 +903,22 @@ weights_21 <- weights_21 %>%
     # Range of lengths for each bin
     len_range = case_when(
       lenbin2 == 10 ~ exp(5.5) - exp(5),
-      lenbin2 == 9 ~ exp(5) - exp(4.5),
-      lenbin2 == 8 ~ exp(4.5) - exp(4),
-      lenbin2 == 7 ~ exp(4) - exp(3.5),
-      lenbin2 == 6 ~ exp(3.5) - exp(3),
-      lenbin2 == 5 ~ exp(3) - exp(2.5),
-      lenbin2 == 4 ~ exp(2.5) - exp(2),
-      lenbin2 == 3 ~ exp(2) - exp(1.5),
-      lenbin2 == 2 ~ exp(1.5) - exp(1),
-      lenbin2 == 1 ~ exp(1) - exp(.5),
-      lenbin2 == 0 ~ exp(0.5) - exp(0)))
+      lenbin2 == 9  ~ exp(5) - exp(4.5),
+      lenbin2 == 8  ~ exp(4.5) - exp(4),
+      lenbin2 == 7  ~ exp(4) - exp(3.5),
+      lenbin2 == 6  ~ exp(3.5) - exp(3),
+      lenbin2 == 5  ~ exp(3) - exp(2.5),
+      lenbin2 == 4  ~ exp(2.5) - exp(2),
+      lenbin2 == 3  ~ exp(2) - exp(1.5),
+      lenbin2 == 2  ~ exp(1.5) - exp(1),
+      lenbin2 == 1  ~ exp(1) - exp(.5),
+      lenbin2 == 0  ~ exp(0.5) - exp(0)))
 
 
 
 
 # Weight bins on log() scale
-weights_21 <- weights_21 %>% 
+nefsc_stratified <- nefsc_stratified %>% 
   mutate(
     # Bin numbers
     wtbin = case_when(
@@ -944,7 +951,7 @@ weights_21 <- weights_21 %>%
 
 
 # Weight Bins on log10 scale
-weights_21 <- weights_21 %>% 
+nefsc_stratified <- nefsc_stratified %>% 
   mutate(
     #Bin Numbers
     wt10bin =  case_when(
@@ -999,14 +1006,36 @@ weights_21 <- weights_21 %>%
 
 
 # Summarise bins to get counts and normalizeed counts
-bin_summs <- weights_21 %>% 
+bin_summs <- nefsc_stratified %>% 
   group_by(svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
   summarise(n_group = sum(numlen_adj),
             .groups = "keep") %>% 
   ungroup() %>% 
-  mutate(l_norm = n_group / len_range,
+  mutate(l_norm     = n_group / len_range,
          wtbin_norm = n_group / wt_range,
-         wt10_norm = n_group / wt10_range)
+         wt10_norm  = n_group / wt10_range,
+         `min length (cm)`  = as.character(round(len_range, 2)),
+         `min weight (kg)`  = as.character(round(wt_range, 2)),
+         `log10 min weight` = as.character(round(wt10_range, 2)))
+
+
+# Use factor level formatting to put meaningful labels on the bins
+sort_numeric_chars <- function(num_as_text){
+  as.character(sort(as.numeric(unique(num_as_text))))
+}
+
+len_levels  <- sort_numeric_chars(bin_summs$`min length (cm)`)
+wt_levels   <- sort_numeric_chars(bin_summs$`min weight (kg)`)
+wt10_levels <- sort_numeric_chars(bin_summs$`log10 min weight`)
+
+
+# apply factor levels
+bin_summs <- bin_summs %>% 
+  mutate(
+    `min length (cm)` = factor(`min length (cm)`, levels = len_levels),
+    `min weight (kg)` = factor(`min weight (kg)`, levels = wt_levels),
+    `log10 min weight` = factor(`log10 min weight`, levels = wt10_levels)
+  )
 
 ```
 
@@ -1014,22 +1043,25 @@ bin_summs <- weights_21 %>%
 
 ```{r}
 
-# The bin names have no values Reference points
-
 # log() length bins
-l1 <- ggplot(bin_summs, aes(lenbin2, n_group, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_log10() +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "Bin Number", y = "Abundance")
 
-l2 <- ggplot(bin_summs, aes(lenbin2, l_norm, fill = svvessel)) +
+l1 <- ggplot(bin_summs, aes(x = `min length (cm)`, y = n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "Bin Number", y = "Normalized Abundance", caption = "Bin numbers increase at increments of 0.5 in log(length).")
+    labs(x = "Minimum Length (cm)", y = "Abundance") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+l2 <- ggplot(bin_summs, aes(`min length (cm)`, l_norm, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "Minimum Length (cm)", 
+         y = "Normalized Abundance", 
+         caption = "Bin numbers increase at increments of 0.5 in log(length).") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 l1 | l2
 
@@ -1044,19 +1076,23 @@ l1 | l2
 ```{r}
 
 # log() weight bins
-wt1 <- ggplot(bin_summs, aes(wtbin, n_group, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_log10() +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "log2 Weight Bins", y = "Abundance")
-
-wt2 <- ggplot(bin_summs, aes(wtbin, wtbin_norm, fill = svvessel)) +
+wt1 <- ggplot(bin_summs, aes(`min weight (kg)`, n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "log2 Weight Bins", y = "Normalized Abundance", caption = "Bin numbers increase at increments of 2 in log(weight).")
+    labs(x = "Minimum Weight (kg)", y = "Abundance") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+wt2 <- ggplot(bin_summs, aes(`min weight (kg)`, wtbin_norm, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x =  "Minimum Weight (kg)", 
+         y = "Normalized Abundance", 
+         caption = "Bin numbers increase at increments of 2 in log(weight).") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 
 wt1 | wt2
@@ -1067,21 +1103,25 @@ wt1 | wt2
 ```{r}
 
 #l10 weight bins
-wt10_1 <- ggplot(bin_summs, aes(wt10bin, n_group, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_log10() +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "log10 Weight Bins", y = "Abundance")
-
-
-# abundance normalized by bin width
-wt10_2 <- ggplot(bin_summs, aes(wt10bin, wt10_norm, fill = svvessel)) +
+wt10_1 <- ggplot(bin_summs, aes(`log10 min weight`, n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~svvessel) +
     scale_fill_gmri() +
-    labs(x = "log10 Weight Bins", y = "Normalized Abundance", caption = "Bin numbers increase at increments of 0.5 in log(length).")
+    labs(x = "Minimum Weight (kg)", y = "Abundance") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+
+# abundance normalized by bin width
+wt10_2 <- ggplot(bin_summs, aes(`log10 min weight`, wt10_norm, fill = svvessel)) +
+    geom_col(show.legend = F) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    facet_wrap(~svvessel) +
+    scale_fill_gmri() +
+    labs(x = "Minimum Weight (kg)", 
+         y = "Normalized Abundance", 
+         caption = "Bin numbers increase at increments of 0.5 in log(length).") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 
 wt10_1 | wt10_2
 ```
@@ -1090,63 +1130,87 @@ wt10_1 | wt10_2
 #### Annual
 
 ```{r}
-ann_summs <- weights_21 %>% 
+ann_summs <- nefsc_stratified %>% 
   group_by(est_year, svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
   summarise(n_group = sum(numlen_adj),
             .groups = "keep") %>% 
   ungroup() %>% 
   mutate(l_norm = n_group / len_range,
          wtbin_norm = n_group / wt_range,
-         wt10_norm = n_group / wt10_range)
+         wt10_norm = n_group / wt10_range,
+         `min length (cm)`  = as.character(round(len_range, 2)),
+         `min weight (kg)`  = as.character(round(wt_range, 2)),
+         `log10 min weight` = as.character(round(wt10_range, 2)),
+         `min length (cm)` = factor(`min length (cm)`, levels = len_levels),
+         `min weight (kg)` = factor(`min weight (kg)`, levels = wt_levels),
+         `log10 min weight` = factor(`log10 min weight`, levels = wt10_levels))
 
-#l10 weight bins
+
+
+
+# Plotting l10 weight bins
+
+# functions to reduce code repetition
+plot_l10bins <- function(x){
+  x %>%
+  ggplot(aes(`log10 min weight`, n_group, fill = svvessel)) +
+        geom_col(show.legend = F) +
+        scale_y_continuous(labels = scales::comma_format()) +
+        facet_grid(est_year ~ svvessel, scales = "free") +
+        scale_fill_gmri() +
+        labs(x = "Min Weight (kg)", y = "Abundance") +
+        theme(strip.text.y = element_text(angle = 0),
+              axis.text.x = element_text(angle = 90, vjust = 0.5))
+}
+
+# Normalized abundances
+plot_l10bins_norm <- function(x){
+  x %>%
+  ggplot(aes(`log10 min weight`, wt10_norm, fill = svvessel)) +
+        geom_col(show.legend = F) +
+        scale_y_continuous(labels = scales::comma_format()) +
+        facet_grid(est_year ~ svvessel, scales = "free") +
+        scale_fill_gmri() +
+        labs(x = "Min Weight (kg)", y = "Normalized Abundance") +
+        theme(strip.text.y = element_text(angle = 0),
+              axis.text.x = element_text(angle = 90, vjust = 0.5))
+}
+
+
+
+
+# List to store them
 ann_plots <- list()
 
+
+# Albatross
 ann_plots$AL <- ann_summs %>% 
   filter(svvessel == "AL",
-         est_year >= 2000) %>%
-  ggplot(aes(wt10bin, n_group, fill = svvessel)) +
-        geom_col(show.legend = F) +
-        scale_y_log10() +
-        facet_grid(est_year ~ svvessel, scales = "free") +
-        scale_fill_gmri() +
-        labs(x = "log10 Weight Bins", y = "Abundance") +
-        theme(strip.text.y = element_text(angle = 0))
+         est_year >= 2000) %>% 
+  plot_l10bins()
 
+
+# Bigelow
 ann_plots$HB <- ann_summs %>% 
   filter(svvessel == "HB") %>%
-  ggplot(aes(wt10bin, n_group, fill = svvessel)) +
-        geom_col(show.legend = F) +
-        scale_y_log10() +
-        facet_grid(est_year ~ svvessel, scales = "free") +
-        scale_fill_gmri(reverse = T) +
-        labs(x = "log10 Weight Bins", y = "Abundance") +
-        theme(strip.text.y = element_text(angle = 0))
+  plot_l10bins()
 
 
+# Albatross Normalized
 ann_plots$AL_norm <- ann_summs %>% 
   filter(svvessel == "AL",
-         est_year >= 2000) %>%
-  ggplot(aes(wt10bin, wt10_norm, fill = svvessel)) +
-        geom_col(show.legend = F) +
-        scale_y_continuous(labels = scales::comma_format()) +
-        facet_grid(est_year ~ svvessel, scales = "free") +
-        scale_fill_gmri() +
-        labs(x = "log10 Weight Bins", y = "Normalized Abundance") +
-        theme(strip.text.y = element_text(angle = 0))
+         est_year >= 2000) %>% 
+  plot_l10bins_norm()
 
+# Bigelow Normalized
 ann_plots$HB_norm <- ann_summs %>% 
-  filter(svvessel == "HB") %>%
-  ggplot(aes(wt10bin, wt10_norm, fill = svvessel)) +
-        geom_col(show.legend = F) +
-        scale_y_continuous(labels = scales::comma_format()) +
-        facet_grid(est_year ~ svvessel, scales = "free") +
-        scale_fill_gmri(reverse = T) +
-        labs(x = "log10 Weight Bins", y = "Normalized Abundance") +
-        theme(strip.text.y = element_text(angle = 0))
+  filter(svvessel == "HB") %>% 
+  plot_l10bins_norm()
 
+
+
+# Assemble them
 ann_plots$AL | ann_plots$HB
-
 ann_plots$AL_norm | ann_plots$HB_norm
 
 
@@ -1199,7 +1263,7 @@ survey_strata <- survey_strata %>%
 
 
 # Make trawl data an sf dataset
-trawl_sf <- weights_21 %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
+trawl_sf <- nefsc_stratified %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat"), crs = 4326)
 
 ```
 
@@ -1207,7 +1271,7 @@ trawl_sf <- weights_21 %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_beglat")
 
 
 
-### Trawl Regions
+### Map of Trawl Regions
 
 ```{r, fig.height=6}
 # Plot to check
@@ -1222,7 +1286,7 @@ ggplot() +
 
 ```
 
-###  Ecological Production Units
+###  Map of Ecological Production Units
 
 ```{r, fig.height=6}
 epu_sf <- ecodata::epu_sf
@@ -1244,7 +1308,7 @@ ggplot() +
 ```{r}
 
 # Just Area, all seasons
-area_summs <- weights_21 %>% 
+area_summs <- nefsc_stratified %>% 
   group_by(survey_area) %>% 
   summarise(
     season = "Spring + Fall",
@@ -1258,7 +1322,7 @@ area_summs <- weights_21 %>%
   ungroup()
 
 # Area x Season
-seas_area <- weights_21 %>% 
+seas_area <- nefsc_stratified %>% 
   group_by(survey_area, season) %>% 
   summarise(
     lw_biomass_kg = sum(sum_weight_kg, na.rm = T),
@@ -1282,7 +1346,7 @@ summs_combined %>%
 
 
 # Year x Area
-area_summs_y <- weights_21 %>% 
+area_summs_y <- nefsc_stratified %>% 
   group_by(est_year, survey_area) %>% 
   summarise(
     season                 = "Spring + Fall",
@@ -1299,9 +1363,7 @@ area_summs_y <- weights_21 %>%
   ungroup()
 
 
-# weights_21 %>% 
-#   ggplot(aes(est_year, sum_weight_kg)) +
-#   geom_boxplot(aes(group = est_year))
+
 ```
 
 
@@ -1374,54 +1436,6 @@ lw <- area_summs_y %>%
 fscs | lw
            
 ```
-
-
-```{r}
-# What happened in MAB in those early years - 1973
-mab_check <- weights_21 %>% 
-  filter(est_year == 1973, 
-         survey_area == "MAB") %>% 
-  group_by(est_year, season, comname) %>% 
-  summarise(
-    n_fish = sum(numlen_adj),
-    fscs_bio = sum(biom_per_lclass),
-    lw_bio_actual = sum(sum_weight_kg),
-    lw_strat_bio = sum(expanded_lwbio_s)) %>% 
-  ungroup() %>% 
-  arrange(desc(lw_strat_bio))
-
-# pulling top species from multiple years
-# mab_check %>% 
-#   group_by(est_year, season) %>% 
-#   slice_max(order_by = lw_strat_bio, n = 5) %>% 
-#   ungroup()
-
-# plotting individual stations
-mab_check %>% 
-  ggplot(aes(est_year, lw_strat_bio, color = comname)) +
-  geom_point() +
-  facet_wrap(~season, nrow = 2) +
-  theme(legend.position = "bottom")
-
-
-weights_21 %>% 
-  filter(est_year == 1973,
-         comname == "northern searobin") %>% 
-  group_by(est_year, season, station, comname) %>% 
-  summarise(
-    total_caught = sum(numlen_adj),
-    total_recorded_weight = sum(biom_per_lclass),
-    total_lw_weight = sum(sum_weight_kg),
-    area_expanded_weight = sum(expanded_lwbio_s),
-    weight_per_fish = total_recorded_weight / total_caught,
-    lwbio_per_fish = total_lw_weight / total_caught) %>% 
-  ungroup() %>% 
-  arrange(desc(area_expanded_weight)) %>% 
-  head() %>% 
-  glimpse()
-  
-```
-
 
 
 

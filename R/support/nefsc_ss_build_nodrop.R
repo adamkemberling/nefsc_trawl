@@ -552,6 +552,9 @@ add_lw_info <- function(survdat_clean, cutoff = FALSE){
 
 
 #' @title Add EPU Details to Station Info
+#' 
+#' @description Uses Sean Lucey's Poststrat function to add the correct EPU designation 
+#' to the survey station locations.
 #'
 #' @param trawldat Survdat data with decdeg_beglat and decdeg_beglon coordinates
 #' 
@@ -662,6 +665,8 @@ add_epu_info <- function(trawldat){
 #' @examples
 add_area_stratification <- function(survdat_weights, include_epu = F){ 
   
+  
+  
   ####  1. Import supplemental files  ####
   nmfs_path <- shared.path(group = "RES_Data", folder = "NMFS_trawl")
   
@@ -681,13 +686,12 @@ add_area_stratification <- function(survdat_weights, include_epu = F){
   q <- 1                
   
   
-  
   ####  Get Annual Stratum Effort, and Area Ratios
   # number of tows in each stratum by year
   # area of a stratum relative to total area of all stratum sampled that year
   
   
-  ####  3. Stratum Area/Effort Ratios  ####
+  ####  3. Stratum Area & Effort Ratios  ####
   
   # Merge in the area of strata in km2
   # (excludes ones we do not care about via left join)
@@ -696,7 +700,7 @@ add_area_stratification <- function(survdat_weights, include_epu = F){
     arrange(survdat_weights, id)
   
   
-  # Get Total stratum area of all strata sampled in a year
+  # Get Total area of all strata sampled in each year
   total_stratum_areas <- survdat_weights %>% 
     group_by(est_year) %>% 
     distinct(stratum, .keep_all = T) %>%  
@@ -708,10 +712,10 @@ add_area_stratification <- function(survdat_weights, include_epu = F){
   # Calculate strata area relative to total area i.e. stratio or stratum weights
   survdat_weights <- survdat_weights %>% 
     left_join(total_stratum_areas, by = "est_year") %>% 
-    mutate(st_ratio   = s_area_km2 / tot_s_area) 
+    mutate(st_ratio = s_area_km2 / tot_s_area) 
   
   
-  # We have to total areas, now we want effort in each
+  # We have total areas, now we want effort within each
   # Number of unique tows per stratum
   yr_strat_effort <- survdat_weights %>% 
     group_by(est_year, stratum) %>% 
@@ -763,7 +767,7 @@ add_area_stratification <- function(survdat_weights, include_epu = F){
       # # Option 2: Size specific lw biomass / tow, expanded to total area
       # lwbio_tow_s       = sum_weight_kg / strat_ntows,
       # wt_lwbio_s        = lwbio_tow_s * st_ratio,
-      # expanded_lwbio_s = (wt_lwbio_s * tot_s_area / alb_tow_km2) / q
+      # expanded_lwbio_s  = (wt_lwbio_s * tot_s_area / alb_tow_km2) / q
       ) 
   
   
