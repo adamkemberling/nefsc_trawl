@@ -24,7 +24,7 @@ source(here("R/support/sizeSpectra_support.R"))
 theme_set(theme_minimal())
 
 # New england shape
-new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+new_england <- ne_states("united states of america", returnclass = "sf")
 
 
 # File Paths

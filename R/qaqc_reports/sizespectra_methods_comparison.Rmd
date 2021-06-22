@@ -1,0 +1,784 @@
+---
+title: "Size Spectra Method Comparison"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup,  include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+####  Packages  ####
+library(targets)
+library(here)
+library(gmRi)
+library(janitor)
+library(ggpmisc)
+library(scales)
+library(sizeSpectra)
+library(patchwork)
+library(tidyverse)
+library(gt)
+library(knitr)
+
+
+####  Support Functions  ####
+source(here("R/support/sizeSpectra_support.R"))
+
+####  Resource Paths  ####
+box_paths  <- research_access_paths(os.use = "unix")
+
+
+#### Set theme  ####
+theme_set(theme_bw())
+
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+```{r}
+showtext::showtext_auto()
+```
+
+
+# Exporatory Data Analysis of NEFSC Bottom Trawl Survey Data
+
+
+This markdown exsts to highlight differences in size spectrum slopes using different size spectrum binning methods.
+
+ - Inidividual Bodymass Spectrum from {sizeSpectra}
+ - Size Spectrum Slope {mizer}   
+ - Log10 bins
+ 
+ The main differences among methods boil down to a couple of things. Individual Biomass Specctrum vs. normalized biomass-spectra.   
+  1. Are the biomasses of individuals put into size bins?   
+  2. How are those bins set?   
+  3. And how is the linear equation set up with regards to those bins (lef/center/right) aligned
+  
+  
+```{r}
+# Loading from targets:
+# Load the area-stratified biomass/abundances that used species cutoffs
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(nefsc_1g))
+
+# Drop columns to speed things up
+nefsc_1g <- nefsc_1g %>% 
+  filter(Year >= 2010) %>% 
+  select(Year, 
+         station, 
+         stratum, 
+         SpecCode,         #species
+         LngtClass,        #length
+         bodyMass,         # lw of individual in grams
+         Number,           # numlen_adj
+         bodyMass_sum,     # numlen_adj * weight_g
+         wmin,             # same as bodymass
+         wmax,             # weight of ind at length + 1
+         wmin_sum,         # wmin * numlen_adj
+         wmax_sum,         # wmax * numlen_adj
+         expanded_abund_s, #stratified abundance
+         wmin_area_strat,  # wmin * strat abund
+         wmax_area_strat)  #wmax * strat abund
+```
+ 
+ 
+## Normalized Biomass-Spectra Approaches
+
+These approaches work by placing the individual biomasses of fishes into discrete bins on a logarithmic scale. The counts within each bin are then plotted, and a linear regression is fit the these bins to get a size spectra slope.
+
+Differences in methodology exist on determining bin structure, bin widths, and normalizing the counts by the width of the bins.
+
+Example:   
+In the R package mizer (Scott et al., 2014) the user specifies bins by giving the lower
+bounds of the smallest and largest bins (min w and max w) and also the number of bins
+(no w). The bins are equally spaces on the log10() scale, with the last bin of equal width to the second to last bin. 
+
+The natural log of counts within each bin are then modeled using a linear regression with the minimum biomass of each bin size used as a predictor to return both a size-spectra slope and an intercept.
+
+
+### Kathy's Legacy Code
+
+The methods below area adapted from `cleaned up size spectra code.R`. The code has been streamlined in attempts to clarify the approach.
+
+#### Assigning Bins to the Data 
+
+```{r}
+
+#### 1. Set up bodymass bins
+
+
+# Copy the data to use for the first method
+m1 <- nefsc_1g
+
+
+# Get bodymass on log10() scale
+m1$log10_weight <- log10(m1$bodyMass)
+
+
+# Set up the bins using 0.5 spacing - Pull min and max from data available
+max_bin <- ceiling(max(m1$log10_weight))
+min_bin <- floor(min(m1$log10_weight))
+n_bins  <- length(seq(max_bin, min_bin + 0.5, by = -0.5))
+
+
+# Build a bin key, could be used to clean up the incremental assignment or for apply style functions
+l10_bin_structure <- data.frame(
+  "left_lim"  = seq(max_bin - 0.5, min_bin, by = -0.5),
+  "right_lim" = seq(max_bin, min_bin + 0.5, by = -0.5),
+  "log10_bins" = as.character(seq(n_bins, 1, by = -1))) %>% 
+  mutate(
+    bin_label = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
+    bin_width = 10^right_lim - 10^left_lim )
+
+
+
+# Loop through bins to assign the bin numbers
+m1_assigned <- l10_bin_structure %>%
+  split(.$log10_bins) %>%
+  map_dfr(function(l10_bin){
+    
+    # limits and labels
+    l_lim   <- l10_bin$left_lim
+    r_lim   <- l10_bin$right_lim
+    bin_num <- as.character(l10_bin$log10_bin)
+    
+    # assign the label to the appropriate bodymasses
+    m1 %>% mutate(
+      log10_bins = ifelse( between(log10_weight, l_lim, r_lim), bin_num, NA),
+      log10_bins = as.character(log10_bins)) %>%
+      drop_na(log10_bins)
+
+  })
+
+
+# # Old way to do Manual assignment of bins: 
+# # boxes you in to bins and labels in a lot of text
+
+# m1$log10_bin <- NA
+# m1$log10_bin <- ifelse(m1$log10_weight > 2.5, yes = 20, no = m1$log10_bin)
+# ...
+# ...
+# m1$log10_bin <- ifelse(m1$log10_weight >   -7 & m1$log10_weight <= -6.5,  1, m1$log10_bin)
+
+
+
+
+# Plot how they fall in bins
+
+# Get bin breaks
+l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
+
+# Plot
+hist(log10(rep(m1$bodyMass, m1$Number)), 
+     breaks = l10_breaks,
+     main = "Manual log10() Bins\nEqual 0.5 Intervals",
+     xlab = "log10( individual bodymass g )",
+     col = gmri_cols("gmri blue"))
+```
+
+#### Plotting the Aggregates
+
+```{r}
+
+# We already have stratified abundances m1$expanded_abund_s
+# so next we:
+
+# 1. aggregate individual bodymasses into each bin for overall totals
+
+# aggregating all years together
+# aggregating all stratum together
+m1_aggregates <- m1_assigned %>% 
+  group_by(log10_bins) %>% 
+  summarise(years = "all",
+            stratum = "all",
+            observed_abundance   = sum(Number, na.rm = T),
+            observed_weight_g    = sum(wmin, na.rm = T),
+            stratified_abundance = sum(expanded_abund_s, na.rm = T),
+            stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
+  ungroup()
+
+
+# join back in what the limits and labels are
+# normalize abundances using bin widths
+m1_prepped <- left_join(m1_aggregates, l10_bin_structure, by = "log10_bins") %>% 
+  mutate(
+    normalized_abund = observed_abundance / bin_width,
+    norm_strat_abund = stratified_abundance / bin_width)
+
+#### Plotting the Raw Abundances and stratified abundances
+abund_plot <- m1_prepped %>% 
+  ggplot(aes(left_lim, observed_abundance)) +
+  geom_point(color = gmri_cols("gmri blue")) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Sampled Abundances",
+      subtitle = "Without Correcting for Differences in Bin Widths")
+
+
+strat_abund_plot <- m1_prepped  %>% 
+  ggplot(aes(left_lim, stratified_abundance)) +
+  geom_point(color = gmri_cols("gmri blue")) +
+ scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Stratified Abundances")
+
+
+raw_plot <- (abund_plot | strat_abund_plot) 
+
+#### Plots Correcting for the bin widths
+norm_abund_plot <- m1_prepped %>% 
+  ggplot(aes(left_lim, normalized_abund)) +
+  geom_point(color = gmri_cols("green")) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Normalized Abundances",
+       subtitle = "Abundances Divided by Bin Widths")
+
+norm_strat_abund_plot <- m1_prepped  %>% 
+  ggplot(aes(left_lim, norm_strat_abund)) +
+  geom_point(color = gmri_cols("green")) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
+
+
+# plots with bin width correction
+corrected_plots <- (norm_abund_plot | norm_strat_abund_plot) 
+
+
+# Plot them all together
+(raw_plot / corrected_plots) + plot_annotation(caption = "Manual assignment of equally spaced (0.5) bins on log10() scale.")
+```
+
+
+####  Calculate Size-Spectra Slope
+
+```{r}
+
+# Formula for size spectrum slope
+# log10(abundance) ~ log10 bin, aka the minimum bodymass for bin
+lm_abund       <- lm(log10(normalized_abund) ~ left_lim, data = m1_prepped)
+lm_abund_strat <- lm(log10(norm_strat_abund) ~ left_lim, data = m1_prepped)
+
+
+# Pull coefficients:
+
+# pull out slope coefficient
+# NOTE: Edwards  Subtracts one here, but only for the mizer method, check eightmethods
+lm_b <- lm_abund$coeff[2] #- 1
+lm_b_strat <- lm_abund_strat$coeff[2] #- 1
+
+# 95% conf
+lm_conf = confint(lm_abund, "left_lim", 0.95) 
+lm_conf_strat = confint(lm_abund_strat, "left_lim", 0.95) 
+
+
+
+
+# Storing Model Details:
+# this normally populates itself for each method
+kathy_results = data.frame(Year = "all", 
+                           Method = "Manual log10 bins (0.5 increments)", 
+                           b = lm_b, 
+                           confMin = lm_conf[1], 
+                           confMax = lm_conf[2], 
+                           b_strat = lm_b_strat,
+                           confMin_strat = lm_conf_strat[1], 
+                           confMax_strat = lm_conf_strat[2], 
+                           row.names = NULL)
+
+
+
+```
+
+
+#### Plotting Slope Fits
+
+```{r}
+# Abundances from Survey
+p1 <- norm_abund_plot +
+  geom_smooth(formula = y ~ x,
+               method = "lm",
+              color = gmri_cols("orange")) +
+  stat_poly_eq(formula = y ~ x,
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                   label.y = 0.1, 
+                   parse = TRUE) +
+  labs(caption = "Survey Abundance", subtitle = "", title = "Manual log10 Binning")
+
+# Stratified Abundances
+p2 <- norm_strat_abund_plot +
+  geom_smooth(formula = y ~ x,
+               method = "lm",
+              color = gmri_cols("orange")) +
+  stat_poly_eq(formula = y ~ x,
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                   label.y = 0.1, 
+                   parse = TRUE) +
+  labs(caption = "Stratified Abundance")
+
+
+p1 + p2
+```
+
+  
+### Mizer
+
+The mizer approach has a few differences from the previous method in terms of bin selection and spacing.
+
+The default number of bins for mizer is 8. 
+
+In the R package mizer (Scott et al., 2014) the user specifies bins by giving the lower bounds of the smallest and largest bins (min w and max w) and also the number of bins (no w). The lower bounds of the bins are then calculated as:
+
+`w <- 10^(seq(from = log10(min_w), to = log10(max_w), length_out = no_w)`
+
+Where `min_w` is the minimum individual weight, `max_w`is the maximum individual weight, and `no_w` is the number of bins.
+
+The final bin is then given the same width (on an arithmetic scale) as the penultimate bin (F. Scott, pers. comm). Thus the lower bounds of the bins are equally spaced on a log10 scale, as are the bin widths (except for the final bin).
+
+The counts in each bin are calculated, and the slope of an abundance spectra is calculated as the slope of the linear regression of log(counts) against log(w). There is an option to calculate a biomass spectra, for which counts in each bin are multiplied by the lower bound of that bin, and then the linear regression is performed.
+
+To get into build the bins to match up with how it is done with {mizer}, I dug into the functions of the {sizeSpectra} package that are used to compare methods.The following code will highlight how mizer results look compared to the first method.
+
+
+####  Assigning Bins to the Data
+
+```{r}
+
+# Copy data for the mizer method
+mizer_data <- nefsc_1g
+
+# The following code follows sizeSpectra::eightMethods
+# specifically the mizer section
+
+# Vector of Body Sizes
+x         <- rep(mizer_data$bodyMass, mizer_data$Number)          
+
+log_x     <- log(x)              # take the log
+sum_log_x <- sum(log_x)          # total log bodymass
+xmin      <- min(x)              # minimum bodymass bin
+xmax      <- max(x)              # maximum bodymass bin
+num_bins  <- 8                   # default number of bins
+
+
+# Default bin number k = 8
+mizer_num_bins <- num_bins
+
+
+# Solve for beta (value for equal bin widths) using nlm
+beta <- nlm(f    = LBmizbinsFun,
+            p    = 2, 
+            xmin = xmin, 
+            xmax = xmax, 
+            k    = mizer_num_bins)$est
+
+
+# Use beta to get the bin breaks (left side)
+mizer_bins = c( beta^(0:(mizer_num_bins - 1)) * min(x), max(x))
+
+
+
+####  Getting Counts for stratified abundances
+# Just gonna repeat how I did it for the first method because it was helpful
+
+
+# will make key to use groupby
+mizer_bins_key <- data.frame(
+  "left_lim"  = mizer_bins[c(1:(length(mizer_bins)-1))],
+  "right_lim" = mizer_bins[c(2:length(mizer_bins))],
+  "mizer_bin_num" = as.character(seq(num_bins, 1, by = -1))) %>% 
+  mutate(
+    bin_label   = str_c(round(left_lim, 3), " - ", round(right_lim, 3), "g"),
+    bin_width_g = right_lim - left_lim)
+
+
+
+# Loop through bins to assign the bin numbers
+mizer_assigned <- mizer_bins_key %>%
+  split(.$mizer_bin_num) %>%
+  map_dfr(function(l10_bin){
+    
+    # limits and labels
+    l_lim   <- l10_bin$left_lim
+    r_lim   <- l10_bin$right_lim
+    bin_num <- as.character(l10_bin$mizer_bin_num)
+    
+    # assign the label to the appropriate bodymasses
+    mizer_data %>% mutate(
+      mizer_bin_num = ifelse( between(bodyMass, l_lim, r_lim), bin_num, NA)) %>%
+      drop_na(mizer_bin_num)
+
+  })
+
+
+
+
+#### Plotting the histogram / get the counts in each bin
+
+# How bin counting is done in eightMethods()
+# mizer_bin_hist <- hist(x = x,
+#                       breaks = mizer_bins, 
+#                       plot = F)
+
+
+# Plot distribution of survey abundances
+hist(x = log10(x),
+     breaks = log10(mizer_bins),
+     main = "Mizer Bin Structure\nSurvey Abundance",
+     xlab = "log10(individual bodymass in grams)",
+     col = gmri_cols("teal"))
+```
+
+####  Plotting the Aggregates
+
+```{r}
+# We already have stratified abundances m1$expanded_abund_s
+# so next we:
+
+# 1. aggregate individual bodymasses into each bin for overall totals
+
+# aggregating all years together
+# aggregating all stratum together
+# Get totals for the bins
+mizer_aggregates <- mizer_assigned %>% 
+  group_by(mizer_bin_num) %>% 
+  summarise(years = "all",
+            stratum = "all",
+            observed_abundance   = sum(Number, na.rm = T),
+            observed_weight_g    = sum(wmin, na.rm = T),
+            stratified_abundance = sum(expanded_abund_s, na.rm = T),
+            stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
+  ungroup()
+
+# # Do we get the same numbers?-NNO stupic histogram method doesn't work
+# sum(mizer_bin_hist$counts)
+# sum(mizer_aggregates$observed_abundance)
+# sum(mizer_data$Number)
+# length(x) 
+
+# Verdict
+# we lose incomplete numbers of numlen_adj
+
+
+# join back in what the limits and labels are
+# normalize abundances using bin widths
+mizer_prepped <- left_join(mizer_aggregates, mizer_bins_key, by = "mizer_bin_num") %>% 
+  mutate(
+    normalized_abund = observed_abundance / bin_width_g,
+    norm_strat_abund = stratified_abundance / bin_width_g)
+
+#### Plotting the Raw Abundances and stratified abundances
+abund_plot <- mizer_prepped %>% 
+  ggplot(aes(left_lim, observed_abundance)) +
+  geom_point(color = gmri_cols("gmri blue")) +
+  scale_x_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Sampled Abundances",
+      subtitle = "Without Correcting for Differences in Bin Widths")
+
+
+strat_abund_plot <- mizer_prepped  %>% 
+  ggplot(aes(left_lim, stratified_abundance)) +
+  geom_point(color = gmri_cols("gmri blue")) +
+  scale_x_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Stratified Abundances")
+
+
+raw_plot <- (abund_plot | strat_abund_plot) 
+
+#### Plots Correcting for the bin widths
+norm_abund_plot <- mizer_prepped %>% 
+  ggplot(aes(left_lim, normalized_abund)) +
+  geom_point(color = gmri_cols("green")) +
+  scale_x_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Normalized Abundances",
+       subtitle = "Abundances Divided by Bin Widths")
+
+norm_strat_abund_plot <- mizer_prepped  %>% 
+  ggplot(aes(left_lim, norm_strat_abund)) +
+  geom_point(color = gmri_cols("green")) +
+  scale_x_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
+
+
+# plots with bin width correction
+corrected_plots <- (norm_abund_plot | norm_strat_abund_plot) 
+
+
+# Plot them all together
+(raw_plot / corrected_plots) + plot_annotation(caption = "Mizer Method - 8 Bins")
+```
+
+
+
+
+#### Calculate Size-Spectra Slope
+
+```{r}
+#### How its done in eightMethods:
+
+# Get the log of the mizer bin breaks
+mizer_log_min_of_bins <- log(mizer_bins[-length(mizer_bins)])
+
+# getting log of counts - use aggregate totals here and not hist function
+mizer_log_counts       <- log(mizer_prepped$observed_abundance) # survey abundance
+mizer_log_counts_strat <- log(mizer_prepped$stratified_abundance) # stratified abundance
+
+# Convert inf to NA
+mizer_log_counts[is.infinite(mizer_log_counts)] <- NA
+mizer_log_counts_strat[is.infinite(mizer_log_counts_strat)] <- NA
+
+# # The order of pairings is getting mismatched when they are added as separate vectors:
+# # calculate slope of abundance spectra
+# mizer_lm <- lm(mizer_log_counts ~ mizer_log_min_of_bins, 
+#                na.action = na.omit)
+# 
+# #BONUS: Do the stratified abundances
+# mizer_lm_strat <- lm(mizer_log_counts_strat ~ mizer_log_min_of_bins, 
+#                      na.action = na.omit)
+# # pull out slope coefficient
+# # NOTE: Edwards  Subtracts 1 here
+# mizer_b <- mizer_lm$coeff[2] - 1
+# mizer_b_strat <- mizer_lm_strat$coeff[2] - 1
+# 
+# mizer_conf <- confint(mizer_lm, "mizer_log_min_of_bins", 0.95)
+# mizer_conf_strat <- confint(mizer_lm_strat, "mizer_log_min_of_bins", 0.95)
+
+
+
+
+
+
+####  Fix: Use the mizer_prepped table
+# Also, use normalized abundance
+mizer_lm       <- lm(log(normalized_abund) ~ log(left_lim), 
+                     data = mizer_prepped, 
+                     na.action = na.omit)
+mizer_lm_strat <- lm(log(norm_strat_abund) ~ log(left_lim), 
+                     data = mizer_prepped, 
+                     na.action = na.omit)
+
+
+
+# pull out slope coefficient
+# NOTE: Edwards  Subtracts 1 here
+mizer_b <- mizer_lm$coeff[2]
+mizer_b_strat <- mizer_lm_strat$coeff[2]
+
+# 95% conf
+mizer_log_llims <- sort(unique(mizer_prepped$left_lim))
+mizer_conf <- confint(mizer_lm, "mizer_log_llims", 0.95)
+mizer_conf_strat <- confint(mizer_lm_strat, "mizer_log_min_of_bins", 0.95)
+
+
+# this normally populates itself for each method
+mizer_results <- data.frame(Year          = "all", 
+                            Method        = "Mizer", 
+                            b             = mizer_b, 
+                            confMin       = mizer_conf[1], 
+                            confMax       = mizer_conf[2], 
+                            b_strat       = mizer_b_strat,
+                            confMin_strat = mizer_conf_strat[1], 
+                            confMax_strat = mizer_conf_strat[2], 
+                            row.names     = NULL)
+```
+
+#### Plotting the Slope Fits
+
+```{r}
+
+
+# Abundances from Survey
+p1 <- norm_abund_plot +
+  geom_smooth(formula = y ~ x,
+               method = "lm",
+              color = gmri_cols("orange")) +
+  stat_poly_eq(formula = y ~ x,
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                   label.y = 0.1, 
+                   parse = TRUE) +
+  labs(caption = "Survey Abundance", subtitle = "", title = "Mizer Methods")
+
+# Stratified Abundances
+p2 <- norm_strat_abund_plot +
+  geom_smooth(formula = y ~ x,
+               method = "lm",
+              color = gmri_cols("orange")) +
+  stat_poly_eq(formula = y ~ x,
+               aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                   label.y = 0.1, 
+                   parse = TRUE) +
+  labs(caption = "Stratified Abundance")
+
+
+p1 + p2
+
+```
+
+
+### sizeSpectra
+
+
+#### Calculating b
+
+**Survey Abundance**
+
+I have moved these steps into a function to clean up my code, but will step through them here for transparency.
+
+```{r}
+# Set aside data for this last method
+dataBin <- nefsc_1g
+
+
+# Set bodymass lower limit
+# subjective
+mass_cutoff <- 0 #grams
+
+# Filter for lower end of gear selectivity
+dbin_trunc <- filter(dataBin, wmin >= mass_cutoff)
+
+# Create Grouping Var (year/year and season etc.)
+dbin_trunc <- dbin_trunc %>% 
+  mutate(group_var = "all_data")
+
+
+####  1. Survey Abundance Curves  ####
+# The steps of the droup_mle_calc() function are laid out explicitly here
+# the same steps are done for stratified abundance numbers below
+
+# Select the necessary columns
+dataBinForLike = dplyr::select(dbin_trunc,
+                               SpecCode,
+                               wmin,
+                               wmax,
+                               Number)
+  
+# Set n, xmin, xmax for power law bounds
+n    = sum(dataBinForLike$Number)
+xmin = min(dataBinForLike$wmin)
+xmax = max(dataBinForLike$wmax)
+  
+  
+
+# Get the likelihood calculation for the bins
+# previously named MLEbins.nSeaFung.new
+mle_group_bins = calcLike(negLL.fn = negLL.PLB.bins.species,
+                          p = -1.9,
+                          vecDiff = 0.5,
+                          suppress.warnings = TRUE,
+                          dataBinForLike = dataBinForLike,
+                          n = n,
+                          xmin = xmin,
+                          xmax = xmax)
+  
+  
+# Store outputs in a dataframe
+mle_survey_abund = data.frame(xmin = xmin,
+                              xmax = xmax,
+                              n = n,
+                              b = mle_group_bins$MLE,
+                              confMin = mle_group_bins$conf[1],
+                              confMax = mle_group_bins$conf[2]) %>% 
+  mutate(group_var = "all years",
+         stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+         C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
+  
+  
+  
+ # thats it
+  
+```
+
+**Stratified Abundance**
+
+The only difference here is that instead of number at length from the survey we pass the expected area stratified abundances.
+
+```{r}
+# Same code, just behind a function and using stratified abundance instead of numlen for numbers at length
+
+#### 2,  stratified abundances:
+mle_stratified <- group_mle_calc(dataBinForLike = dbin_trunc, 
+                                 group_var = "all data",
+                                 abundance_vals = "stratified",  
+                                 vecDiff = 0.5) 
+
+
+
+# Put results together
+mle_results <- data.frame(Year          = "all", 
+                          Method        = "sizeSpectra mle", 
+                          b             = mle_survey_abund$b, 
+                          confMin       = mle_survey_abund$confMin, 
+                          confMax       = mle_survey_abund$confMin, 
+                          b_strat       = mle_stratified$b,
+                          confMin_strat = mle_stratified$confMin, 
+                          confMax_strat = mle_stratified$confMax, 
+                          row.names     = NULL)
+```
+
+
+#### Individual Size Distribution
+
+```{r, eval = FALSE}
+# Breaks - need to revisit the functions
+# # Take each group and generate the plots
+# isd_group_prepped <- dbin_trunc %>%
+#   split(.$group_var) %>%
+#   map(isd_plot_prep, stratified_abundance = T)
+
+group_isd_prep <- isd_plot_prep(biomass_data = dbin_trunc, 
+                                stratified_abundance = T, min_weight_g = 1)
+
+# Global limits for plot
+xlim.global <- c(0, max(dbin_trunc$wmax) )
+
+# Vector of years, for naming
+group_names <- sort(unique(dbin_trunc$group_var))
+
+
+# # Plot the group
+group_isd <- ggplot_isd(isd_data_prepped = group_isd_prep, 
+                         mle_results = mle_stratified, 
+                         abundance_vals = "stratified", 
+                         plot_rects = TRUE, 
+                         show_pl_fit = T, group_name = "sizeSpectra Method")
+
+
+
+
+# # Take a peak
+#group_isd$obs_y
+group_isd$log10_y
+```
+
+
+
+## Results Comparison
+
+```{r}
+# Put results together
+all_results <- bind_rows(kathy_results,  mizer_results, mle_results)
+
+
+# mess around with tables
+all_results %>% 
+  select(-Year) %>% 
+  gt() %>% 
+    tab_header(title = "SS Results for Different Methods",
+               subtitle = "Agreement (with minor differences) across methods.") %>% 
+  fmt_number( # A column (numeric data)
+    columns = vars(b, confMin, confMax, 
+                   b_strat, confMin_strat, confMax_strat),
+    decimals = 2) %>% 
+  cols_label(b = "b (slope)", b_strat = "b (stratified abundance)")
+
+
+
+```
+

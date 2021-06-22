@@ -1,9 +1,11 @@
-setwd('C:/Users/kmills/Documents/Active Research/Lenfest/Ecosystem change analyses/Data')
-load('all.means.out.Rdata')
-load('bn.setup2.RData')
-load('sppclass2.Rdata')
-load('lwreg.Rdata')
-load('wigleyspp2.Rdata')
+# Kathy Mills Size Spectrum
+
+# setwd('C:/Users/kmills/Documents/Active Research/Lenfest/Ecosystem change analyses/Data')
+# load('all.means.out.Rdata')
+# load('bn.setup2.RData')
+# load('sppclass2.Rdata')
+# load('lwreg.Rdata')
+# load('wigleyspp2.Rdata')
 
 #save(sppclass2, file="sppclass2.Rdata")
 #save(lwreg,file="lwreg.Rdata")
@@ -12,22 +14,27 @@ load('wigleyspp2.Rdata')
 names(bn.setup2)
 head(bn.setup2)
 
+# saving unique svspp codes
 svspp_uniq <- sort(unique(bn.setup2$SVSPP))
 svspp_uniq <- as.data.frame(svspp_uniq)
-write.csv(svspp_uniq,file="svspp_uniq")
+# write.csv(svspp_uniq,file="svspp_uniq")
 
 #CHECKING PORTION OF FISH REPRESENTED IN WIGLEY ET AL 2003 BASED ON TOW-LEVEL DATA
 names(bn.setup2)
 names(wigleyspp2)
-wigley <- wigleyspp2[,c(1,4,5)]
-bn <- merge(bn.setup2,wigley,by.x="SVSPP",by.y="SVSPP",all.x=TRUE)
+wigley <- wigleyspp2[, c(1,4,5)]
+bn <- merge(bn.setup2,
+            wigley, 
+            by.x="SVSPP",
+            by.y="SVSPP",
+            all.x=TRUE)
 head(bn)
 
 #CHECKING PORTION OF FISH REPRESENTED IN WIGLEY ET AL 2003 BASED ON EXPNUMLEN 
-sum(bn$NUMLEN,na.rm=TRUE)
-bn.wigley <- bn[bn$wigley=="X",]
-sum(bn.wigley$NUMLEN,na.rm=TRUE)
-sum(bn.wigley$NUMLEN,na.rm=TRUE)/sum(bn$NUMLEN,na.rm=TRUE)
+sum(bn$NUMLEN,na.rm = TRUE)
+bn.wigley <- bn[bn$wigley == "X",]
+sum(bn.wigley$NUMLEN,na.rm = TRUE)
+sum(bn.wigley$NUMLEN,na.rm = TRUE) / sum(bn$NUMLEN,na.rm = TRUE)
 #82%
 
 head(bn)
@@ -35,10 +42,10 @@ fish <- bn[bn$INV==0,]
 sum(fish$NUMLEN,na.rm=TRUE)
 fish.wigley <- fish[fish$wigley=="X",]
 sum(fish.wigley$NUMLEN,na.rm=TRUE)
-sum(fish.wigley$NUMLEN,na.rm=TRUE)/sum(fish$NUMLEN,na.rm=TRUE)
+sum(fish.wigley$NUMLEN,na.rm=TRUE) / sum(fish$NUMLEN,na.rm=TRUE)
 #94.7% of fish have L-W coefficients in Wigley
 
-########################
+######### Begin Size Spectra Steps  ####
 
 #GETTING WEIGHTS FROM L-W COEFFICIENTS
 
@@ -57,7 +64,7 @@ len.reg$TOTWT <- len.reg$WT * len.reg$NUMLEN
 
 len.reg <- len.reg[,c(1:5,7,9,10,11,12,13,14,15,16,17,21,23,38,39,40)]
 
-#SETTING UP BINS
+#### SETTING UP BINS  ####
 hist(len.reg$LLEN, breaks=10, plot=TRUE)
 hist(len.reg$LWEIGHT,breaks=10,plot=TRUE)
 #hist(len.reg$L10WT,breaks=20,plot=TRUE)
@@ -106,10 +113,12 @@ len.reg$WT10BIN <- ifelse(len.reg$WT10BIN>-6 & len.reg$WT10BIN<=-5.5,3,len.reg$W
 len.reg$WT10BIN <- ifelse(len.reg$WT10BIN>-6.5 & len.reg$WT10BIN<=-6,2,len.reg$WT10BIN)
 len.reg$WT10BIN <- ifelse(len.reg$WT10BIN>-7 & len.reg$WT10BIN<=-6.5,1,len.reg$WT10BIN)
 
+####  Stratified Means  ####
+# 1. Tows by year and stratum
 #COUNTING TOWS FOR STRATIFIED MEAN
 #USES TOWS JUST WITH FISH SPECIES IN WIGLEY
 tows_unique <- len.reg[!duplicated(len.reg["ID"]),] 
-numtows <- aggregate(ID~EST_YEAR+STRATUM,length,data=tows_unique)
+numtows <- aggregate(ID~ EST_YEAR + STRATUM, length, data = tows_unique)
 colnames(numtows) <- c('EST_YEAR','STRATUM','COUNT')
 
 #SUM NUMLEN WITHIN EACH LENBIN2 FOR YEAR,STRATUM  
@@ -118,12 +127,14 @@ colnames(numtows) <- c('EST_YEAR','STRATUM','COUNT')
 #ab.bin$LNUMLEN <- log10(ab.bin$NUMLEN+1)
 ab.bin.str.nolog <- aggregate(NUMLEN ~ EST_YEAR + STRATUM + LENBIN2, sum, data=len.reg)
 
+# 2. Stratum ratios
 #MERGE IN STRATUM RATIOS
 str.wt <- len.reg[,c(4,11,12)]
 str.wt.unique <- str.wt[!duplicated(str.wt["STRATUM"]),]
 ab.bin.strwt.nolog <- merge(ab.bin.str.nolog,str.wt.unique,by="STRATUM")
 totstrwt <- sum(str.wt.unique$STRATUM_AREA)
 
+# 3. Mean abundance, and abundance times stratum ratio
 #CALCULATING TOTAL ABUNDANCE BY YEAR
 years <- seq(1968,2013)
 LENBIN2 <- c(1,2,3,4,5,6,7,8,9)
@@ -144,21 +155,23 @@ for(x in LENBIN2){
 }
 
 write.csv(Alen.out,"Alen.out")
-save(Alen.out, file="Alen.out.Rdata")
+save(Alen.out, file = "Alen.out.Rdata")
 Alen.out
 
-par(mfrow=c(1,1))
-plot(seq(1968,2013),seq(4.5,10,length=length(seq(1968,2013))),type="n")
-title("Abundance by length class--all fish", cex=1.1)
-lines(seq(1968,2013),Alen.out[,1],col="black") 
-lines(seq(1968,2013),Alen.out[,2],col="red") #down after 2006
-lines(seq(1968,2013),Alen.out[,3],col="blue") 
-lines(seq(1968,2013),Alen.out[,4],col="green")  #steady upwards, jump after 2008
-lines(seq(1968,2013),Alen.out[,5],col="orange") #jump in 2008
-lines(seq(1968,2013),Alen.out[,6],col="purple") #steady upwards
-lines(seq(1968,2013),Alen.out[,7],col="grey")
-lines(seq(1968,2013),Alen.out[,8],col="pink")
-lines(seq(1968,2013),Alen.out[,9],col="brown")  #come way down 1990-2000
+par(mfrow = c(1,1))
+plot(seq(1968, 2013),
+     seq(4.5, 10, length = length(seq(1968, 2013))),
+     type="n")
+title("Abundance by length class--all fish", cex = 1.1)
+lines(seq(1968,2013), Alen.out[,1], col = "black") 
+lines(seq(1968,2013), Alen.out[,2], col = "red") #down after 2006
+lines(seq(1968,2013), Alen.out[,3], col = "blue") 
+lines(seq(1968,2013), Alen.out[,4], col = "green")  #steady upwards, jump after 2008
+lines(seq(1968,2013), Alen.out[,5], col = "orange") #jump in 2008
+lines(seq(1968,2013), Alen.out[,6], col = "purple") #steady upwards
+lines(seq(1968,2013), Alen.out[,7], col = "grey")
+lines(seq(1968,2013), Alen.out[,8], col = "pink")
+lines(seq(1968,2013), Alen.out[,9], col = "brown")  #come way down 1990-2000
 
 #CLUSTERING
 
@@ -451,11 +464,11 @@ row <- seq(1,46,by=1)
 yr.slopeint <- matrix(ncol=7)
 
 for (i in row){
-  data <- Awt.reg[i,]
-  x <- c(-1.75,-1.25,-.75,-.25,.25,.75,1.25)
-  lm <- lm(data~x,na.action=na.omit)
-  coef <- coef(lm)
-  se <- confint(lm)
+  data <- Awt.reg[i, ]
+  x           <- c(-1.75,-1.25,-.75,-.25,.25,.75,1.25)
+  lm          <- lm(data ~ x, na.action=na.omit)
+  coef        <- coef(lm)
+  se          <- confint(lm)
   yr.slopeint <- rbind(yr.slopeint,c(i,coef[1],se[1,1],se[1,2],coef[2],se[2,1],se[2,2]))
 }
 
@@ -473,18 +486,32 @@ plot(yr.slopeint$year,yr.slopeint$slope,type='l')
 attach(yr.slopeint)
 par(mfrow=c(2,2),mar=c(4,5,4,2))
 #SLOPE
-plot(seq(1970,2013,1),seq(min(yr.slopeint$slope,na.rm=TRUE),max(yr.slopeint$slope,na.rm=TRUE),
-                          length.out=length(seq(1970,2013,1))),type="n",xlab=" ",ylab=" ",cex=1.3,cex.axis=1.3)
+plot(seq(1970,2013,1),
+     seq(min(yr.slopeint$slope,na.rm=TRUE),
+         max(yr.slopeint$slope,na.rm=TRUE),
+         length.out=length(seq(1970,2013,1))),
+     type="n",
+     xlab=" ",
+     ylab=" ",
+     cex=1.3,
+     cex.axis=1.3)
 mtext(side=1,line=3,"Year",cex=1.3)
 mtext(side=2,line=3,"Slope",cex=1.3)
-points(yr.slopeint$year,yr.slopeint$slope,pch=20,col="black")
+points(yr.slopeint$year, yr.slopeint$slope, pch=20, col="black")
 #lines(yr.slopeint$year,yr.slopeint$l.slope,lwd=1,col="grey")
 #lines(yr.slopeint$year,yr.slopeint$h.slope,lwd=1,col="grey")
-lines(rollmean(yr.slopeint$year,5),rollmean(yr.slopeint$slope,5),lwd=3,col="blue")
+lines(rollmean(yr.slopeint$year, 5), rollmean(yr.slopeint$slope, 5), lwd=3, col="blue")
 
 #INTERCEPT
-plot(seq(1970,2013,1),seq(min(yr.slopeint$int,na.rm=TRUE),max(yr.slopeint$int,na.rm=TRUE),
-                          length.out=length(seq(1970,2013,1))),type="n",xlab=" ",ylab=" ",cex=1.3,cex.axis=1.3)
+plot(seq(1970,2013,1),
+     seq(min(yr.slopeint$int,na.rm=TRUE),
+         max(yr.slopeint$int,na.rm=TRUE),
+         length.out=length(seq(1970,2013,1))),
+     type="n",
+     xlab=" ",
+     ylab=" ",
+     cex=1.3,
+     cex.axis=1.3)
 mtext(side=1,line=3,"Year",cex=1.3)
 mtext(side=2,line=3,"Intercept",cex=1.3)
 points(yr.slopeint$year,yr.slopeint$int,pch=20,col="black")
@@ -521,7 +548,9 @@ plot(yr.prod$year,log10(yr.prod$prod),type="l",xlab="Year",ylab="Log productivit
 #ADDING IN T
 
 annT <- aggregate(sst ~ year, mean, data=GoMERSST)
-yr.prod.T <- merge(yr.prod,annT,by="year",all.x=T)
+yr.prod.T <- merge(yr.prod,annT,
+                   by="year",
+                   all.x=T)
 
 names(yr.prod.T)
 T1 <- mean(yr.prod.T$sst[1:21])
@@ -562,8 +591,15 @@ colnames(yr.prod) <- c("year","a","b","m0","m1","prod")
 write.csv(yr.prod,file="yr.prod")
 
 par(mfrow=c(1,1))
-plot(yr.prod$year,yr.prod$prod,type="l",xlab="Year",ylab="Productivity required")
-plot(yr.prod$year,log10(yr.prod$prod),type="l",xlab="Year",ylab="Log productivity required",lwd=2,
+plot(yr.prod$year,yr.prod$prod,
+     type="l",
+     xlab="Year",
+     ylab="Productivity required")
+plot(yr.prod$year,log10(yr.prod$prod),
+     type="l",
+     xlab="Year",
+     ylab="Log productivity required",
+     lwd=2,
      cex.axis=1.1)
 
 
@@ -576,4 +612,6 @@ for(i in decade){
   points(dec$bin,dec$labund.scale,pch=20,col=i)
   #slopeint <- dec.slopeint[dec.slopeint$decade==i,]
   #abline(slopeint[,2],slopeint[,5],col=i)
-  lines(dec$bin,predict(lm(labund.scale~poly(bin,2),data=dec)),lwd=2,col=i)
+  lines(dec$bin,predict(lm(labund.scale ~ poly(bin, 2), data = dec)),lwd=2,col=i)
+  
+}

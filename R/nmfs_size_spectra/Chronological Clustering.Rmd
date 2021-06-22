@@ -1,0 +1,694 @@
+---
+title: "Chronological Clustering"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = "", fig.height = 6, fig.width = 10)
+
+####  Packages  ####
+library(targets)
+library(here)
+library(sf)
+library(gmRi)
+library(patchwork)
+library(rioja)
+library(vegan)
+library(gt)
+library(knitr)
+library(tidyverse)
+
+# Support functions
+source(here("R/support/sizeSpectra_support.R"))
+
+theme_set(theme(legend.position = "bottom"))
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+
+#  Chronological Clustering Report
+
+The following code digs into the chronological clustering of both the community size spectrum slopes, and the mean sizes across all years of the NMFS groundfish survey.
+
+Data is prepared and updated using {targets} to ensure a consistent data state and a reproducible workflow.
+
+**Target Data**
+
+Data for the report comes directly from the {targets} workflow found in `_targets.R`.
+
+```{r}
+####  Data  ####
+
+####  Size Spectrum Targets 
+
+# SS and manual bins together
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(size_spectrum_indices))   
+
+
+####  OISST Data
+
+# OISST for all the regions
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(regional_oisst))          
+
+
+####  Size Data Targets
+
+# 1. Biological data used as input
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(nefsc_bio_lw))            # Biological Data for sizes
+
+# 2. Mean sizes grouped on - yr, season, survey area, taxon group, fishery status
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(mean_individual_sizes))   
+
+# 3. Mean sizes using same groupings as the size spectrum indices
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(mean_sizes_ss_groups))
+```
+
+
+# Community Size Spectra {.tabset .tabset-pills}
+
+Community size spectrum slopes were estimated using 2 methods for comparison, using a minimum individual biomass of 1 gram, and using area stratified abundances. 
+
+The first was using the methods of the {sizeSpectra} package which were shown to be the most accurate when using simulated data. 
+
+The second method uses binned abundances, with bins of width 0.5 on a log10 scale, so 10^0 - 10^0.5 etc. These bins were then normalized by dividing the abundances by the bin width to account for the increasing bin size.
+
+**Results from Both Methods**
+
+```{r}
+# Pull the group ID for the slopes grouped on year, season, and region
+warmem_group_slopes <- size_spectrum_indices %>% 
+  filter(`group ID`== "single years * season * region") %>% 
+  mutate(season = fct_rev(season),
+         survey_area = factor(survey_area, 
+                              levels = c("GoM", "GB", "SNE", "MAB")),
+         yr = as.numeric(as.character(Year)))
+```
+
+
+
+## Edwards Methodology 
+
+The Edwards methodology differs from the other methods for estimating size spectra by avoiding the subjective decisions around how to bin data prior to fitting the log-linear regression.
+
+Instead, Edwards uses the individual size distributions (how many individuals of any given length/weight). Abundances are totaled into discrete size bins based on expected biomass at length and length + 1, and individuals that fall within those bins are totaled to get abundances across a continuous distribution of individual bodymass. 
+
+The next difference is that the individual body size data is presumed to follow a bounded power-law distribution, with a minimum and maximum body size. Using the individual size data,  maximum likelihood estimation is used to solve for the parameter (b) that minimizes the negative log-likelihood.
+
+
+**Long-Term Patterns**
+
+```{r}
+
+# Plot the sizeSpectra slopes
+(ss_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, b, color = survey_area)) +
+  geom_line(aes(group = survey_area)) +
+  geom_point(alpha = 0.6) +
+  facet_grid(season~survey_area) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - Edwards Method") 
+)
+
+
+```
+
+
+
+**Chronological Clustering**
+
+```{r}
+# Reshaping
+# Goal: Row for Years, columns for each different group
+cluster_dat <- warmem_group_slopes %>% 
+  select(Year, season, survey_area, b) 
+
+# Pivot wider
+ss_dat <- cluster_dat %>% 
+  pivot_wider(names_from = c(season, survey_area), 
+              values_from = b, 
+              names_sep = "_") %>% 
+  column_to_rownames(var = "Year")
+
+```
+
+```{r}
+# Function to run chronological clustering
+run_chron_clust <- function(in_dat){
+  
+  # Get Euclidean Distances
+  eucdist <- vegdist(in_dat,
+                     method = "euclidean",
+                     binary = FALSE,
+                     diag = FALSE,
+                     upper = FALSE,
+                     na.rm = TRUE)
+  
+  # Perform Chronological Clustering on distances
+  cl <- chclust(eucdist, method = "coniss")
+  
+  # Return list
+  return(list(eucdist = eucdist, cl = cl))
+}
+
+
+# Run for sizeSpectra Results
+ss_chron <- run_chron_clust(in_dat = ss_dat)
+
+
+```
+
+
+**Broomstick Plot**
+
+```{r}
+# broken stick model
+vegan::bstick(ss_chron$cl, plot=T)
+```
+
+**Dendrogram**
+
+```{r}
+
+plot(ss_chron$cl, 
+     hang = -0.1, 
+     axes = FALSE, 
+     cex = 0.8, 
+     horiz = F)
+axis(side = 2, cex.axis = 1)
+title("sizeSpectra Clustering Metrics", cex = 1)
+mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+
+```
+
+**Slopes with Breakpoints**
+
+
+```{r}
+ss_patterns +
+  geom_vline(aes(xintercept = 1987.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2008.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2004.5), color = "gray40", linetype = 2, size = 0.7) +
+  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 1980.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 1979.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 1973.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 2007.5), color = "gray50", linetype = 3, size = 0.7) +
+  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
+```
+
+
+
+
+## Log10 Binning {.tabset}
+
+**Long-Term Patterns**
+
+```{r}
+
+# plot trends of log10 slopes
+(l10_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, l10_slope_strat, color = survey_area)) +
+  geom_line(aes(group = survey_area)) +
+  geom_point(alpha = 0.6) +
+  facet_grid(season~survey_area) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - log10 bins")
+)
+```
+
+### Slope
+
+
+**Chronological Clustering**
+
+```{r}
+# Reshaping
+# Goal: Row for Years, columns for each different group
+l10_cluster_dat <- warmem_group_slopes %>% 
+  select(Year, season, survey_area, l10_slope_strat) 
+
+# Pivot wider
+l10_dat <- l10_cluster_dat %>% 
+  pivot_wider(names_from = c(season, survey_area), 
+              values_from = l10_slope_strat, 
+              names_sep = "_") %>% 
+  column_to_rownames(var = "Year")
+
+# Run clustering
+l10_clust <- run_chron_clust(in_dat = l10_dat)
+```
+
+
+**Broomstick Plot**
+
+```{r}
+# broken stick model
+vegan::bstick(l10_clust$cl, plot=T)
+```
+
+**Dendrogram**
+
+```{r}
+
+plot(l10_clust$cl, 
+     hang = -0.1, 
+     axes = FALSE, 
+     cex = 0.8, 
+     horiz = F)
+axis(side = 2, cex.axis = 1.3)
+title("Log10 Size Spectrum Clustering Metrics", cex = 1)
+mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+
+```
+
+
+**Slopes with Breakpoints**
+
+
+```{r}
+l10_patterns +
+  geom_vline(aes(xintercept = 1987.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1996.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1995.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2001.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2002.5), color = "gray40", linetype = 2, size = 0.7) +
+  # geom_vline(aes(xintercept = 1997.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 1975.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 1973.5), color = "gray50", linetype = 3, size = 0.7) +
+  labs(subtitle = "Chronological Clustering Breakpoints - 5 or 8 breaks")
+```
+
+
+
+### Intercept
+
+**Long-Term Patterns**
+
+```{r}
+
+# plot trends of log10 slopes
+(int_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, l10_int_strat, color = survey_area)) +
+  geom_line(aes(group = survey_area)) +
+  geom_point(alpha = 0.6) +
+  facet_grid(season~survey_area) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Intercept", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - log10 bins")
+)
+```
+
+
+**Chronological Clustering**
+
+```{r}
+# Reshaping
+# Goal: Row for Years, columns for each different group
+l10_intercept_dat <- warmem_group_slopes %>% 
+  select(Year, season, survey_area, l10_int_strat) 
+
+# Pivot wider
+intercept_dat <- l10_intercept_dat %>% 
+  pivot_wider(names_from = c(season, survey_area), 
+              values_from = l10_int_strat, 
+              names_sep = "_") %>% 
+  column_to_rownames(var = "Year")
+
+# Run Clustering
+l10_ints <- run_chron_clust(in_dat = intercept_dat)
+```
+
+
+**Broomstick Plot**
+
+```{r}
+# broken stick model
+vegan::bstick(l10_ints$cl, plot=T)
+```
+
+**Dendrogram**
+
+```{r}
+
+plot(l10_ints$cl, 
+     hang = -0.1, 
+     axes = FALSE, 
+     cex = 0.8, 
+     horiz = F)
+axis(side = 2, cex.axis = 1.3)
+title("Log10 Bins Intercept - Clustering Metrics", cex = 1)
+mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+
+```
+
+
+**Slopes with Breakpoints**
+
+
+```{r}
+# Re-plot patterns with breaks
+int_patterns +
+  geom_vline(aes(xintercept = 1987.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2011.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1996.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1995.5), color = "gray50", linetype = 2, size = 0.7) +
+  labs(subtitle = "Chronological Clustering Breakpoints")
+```
+
+
+
+
+## Community Body Size {.tabset .tabset-pills}
+
+Body size (length and bodymass) were calculated using data obtained from NOAA that had length and weight data for individual fishes and inverts.
+
+For these metrics there was no area stratification performed. Data was also filtered to species used in the size-spectrum analysis i.e. species from Wigley 2006.
+
+
+
+### WARMEM Groups {.tabset}
+
+
+```{r}
+# Pull the group ID for the slopes grouped on year, season, and region
+warmem_group_sizes <- mean_sizes_ss_groups %>% 
+  filter(`group ID`== "single years * season * region") %>% 
+  mutate(yr = as.numeric(as.character(Year)),
+         season = fct_rev(season),
+         survey_area = factor(survey_area, 
+                              levels = c("GoM", "GB", "SNE", "MAB")),
+         yr = as.numeric(as.character(Year)))
+
+
+```
+
+
+####  Lengths
+
+
+
+**Long-Term Patterns**
+
+```{r}
+
+# plot trends of log10 slopes
+(len_patterns <- warmem_group_sizes %>% 
+  ggplot(aes(yr, mean_len_cm, color = survey_area)) +
+  geom_line(aes(group = survey_area)) +
+  geom_point(alpha = 0.6) +
+  facet_grid(season~survey_area) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Mean Length (cm)", 
+       color = "",
+       title = "All ")
+)
+```
+
+
+
+**Chronological Clustering**
+
+```{r}
+# Pull Lengths
+mean_lengths <- warmem_group_sizes  %>% 
+  select(Year, season, survey_area, mean_len_cm)
+
+# Pivot Wider
+len_dat <- mean_lengths %>% 
+  pivot_wider(names_from = c(season, survey_area), 
+              values_from = mean_len_cm, 
+              names_sep = "_") %>% 
+  column_to_rownames(var = "Year")
+
+# Run Clustering
+len_clust <- run_chron_clust(in_dat = len_dat)
+```
+
+
+**Broomstick Plot**
+
+```{r}
+# broken stick model
+vegan::bstick(len_clust$cl, plot=T)
+```
+
+**Dendrogram**
+
+```{r}
+
+plot(len_clust$cl, 
+     hang = -0.1, 
+     axes = FALSE, 
+     cex = 0.8, 
+     horiz = F)
+axis(side = 2, cex.axis = 1.3)
+title("Mean Individual Length - Clustering Metrics", cex = 1)
+mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+
+```
+
+
+**Slopes with Breakpoints**
+
+
+```{r}
+# Re-plot patterns with breaks
+len_patterns +
+  geom_vline(aes(xintercept = 2008.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1992.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1991.5), color = "gray50", linetype = 2, size = 0.7) +
+  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
+  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
+  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
+```
+
+#### Weight
+
+**Long-Term Patterns**
+
+```{r}
+
+# plot trends of log10 slopes
+(wt_patterns <- warmem_group_sizes %>% 
+  ggplot(aes(yr, mean_wt_kg, color = survey_area)) +
+  geom_line(aes(group = survey_area)) +
+  geom_point(alpha = 0.6) +
+  facet_grid(season~survey_area) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Mean Weight (kg)", 
+       color = "",
+       title = "All ")
+)
+```
+
+
+
+**Chronological Clustering**
+
+```{r}
+# Pull Lengths
+mean_wts <- warmem_group_sizes  %>% 
+  select(Year, season, survey_area, mean_wt_kg)
+
+# Pivot Wider
+wt_dat <- mean_wts %>% 
+  pivot_wider(names_from = c(season, survey_area), 
+              values_from = mean_wt_kg, 
+              names_sep = "_") %>% 
+  column_to_rownames(var = "Year")
+
+# Run Clustering
+wt_clust <- run_chron_clust(in_dat = wt_dat)
+```
+
+
+**Broomstick Plot**
+
+```{r}
+# broken stick model
+vegan::bstick(wt_clust$cl, plot=T)
+```
+
+**Dendrogram**
+
+```{r}
+
+plot(wt_clust$cl, 
+     hang = -0.1, 
+     axes = FALSE, 
+     cex = 0.8, 
+     horiz = F)
+axis(side = 2, cex.axis = 1.3)
+title("Mean Individual Weight - Clustering Metrics", cex = 1)
+mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+
+```
+
+
+**Slopes with Breakpoints**
+
+
+```{r}
+# Re-plot patterns with breaks
+wt_patterns +
+  geom_vline(aes(xintercept = 2008.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1992.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1996.5), color = "gray50", linetype = 2, size = 0.7) +
+  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
+```
+
+
+
+
+### Species Guilds {.tabset}
+
+#### Lengths
+
+
+
+
+
+
+#### Weight
+
+```{r}
+
+# Pull Weights
+mean_weights <- warmem_group_sizes  %>% 
+  select(Year, season, survey_area, mean_wt_kg)
+  
+```
+
+
+###  Commercial Species {.tabset}
+
+#### Lengths
+
+```{r}
+
+```
+
+
+#### Weight
+
+```{r}
+
+```
+
+
+###  Recreational Species {.tabset}
+
+#### Lengths
+
+```{r}
+
+```
+
+
+#### Weight
+
+```{r}
+
+```
+
+
+##  Sea Surface Temperature
+
+**Long-Term Patterns**
+
+```{r}
+
+# plot trends of log10 slopes
+(sst_patterns <- regional_oisst %>% 
+  ggplot(aes(yr, sst_anom, color = survey_area)) +
+  geom_line(aes(group = survey_area)) +
+  geom_point(alpha = 0.6) +
+  facet_grid(~survey_area) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Mean Temperature Anomaly", 
+       color = "",
+       title = "")
+)
+```
+
+
+
+**Chronological Clustering**
+
+```{r}
+# Pivot OISST Wider
+oisst_dat <- regional_oisst %>% 
+  select(yr, survey_area, sst_anom) %>% 
+  pivot_wider(names_from = survey_area, values_from = sst_anom) %>% 
+  column_to_rownames(var = "yr")
+
+# Run clustering
+sst_clust <- run_chron_clust(oisst_dat)
+```
+
+
+
+
+**Broomstick Plot**
+
+```{r}
+# broken stick model
+vegan::bstick(sst_clust$cl, plot=T)
+```
+
+**Dendrogram**
+
+```{r}
+
+plot(sst_clust$cl, 
+     hang = -0.1, 
+     axes = FALSE, 
+     cex = 0.8, 
+     horiz = F)
+axis(side = 2, cex.axis = 1.3)
+title("SST Anomalies - Clustering Metrics", cex = 1)
+mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+
+```
+
+
+**Slopes with Breakpoints**
+
+
+```{r}
+# Re-plot patterns with breaks
+sst_patterns +
+  geom_vline(aes(xintercept = 2011.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1998.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2002.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2005.5), color = "gray50", linetype = 2, size = 0.7) +
+  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
+```
+
+
+
+`r insert_gmri_footer()`
