@@ -1052,20 +1052,22 @@ group_log10_slopes <- function(wmin_grams,
       lm_b_strat <- lm_abund_strat$coeff[2] #- 1
       
       # Pull intercept  
-      lm_int <- lm_abund$coeff[1] #- 1
-      lm_int_strat <- lm_abund_strat$coeff[1] #- 1
+      lm_int <- lm_abund$coeff[1] 
+      lm_int_strat <- lm_abund_strat$coeff[1] 
       
-      # # 95% conf
-      # lm_conf = confint(lm_abund, "left_lim", 0.95) 
-      # lm_conf_strat = confint(lm_abund_strat, "left_lim", 0.95) 
+      # R squared
+      lm_rsqr       <- summary(lm_abund)$adj.r.squared
+      lm_rsqr_strat <- summary(lm_abund_strat)$adj.r.squared
       
       # Put in Table
       l10_results <- data.frame(
         group_var       = group_label,
         l10_slope_raw   = lm_b,
         l10_slope_strat = lm_b_strat,
-        l10_int          = lm_int,
-        l10_int_strat    = lm_int_strat)
+        l10_int         = lm_int,
+        l10_int_strat   = lm_int_strat,
+        l10_rsqr        = lm_rsqr,
+        l10_rsqr_strat  = lm_rsqr_strat)
       
       # Return the group results
       return(l10_results)
