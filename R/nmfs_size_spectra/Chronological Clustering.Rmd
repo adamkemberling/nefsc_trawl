@@ -13,7 +13,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = "", fig.height = 6, fig.width = 10)
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = "", fig.height = 8, fig.width = 10)
 
 ####  Packages  ####
 library(targets)
@@ -193,9 +193,10 @@ ggplot(regional_lengths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
+       title = "Abundance",
        subtitle = "Expected Area-Stratified Abundance", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Length Bin") 
 
 ```
 
@@ -222,9 +223,10 @@ ggplot(regional_lengths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+       title = "Biomass",
        subtitle = "Expected Area-Stratified Biomass", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Length Bin")+ theme(legend.position = "none")
 
 ```
 
@@ -274,9 +276,10 @@ ggplot(regional_weights,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
+       title = "Abundance",
        subtitle = "Expected Area-Stratified Abundance" ,
        x = "",
-       fill = "Length Bin")
+       fill = "Weight Bin")
 
 ```
 
@@ -302,10 +305,11 @@ ggplot(regional_weights,
   facet_wrap(~survey_area) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Total Expected Biomass (kg) - Full Survey Area", 
+       title = "Biomass",
        subtitle = "Expected Area-Stratified Biomass", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Weight Bin") + theme(legend.position = "none")
 
 ```
 
@@ -371,6 +375,7 @@ ggplot(seasonal_lengths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
+       title = "Abundance",
        subtitle = "Expected Area-Stratified Abundance" ,
        x = "", 
        fill = "Length Bin")
@@ -399,10 +404,11 @@ ggplot(seasonal_lengths,
   facet_wrap(~season) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Total Expected Biomass (kg) - Full Survey Area", 
+       title = "Biomass",
        subtitle = "Expected Area-Stratified Biomass", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Length Bin") + theme(legend.position = "none")
 
 ```
 
@@ -452,9 +458,10 @@ ggplot(seasonal_weights,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
+       title = "Abundance",
        subtitle = "Expected Area-Stratified Abundance" ,
        x = "", 
-       fill = "Length Bin")
+       fill = "Weight Bin")
 
 ```
 
@@ -481,9 +488,10 @@ ggplot(seasonal_weights,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+       title = "Biomass",
        subtitle = "Expected Area-Stratified Biomass", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Weight Bin") + theme(legend.position = "none")
 
 ```
 
@@ -539,16 +547,16 @@ fgroup_lengths <- nefsc_size_bins %>%
 
 
 ```{r}
-# Biomass from Survey using L-W
-ggplot(fgroup_lengths, aes(Year, lenbin_survey_catch, fill = length_bin)) +
-  geom_col(position = "stack") +
-  facet_wrap(~spec_class) +
-  scale_fill_gmri() +
-  scale_y_continuous(labels = comma_format()) +
-  labs(y = "Survey Catch",  
-       subtitle = "Total Survey Abundance",
-       x = "", 
-       fill = "Length Bin")
+# # Biomass from Survey using L-W
+# ggplot(fgroup_lengths, aes(Year, lenbin_survey_catch, fill = length_bin)) +
+#   geom_col(position = "stack") +
+#   facet_wrap(~spec_class) +
+#   scale_fill_gmri() +
+#   scale_y_continuous(labels = comma_format()) +
+#   labs(y = "Survey Catch",  
+#        subtitle = "Total Survey Abundance",
+#        x = "", 
+#        fill = "Length Bin")
 
 
 
@@ -560,6 +568,7 @@ ggplot(fgroup_lengths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
+       title = "Abundance",
        subtitle = "Expected Area-Stratified Abundance" ,
        x = "", 
        fill = "Length Bin")
@@ -568,16 +577,16 @@ ggplot(fgroup_lengths,
 
 
 ```{r}
-# Biomass from Survey using L-W
-ggplot(fgroup_lengths, 
-       aes(Year, lenbin_lw_bio, fill = length_bin)) +
-  geom_col(position = "stack") +
-  facet_wrap(~spec_class) +
-  scale_fill_gmri() +
-  scale_y_continuous(labels = comma_format()) +
-  labs(y = "Survey Biomass (kg)", subtitle = "Survey Biomass", 
-       x = "", 
-       fill = "Length Bin")
+# # Biomass from Survey using L-W
+# ggplot(fgroup_lengths, 
+#        aes(Year, lenbin_lw_bio, fill = length_bin)) +
+#   geom_col(position = "stack") +
+#   facet_wrap(~spec_class) +
+#   scale_fill_gmri() +
+#   scale_y_continuous(labels = comma_format()) +
+#   labs(y = "Survey Biomass (kg)", subtitle = "Survey Biomass", 
+#        x = "", 
+#        fill = "Length Bin")
 
 
 
@@ -589,6 +598,7 @@ ggplot(fgroup_lengths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+       title = "Biomass",
        subtitle = "Expected Area-Stratified Biomass", 
        x = "", 
        fill = "Length Bin")
@@ -621,16 +631,16 @@ fgroup_weigths <- nefsc_size_bins %>%
 
 
 ```{r}
-# Biomass from Survey using L-W
-ggplot(fgroup_weigths, aes(Year, wtbin_survey_catch, fill = weight_bin)) +
-  geom_col(position = "stack") +
-  facet_wrap(~spec_class) +
-  scale_fill_gmri() +
-  scale_y_continuous(labels = comma_format()) +
-  labs(y = "Survey Catch",  
-       subtitle = "Total Survey Abundance",
-       x = "", 
-       fill = "Length Bin")
+# # Biomass from Survey using L-W
+# ggplot(fgroup_weigths, aes(Year, wtbin_survey_catch, fill = weight_bin)) +
+#   geom_col(position = "stack") +
+#   facet_wrap(~spec_class) +
+#   scale_fill_gmri() +
+#   scale_y_continuous(labels = comma_format()) +
+#   labs(y = "Survey Catch",  
+#        subtitle = "Total Survey Abundance",
+#        x = "", 
+#        fill = "Weight Bin")
 
 
 
@@ -642,25 +652,26 @@ ggplot(fgroup_weigths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
+       title = "Abundance",
        subtitle = "Expected Area-Stratified Abundance", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Weight Bin")
 
 ```
 
 
 ```{r}
-# Biomass from Survey using L-W
-ggplot(fgroup_weigths, 
-       aes(Year, wtbin_lw_bio, fill = weight_bin)) +
-  geom_col(position = "stack") +
-  facet_wrap(~spec_class) +
-  scale_fill_gmri() +
-  scale_y_continuous(labels = comma_format()) +
-  labs(y = "Survey Biomass (kg)", 
-       subtitle = "Survey Biomass", 
-       x = "", 
-       fill = "Length Bin")
+# # Biomass from Survey using L-W
+# ggplot(fgroup_weigths, 
+#        aes(Year, wtbin_lw_bio, fill = weight_bin)) +
+#   geom_col(position = "stack") +
+#   facet_wrap(~spec_class) +
+#   scale_fill_gmri() +
+#   scale_y_continuous(labels = comma_format()) +
+#   labs(y = "Survey Biomass (kg)", 
+#        subtitle = "Survey Biomass", 
+#        x = "", 
+#        fill = "Weight Bin")
 
 
 
@@ -672,9 +683,10 @@ ggplot(fgroup_weigths,
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+       title = "Biomass",
        subtitle = "Expected Area-Stratified Biomass", 
        x = "", 
-       fill = "Length Bin")
+       fill = "Weight Bin")
 
 ```
 
@@ -700,9 +712,61 @@ warmem_group_slopes <- size_spectrum_indices %>%
          yr = as.numeric(as.character(Year)))
 ```
 
+**The Bodymass Data to Match**
+
+```{r}
+# Do some grouping
+warmem_totals <- nefsc_size_bins %>% 
+  group_by(Year, survey_area, season) %>% 
+  summarise(total_survey_catch = sum(Number),
+            total_lw_bio = sum(sum_weight_kg),
+            total_strat_abund = sum(expanded_abund_s),
+            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
+  ungroup()
 
 
-## Edwards Methodology 
+# weight bins
+warmem_weights <- nefsc_size_bins %>% 
+  group_by(Year, survey_area, season, weight_bin) %>% 
+  summarise(wtbin_survey_catch = sum(Number),
+            wtbin_lw_bio       = sum(sum_weight_kg),
+            wtbin_strat_abund  = sum(expanded_abund_s),
+            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+  left_join(warmem_totals) %>% 
+  mutate(
+    perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+    perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+    perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+    perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+
+# # Expected Abundance for Entire Survey Area
+# ggplot(warmem_weights, 
+#        aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+#   geom_col(position = "stack") +
+#   facet_grid(season~survey_area) +
+#   scale_fill_gmri() +
+#   scale_y_continuous(labels = comma_format()) +
+#   labs(y = "Total Predicted Abundance - Full Survey Area", 
+#        subtitle = "Expected Area-Stratified Abundance" ,
+#        x = "",
+#        fill = "Length Bin")
+
+# Expected Biomass for Entire Survey Area
+ggplot(warmem_weights, 
+       aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+  geom_col(position = "stack") +
+  facet_grid(season~survey_area) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+       title = "Biomass",
+       subtitle = "Expected Area-Stratified Biomass", 
+       x = "", 
+       fill = "Length Bin")
+```
+
+
+## Edwards Methodology {.tabset}
 
 The Edwards methodology differs from the other methods for estimating size spectra by avoiding the subjective decisions around how to bin data prior to fitting the log-linear regression.
 
@@ -711,7 +775,7 @@ Instead, Edwards uses the individual size distributions (how many individuals of
 The next difference is that the individual body size data is presumed to follow a bounded power-law distribution, with a minimum and maximum body size. Using the individual size data,  maximum likelihood estimation is used to solve for the parameter (b) that minimizes the negative log-likelihood.
 
 
-**Long-Term Patterns**
+### Long-Term Patterns
 
 ```{r}
 
@@ -733,7 +797,9 @@ The next difference is that the individual body size data is presumed to follow 
 
 
 
-**Chronological Clustering**
+### Chronological Clustering
+
+**Prep and Clustering Code**
 
 ```{r}
 # Reshaping
@@ -799,7 +865,7 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 
 ```
 
-**Slopes with Breakpoints**
+### Slopes with Breakpoints
 
 
 ```{r}
@@ -821,9 +887,9 @@ ss_patterns +
 ## Log10 Binning {.tabset}
 
 
-### Slope
+### Slope {.tabset}
 
-**Long-Term Patterns**
+#### Long-Term Patterns
 
 ```{r}
 
@@ -844,7 +910,9 @@ ss_patterns +
 
 
 
-**Chronological Clustering**
+#### Chronological Clustering
+
+**Prep and Clustering Code**
 
 ```{r}
 # Reshaping
@@ -887,7 +955,7 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 ```
 
 
-**Slopes with Breakpoints**
+#### Slopes with Breakpoints
 
 
 ```{r}
@@ -905,9 +973,9 @@ l10_patterns +
 
 
 
-### Intercept
+### Intercept {.tabset}
 
-**Long-Term Patterns**
+#### Long-Term Patterns
 
 ```{r}
 
@@ -926,7 +994,9 @@ l10_patterns +
 ```
 
 
-**Chronological Clustering**
+#### Chronological Clustering
+
+**Prep and Clustering Code**
 
 ```{r}
 # Reshaping
@@ -969,7 +1039,7 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 ```
 
 
-**Intercepts with Breakpoints**
+#### Intercepts with Breakpoints
 
 
 ```{r}
@@ -982,7 +1052,7 @@ int_patterns +
   labs(subtitle = "Chronological Clustering Breakpoints")
 ```
 
-### Fit Statidtics (adjusted r-squared)
+### Fit Statidtics (adjusted r-squared) 
 
 For each of the slope/intercepts derived using a linear model and binned data I also pulled the adjusted r-square to get a sense of whether or not certain groups had poor fits that should be investigated.
 
@@ -1014,248 +1084,11 @@ l10_fit_dat %>%
 
 
 
-## Community Body Size {.tabset .tabset-pills}
 
-Body size (length and bodymass) were calculated using data obtained from NOAA that had length and weight data for individual fishes and inverts.
 
-For these metrics there was no area stratification performed. Data was also filtered to species used in the size-spectrum analysis i.e. species from Wigley 2006.
+##  Sea Surface Temperature {.tabset}
 
-
-
-### WARMEM Groups {.tabset}
-
-
-```{r}
-# Pull the group ID for the slopes grouped on year, season, and region
-warmem_group_sizes <- mean_sizes_ss_groups %>% 
-  filter(`group ID`== "single years * season * region") %>% 
-  mutate(yr = as.numeric(as.character(Year)),
-         season = fct_rev(season),
-         survey_area = factor(survey_area, 
-                              levels = c("GoM", "GB", "SNE", "MAB")),
-         yr = as.numeric(as.character(Year)))
-
-
-```
-
-
-####  Lengths
-
-
-
-**Long-Term Patterns**
-
-```{r}
-
-# plot trends of log10 slopes
-(len_patterns <- warmem_group_sizes %>% 
-  ggplot(aes(yr, mean_len_cm, color = survey_area)) +
-  geom_line(aes(group = survey_area)) +
-  geom_point(alpha = 0.6) +
-  facet_grid(season~survey_area) +
-  scale_color_gmri() +
-  labs(x = "", 
-       y = "Mean Length (cm)", 
-       color = "",
-       title = "All ")
-)
-```
-
-
-
-**Chronological Clustering**
-
-```{r}
-# Pull Lengths
-mean_lengths <- warmem_group_sizes  %>% 
-  select(Year, season, survey_area, mean_len_cm)
-
-# Pivot Wider
-len_dat <- mean_lengths %>% 
-  pivot_wider(names_from = c(season, survey_area), 
-              values_from = mean_len_cm, 
-              names_sep = "_") %>% 
-  column_to_rownames(var = "Year")
-
-# Run Clustering
-len_clust <- run_chron_clust(in_dat = len_dat)
-```
-
-
-**Broomstick Plot**
-
-```{r}
-# broken stick model
-vegan::bstick(len_clust$cl, plot=T)
-```
-
-**Dendrogram**
-
-```{r}
-
-plot(len_clust$cl, 
-     hang = -0.1, 
-     axes = FALSE, 
-     cex = 0.8, 
-     horiz = F)
-axis(side = 2, cex.axis = 1.3)
-title("Mean Individual Length - Clustering Metrics", cex = 1)
-mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
-
-```
-
-
-**Slopes with Breakpoints**
-
-
-```{r}
-# Re-plot patterns with breaks
-len_patterns +
-  geom_vline(aes(xintercept = 2008.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1992.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1991.5), color = "gray50", linetype = 2, size = 0.7) +
-  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
-  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
-```
-
-#### Weight
-
-**Long-Term Patterns**
-
-```{r}
-
-# plot trends of log10 slopes
-(wt_patterns <- warmem_group_sizes %>% 
-  ggplot(aes(yr, mean_wt_kg, color = survey_area)) +
-  geom_line(aes(group = survey_area)) +
-  geom_point(alpha = 0.6) +
-  facet_grid(season~survey_area) +
-  scale_color_gmri() +
-  labs(x = "", 
-       y = "Mean Weight (kg)", 
-       color = "",
-       title = "All ")
-)
-```
-
-
-
-**Chronological Clustering**
-
-```{r}
-# Pull Lengths
-mean_wts <- warmem_group_sizes  %>% 
-  select(Year, season, survey_area, mean_wt_kg)
-
-# Pivot Wider
-wt_dat <- mean_wts %>% 
-  pivot_wider(names_from = c(season, survey_area), 
-              values_from = mean_wt_kg, 
-              names_sep = "_") %>% 
-  column_to_rownames(var = "Year")
-
-# Run Clustering
-wt_clust <- run_chron_clust(in_dat = wt_dat)
-```
-
-
-**Broomstick Plot**
-
-```{r}
-# broken stick model
-vegan::bstick(wt_clust$cl, plot=T)
-```
-
-**Dendrogram**
-
-```{r}
-
-plot(wt_clust$cl, 
-     hang = -0.1, 
-     axes = FALSE, 
-     cex = 0.8, 
-     horiz = F)
-axis(side = 2, cex.axis = 1.3)
-title("Mean Individual Weight - Clustering Metrics", cex = 1)
-mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
-
-```
-
-
-**Slopes with Breakpoints**
-
-
-```{r}
-# Re-plot patterns with breaks
-wt_patterns +
-  geom_vline(aes(xintercept = 2008.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1992.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1996.5), color = "gray50", linetype = 2, size = 0.7) +
-  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
-```
-
-
-
-
-### Species Guilds {.tabset}
-
-#### Lengths
-
-
-
-
-
-
-#### Weight
-
-```{r}
-
-# Pull Weights
-mean_weights <- warmem_group_sizes  %>% 
-  select(Year, season, survey_area, mean_wt_kg)
-  
-```
-
-
-###  Commercial Species {.tabset}
-
-#### Lengths
-
-```{r}
-
-```
-
-
-#### Weight
-
-```{r}
-
-```
-
-
-###  Recreational Species {.tabset}
-
-#### Lengths
-
-```{r}
-
-```
-
-
-#### Weight
-
-```{r}
-
-```
-
-
-##  Sea Surface Temperature
-
-**Long-Term Patterns**
+### Long-Term Patterns
 
 ```{r}
 
@@ -1275,7 +1108,9 @@ mean_weights <- warmem_group_sizes  %>%
 
 
 
-**Chronological Clustering**
+### Chronological Clustering
+
+**Prep and Clustering Code**
 
 ```{r}
 # Pivot OISST Wider
@@ -1314,7 +1149,7 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 ```
 
 
-**Slopes with Breakpoints**
+### Anomalies with Breakpoints
 
 
 ```{r}
