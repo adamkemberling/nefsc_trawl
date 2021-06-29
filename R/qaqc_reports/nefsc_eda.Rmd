@@ -34,7 +34,7 @@ source(here("R/support/sizeSpectra_support.R"))
 source(here("R/support/nefsc_ss_build_nodrop.R"))
 
 ####  Resource Paths  ####
-box_paths  <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths()
 mills_path <- box_paths$mills
 res_path   <- box_paths$res
 
@@ -66,7 +66,8 @@ Data loaded for this markdown is pulled directly from the {[targets](https://git
 
 # Loading from targets:
 # Load the area-stratified biomass/abundances that used species cutoffs
-withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(nefsc_stratified))
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_stratified))
 
 
 # Do some text formatting
@@ -478,7 +479,6 @@ guild_plots$pel
 
 ```{r, fig.height=6}
 
-# Size Plots
 guild_plots$dem
 ```
 
@@ -512,7 +512,7 @@ summs %>%
       "Spring" = as.character(gmri_cols("gmri blue")),
       "Fall"   = as.character(gmri_cols("orange")))) +
   labs(x = "", y = "Mean Individual Biomass (g)") +
-  facet_wrap(~season, ncol = 1)
+  facet_grid(season~area)
       
   
 ```
@@ -529,7 +529,7 @@ summs %>%
       "Spring" = as.character(gmri_cols("gmri blue")),
       "Fall"   = as.character(gmri_cols("orange")))) +
   labs(x = "", y = "Mean Individual Length (cm)") +
-  facet_wrap(~season, ncol = 1)
+  facet_grid(season~area)
 
 ```
 
@@ -575,6 +575,7 @@ t1 <- ((t5_plots$`2004` | t5_plots$`2005`) / (t5_plots$`2006` | t5_plots$`2007`)
 t2 <- ((t5_plots$`2008` | t5_plots$`2009`) / (t5_plots$`2010` | t5_plots$`2011`))
 t3 <- ((t5_plots$`2012` | t5_plots$`2013`) / (t5_plots$`2014` | t5_plots$`2015`))
 t4 <- ((t5_plots$`2016` | t5_plots$`2017`) / (t5_plots$`2018` | t5_plots$`2019`))
+
 ```
 
 #### 2004 - 2007
@@ -1044,7 +1045,6 @@ bin_summs <- bin_summs %>%
 ```{r}
 
 # log() length bins
-
 l1 <- ggplot(bin_summs, aes(x = `min length (cm)`, y = n_group, fill = svvessel)) +
     geom_col(show.legend = F) +
     scale_y_continuous(labels = scales::comma_format()) +
