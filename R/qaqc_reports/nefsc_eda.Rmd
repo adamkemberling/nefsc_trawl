@@ -506,6 +506,12 @@ Check these across years and also by season
 
 summs %>% 
   ggplot(aes(est_year, mean_ind_bodymass_lw * 1000, color = season)) +
+   geom_rect(ymin = -Inf, 
+             ymax = Inf, 
+             xmin = 2008, 
+             xmax = 2019, 
+             color = "transparent",
+             fill = "gray90") +
     geom_line(show.legend = FALSE) +
     scale_color_manual(values = c(
       "Spring + Fall" = "black",
@@ -523,6 +529,12 @@ summs %>%
 ```{r}
 summs %>% 
   ggplot(aes(est_year, mean_ind_length, color = season)) +
+    geom_rect(ymin = -Inf, 
+             ymax = Inf, 
+             xmin = 2008, 
+             xmax = 2019, 
+             color = "transparent",
+             fill = "gray90") +
     geom_line(show.legend = FALSE) +
     scale_color_manual(values = c(
       "Spring + Fall" = "black",
@@ -609,25 +621,47 @@ t4
 
 Bodymass size cutoffs are used to plot the timelines of total fish biomass below the following thresholds for individual biomass: .0625, .125, .25, .5, 1kg. This is going to fail for the shipboard weights because that weight is divided equally across different measurements of fishes regardless of size.
 
-#### .0625 kg
 
 ```{r}
+# Function to plot total annual biomass based on a maximum size to include
 max_weight_plot <- function(size_cutoff){
-  nefsc_stratified %>% 
+  
+  
+  
+  year_summs <- nefsc_stratified %>% 
     filter(ind_weight_kg < size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
+              total_strat_biom = sum(expanded_lwbio_s),
               `Maximum Individual Biomass` = str_c("Individual Mass < ", size_cutoff, " kg"),
-              .groups = "keep") %>%
-    ggplot(aes(est_year, total_biomass_lw, color = `Maximum Individual Biomass`)) +
+              .groups = "keep")
+    
+    
+    
+    survey_plot <- year_summs %>% 
+      ggplot(aes(est_year, total_biomass_lw, color = `Maximum Individual Biomass`)) +
       geom_line() +
       scale_color_gmri() +
       scale_y_continuous(labels = scales::comma_format()) +
-      labs(x = NULL, y = "Total Annual (kg)") +
-    theme(legend.position = c(0.3, 0.9))
+      labs(x = NULL, y = "Survey Annual (kg)") +
+      theme(legend.position = c(0.3, 0.9))
+  
+   # Plot the survey biomass
+  strat_plot <- year_summs %>%
+    ggplot(aes(est_year, total_strat_biom)) +
+      geom_line(color = gmri_cols("gmri blue")) +
+      scale_y_continuous(labels = scales::comma_format()) +
+      labs(x = NULL, y = "Area Stratified Annual (kg)") 
+  
+  # Plot them stacked
+  survey_plot / strat_plot
 }
+```
 
 
+#### .0625 kg
+
+```{r}
 # .5 kg
 max_weight_plot(.0625)
 
@@ -759,7 +793,7 @@ neg_change_plot | (al_neg / hb_neg)
 
 
 
-###  Big Fish {.tabset}
+###  Large Fishes {.tabset}
 
 Same idea for the larger fish, but the opposite. A minimum cutoff for the individual bodymass. Below are the upper quantiles for individual body mass weighted by number at length.
 
@@ -769,18 +803,34 @@ Same idea for the larger fish, but the opposite. A minimum cutoff for the indivi
 
 # plotting function
 min_weight_plot <- function(size_cutoff){
-  nefsc_stratified %>% 
+  
+  # Get annual summaries
+  year_summs <- nefsc_stratified %>% 
     filter(ind_weight_kg > size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
+              total_strat_biom = sum(expanded_lwbio_s),
               `Minimum Individual Biomass` = str_c("Individual Mass > ", size_cutoff, " kg"),
-              .groups = "keep") %>%
+              .groups = "keep") 
+  
+  # Plot the survey biomass
+  survey_plot <- year_summs %>%
     ggplot(aes(est_year, total_biomass_lw, color = `Minimum Individual Biomass`)) +
       geom_line() +
       scale_color_gmri() +
       scale_y_continuous(labels = scales::comma_format()) +
-      labs(x = NULL, y = "Total Annual (kg)") +
+      labs(x = NULL, y = "Survey Annual (kg)") +
     theme(legend.position = c(0.3, 0.9))
+  
+   # Plot the survey biomass
+  strat_plot <- year_summs %>%
+    ggplot(aes(est_year, total_strat_biom)) +
+      geom_line(color = gmri_cols("gmri blue")) +
+      scale_y_continuous(labels = scales::comma_format()) +
+      labs(x = NULL, y = "Area Stratified Annual (kg)") 
+  
+  # Plot them stacked
+  survey_plot / strat_plot
 }
 ```
 
@@ -872,7 +922,7 @@ One thing that was brought up in my discussion with [Andrew Edwards](https://git
 
 # COMMENTS
 # bins increase in width as you work up on the log scale, 
-# need to narmalize them by bin width so that they are comparable.
+# need to normalize them by bin width so that they are comparable.
 
 # NOTE: case_when is greedy so once something is assigned it is out of the pool of candidates
 # In this case you want to count down    
