@@ -30,7 +30,7 @@ library(tidyverse)
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
 
-theme_set(theme(legend.position = "bottom"))
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -966,7 +966,7 @@ warmem_weights <- nefsc_size_bins %>%
 # ggplot(warmem_weights, 
 #        aes(Year, wtbin_strat_abund, fill = weight_bin)) +
 #   geom_col(position = "stack") +
-#   facet_grid(season~survey_area) +
+#   facet_grid(survey_area~season) +
 #   scale_fill_gmri() +
 #   scale_y_continuous(labels = comma_format()) +
 #   labs(y = "Total Predicted Abundance - Full Survey Area", 
@@ -978,7 +978,7 @@ warmem_weights <- nefsc_size_bins %>%
 ggplot(warmem_weights, 
        aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
   geom_col(position = "stack") +
-  facet_grid(season~survey_area) +
+  facet_grid(survey_area~season) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
@@ -1050,7 +1050,7 @@ The next difference is that the individual body size data is presumed to follow 
   ggplot(aes(yr, b, color = survey_area)) +
   geom_line(aes(group = survey_area)) +
   geom_point(alpha = 0.6) +
-  facet_grid(season~survey_area) +
+  facet_grid(survey_area~season) +
   scale_color_gmri() +
   labs(x = "", 
        y = "Size Spectrum Slope (b)", 
@@ -1138,13 +1138,7 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 ss_patterns +
   geom_vline(aes(xintercept = 1987.5), color = "gray40", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 2008.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2004.5), color = "gray40", linetype = 2, size = 0.7) +
-  # geom_vline(aes(xintercept = 2001.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 1980.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 1979.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 1973.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 2007.5), color = "gray50", linetype = 3, size = 0.7) +
-  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
+  geom_vline(aes(xintercept = 2004.5), color = "gray40", linetype = 2, size = 0.7) 
 ```
 
 
@@ -1164,7 +1158,7 @@ ss_patterns +
   ggplot(aes(yr, l10_slope_strat, color = survey_area)) +
   geom_line(aes(group = survey_area)) +
   geom_point(alpha = 0.6) +
-  facet_grid(season~survey_area) +
+  facet_grid(survey_area~season) +
   scale_color_gmri() +
   labs(x = "", 
        y = "Size Spectrum Slope (b)", 
@@ -1230,11 +1224,7 @@ l10_patterns +
   geom_vline(aes(xintercept = 1996.5), color = "gray40", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 1995.5), color = "gray40", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 2001.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2002.5), color = "gray40", linetype = 2, size = 0.7) +
-  # geom_vline(aes(xintercept = 1997.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 1975.5), color = "gray50", linetype = 3, size = 0.7) +
-  # geom_vline(aes(xintercept = 1973.5), color = "gray50", linetype = 3, size = 0.7) +
-  labs(subtitle = "Chronological Clustering Breakpoints - 5 or 8 breaks")
+  geom_vline(aes(xintercept = 2002.5), color = "gray40", linetype = 2, size = 0.7)
 ```
 
 
@@ -1250,7 +1240,7 @@ l10_patterns +
   ggplot(aes(yr, l10_int_strat, color = survey_area)) +
   geom_line(aes(group = survey_area)) +
   geom_point(alpha = 0.6) +
-  facet_grid(season~survey_area) +
+  facet_grid(survey_area~season) +
   scale_color_gmri() +
   labs(x = "", 
        y = "Size Spectrum Intercept", 
@@ -1337,7 +1327,7 @@ l10_fit_dat %>%
   geom_hline(yintercept = 0.2, linetype = 2, size = 0.5, color = "gray50") +
   geom_line(aes(group = survey_area)) +
   geom_point(alpha = 0.6) +
-  facet_grid(season~survey_area) +
+  facet_grid(survey_area~season) +
   scale_color_gmri() +
   scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
   labs(x = "", 
@@ -1363,7 +1353,7 @@ l10_fit_dat %>%
   ggplot(aes(yr, sst_anom, color = survey_area)) +
   geom_line(aes(group = survey_area)) +
   geom_point(alpha = 0.6) +
-  facet_grid(~survey_area) +
+  facet_grid(survey_area~.) +
   scale_color_gmri() +
   labs(x = "", 
        y = "Mean Temperature Anomaly", 
@@ -1424,10 +1414,180 @@ sst_patterns +
   geom_vline(aes(xintercept = 2011.5), color = "gray50", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 1998.5), color = "gray50", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 2002.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2005.5), color = "gray50", linetype = 2, size = 0.7) +
-  labs(subtitle = "Chronological Clustering Breakpoints - 3 or 8")
+  geom_vline(aes(xintercept = 2005.5), color = "gray50", linetype = 2, size = 0.7) 
+```
+
+# Biomass Patterns with Breakpoints
+
+This section seeks to track different aspects of the biomass distribution during each of the breaks determined from the break point analyses.
+
+Primarily
+ 1. How is biomass changing for the different functional groups   
+ 2. What is the relative balance of biomass across functional groups, and within them, size bins
+ 
+ 
+```{r}
+
+# Make groups based on breaks
+edwards_breaks <- list("1970-1987" = 1970:1987,
+                    "1988-2008" = 1988:2008,
+                    "2009-2019" = 2009:2019)
+temp_breaks    <- list("1981-1998" = 1981:1998, 
+                    "1999-2002" = 1999:2002, 
+                    "2003-2005" = 2003:2005,
+                    "2006-2011" = 2006:2011, 
+                    "2012-2021" = 2012:2021)
+
+## label the edwards bins
+nefsc_size_bins <- imap_dfr(edwards_breaks, function(x,y){
+    nefsc_size_bins %>% 
+      filter(Year %in% x) %>% 
+      mutate(e_break = y,
+             e_break = factor(e_break, levels = names(edwards_breaks)))
+}) %>% arrange(Year)
+
+# label the temp bins
+nefsc_size_bins <- imap_dfr(temp_breaks, function(x,y){
+    nefsc_size_bins %>% 
+      filter(Year %in% x) %>% 
+      mutate(t_break = y,
+             t_break = factor(t_break, levels = names(temp_breaks)))
+}) %>% arrange(Year)
+
 ```
 
 
+
+```{r}
+# Track how things are changing across slope exponent breaks
+functional_group_splits <- nefsc_size_bins %>% 
+  split(.$e_break) %>% 
+  imap(function(e_data, label){
+    
+    # 1. How is biomass trending within each functional group
+    
+    # Get that yearly summary
+    yearly_data <- e_data %>% 
+      group_by(Year, spec_class) %>% 
+      summarise(
+        total_strat_biom = sum(expanded_lwbio_s), 
+        avg_ind_mass = weighted.mean(ind_weight_kg, Number),
+        avg_ind_len = weighted.mean(LngtClass, Number),
+        .groups = "drop")
+    
+    # run linear models
+    biom_trend_lm   <- broom::tidy(lm(total_strat_biom ~ Year, 
+                                      data = yearly_data))
+    length_trend_lm <- broom::tidy(lm(avg_ind_len ~ Year, 
+                                      data = yearly_data))
+    imass_trend_lm <- broom::tidy(lm(avg_ind_mass ~ Year, 
+                                      data = yearly_data))
+    
+    # report direction
+    biom_slope     <- biom_trend_lm[[2,"estimate"]]
+    len_slope      <- length_trend_lm[[2,"estimate"]]
+    imass_slope      <- imass_trend_lm[[2,"estimate"]]
+    biom_direction <- ifelse(biom_slope > 0, "increase", "decrease")
+    len_direction  <- ifelse(len_slope > 0, "increase", "decrease")
+    imass_direction  <- ifelse(imass_slope > 0, "increase", "decrease")
+    
+    # report significance
+    biom_sig <- ifelse(biom_trend_lm[[2,"p.value"]] < 0.05, "significant", "not")
+    len_sig  <- ifelse(length_trend_lm[[2,"p.value"]] < 0.05, "significant", "not")
+    imass_sig  <- ifelse(imass_trend_lm[[2,"p.value"]] < 0.05, "significant", "not")
+    
+    # make table
+    trend_table <- data.frame("ebreak"       = rep(label, 3),
+                              "data_source"  = c("stratified_biomass", "avg_length", "avg_mass"),
+                              "trend"        = c(biom_direction, len_direction, imass_direction),
+                              "rate"         = c(biom_slope, len_slope, imass_slope),
+                              "significance" = c(biom_sig, len_sig, imass_sig))
+    
+    # 2. Relative Biomass
+    total_biom <- sum(e_data$expanded_lwbio_s)
+    relative_biom <- e_data %>% 
+      group_by(spec_class) %>% 
+      summarise(n_years = n_distinct(Year),
+                group_biom_total = sum(expanded_lwbio_s),
+                avg_ann_biom = group_biom_total / n_years,
+                biom_frac = group_biom_total / total_biom,
+                avg_ind_mass = weighted.mean(ind_weight_kg, Number),
+                avg_ind_len = weighted.mean(LngtClass, Number),
+                .groups = "drop") %>% 
+      mutate(ebreak = label)
+    
+    # return tables
+    return(list(#"biom_lm" = biom_trend_lm,
+                #"len_lm" = length_trend_lm,
+                "trends" = trend_table, 
+                "rel_bio" = relative_biom))
+    
+  })
+
+
+# Pull out trends as a table
+fgroup_trends <- map_dfr(functional_group_splits, ~ .x[["trends"]])
+
+
+# Pull out relative biomass as a table
+fgroup_rel_bio <- map_dfr(functional_group_splits, ~ .x[["rel_bio"]])
+```
+ 
+ **Significant Trends in Biomass**
+```{r}
+fgroup_trends %>% filter(significance == "significant")
+```
+ 
+ **Differences in Relative Biomass**
+ 
+```{r}
+fgroup_rel_bio %>% 
+  ggplot(aes(ebreak, y = biom_frac, fill = spec_class)) +
+  geom_col(position = "dodge") +
+  scale_fill_gmri() +
+  labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
+       y = "Relative Proportion of Stratified Biomass",
+       fill = "")
+```
+
+**Difference in Average Annual Biomass**
+
+```{r}
+
+fgroup_rel_bio %>% 
+  ggplot(aes(ebreak, y = avg_ann_biom/1e6, fill = spec_class)) +
+  geom_col(position = "dodge") +
+  scale_fill_gmri() +
+  labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
+       y = "Avg. Annual Biomass (million kg)",
+       fill = "")
+```
+ 
+ 
+ **Differences in Average Individual Mass**
+ 
+```{r}
+fgroup_rel_bio %>% 
+  ggplot(aes(ebreak, y = avg_ind_mass, fill = spec_class)) +
+  geom_col(position = "dodge") +
+  scale_fill_gmri() +
+  labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
+       y = "Average Individual Bodymass (kg)",
+       fill = "")
+
+```
+
+ **Differences in Average Individual Length**
+ 
+```{r}
+fgroup_rel_bio %>% 
+  ggplot(aes(ebreak, y = avg_ind_len, fill = spec_class)) +
+  geom_col(position = "dodge") +
+  scale_fill_gmri() +
+  labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
+       y = "Average Individual Length (cm)",
+       fill = "")
+
+```
 
 `r insert_gmri_footer()`
