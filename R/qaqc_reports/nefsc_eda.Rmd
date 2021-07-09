@@ -909,360 +909,113 @@ cownose %>% kable()
 ```
 
 
-### Size Spectra Bins {.tabset}
+## Prominant Species Timelines {.tabset .tabset-pills} 
 
-Using the same bodymass bins as in Kathy's code `cleaned up size spectra code.R` we can take a look at how an overall size spectrum slope would look like for the two surveys. This will help us gain a coarse idea of where to put limits on the bodymass ranges based on the survey gear.
+This section is for species of prominent importance either for their significance as a commercial species, or their proliferance in the survey.
 
-One thing that was brought up in my discussion with [Andrew Edwards](https://github.com/andrew-edwards) was that I should be standardizing the bin heights by their width because evenly spaced values on a log scale are increasingly large on the untransformed scale. For example for bins using log10() scale, the bin width from 2 < log10(x) < 3 is 900, and the next bin 3 < log10(x) < 4 has a width of 9,000.
+```{r}
 
-
-```{r manual binning}
-
-# Set up bins for plotting normalized size specra
-
-# COMMENTS
-# bins increase in width as you work up on the log scale, 
-# need to normalize them by bin width so that they are comparable.
-
-# NOTE: case_when is greedy so once something is assigned it is out of the pool of candidates
-# In this case you want to count down    
-nefsc_stratified <- nefsc_stratified %>% 
-  mutate(
-    lweight = log(ind_weight_kg),
-    llen    = log(length),
-    l10wt   = log10(ind_weight_kg))
-
-
-
-
- # Length bins for log() scale
-nefsc_stratified <- nefsc_stratified %>% 
-  mutate(
-    # Bin Numbers
-    lenbin2 = case_when(
-      llen > 5    ~ 10,
-      llen > 4.5  ~ 9,
-      llen > 4    ~ 8,
-      llen > 3.5  ~ 7,
-      llen > 3    ~ 6,
-      llen > 2.5  ~ 5,
-      llen > 2    ~ 4,
-      llen > 1.5  ~ 3,
-      llen > 1    ~ 2,
-      llen > 0.5  ~ 1,
-      llen >   0  ~ 0),
-    # Range of lengths for each bin
-    len_range = case_when(
-      lenbin2 == 10 ~ exp(5.5) - exp(5),
-      lenbin2 == 9  ~ exp(5) - exp(4.5),
-      lenbin2 == 8  ~ exp(4.5) - exp(4),
-      lenbin2 == 7  ~ exp(4) - exp(3.5),
-      lenbin2 == 6  ~ exp(3.5) - exp(3),
-      lenbin2 == 5  ~ exp(3) - exp(2.5),
-      lenbin2 == 4  ~ exp(2.5) - exp(2),
-      lenbin2 == 3  ~ exp(2) - exp(1.5),
-      lenbin2 == 2  ~ exp(1.5) - exp(1),
-      lenbin2 == 1  ~ exp(1) - exp(.5),
-      lenbin2 == 0  ~ exp(0.5) - exp(0)))
-
-
-
-
-# Weight bins on log() scale
-nefsc_stratified <- nefsc_stratified %>% 
-  mutate(
-    # Bin numbers
-    wtbin = case_when(
-      lweight > 8   ~ 10,
-      lweight > 6   ~ 9,
-      lweight > 4   ~ 8,
-      lweight > 2   ~ 7,
-      lweight > 0   ~ 6,
-      lweight > -2  ~ 5,
-      lweight > -4  ~ 4,
-      lweight > -6  ~ 3,
-      lweight > -8  ~ 2,
-      lweight > -10  ~ 1,
-      lweight < -10  ~ 0),
-    # Weight Range for each bin
-    wt_range = case_when(
-      wtbin == 10 ~ exp(10) - exp(8),
-      wtbin ==  9 ~ exp(8) - exp(6),
-      wtbin ==  8 ~ exp(6) - exp(4),
-      wtbin ==  7 ~ exp(4) - exp(2),
-      wtbin ==  6 ~ exp(2) - exp(1),
-      wtbin ==  5 ~ exp(1) - exp(.5),
-      wtbin ==  4 ~ exp(.5) - exp(.25),
-      wtbin ==  3 ~ exp(.25) - exp(.125),
-      wtbin ==  2 ~ exp(.125) - exp(.0625),
-      wtbin ==  1 ~ exp(.0625) - exp(.03125),
-      wtbin ==  0 ~ exp(.03125) - exp(.015625)))
-
-
-
-
-# Weight Bins on log10 scale
-nefsc_stratified <- nefsc_stratified %>% 
-  mutate(
-    #Bin Numbers
-    wt10bin =  case_when(
-      l10wt > 3     ~ 21,
-      l10wt > 2.5   ~ 20,
-      l10wt > 2     ~ 19,
-      l10wt > 1.5   ~ 18,
-      l10wt > 1     ~ 17,
-      l10wt > 0.5   ~ 16,
-      l10wt > 0     ~ 15,
-      l10wt > -0.5  ~ 14,
-      l10wt > -1    ~ 13,
-      l10wt > -1.5  ~ 12,
-      l10wt > -2    ~ 11,
-      l10wt > -2.5  ~ 10,
-      l10wt > -3    ~ 9,
-      l10wt > -3.5  ~ 8,
-      l10wt > -4    ~ 7,
-      l10wt > -4.5  ~ 6,
-      l10wt > -5    ~ 5,
-      l10wt > -5.5  ~ 4,
-      l10wt > -6    ~ 3,
-      l10wt > -6.5  ~ 2,
-      l10wt > -7    ~ 1,
-      l10wt > -7.5  ~ 0),
-    # Weight ranges for log10() bins
-    wt10_range = case_when(
-      wt10bin == 21 ~ 10 ^ 3.5  - 10 ^ 3,
-      wt10bin == 20 ~ 10 ^ 3    - 10 ^ 2.5,
-      wt10bin == 19 ~ 10 ^ 2.5  - 10 ^ 2,
-      wt10bin == 18 ~ 10 ^ 2    - 10 ^ 1.5,
-      wt10bin == 17 ~ 10 ^ 1.5  - 10 ^ 1,
-      wt10bin == 16 ~ 10 ^ 1    - 10 ^ 0.5,
-      wt10bin == 15 ~ 10 ^ 0.5  - 10 ^ 0,
-      wt10bin == 14 ~ 10 ^ 0    - 10 ^ -0.5,
-      wt10bin == 13 ~ 10 ^ -0.5 - 10 ^ -1,
-      wt10bin == 12 ~ 10 ^ -1   - 10 ^ -1.5,
-      wt10bin == 11 ~ 10 ^ -1.5 - 10 ^ -2,
-      wt10bin == 10 ~ 10 ^ -2   - 10 ^ -2.5,
-      wt10bin ==  9 ~ 10 ^ -2.5 - 10 ^ -3,
-      wt10bin ==  8 ~ 10 ^ -3   - 10 ^ -3.5,
-      wt10bin ==  7 ~ 10 ^ -3.5 - 10 ^ -4,
-      wt10bin ==  6 ~ 10 ^ -4   - 10 ^ -4.5,
-      wt10bin ==  5 ~ 10 ^ -4.5 - 10 ^ -5,
-      wt10bin ==  4 ~ 10 ^ -5   - 10 ^ -5.5,
-      wt10bin ==  3 ~ 10 ^ -5.5 - 10 ^ -6,
-      wt10bin ==  2 ~ 10 ^ -6   - 10 ^ -6.5,
-      wt10bin ==  1 ~ 10 ^ -6.5 - 10 ^ -7,
-      wt10bin ==  0 ~ 10 ^ -7   - 10 ^ -7.5
-    ))  
-
-
-
-# Summarise bins to get counts and normalizeed counts
-bin_summs <- nefsc_stratified %>% 
-  group_by(svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
-  summarise(n_group = sum(numlen_adj),
-            .groups = "keep") %>% 
-  ungroup() %>% 
-  mutate(l_norm     = n_group / len_range,
-         wtbin_norm = n_group / wt_range,
-         wt10_norm  = n_group / wt10_range,
-         `min length (cm)`  = as.character(round(len_range, 2)),
-         `min weight (kg)`  = as.character(round(wt_range, 2)),
-         `log10 min weight` = as.character(round(wt10_range, 2)))
-
-
-# Use factor level formatting to put meaningful labels on the bins
-sort_numeric_chars <- function(num_as_text){
-  as.character(sort(as.numeric(unique(num_as_text))))
+# What do we want to show for these highlight species
+species_timeline <- function(common_name){
+  annual_totals <- nefsc_stratified %>% 
+    filter(comname == common_name) %>% 
+    group_by(est_year) %>% 
+    summarize(total_strat_biom = sum(expanded_lwbio_s), 
+              avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
+              .groups = "drop")
+  
+  biomass_timeline <- ggplot(annual_totals, aes(est_year, total_strat_biom)) +
+    geom_line(group = 1) +
+    geom_point() +
+    scale_y_continuous(labels = scales::comma_format()) +
+    labs(x = "", y = "Total Area Stratified Biomass (kg)",
+         title = str_to_title(common_name),
+         subtitle = "Total Biomass Over Time")
+  
+  bodysize_timeline <- ggplot(annual_totals, aes(est_year, avg_ind_mass)) +
+    geom_line(group = 1) +
+    geom_point() +
+    labs(x = "Year", y = "Average Individual Bodymass (kg)",
+         subtitle = "Individual Bodymass Over Time")
+  
+  biomass_timeline / bodysize_timeline
 }
 
-len_levels  <- sort_numeric_chars(bin_summs$`min length (cm)`)
-wt_levels   <- sort_numeric_chars(bin_summs$`min weight (kg)`)
-wt10_levels <- sort_numeric_chars(bin_summs$`log10 min weight`)
-
-
-# apply factor levels
-bin_summs <- bin_summs %>% 
-  mutate(
-    `min length (cm)` = factor(`min length (cm)`, levels = len_levels),
-    `min weight (kg)` = factor(`min weight (kg)`, levels = wt_levels),
-    `log10 min weight` = factor(`log10 min weight`, levels = wt10_levels)
-  )
-
 ```
 
-#### Length Bins
-
+### Atlantic Cod
 ```{r}
-
-# log() length bins
-l1 <- ggplot(bin_summs, aes(x = `min length (cm)`, y = n_group, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_continuous(labels = scales::comma_format()) +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "Minimum Length (cm)", y = "Abundance") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-l2 <- ggplot(bin_summs, aes(`min length (cm)`, l_norm, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_continuous(labels = scales::comma_format()) +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "Minimum Length (cm)", 
-         y = "Normalized Abundance", 
-         caption = "Bin numbers increase at increments of 0.5 in log(length).") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-l1 | l2
-
+species_timeline("atlantic cod")
 ```
 
 
-
-
-
-#### log(weight)
+### Haddock
 
 ```{r}
-
-# log() weight bins
-wt1 <- ggplot(bin_summs, aes(`min weight (kg)`, n_group, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_continuous(labels = scales::comma_format()) +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "Minimum Weight (kg)", y = "Abundance") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-wt2 <- ggplot(bin_summs, aes(`min weight (kg)`, wtbin_norm, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_continuous(labels = scales::comma_format()) +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x =  "Minimum Weight (kg)", 
-         y = "Normalized Abundance", 
-         caption = "Bin numbers increase at increments of 2 in log(weight).") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-
-wt1 | wt2
-```
-
-#### log10(weight)
-
-```{r}
-
-#l10 weight bins
-wt10_1 <- ggplot(bin_summs, aes(`log10 min weight`, n_group, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_continuous(labels = scales::comma_format()) +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "Minimum Weight (kg)", y = "Abundance") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-
-# abundance normalized by bin width
-wt10_2 <- ggplot(bin_summs, aes(`log10 min weight`, wt10_norm, fill = svvessel)) +
-    geom_col(show.legend = F) +
-    scale_y_continuous(labels = scales::comma_format()) +
-    facet_wrap(~svvessel) +
-    scale_fill_gmri() +
-    labs(x = "Minimum Weight (kg)", 
-         y = "Normalized Abundance", 
-         caption = "Bin numbers increase at increments of 0.5 in log(length).") +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-wt10_1 | wt10_2
+species_timeline("haddock")
 ```
 
 
-#### Annual
+### Spiny Dogfish
 
 ```{r}
-ann_summs <- nefsc_stratified %>% 
-  group_by(est_year, svvessel, lenbin2, wtbin, wt10bin, len_range, wt_range, wt10_range) %>% 
-  summarise(n_group = sum(numlen_adj),
-            .groups = "keep") %>% 
-  ungroup() %>% 
-  mutate(l_norm = n_group / len_range,
-         wtbin_norm = n_group / wt_range,
-         wt10_norm = n_group / wt10_range,
-         `min length (cm)`  = as.character(round(len_range, 2)),
-         `min weight (kg)`  = as.character(round(wt_range, 2)),
-         `log10 min weight` = as.character(round(wt10_range, 2)),
-         `min length (cm)` = factor(`min length (cm)`, levels = len_levels),
-         `min weight (kg)` = factor(`min weight (kg)`, levels = wt_levels),
-         `log10 min weight` = factor(`log10 min weight`, levels = wt10_levels))
+species_timeline("spiny dogfish")
+```
+
+### Acadian Redfish
+
+```{r}
+species_timeline("acadian redfish")
+```
 
 
+### Winter Skate
+
+```{r}
+species_timeline("winter skate")
+```
 
 
-# Plotting l10 weight bins
+### Silver Hake
 
-# functions to reduce code repetition
-plot_l10bins <- function(x){
-  x %>%
-  ggplot(aes(`log10 min weight`, n_group, fill = svvessel)) +
-        geom_col(show.legend = F) +
-        scale_y_continuous(labels = scales::comma_format()) +
-        facet_grid(est_year ~ svvessel, scales = "free") +
-        scale_fill_gmri() +
-        labs(x = "Min Weight (kg)", y = "Abundance") +
-        theme(strip.text.y = element_text(angle = 0),
-              axis.text.x = element_text(angle = 90, vjust = 0.5))
-}
-
-# Normalized abundances
-plot_l10bins_norm <- function(x){
-  x %>%
-  ggplot(aes(`log10 min weight`, wt10_norm, fill = svvessel)) +
-        geom_col(show.legend = F) +
-        scale_y_continuous(labels = scales::comma_format()) +
-        facet_grid(est_year ~ svvessel, scales = "free") +
-        scale_fill_gmri() +
-        labs(x = "Min Weight (kg)", y = "Normalized Abundance") +
-        theme(strip.text.y = element_text(angle = 0),
-              axis.text.x = element_text(angle = 90, vjust = 0.5))
-}
+```{r}
+species_timeline("silver hake")
+```
 
 
+## Functional Group Trends
 
+```{r}
+fgroup_summs <- nefsc_stratified %>%
+  filter(spec_class != "<NA>") %>% 
+  mutate(spec_class = case_when(
+    spec_class == "dem" ~ "Demersal",
+    spec_class == "gf" ~ "Groundfish",
+    spec_class == "pel" ~ "Pelagic",
+    spec_class == "el" ~ "Elasmobranch",
+    TRUE ~ "Unclassified"
+  )) %>% 
+  group_by(est_year, spec_class) %>% 
+  summarise(total_strat_biom = sum(expanded_lwbio_s), 
+            avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
+            .groups = "drop")
 
-# List to store them
-ann_plots <- list()
-
-
-# Albatross
-ann_plots$AL <- ann_summs %>% 
-  filter(svvessel == "AL",
-         est_year >= 2000) %>% 
-  plot_l10bins()
-
-
-# Bigelow
-ann_plots$HB <- ann_summs %>% 
-  filter(svvessel == "HB") %>%
-  plot_l10bins()
-
-
-# Albatross Normalized
-ann_plots$AL_norm <- ann_summs %>% 
-  filter(svvessel == "AL",
-         est_year >= 2000) %>% 
-  plot_l10bins_norm()
-
-# Bigelow Normalized
-ann_plots$HB_norm <- ann_summs %>% 
-  filter(svvessel == "HB") %>% 
-  plot_l10bins_norm()
-
-
-
-# Assemble them
-ann_plots$AL | ann_plots$HB
-ann_plots$AL_norm | ann_plots$HB_norm
-
+biomass_timeline <- ggplot(fgroup_summs, aes(est_year, total_strat_biom)) +
+    geom_line(group = 1) +
+    #geom_point() +
+    facet_grid(~spec_class) +
+    scale_y_continuous(labels = scales::comma_format()) +
+    labs(x = "", y = "Total Area Stratified Biomass (kg)",
+         subtitle = "Total Biomass Over Time")
+  
+  bodysize_timeline <- ggplot(fgroup_summs, aes(est_year, avg_ind_mass)) +
+    geom_line(group = 1) +
+    #geom_point() +
+    facet_grid(~spec_class) +
+    labs(x = "Year", y = "Average Individual Bodymass (kg)",
+         subtitle = "Individual Bodymass Over Time")
+  
+  biomass_timeline / bodysize_timeline
 
 ```
 

@@ -7,7 +7,7 @@ output:
     toc: TRUE
     toc_float:
         collapsed: FALSE
-    code_folding: hide
+    code_folding: show
 editor_options: 
   chunk_output_type: console
 ---
@@ -33,7 +33,7 @@ library(knitr)
 source(here("R/support/sizeSpectra_support.R"))
 
 ####  Resource Paths  ####
-box_paths  <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths()
 
 
 #### Set theme  ####
@@ -725,8 +725,9 @@ mle_results <- data.frame(Year          = "all",
 
 #### Individual Size Distribution
 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 # Breaks - need to revisit the functions
+
 # # Take each group and generate the plots
 # isd_group_prepped <- dbin_trunc %>%
 #   split(.$group_var) %>%
@@ -753,7 +754,6 @@ group_isd <- ggplot_isd(isd_data_prepped = group_isd_prep,
 
 
 # # Take a peak
-#group_isd$obs_y
 group_isd$log10_y
 ```
 

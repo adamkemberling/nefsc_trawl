@@ -39,4 +39,7 @@ This report seeks to check the accuracy of the spring and fall conversions of ha
  These two reports seeks to identify for which species of which we have published literature there are notable differences in abundance and biomass from using the newest survdat pull which has corrected conversion issues.
  
  
-[Size Sepectrum and Body Size Chronological Clustering](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/Chronological-Clustering.html)
+[Size Spectrum and Body Size Chronological Clustering](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/Chronological-Clustering.html)
+
+
+[Size Spectrum and Methods Comparison](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/sizespectra_methods_comparison.html)
