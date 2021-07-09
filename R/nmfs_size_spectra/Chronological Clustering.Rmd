@@ -1590,4 +1590,28 @@ fgroup_rel_bio %>%
 
 ```
 
+
+**Are the slopes significantly different**
+
+```{r}
+warmem_group_slopes <- imap_dfr(edwards_breaks, function(x,y){
+    warmem_group_slopes %>% 
+      filter(Year %in% x) %>% 
+      mutate(e_break = y,
+             e_break = factor(e_break, levels = names(edwards_breaks)))
+}) %>% arrange(Year)
+
+
+warmem_group_slopes %>% 
+  ggplot(aes(x = e_break, y = b, color = e_break)) +
+  scale_color_gmri() +
+  geom_jitter(width = 0.1) +
+  labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
+       y = "Individual Size Distribution Exponent",
+       color = "")
+
+```
+
+
+
 `r insert_gmri_footer()`
