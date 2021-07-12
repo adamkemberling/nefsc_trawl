@@ -1417,7 +1417,7 @@ sst_patterns +
   geom_vline(aes(xintercept = 2005.5), color = "gray50", linetype = 2, size = 0.7) 
 ```
 
-# Biomass Patterns with Breakpoints
+# Biomass Patterns with Breakpoints {.tabset}
 
 This section seeks to track different aspects of the biomass distribution during each of the breaks determined from the break point analyses.
 
@@ -1533,12 +1533,18 @@ fgroup_trends <- map_dfr(functional_group_splits, ~ .x[["trends"]])
 fgroup_rel_bio <- map_dfr(functional_group_splits, ~ .x[["rel_bio"]])
 ```
  
- **Significant Trends in Biomass**
+## Significant Trends
+
+For each breakpoint period a linear regression was used to determine whether there was a net increase/decrease within that period. The results from all significant regressions (none) are reported below.
+
 ```{r}
 fgroup_trends %>% filter(significance == "significant")
 ```
  
- **Differences in Relative Biomass**
+## Relative Biomass
+
+The following figure tracks the relative distribution of catch across the different functional groups.
+
  
 ```{r}
 fgroup_rel_bio %>% 
@@ -1550,7 +1556,9 @@ fgroup_rel_bio %>%
        fill = "")
 ```
 
-**Difference in Average Annual Biomass**
+## Average Annual Biomass
+
+This figure visualizes the avarage total biomass (per year) for each functional group within the different size spectrum stanzas.
 
 ```{r}
 
@@ -1564,7 +1572,9 @@ fgroup_rel_bio %>%
 ```
  
  
- **Differences in Average Individual Mass**
+## Average Individual Mass
+ 
+This figure visualizes the average individual bodymass for each functional group within the different size spectrum stanzas.
  
 ```{r}
 fgroup_rel_bio %>% 
@@ -1577,7 +1587,9 @@ fgroup_rel_bio %>%
 
 ```
 
- **Differences in Average Individual Length**
+## Average Individual Length
+
+This figure does the same, but for individual length, not bodymass.
  
 ```{r}
 fgroup_rel_bio %>% 
@@ -1591,7 +1603,9 @@ fgroup_rel_bio %>%
 ```
 
 
-**Are the slopes significantly different**
+## Slope Check
+
+After seeing no large difference in the things above that we expected to see, I plotted the distribution of size spectrum slopes for each stanza. Lot of within gorup variation, not much across group variation.
 
 ```{r}
 warmem_group_slopes <- imap_dfr(edwards_breaks, function(x,y){
