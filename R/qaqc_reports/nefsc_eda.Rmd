@@ -1076,34 +1076,39 @@ trawl_sf <- nefsc_stratified %>% st_as_sf(coords = c("decdeg_beglon", "decdeg_be
 
 ### Map of Trawl Regions
 
+For this project we are using different regions composed of collections of individual trawl survey strata. 
+
+For comparison sake the areas of the different ecological production units has also been included.
+
 ```{r, fig.height=6}
 # Plot to check
-ggplot() +
+strata_plot <- ggplot() +
   geom_sf(data = new_england) +
   geom_sf(data = canada) +
   geom_sf(data = survey_strata, aes(fill = area)) +
   coord_sf(xlim = c(-77, -65.5), ylim = c(34, 45.75), expand = FALSE) +
   guides(fill = guide_legend(nrow = 2)) +
   theme_bw() +
-  theme(legend.position = "bottom", legend.title = element_blank())
+  theme(legend.position = "bottom", legend.title = element_blank()) +
+  labs(subtitle = "Survey Regions")
 
-```
 
-###  Map of Ecological Production Units
-
-```{r, fig.height=6}
+# load EPU shapes
 epu_sf <- ecodata::epu_sf
-
-ggplot() +
+epu_plot <- ggplot() +
   geom_sf(data = new_england) +
   geom_sf(data = canada) +
   geom_sf(data = epu_sf, aes(fill = EPU)) +
   coord_sf(xlim = c(-77, -65.5), ylim = c(34, 45.75), expand = FALSE) +
   guides(fill = guide_legend(nrow = 2)) +
   theme_bw() +
-  theme(legend.position = "bottom", legend.title = element_blank())
-```
+  theme(legend.position = "bottom", legend.title = element_blank())+
+  labs(subtitle = "Ecological Production Units")
 
+strata_plot | epu_plot
+
+
+```
 
 
 ### Regional Summaries 
@@ -1215,7 +1220,11 @@ area_summs_y %>%
 
 ### Area Expanded Biomass
 
-The expected biomass estimates for the `survdat$biomass` data and the expected biomass from L-W regressions differ wildly once the survey transitions over to the Henry Bigelow. Not sure at this point if that is because the coefficients are off, or if there are some specific stations that need to be investigated, but its quite a large difference:
+The expected biomass estimates for the `survdat$biomass` data and the expected biomass from L-W regressions should be fairly similar or it would refute the accuracy of length-weight relationshihps.
+
+There also should be no substantial jump in observations immediately following the transition between research vessels as the catch rates have been adjusted to account for that.
+
+This plot should thus show very similar trends for the change in stratified biomass from the biomass weighed during the survey operation (left) and biomass derived from length weight relationships (right).
 
 ```{r, fig.height=6}
 fscs <- area_summs_y %>% 
