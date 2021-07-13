@@ -75,8 +75,14 @@ nefsc_stratified <- nefsc_stratified %>%
   mutate(
     id = as.character(id),
     season = ifelse(season %in% c("spring"), "Spring", "Fall"),
-    season = factor(season, levels = c("Spring", "Fall"))
-  )
+    season = factor(season, levels = c("Spring", "Fall")),
+    spec_class = case_when(
+      spec_class == "dem" ~ "Demersal",
+      spec_class == "gf" ~ "Groundfish",
+      spec_class == "pel" ~ "Pelagic",
+      spec_class == "el" ~ "Elasmobranch",
+      TRUE ~ "Unclassified"
+  ))
 
 # Run Summary Functions
 ann_means <- ss_annual_summary(nefsc_stratified, include_epu = F)
@@ -118,6 +124,7 @@ bio_1 <- ann_means %>%
   ggplot(aes(est_year, lw_biomass_kg, 
              color = season, 
              linetype = "All Species")) +
+    geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     geom_line(group = 1) +
     geom_line(data = haddock_ann, 
               aes(est_year, lw_biomass_kg, 
@@ -127,15 +134,17 @@ bio_1 <- ann_means %>%
     scale_color_manual(values = "black") +
     labs(x = "", 
          y = "Total Length-Weight Biomass (kg)",
-         linetype = "",
+         linetype = "Species Represented",
          color = "Season")
 
 
 # Seasonal Timeline
 bio_2 <- seasonals %>% 
   ggplot(aes(est_year, lw_biomass_kg, color = season)) +
+    geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
+    scale_color_gmri() +
     labs(x = "", 
          y = "Total Length-Weight Biomass (kg)", 
          color = "Season",
@@ -147,26 +156,32 @@ bio_1 / bio_2
 ```
 
 
-#### Gross Shipboard Weight
+#### Shipboard Weight
 
-As a comparison, we can also get the total biomass from the weights recorded on the ship. Not all fishes are weighed individually, but total biomass for a species is recorded for each station. 
+As a comparison to estimated length-weight bodymass, we can also get the total biomass from the weights recorded on the ship. Not all fishes are weighed individually, but total biomass for a species is recorded for each station, so at an aggregate tbey should match up. 
 
 We would expect with accurate length-weight relationships that this plot should resemble the length-weight time line.
 
 ```{r, fig.height = 8}
 ship_1 <- ann_means %>% 
   ggplot(aes(est_year, fscs_biomass_kg, color = season, linetype = "All Species")) +
+    geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     geom_line(group = 1) +
     geom_line(data = haddock_ann, 
               aes(est_year, fscs_biomass_kg, color = season, linetype = "Haddock Removed")) +
     scale_color_manual(values = "black") +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Survey Biomass (kg)")
+    labs(linetype = "Species Represented",
+         color = "Season",
+         x = "", 
+         y = "Survey Biomass (kg)")
 
 ship_2 <- seasonals %>% 
   ggplot(aes(est_year, fscs_biomass_kg, color = season)) +
+    geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
+    scale_color_gmri() +
     labs(x = "", y = "Survey Biomass (kg)", caption = "Biomass from survdat$biomass.")
 
 ship_1 / ship_2
@@ -176,18 +191,26 @@ ship_1 / ship_2
 
 Area stratified totals for abundance and biomass are calculated according to the following formulas in accordance with code found [here, courtesy of Sean Lucey](https://github.com/slucey/RSurvey/blob/master/Survdat/R/survdat_functions.R)
 
+Expected biomass or abundance across the entire study area is estimated using several components.   
+ 1. The catch per effort within a stratum (effort converted to area)**CPUE**   
+ 2. The relative area of a stratum, to the entire survey area, **Stratum Area Ratio**
+
+Basically we infer a density of fishes within a stratum based on CPUE. Then, because know how big that stratum is, we infer the amount of fish there would be across the entire thing. When done for each of the strata we can aggregate to get an expected abundance across the entire area.
+
+##### Stratification Explained
 
 The stratum area ratio is the area of strata:  $1,2,3, ...s$ relative to the total area of all strata sampled that year (only stratum with data we use is included).
 
-Alternatively, catch can be similarly weighted acccording to the effort and areas of the regional [Ecological Production Units](https://noaa-edab.github.io/tech-doc/epu.html). Both of the following are done for each year to account for annual variation in coverage.
 
 $$stratum~ratio = area(stratum_s)~ / total~area$$
 
 **or**
 
+Alternatively, catch can be similarly weighted acccording to the effort and areas of the regional [Ecological Production Units](https://noaa-edab.github.io/tech-doc/epu.html). Both of the following are done for each year to account for annual variation in coverage.
+
 $$epu~ratio = area(epu_s) / total~area$$
 
-Next, using the amount of tows in a given year for a specific strata/epu, we get the amount of individuals across that group and divide it by the effort. This is then scaled by $stratum~ratio$ to scale it by how abundance for that stratum reflects the total area of the surey.
+Next, using the amount of tows in a given year for a specific strata/epu, we get the amount of individuals across that group and divide it by the effort. This is then scaled by $stratum~ratio$ to scale it by how abundance for that stratum reflects the total area of the survey.
 
 For Strata: $1,2,3, ...s$     
 For years: $1,2,3, ...i$     
@@ -195,9 +218,11 @@ For years: $1,2,3, ...i$
 $$stratum~weighted~catch = stratum~ratio_s * (\frac{~abundance_{is}~}{~n~stations_{is}}~),$$
 
 
-The stratum weighted catch (abundance or biomass) is the average catch rate for a given area, weighted by how much the area that stratum is relative to the overall survey area that year.
+The stratum weighted catch (abundance or biomass) is the average catch rate for a given area, weighted by the ratio of that stratum's area to the overall survey area that year.
 
-The stratum weighted catch is then multiplied by the total survey area for that year, divided by the area of a standard tow by the RV Albatross (0.0384 square km). That value can be adjusted to reflect differences in catchability (q) if available, otherwise q is explicitly assumed to be 1. This gives the total abundance or biomass for a given size class across the entire strata based on its catch rate that year and the area that the stratum represents.
+The stratum weighted catch is then multiplied by the total survey area for that year, divided by the area of a standard tow by the RV Albatross (0.0384 square km). That value can be adjusted to reflect differences in catchability (q) if available. Otherwise q is explicitly assumed to be 1. 
+
+This gives the total abundance or biomass for a given size class across the entire strata based on its catch rate that year and the area that the stratum represents.
 
 $$area~expanded~abundance =(stratum~weighted~catch * \frac{total~area}{.0384~square~km})~/~q$$
 
@@ -215,6 +240,7 @@ When expanding the catches out to the total area the survey represents we can ge
 ```{r}
 abund_1 <- ann_means %>% 
   ggplot(aes(est_year, total_survey_abund)) +
+  
   geom_line(color = "gray50", linetype = 3) +
   geom_line(aes(color = `Research Vessel`), show.legend = F) +
   scale_y_continuous(labels = scales::comma_format()) +
@@ -260,6 +286,7 @@ lw_strat_2 <- ggplot(seasonals) +
     geom_line(aes(est_year, lw_strat_biomass_s/1000000, color = season)) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
+    scale_color_gmri() +
     labs(x = "", 
          y = "Area Expanded Biomass\n L-W Regressions (million kg)", 
          color = "")+
@@ -288,6 +315,7 @@ strat_2 <-  ggplot(seasonals) +
     geom_line(aes(est_year, fscs_strat_biomass_s/1000000, color = season)) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
+    scale_color_gmri() +
     labs(x = "", 
          y = "Area Expanded Biomass \n survdat$BIOMASS (million kg)",
          color = "Season") +
@@ -321,10 +349,11 @@ cpue_1 <- ann_means %>%
          color = "Season") +
   theme(legend.position = "bottom")
 
-cpue_2<- seasonals %>% 
+cpue_2 <- seasonals %>% 
   ggplot(aes(est_year, lw_biomass_per_station, color = season)) +
     geom_line() +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
+    scale_color_gmri() +
     labs(x = "", 
          y = "LW Biomass / Station\n(kg)", 
          color = "Season") +
@@ -346,10 +375,12 @@ Relative contribution to overall biomass by species group based on management an
 class_totals <- nefsc_stratified %>% 
   group_by(est_year, spec_class) %>% 
   summarise(`Total Class Biomass` = sum(sum_weight_kg),
+            `Total Stratified Biomass` = sum(expanded_biom_s),
             .groups = "keep") %>% 
   ungroup() %>% 
   left_join(ann_means, by = "est_year") %>% 
   mutate(`Percent of Annual Biomass` = (`Total Class Biomass` / lw_biomass_kg) * 100 ,
+         `Percent of Stratified Biomass` = (`Total Stratified Biomass` / lw_strat_biomass_s ) * 100,
          `Species Guild` = spec_class,
          `Species Guild` = ifelse(is.na(`Species Guild`), "Unclassified", `Species Guild`),
          Year = as.character(est_year))
@@ -361,7 +392,7 @@ class_totals <- nefsc_stratified %>%
 
 ```{r, fig.height=6}
 # Class Proportions
-class_totals %>% 
+survey_bio <- class_totals %>% 
   ggplot(aes(x = fct_rev(Year), y = `Percent of Annual Biomass`, fill = `Species Guild`)) + 
     geom_col(color = "white", size = 0.2) +
     geom_vline(xintercept = "2008", linetype = 2, color = "gray25") +
@@ -371,6 +402,20 @@ class_totals %>%
     scale_y_continuous(position = "right") +
     guides("fill" = guide_legend(title.position = "top", title.hjust = 0.5)) +
     theme(legend.position = "bottom")
+
+strat_bio <- class_totals %>% 
+  ggplot(aes(x = fct_rev(Year), y = `Percent of Stratified Biomass`, fill = `Species Guild`)) + 
+    geom_col(color = "white", size = 0.2) +
+    geom_vline(xintercept = "2008", linetype = 2, color = "gray25") +
+    labs(x = "", y = "Proportion of Stratified Biomass") +
+    coord_flip() +
+    scale_fill_gmri() +
+    scale_y_continuous(position = "right") +
+    guides("fill" = guide_legend(title.position = "top", title.hjust = 0.5)) +
+    theme(legend.position = "bottom")
+
+
+survey_bio | strat_bio
 
 ```
 
@@ -423,11 +468,17 @@ guild_plots <- nefsc_stratified %>%
     
     
     
-    # Make key for better labels
-    guild_key <- c("dem" = "Demersals", 
-                   "el" = "Elasmobranchs", 
-                   "gf" = "Groundfish", 
-                   "pel" = "Pelagics")
+    # # Make key for better labels
+    # guild_key <- c("dem" = "Demersal",
+    #                "el" = "Elasmobranch",
+    #                "gf" = "Groundfish",
+    #                "pel" = "Pelagic")
+    
+     # Make key for better labels
+    guild_key <- c("Demersal" = "Demersal",
+                   "Elasmobranch" = "Elasmobranch",
+                   "Groundfish" = "Groundfish",
+                   "Pelagic" = "Pelagic")
     
     
     # build plot
@@ -468,30 +519,30 @@ guild_plots <- nefsc_stratified %>%
 
 
 
-#### Pelagics
+#### Pelagic
 
 ````{r}
 
-guild_plots$pel
+guild_plots$Pelagic
 ```
 
-#### Demersals
+#### Demersal
 
 ```{r, fig.height=6}
 
-guild_plots$dem
+guild_plots$Demersal
 ```
 
-#### Elasmobranchs
+#### Elasmobranch
 
 ```{r, fig.height=6}
-guild_plots$el
+guild_plots$Elasmobranch
 ```
 
 #### Groundfish
 
 ```{r, fig.height=6}
-guild_plots$gf
+guild_plots$Groundfish
 ```
 
 
@@ -692,9 +743,9 @@ max_weight_plot(.5)
 max_weight_plot(1)
 ```
 
-#### Vessel Changes
+### Vessel Changes
 
-Maximum size plots show a huge increase in biomass of small fishes corresponding with the vessel change from the RV Albatross to the RV Henry Bigelow. 
+Maximum size plots show some recent changes in biomass of small fishes corresponding with the vessel change from the RV Albatross to the RV Henry Bigelow. 
 
 To Take a look at what species contributed the most to this, I will maintain the maximum body size filter of .125 kg, and compare the difference in catch/tow for species across research vessel. The following plots will highlight the top & bottom ten species experiencing positive/negative changes to their catch rates. Temporal differences are ignored here, and may play a bigger role than vessel changes.
 
@@ -913,6 +964,11 @@ cownose %>% kable()
 
 This section is for species of prominent importance either for their significance as a commercial species, or their proliferance in the survey.
 
+
+
+
+**Highlighting Single Species**
+
 ```{r}
 
 # What do we want to show for these highlight species
@@ -987,14 +1043,7 @@ species_timeline("silver hake")
 
 ```{r}
 fgroup_summs <- nefsc_stratified %>%
-  filter(spec_class != "<NA>") %>% 
-  mutate(spec_class = case_when(
-    spec_class == "dem" ~ "Demersal",
-    spec_class == "gf" ~ "Groundfish",
-    spec_class == "pel" ~ "Pelagic",
-    spec_class == "el" ~ "Elasmobranch",
-    TRUE ~ "Unclassified"
-  )) %>% 
+  filter(spec_class != "Unclassified") %>% 
   group_by(est_year, spec_class) %>% 
   summarise(total_strat_biom = sum(expanded_lwbio_s), 
             avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
@@ -1019,6 +1068,57 @@ biomass_timeline <- ggplot(fgroup_summs, aes(est_year, total_strat_biom)) +
 
 ```
 
+
+```{r, fig.height=10}
+
+# Plot top 5 biomass species from each group
+t5_plots <- nefsc_stratified %>% 
+  filter(spec_class != "Unclassified") %>% 
+  split(.$spec_class) %>% 
+  map(function(spec_class_dat){
+    
+    # Pull out the top 5  most biomass species
+    top_species <- spec_class_dat %>% 
+      group_by(comname) %>% 
+      summarize(total_strat_biom = sum(expanded_lwbio_s), 
+                avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
+                .groups = "drop") %>% 
+      arrange(desc(total_strat_biom)) %>% 
+      top_n(n = 5, wt = total_strat_biom) %>% 
+      pull(comname)
+    
+    
+    
+    # Get annual Summaries
+    ysummary <- spec_class_dat %>% 
+      filter(comname %in% top_species) %>% 
+      group_by(comname, est_year, spec_class) %>% 
+        summarize(total_strat_biom = sum(expanded_lwbio_s), 
+                  avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
+                  .groups = "drop") 
+    
+    # Order factor by biomass totals
+    ysummary <- mutate(ysummary, comname = factor(comname, levels = top_species))
+    
+    ysummary %>% 
+      ggplot(aes(est_year, total_strat_biom, color = comname)) +
+        geom_line() +
+        scale_y_continuous(labels = scales::comma_format()) +
+        facet_wrap(~spec_class) +
+        scale_color_gmri() +
+        labs(x = "", y = "Total Strat Biomass (kg)")+
+        theme(legend.position = "bottom") +
+        guides(color = guide_legend(title = "",
+                                    nrow = 2, 
+                                    title.position = "top", 
+                                    title.hjust = 0.5, 
+                                    label.position = "top"))
+  })
+
+
+(t5_plots[[1]] | t5_plots[[2]]) / (t5_plots[[3]] | t5_plots[[4]]) + plot_annotation(title = "Top 5 Species By Biomass") 
+
+```
 
 
 ## Spatial Patterns  {.tabset .tabset-pills}
