@@ -4,6 +4,7 @@
 .RData
 .Ruserdata
 data/*
+docs/*
 
 # Intermediate files and image caches
 R/qaqc_reports/09_ss_sensitivity_cache/
