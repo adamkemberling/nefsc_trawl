@@ -55,7 +55,7 @@ theme_set(theme_bw())
 Exploration of spatial and temporal patterns in abundance, and bodymass of fishes from the Northeast groundfish survey. 
 
 
-Build code containing data wrangling and conversions can be accessed [here.](https://github.com/adamkemberling/nefsc_trawl/blob/master/R/support/nefsc_ss_build_nodrop.R)
+Build code containing data wrangling and conversions can be accessed [here.](https://github.com/adamkemberling/gmRi/blob/master/R/nefsc_groundfish_access.R)
 
 
 Data loaded for this markdown is pulled directly from the {[targets](https://github.com/ropensci/targets)} pipeline for data consistency with a developing codebase.
@@ -74,8 +74,6 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 nefsc_stratified <- nefsc_stratified %>% 
   mutate(
     id = as.character(id),
-    season = ifelse(season %in% c("spring"), "Spring", "Fall"),
-    season = factor(season, levels = c("Spring", "Fall")),
     spec_class = case_when(
       spec_class == "dem" ~ "Demersal",
       spec_class == "gf" ~ "Groundfish",
@@ -278,7 +276,7 @@ lw_strat_1 <-  ggplot(ann_means) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
-         y = "Area Expanded Biomass\n l-W Regressions (million kg)",
+         y = "Stratified Total Biomass\n l-W Regressions (million kg)",
          color = "") +
   theme(legend.position = "bottom")
 
@@ -288,7 +286,7 @@ lw_strat_2 <- ggplot(seasonals) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     scale_color_gmri() +
     labs(x = "", 
-         y = "Area Expanded Biomass\n L-W Regressions (million kg)", 
+         y = "Stratified Total Biomass\n L-W Regressions (million kg)", 
          color = "")+
   theme(legend.position = "bottom")
 
@@ -307,7 +305,7 @@ strat_1 <-  ggplot(ann_means) +
     scale_y_continuous(labels = scales::comma_format()) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     labs(x = "", 
-         y = "Area Expanded Biomass \n survdat$BIOMASS (million kg)",
+         y = "Stratified Total Biomass \n survdat$BIOMASS (million kg)",
          color = "Season") +
   theme(legend.position = "bottom")
 
@@ -317,7 +315,7 @@ strat_2 <-  ggplot(seasonals) +
     geom_vline(xintercept = 2008.5, linetype = 2, alpha = 0.5) +
     scale_color_gmri() +
     labs(x = "", 
-         y = "Area Expanded Biomass \n survdat$BIOMASS (million kg)",
+         y = "Stratified Total Biomass \n survdat$BIOMASS (million kg)",
          color = "Season") +
   theme(legend.position = "bottom")
 
@@ -375,7 +373,7 @@ Relative contribution to overall biomass by species group based on management an
 class_totals <- nefsc_stratified %>% 
   group_by(est_year, spec_class) %>% 
   summarise(`Total Class Biomass` = sum(sum_weight_kg),
-            `Total Stratified Biomass` = sum(expanded_biom_s),
+            `Total Stratified Biomass` = sum(strat_total_biom_s),
             .groups = "keep") %>% 
   ungroup() %>% 
   left_join(ann_means, by = "est_year") %>% 
@@ -683,7 +681,7 @@ max_weight_plot <- function(size_cutoff){
     filter(ind_weight_kg < size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
-              total_strat_biom = sum(expanded_lwbio_s),
+              total_strat_biom = sum(strat_total_lwbio_s),
               `Maximum Individual Biomass` = str_c("Individual Mass < ", size_cutoff, " kg"),
               .groups = "keep")
     
@@ -860,7 +858,7 @@ min_weight_plot <- function(size_cutoff){
     filter(ind_weight_kg > size_cutoff) %>% 
     group_by(est_year) %>% 
     summarise(total_biomass_lw = sum(sum_weight_kg),
-              total_strat_biom = sum(expanded_lwbio_s),
+              total_strat_biom = sum(strat_total_lwbio_s),
               `Minimum Individual Biomass` = str_c("Individual Mass > ", size_cutoff, " kg"),
               .groups = "keep") 
   
@@ -976,7 +974,7 @@ species_timeline <- function(common_name){
   annual_totals <- nefsc_stratified %>% 
     filter(comname == common_name) %>% 
     group_by(est_year) %>% 
-    summarize(total_strat_biom = sum(expanded_lwbio_s), 
+    summarize(total_strat_biom = sum(strat_total_lwbio_s), 
               avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
               .groups = "drop")
   
@@ -984,14 +982,14 @@ species_timeline <- function(common_name){
     geom_line(group = 1) +
     geom_point() +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Total Area Stratified Biomass (kg)",
+    labs(x = "", y = "Stratified Total Biomass (kg)",
          title = str_to_title(common_name),
          subtitle = "Total Biomass Over Time")
   
   bodysize_timeline <- ggplot(annual_totals, aes(est_year, avg_ind_mass)) +
     geom_line(group = 1) +
     geom_point() +
-    labs(x = "Year", y = "Average Individual Bodymass (kg)",
+    labs(x = "Year", y = "Individual Bodymass (kg)",
          subtitle = "Individual Bodymass Over Time")
   
   biomass_timeline / bodysize_timeline
@@ -1045,7 +1043,7 @@ species_timeline("silver hake")
 fgroup_summs <- nefsc_stratified %>%
   filter(spec_class != "Unclassified") %>% 
   group_by(est_year, spec_class) %>% 
-  summarise(total_strat_biom = sum(expanded_lwbio_s), 
+  summarise(total_strat_biom = sum(strat_total_lwbio_s), 
             avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
             .groups = "drop")
 
@@ -1054,14 +1052,14 @@ biomass_timeline <- ggplot(fgroup_summs, aes(est_year, total_strat_biom)) +
     #geom_point() +
     facet_grid(~spec_class) +
     scale_y_continuous(labels = scales::comma_format()) +
-    labs(x = "", y = "Total Area Stratified Biomass (kg)",
+    labs(x = "", y = "Stratified Total Biomass (kg)",
          subtitle = "Total Biomass Over Time")
   
   bodysize_timeline <- ggplot(fgroup_summs, aes(est_year, avg_ind_mass)) +
     geom_line(group = 1) +
     #geom_point() +
     facet_grid(~spec_class) +
-    labs(x = "Year", y = "Average Individual Bodymass (kg)",
+    labs(x = "Year", y = "Individual Bodymass (kg)",
          subtitle = "Individual Bodymass Over Time")
   
   biomass_timeline / bodysize_timeline
@@ -1080,7 +1078,7 @@ t5_plots <- nefsc_stratified %>%
     # Pull out the top 5  most biomass species
     top_species <- spec_class_dat %>% 
       group_by(comname) %>% 
-      summarize(total_strat_biom = sum(expanded_lwbio_s), 
+      summarize(total_strat_biom = sum(strat_total_lwbio_s), 
                 avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
                 .groups = "drop") %>% 
       arrange(desc(total_strat_biom)) %>% 
@@ -1093,7 +1091,7 @@ t5_plots <- nefsc_stratified %>%
     ysummary <- spec_class_dat %>% 
       filter(comname %in% top_species) %>% 
       group_by(comname, est_year, spec_class) %>% 
-        summarize(total_strat_biom = sum(expanded_lwbio_s), 
+        summarize(total_strat_biom = sum(strat_total_lwbio_s), 
                   avg_ind_mass = weighted.mean(ind_weight_kg, numlen_adj),
                   .groups = "drop") 
     
@@ -1224,7 +1222,7 @@ area_summs <- nefsc_stratified %>%
     n_stations = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length = weighted.mean(length, weights = numlen_adj),
+    mean_ind_length = weighted.mean(length_cm, weights = numlen_adj),
     .groups = "keep"
   ) %>% 
   ungroup()
@@ -1237,7 +1235,7 @@ seas_area <- nefsc_stratified %>%
     n_stations = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
     mean_ind_bodymass = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length = weighted.mean(length, weights = numlen_adj),
+    mean_ind_length = weighted.mean(length_cm, weights = numlen_adj),
     .groups = "keep"
   ) %>% 
   ungroup()
@@ -1262,10 +1260,10 @@ area_summs_y <- nefsc_stratified %>%
     n_stations             = n_distinct(id),
     lw_biomass_per_station = lw_biomass_kg / n_stations,
     mean_ind_bodymass      = weighted.mean(ind_weight_kg, weights = numlen_adj),
-    mean_ind_length        = weighted.mean(length, weights = numlen_adj),
-    expanded_abund         = sum(expanded_abund_s),
-    expanded_lwbio         = sum(expanded_lwbio_s),
-    expanded_biom          = sum(expanded_biom_s),
+    mean_ind_length        = weighted.mean(length_cm, weights = numlen_adj),
+    strat_total_abund         = sum(strat_total_abund_s),
+    strat_total_lwbio         = sum(strat_total_lwbio_s),
+    strat_total_biom          = sum(strat_total_biom_s),
     .groups = "keep"
   ) %>% 
   ungroup()
@@ -1304,21 +1302,20 @@ area_summs_y %>%
            
 ```
 
-### Area Expanded Abundance
+### Stratified Total Abundance
 
-Area expanded abundance is calculated by taking the catch per station rates for each length class of each species and extending that density to the total areas of the region. Catchability is assumed to be 1 for this calculation though it is certainly lower. This extension of catch rates is highly sensitive to large swings due to high variances and zero inflation of abundances.
+Stratified Total abundance is calculated by taking the catch per station rates for each length class of each species and extending that density to the total areas of the region. Catchability is assumed to be 1 for this calculation though it is certainly lower. This extension of catch rates is highly sensitive to large swings due to high variances and zero inflation of abundances.
 
 ```{r}
 area_summs_y %>% 
-  ggplot(aes(est_year, expanded_abund/1000000)) +
+  ggplot(aes(est_year, strat_total_abund/1000000)) +
     geom_line() +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~survey_area, ncol = 2) +
-    labs(x = "", y = "Area Expanded Abundance (millions)")
-           
+    labs(x = "", y = "Stratified Total Abundance (millions)")
 ```
 
-### Area Expanded Biomass
+### Stratified Total Biomass
 
 The expected biomass estimates for the `survdat$biomass` data and the expected biomass from L-W regressions should be fairly similar or it would refute the accuracy of length-weight relationshihps.
 
@@ -1329,20 +1326,20 @@ This plot should thus show very similar trends for the change in stratified biom
 ```{r, fig.height=6}
 fscs <- area_summs_y %>% 
   ggplot() +
-    geom_line(aes(est_year, expanded_biom  /1000000, color = "Shipboard Weights")) +
+    geom_line(aes(est_year, strat_total_biom / 1000000, color = "Shipboard Weights")) +
     scale_y_continuous(labels = scales::comma_format()) +
     facet_wrap(~survey_area, ncol = 1) +
     scale_color_gmri(reverse = T) +
-    labs(x = "", y = "Area Expanded Biomass FSCS (million kg)") +
+    labs(x = "", y = "Stratified Total Biomass FSCS (million kg)") +
     theme(legend.position = "bottom", legend.title = element_blank())
 
 lw <- area_summs_y %>% 
   ggplot() +
-    geom_line(aes(est_year, expanded_lwbio /1000000, color = "LW Regression Weights")) +
+    geom_line(aes(est_year, strat_total_lwbio / 1000000, color = "LW Regression Weights")) +
     scale_y_continuous(labels = scales::comma_format()) +
     scale_color_gmri(reverse = F) +
     facet_wrap(~survey_area, ncol = 1) +
-    labs(x = "", y = "Area Expanded Biomass LW (million kg)") +
+    labs(x = "", y = "Stratified Total Biomass LW (million kg)") +
     theme(legend.position = "bottom", legend.title = element_blank())
 
 fscs | lw

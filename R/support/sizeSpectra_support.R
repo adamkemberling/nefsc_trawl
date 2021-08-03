@@ -16,6 +16,9 @@ library(tidyverse)
 
 ####  Filter Min Length
 
+# data for testing:
+# library(targets); tar_load("nefsc_stratified")
+
 
 #' @title Set minimum-size cutoff for size spectrum analyses
 #'
@@ -28,8 +31,9 @@ library(tidyverse)
 #' @examples
 min_length_cutoff <- function(trawl_lens, cutoff_cm = 1){
   dplyr::filter(trawl_lens,
-                is.na(length) == FALSE, 
-                length >= cutoff_cm) }
+                is.na(length_cm) == FALSE, 
+                length_cm >= cutoff_cm) }
+
 
 #' @title Set minimum-weight cutoff for size spectrum analyses
 #'
@@ -42,18 +46,28 @@ min_length_cutoff <- function(trawl_lens, cutoff_cm = 1){
 #' @examples
 min_weight_cutoff <- function(nefsc_lw, min_weight_g = 1){
   dplyr::filter(nefsc_lw,
-                is.na(length) == FALSE, 
+                is.na(length_cm) == FALSE, 
                 ind_weight_kg >= (min_weight_g/1000)) }
 
 
 
-# Build dataOrig
+
+
+
+
+
+
+# Build dataOrig for sizeSpectra
 #' @title Prep Data for sizeSpectra - convert to grams
 #' 
 #' @description Renames fields and prepares things in grams to use with sizeSpectra function. I hate 
 #' how this is written, so confusing with so many columns that are too similar.
 #' 
-#' Changes from kg to grams for wmin and wmax
+#' 
+#' 
+#' Re-work 07/21/2021
+#' 
+#' Changes from kg to grams for wmin_g and wmax
 #'
 #' @param lw_trawl_data data that contains length weight relationships and numbers caught
 #'
@@ -61,7 +75,7 @@ min_weight_cutoff <- function(nefsc_lw, min_weight_g = 1){
 #' @export
 #'
 #' @examples
-prep_wmin_wmax <- function(lw_trawl_data){
+prep_sizeSpectra_data <- function(lw_trawl_data){
   
   # Filter out empty weights
   ss_dat <- lw_trawl_data  %>% 
@@ -69,60 +83,57 @@ prep_wmin_wmax <- function(lw_trawl_data){
     
   
   # Format columns for consistency downstream
-  ss_dat <- ss_dat %>% 
+  ss_dat <- ss_dat %>%
     rename(
       Year       = est_year,                  # year
-      SpecCode   = comname,                   # common name
-      LngtClass  = length,                    # length bin
-      Number     = numlen_adj,                # adjusted number at length
-      LWa        = a,                         # length/weight parameter
-      LWb        = b                          # length/weight parameter
+      # SpecCode   = comname,                   # common name
+      # LngtClass  = length_cm,                 # length bin
+      # Number     = numlen_adj,                # adjusted number at length
+      # LWa        = a,                         # length/weight parameter
+      # LWb        = b                          # length/weight parameter
       )
   
   # Get bodymass in g, and the biomass from the catch frequencies
   ss_dat <- ss_dat %>%                     
     mutate(
-      bodyMass       = ind_weight_kg * 1000,              # weight in grams of individual
-      bodyMass_sum   = Number * bodyMass,                 # number at size times the mass
-      lw_group       = str_c(SpecCode, season, catchsex), # the source of l-w coefficients
-      season         = str_to_title(season),
-      season         = factor(season, levels = c("Spring", "Fall"))) 
+      ind_weight_g   = ind_weight_kg * 1000,              # weight in grams of individual
+      sum_weight_g   = numlen_adj * ind_weight_g,                 # number at size times the mass
+      lw_group       = str_c(comname, season, catchsex) # the source of l-w coefficients
+      ) 
   
 
   # Get Upper Length Bin Weights
   # Assumes that for all species the lengths only jump in 1 cm increments
   # Captures min/max predicted weight across that length increment
-  ss_dat <- ss_dat %>% 
+  ss_dat <- ss_dat %>%
     mutate(
-      LngtMax  = LngtClass + 1,                # maximum length for a fish of wmin
-      Ln_wmax  = (ln_a + LWb * log(LngtMax)),  # max weight for fish of that wmin
-      wmin     = bodyMass,                     # minimum weight of individual in grams
-      wmax     = exp(Ln_wmax) * 1000,          # max weight of individual in grams
-      wmin_sum = Number * wmin,                # wmin * number caught actual
-      wmax_sum = Number * wmax)                # wmax * number caught actual  
+      lngt_max  = length_cm + 1,                # maximum length for a fish of wmin
+      ln_wmax  = (ln_a + b * log(lngt_max)),  # max weight for fish of that wmin
+      wmin_g    = ind_weight_g,                     # minimum weight of individual in grams
+      wmax_g    = exp(ln_wmax) * 1000           # max weight of individual in grams
+    )                
       
   
   # If available do stratified abundance as well
-  if("expanded_abund_s" %in% names(ss_dat)){
+  if("strat_total_abund_s" %in% names(ss_dat)){
     ss_dat <- ss_dat %>% 
     mutate(
-      stratified_sum_bodymass = expanded_abund_s * bodyMass,       # abundance expected across entire strata
-      wmin_area_strat         = expanded_abund_s * wmin,           # wmin * stratified abundance
-      wmax_area_strat         = expanded_abund_s * wmax            # wmax * stratified abundance
+      stratified_sum_bodymass = strat_total_abund_s * ind_weight_g,       
+      wmin_area_strat         = strat_total_abund_s * wmin_g,           
+      wmax_area_strat         = strat_total_abund_s * wmax_g           
     )
   }
   
   # Arrange
   ss_dat <- ss_dat %>% 
-    arrange(Year, season, SpecCode, LngtClass)
+    arrange(Year, season, comname, length_cm)
   
   # Filter zero and NA weights
-  ss_dat <- ss_dat %>% 
-    filter(
-      wmin != 0,
-      is.na(wmin) == FALSE,
-      wmax != 0,
-      is.na(wmax) == FALSE)
+  ss_dat <- filter(ss_dat,
+                   wmin_g != 0,
+                   is.na(wmin_g) == FALSE,
+                   wmax_g!= 0,
+                   is.na(wmax_g) == FALSE)
   
   # return data prepped for sizeSpectra
   return(ss_dat)
@@ -133,11 +144,24 @@ prep_wmin_wmax <- function(lw_trawl_data){
 
 
 
+
+
+# # testing
+# prep_sizeSpectra_data(lw_trawl_data = nefsc_stratified)
+
+
+
 ####_____________________####
 #### Size Spectrum MLE  ####
 
 # Takes minimum weight bin data split by a grouping variable .$group_var
 # returns the power law coefficients for that group
+
+
+
+
+
+
 
 
 #' @title Process maximum likelihood size-spectra slope for group of catch data
@@ -153,20 +177,21 @@ prep_wmin_wmax <- function(lw_trawl_data){
 #' @examples
 group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratified", vecDiff = 0.5){
   
-  # Toggle which abundance values to use:
-  if(abundance_vals == "stratified"){
-    dataBinForLike <- dataBinForLike %>% 
-      rename(survey_abund = Number) %>% 
-      rename(Number = expanded_abund_s)
-  }
+  # toggle which abundance calue to use with switch
+  abundance_col <- switch(abundance_vals,
+                          "observed"   = sym("numlen_adj"),
+                          "strat_mean" = sym("strat_mean_abund_s"),
+                          "stratified" = sym("strat_total_abund_s"))
   
   
   # Select just the columns we need:
-  dataBinForLike <- dplyr::select(dataBinForLike,
-                                  SpecCode,
-                                  wmin,
-                                  wmax,
-                                  Number)
+  # Rename them to match the code for sizeSpectra
+  dataBinForLike <- dataBinForLike %>% 
+  dplyr::select(
+    SpecCode = comname,
+    wmin = wmin_g,
+    wmax = wmax_g,
+    Number = !!abundance_col)
   
   # Set n, xmin, xmax
   n    <- sum(dataBinForLike$Number)
@@ -214,12 +239,12 @@ group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratifi
 #   # Select the right columns
 #   dataBinForLike <- dplyr::select(dataBinForLike,
 #                                   SpecCode,
-#                                   wmin,
-#                                   wmax,
-#                                   Number = expanded_abund_s)
+#                                   wmin_g,
+#                                   wmax_g,
+#                                   numlen = strat_total_abund_s)
 #   
 #   # Set n, xmin, xmax
-#   n    = sum(dataBinForLike$Number)
+#   n    = sum(dataBinForLike$numlen)
 #   xmin = min(dataBinForLike$wmin)
 #   xmax = max(dataBinForLike$wmax)
 #   
@@ -306,7 +331,7 @@ group_mle_slope_estimate <- function(wmin_grams,
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  dbin_truncated <- filter(wmin_grams, wmin >= min_weight_g) 
+  dbin_truncated <- filter(wmin_grams, wmin_g >= min_weight_g) 
   
   # # Set which function to operate on: stratified or not stratified
   mle_function <- group_mle_calc
@@ -350,7 +375,7 @@ group_mle_slope_estimate <- function(wmin_grams,
     imap_dfr(.f = mle_function, abundance_vals = abundance_vals)
   
   # Merge in the group details
-  group_results <- full_join(grouping_table, group_results) %>% 
+  group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
     mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
   
   # Return the results
@@ -384,14 +409,14 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  dbin_truncated <- filter(wmin_grams, wmin >= min_weight_g) %>% 
+  dbin_truncated <- filter(wmin_grams, wmin_g >= min_weight_g) %>% 
     mutate(decade = floor_decade(Year))
   
   
   # 2. Set up the factor groupings we want to compare : 
   
   #####__ 1.  All years, every region 
-  message("running overall slope with all data")
+  message("Calculating ISD exponent with all data")
   g1_res <- dbin_truncated %>% 
     mutate(group_var = "all_data") %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
@@ -400,7 +425,7 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   
   #####__ 2. All Years, each season 
-  message("running overall slope for each season")
+  message("Calculating ISD exponent for each season")
   g2_res <- dbin_truncated %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
@@ -408,7 +433,7 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   
   #####__ 3. All Years, regions  
-  message("running overall slope for each region")
+  message("Calculating ISD exponent for each region")
   g3_res <- dbin_truncated  %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
@@ -416,28 +441,28 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   
   #####__ 3. All Years, seasons * regions
-  message("running overall slope for season * region")
+  message("Calculating ISD exponent for season * region")
   g4_res <- dbin_truncated %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
                             .group_cols = c("season", "survey_area"))
   
   #####__ 4. Every year, entire survey
-  message("running slope for each year")
+  message("Calculating ISD exponent for each year")
   g5_res <- dbin_truncated  %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
                             .group_cols = c("Year")) 
   
   #####__ 5. every year, every region
-  message("running slope for each year in each region")
+  message("Calculating ISD exponent for each year in each region")
   g6_res <- dbin_truncated  %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
                             .group_cols = c("Year", "survey_area")) 
   
   #####__ 6. every year, only seasons
-  message("running slope for each year in each season")
+  message("Calculating ISD exponent for each year in each season")
   g7_res <- dbin_truncated %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
@@ -445,7 +470,7 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   
   #####__ 7. every year, region * season
-  message("running slope for each year in each region, for every season")
+  message("Calculating ISD exponent for each year in each region, for every season")
   g8_res <- dbin_truncated %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g, 
                             abundance_vals = abundance_vals,
@@ -453,7 +478,7 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   
   ####__ 8. decades
-  message("running slope for each decade")
+  message("Calculating ISD exponent for each decade")
   g9_res <- dbin_truncated %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g,
                             abundance_vals = abundance_vals,
@@ -461,7 +486,7 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   
   ####__ 9. decades and area
-  message("running slope for each decade in each area")
+  message("Calculating ISD exponent for each decade in each area")
   g10_res <- dbin_truncated %>% 
     group_mle_slope_estimate(min_weight_g = min_weight_g,
                             abundance_vals = abundance_vals,
@@ -494,9 +519,9 @@ ss_slopes_all_groups <- function(wmin_grams,
 
 
 # Function to prepare data for Individual Size Distribution Plots
-# Takes the wmin and wmax data split up by the grouping variable
+# Takes the wmin_g and wmax_g data split up by the grouping variable
 # Gets the number of fishes within each of the size class bins
-# Returns the table, wmin, wmax, abundance,
+# Returns the table, wmin_g, wmax_g, abundance,
 # and totals for number of fish that fill in, out, or between size bins
 
 
@@ -520,61 +545,57 @@ isd_plot_prep <- function(biomass_data = databin_split,
   # Toggle abundance to stratified abundances
   if(stratified_abundance == TRUE){
     biomass_data <- biomass_data %>% 
-      rename(survey_abund = Number) %>% 
-      rename(Number = expanded_abund_s) }
+      rename(survey_abund = numlen_adj) %>% 
+      rename(numlen_adj = strat_total_abund_s) }
   
   # arrange by lower weight 
-  biomass_data <- dplyr::arrange(biomass_data, desc(wmin)) %>% 
-    select(wmin, wmax, Number)
+  biomass_data <- dplyr::arrange(biomass_data, desc(wmin_g)) %>% 
+    select(wmin_g, wmax_g, numlen_adj)
   
   # truncate the data to match the results we have
   biomass_data <- biomass_data %>% 
-    filter(wmin >= min_weight_g,
-           wmin != 0,
-           is.na(wmin) == FALSE,
-           wmax != 0,
-           is.na(wmax) == FALSE)
+    filter(wmin_g >= min_weight_g,
+           wmin_g != 0,
+           is.na(wmin_g) == FALSE,
+           wmax_g != 0,
+           is.na(wmax_g) == FALSE)
   
   # Number of fish for the year
-  total_abundance <- sum(biomass_data$Number)
+  total_abundance <- sum(biomass_data$numlen_adj)
   
   # Have to do not with dplyr:
-  wmin.vec <- biomass_data$wmin    # Vector of lower weight bin limits
-  wmax.vec <- biomass_data$wmax    # Vector of upper weight bin limits
-  num.vec  <- biomass_data$Number  # Vector of corresponding counts for those bins
+  wmin.vec <- biomass_data$wmin_g    # Vector of lower weight bin limits
+  wmax.vec <- biomass_data$wmax_g    # Vector of upper weight bin limits
+  num.vec  <- biomass_data$numlen_adj  # Vector of corresponding counts for those bins
   
   # doing it with purr and pmap
-  biomass_bins <- select(biomass_data, wmin, wmax) %>% 
-    distinct(wmin, wmax)
+  biomass_bins <- select(biomass_data, wmin_g, wmax_g) %>% 
+    distinct(wmin_g, wmax_g)
   
   # Go row-by-row and get how many of any species falls into each
   # discrete size bin
-  out_data <- pmap_dfr(biomass_bins, function(wmin, wmax){
+  out_data <- pmap_dfr(biomass_bins, function(wmin_g, wmax_g){
     
-    # 1. Count times wmin.vec >= individual wmin, multiply by number of fish for year
-    countGTEwmin <- sum( (wmin.vec >= wmin) * num.vec)
+    # 1. Count times wmin.vec >= individual wmin_g, multiply by number of fish for year
+    countGTEwmin <- sum( (wmin.vec >= wmin_g) * num.vec)
     
-    # 2. Count times wmin.vec >= individual wmax, multiply by number of fish for year
-    lowCount <- sum( (wmin.vec >= wmax) * num.vec)
+    # 2. Count times wmin.vec >= individual wmax_g, multiply by number of fish for year
+    lowCount <- sum( (wmin.vec >= wmax_g) * num.vec)
     
-    # 3. Count times wmax.vec > individual wmin, multiply by number of fish for year
-    highCount <- sum( (wmax.vec >  wmin) * num.vec)
+    # 3. Count times wmax.vec > individual wmin_g, multiply by number of fish for year
+    highCount <- sum( (wmax.vec >  wmin_g) * num.vec)
     
     # 4. build table
     out_table <- data.frame(
-      "wmin"         = wmin,
-      "wmax"         = wmax,
+      "wmin_g"       = wmin_g,
+      "wmax_g"       = wmax_g,
       "countGTEwmin" = countGTEwmin,
       "lowCount"     = lowCount,
       "highCount"    = highCount
     )
   })
   
-  # # rename if stratified abundance was used
-  # if(stratified_abundance == TRUE){
-  #   out_data <- out_data %>% 
-  #     rename(expanded_abund_s = Number,
-  #            Number = survey_abund) }
+
   
   # return the purr version
   return(out_data)
@@ -668,8 +689,8 @@ ggplot_isd <- function(isd_data_prepped,
   # Toggle Rectangles
   if(plot_rects == TRUE) {
     p1 <- p1 + geom_rect(data = isd_data_prepped, 
-                         aes(xmin = wmin, 
-                             xmax = wmax, 
+                         aes(xmin = wmin_g, 
+                             xmax = wmax_g, 
                              ymin = lowCount, 
                              ymax = highCount),
                          color = "gray70",
@@ -677,8 +698,8 @@ ggplot_isd <- function(isd_data_prepped,
   
   # Add segments for bin widths
   p1 <- p1 + geom_segment(data = isd_data_prepped,
-                          aes(x = wmin, 
-                              xend = wmax, 
+                          aes(x = wmin_g, 
+                              xend = wmax_g, 
                               y = countGTEwmin, 
                               yend = countGTEwmin),
                           color = "blue")
@@ -749,7 +770,8 @@ isd_lite <- function(wmin_grams,
   
   
   # Columns and labels
-  abundance_cols <- c("observed" = "numlen", "stratified" = "Number")
+  abundance_cols <- c("observed" = "numlen_adj", 
+                      "stratified" = "strat_total_abund_s")
   abundance_col <- abundance_cols[[abundance_vals]]
   abundance_lab <- c("observed" = "Survey Abundance", "stratified" = "Stratified Abundance")
   abundance_label <- abundance_lab[[abundance_vals]]
@@ -879,15 +901,15 @@ assign_log10_bins <- function(wmin_grams){
   
   #### 1. Set up bodymass bins
   
-  # shorten the name a little
+  # filter missing weights
   m1 <- wmin_grams %>% 
-    filter(wmin > 0,
-           is.na(wmin) == FALSE,
-           wmin > 0,
-           is.na(wmax) == FALSE)
+    filter(wmin_g > 0,
+           is.na(wmin_g) == FALSE,
+           wmax_g > 0,
+           is.na(wmax_g) == FALSE)
 
   # Get bodymass on log10() scale
-  m1$log10_weight <- log10(m1$bodyMass)
+  m1$log10_weight <- log10(m1$ind_weight_g)
   
   # Set up the bins using 0.5 spacing - Pull min and max weights from data available
   max_bin <- ceiling(max(m1$log10_weight))
@@ -947,7 +969,7 @@ group_log10_slopes <- function(wmin_grams,
   
   # 1. Set bodymass lower limit
   l10_assigned <- assign_log10_bins(wmin_grams)
-  l10_assigned <- filter(l10_assigned, wmin >= min_weight_g )
+  l10_assigned <- filter(l10_assigned, wmin_g >= min_weight_g )
   
   
   
@@ -1022,9 +1044,9 @@ group_log10_slopes <- function(wmin_grams,
       # Get Totals for bodymass and abundances
       l10_aggregates <- l10_assigned %>% 
         group_by(log10_bins) %>% 
-        summarise(observed_abundance   = sum(Number, na.rm = T),
-                  observed_weight_g    = sum(wmin, na.rm = T),
-                  stratified_abundance = sum(expanded_abund_s, na.rm = T),
+        summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
+                  observed_weight_g    = sum(wmin_g, na.rm = T),
+                  stratified_abundance = sum(strat_total_abund_s, na.rm = T),
                   stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
         ungroup()
   
@@ -1076,7 +1098,7 @@ group_log10_slopes <- function(wmin_grams,
   
   
   # Merge in the group details
-  group_results <- full_join(grouping_table, group_results) %>% 
+  group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
     mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
   
   # Return the results
@@ -1103,75 +1125,76 @@ log10_ss_all_groups <- function(wmin_grams,
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  l10_assigned_trunc <- filter(wmin_grams, wmin >= min_weight_g) %>% 
+  l10_assigned_trunc <- filter(wmin_grams, 
+                               wmin_g >= min_weight_g) %>% 
     mutate(decade = floor_decade(Year))
   
   
   # 2. Set up the factor groupings we want to compare : 
   
   #####__ 1.  All years, every region 
-  message("running overall slope with all data")
+  message("Calculating log(10) size spectrum slope with all data")
   g1_res <- l10_assigned_trunc %>% 
     mutate(group_var = "all_data") %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
-                    .group_cols = c("group_var")) 
+                       .group_cols = c("group_var")) 
   
   
   #####__ 2. All Years, each season 
-  message("running overall slope for each season")
+  message("Calculating log(10) size spectrum slope for each season")
   g2_res <- l10_assigned_trunc %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
-                    .group_cols = c("season")) 
+                       .group_cols = c("season")) 
   
   
   #####__ 3. All Years, regions  
-  message("running overall slope for each region")
+  message("Calculating log(10) size spectrum slope for each region")
   g3_res <- l10_assigned_trunc  %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
-                     .group_cols = c("survey_area"))
+                       .group_cols = c("survey_area"))
   
   
   #####__ 3. All Years, seasons * regions
-  message("running overall slope for season * region")
+  message("Calculating log(10) size spectrum slope for season * region")
   g4_res <- l10_assigned_trunc %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
-                     .group_cols = c("season", "survey_area"))
+                       .group_cols = c("season", "survey_area"))
   
   #####__ 4. Every year, entire survey
-  message("running slope for each year")
+  message("Calculating log(10) size spectrum slope each year")
   g5_res <- l10_assigned_trunc  %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
                      .group_cols = c("Year")) 
   
   #####__ 5. every year, every region
-  message("running slope for each year in each region")
+  message("Calculating log(10) size spectrum slope each year in each region")
   g6_res <- l10_assigned_trunc  %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
                      .group_cols = c("Year", "survey_area")) 
   
   #####__ 6. every year, only seasons
-  message("running slope for each year in each season")
+  message("Calculating log(10) size spectrum slope each year in each season")
   g7_res <- l10_assigned_trunc %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
                      .group_cols = c("Year", "season"))
   
   
   #####__ 7. every year, region * season
-  message("running slope for each year in each region, for every season")
+  message("Calculating log(10) size spectrum slope each year in each region, for every season")
   g8_res <- l10_assigned_trunc %>% 
     group_log10_slopes(min_weight_g = min_weight_g, 
                      .group_cols = c("Year", "season", "survey_area")) 
   
   
   ####__ 8. decades
-  message("running slope for each decade")
+  message("Calculating log(10) size spectrum slope each decade")
   g9_res <- l10_assigned_trunc %>% 
     group_log10_slopes(min_weight_g = min_weight_g,
                      .group_cols = c("decade")) 
   
   
   ####__ 9. decades and area
-  message("running slope for each decade in each area")
+  message("Calculating log(10) size spectrum slope each decade in each area")
   g10_res <- l10_assigned_trunc %>% 
     group_log10_slopes(min_weight_g = min_weight_g,
                      .group_cols = c("decade", "survey_area")) 
@@ -1241,9 +1264,9 @@ plot_log10_ss <- function(l10_assigned){
   # aggregating all stratum together
   l10_aggregates <- l10_assigned %>% 
     group_by(log10_bins) %>% 
-    summarise(observed_abundance   = sum(Number, na.rm = T),
-              observed_weight_g    = sum(wmin, na.rm = T),
-              stratified_abundance = sum(expanded_abund_s, na.rm = T),
+    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
+              observed_weight_g    = sum(wmin_g, na.rm = T),
+              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
               stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
     ungroup()
   
@@ -1359,15 +1382,17 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
     imap_dfr(function(group_data, group_name){
       
       # lengths
-      mean_len    <- weighted.mean(group_data[,"length"], group_data[,"numlen"], na.rm = T)
-      min_len     <- min(group_data[, "length"], na.rm = T)
-      max_len     <- max(group_data[, "length"], na.rm = T)
+      mean_len    <- weighted.mean(group_data[,"length_cm"], 
+                                   group_data[,"numlen_adj"], na.rm = T)
+      min_len     <- min(group_data[, "length_cm"], na.rm = T)
+      max_len     <- max(group_data[, "length_cm"], na.rm = T)
       
       # weights
-      mean_weight <- weighted.mean(group_data[,"indwt"],  group_data[,"numlen"], na.rm = T)
+      mean_weight <- weighted.mean(group_data[,"indwt"],  
+                                   group_data[,"numlen_adj"], na.rm = T)
       min_weight  <- min(group_data[, "indwt"], na.rm = T)
       max_weight  <- max(group_data[, "indwt"], na.rm = T)
-      total_abund <- sum(group_data[,"numlen"], na.rm = T)
+      total_abund <- sum(group_data[,"numlen_adj"], na.rm = T)
       
       # number of species
       num_species <- group_data %>% 
@@ -1416,7 +1441,7 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
 # Run all the groups, preserve the groups not stated for "overall" levels
 # Direct match to the groups in ss_slopes_all_groups
 mean_sizes_all_groups <- function(nefsc_bio, 
-                                 min_weight_g = 0){
+                                  min_weight_g = 0){
   
   
   ####__  Set Bodymass Cutoff and Groups
@@ -1455,35 +1480,35 @@ mean_sizes_all_groups <- function(nefsc_bio,
     group_size_metrics(.group_cols = c("season", "survey_area"))
   
   #####__ 4. Every year, entire survey
-  message("running slope for each year")
+  message("Calculating log(10) size spectrum slope each year")
   g5_res <- dbin_truncated  %>% 
     group_size_metrics(.group_cols = c("Year")) 
   
   #####__ 5. every year, every region
-  message("running slope for each year in each region")
+  message("Calculating log(10) size spectrum slope each year in each region")
   g6_res <- dbin_truncated  %>% 
     group_size_metrics(.group_cols = c("Year", "survey_area")) 
   
   #####__ 6. every year, only seasons
-  message("running slope for each year in each season")
+  message("Calculating log(10) size spectrum slope each year in each season")
   g7_res <- dbin_truncated %>% 
     group_size_metrics(.group_cols = c("Year", "season"))
   
   
   #####__ 7. every year, region * season
-  message("running slope for each year in each region, for every season")
+  message("Calculating log(10) size spectrum slope each year in each region, for every season")
   g8_res <- dbin_truncated %>% 
     group_size_metrics(.group_cols = c("Year", "season", "survey_area")) 
   
   
   ####__ 8. decades
-  message("running slope for each decade")
+  message("Calculating log(10) size spectrum slope each decade")
   g9_res <- dbin_truncated %>% 
     group_size_metrics(.group_cols = c("decade")) 
   
   
   ####__ 9. decades and area
-  message("running slope for each decade in each area")
+  message("Calculating log(10) size spectrum slope each decade in each area")
   g10_res <- dbin_truncated %>% 
     group_size_metrics(.group_cols = c("decade", "survey_area")) 
   
@@ -1537,7 +1562,7 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   
 #   # Set bodymass lower limit
 #   # Used to filter for lower end of gear selectivity
-#   dbin_truncated <- filter(wmin_grams, wmin >= min_weight_g) 
+#   dbin_truncated <- filter(wmin_grams, wmin_g>= min_weight_g) 
 #   
 #   # Set which function to operate on: stratified or not stratified
 #   mle_function <- switch(abundance_vals,
@@ -1683,25 +1708,25 @@ mean_sizes_all_groups <- function(nefsc_bio,
 
 
 # # Takes a list of each species, pulls distinct length bins
-# # returns a key of what the wmin and wmax is for each
-# # corrects wmin and wmax to kg for trouble species
+# # returns a key of what the wmin_gand wmax_g is for each
+# # corrects wmin_gand wmax_g to kg for trouble species
 # make_bin_key <- function(species_df){
 #   
 #   #pull the distinct length bins
 #   species_df <- species_df %>% 
-#     distinct(LngtClass, .keep_all = T) %>% 
-#     arrange(LngtClass)
+#     distinct(length_cm, .keep_all = T) %>% 
+#     arrange(length_cm)
 #   
 #   
 #   
 #   # Add the max length for the bin, and its weight
 #   binned_df <- species_df %>% 
 #     mutate(
-#       LngtMax = LngtClass + 1, 
-#       wmax    = exp(log(LWa) + LWb * log(LngtMax)) * 1000,
-#       wmax    = ifelse(SpecCode %in% gram_species, wmax / 1000, wmax))  %>%
-#     select(SpecCode, LWa, LWb, LngtMin = LngtClass, wmin = bodyMass, LngtMax, wmax,
-#            -c(Number, Biomass))
+#       lngt_max = length_cm + 1, 
+#       wmax_g    = exp(log(LWa) + LWb * log(lngt_max)) * 1000,
+#       wmax_g    = ifelse(comname %in% gram_species, wmax_g / 1000, wmax))  %>%
+#     select(comname, LWa, LWb, LngtMin = length_cm, wmin_g = ind_weight_g, lngt_max, wmax_g,
+#            -c(numlen, Biomass))
 #   
 #   # return the clean data
 #   return(binned_df)}
@@ -1718,12 +1743,12 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   biomass_data <- dplyr::arrange(x, desc(wmin))
 #   
 #   # Number of fish for the year
-#   total_abundance <- sum(biomass_data$expanded_abund_s)
+#   total_abundance <- sum(biomass_data$strat_total_abund_s)
 #   
 #   # Have to do not with dplyr:
-#   wmin.vec <- biomass_data$wmin    # Vector of lower weight bin limits
-#   wmax.vec <- biomass_data$wmax    # Vector of upper weight bin limits
-#   num.vec  <- biomass_data$expanded_abund_s  # Vector of corresponding counts for those bins
+#   wmin.vec <- biomass_data$wmin_g    # Vector of lower weight bin limits
+#   wmax.vec <- biomass_data$wmax_g    # Vector of upper weight bin limits
+#   num.vec  <- biomass_data$strat_total_abund_s  # Vector of corresponding counts for those bins
 #   
 #   # to do a manual count, start with NA's for everything
 #   countGTEwmin <- rep(NA, length(num.vec)) 
@@ -1733,13 +1758,13 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   # Loop through
 #   for(iii in 1:length(countGTEwmin)) {
 #     
-#     # Count times wmin.vec >= individual wmin, multiply by number of fish for year
+#     # Count times wmin.vec >= individual wmin_g, multiply by number of fish for year
 #     countGTEwmin[iii]  <- sum( (wmin.vec >= wmin.vec[iii]) * num.vec)
 #     
-#     # Count times wmin.vec >= individual wmax, multiply by number of fish for year
+#     # Count times wmin.vec >= individual wmax_g, multiply by number of fish for year
 #     lowCount[iii]      <- sum( (wmin.vec >= wmax.vec[iii]) * num.vec)
 #     
-#     #Count times wmax.vec > individual wmin, multiply by number of fish for year
+#     #Count times wmax.vec > individual wmin_g, multiply by number of fish for year
 #     highCount[iii]     <- sum( (wmax.vec >  wmin.vec[iii]) * num.vec)
 #   }
 #   
@@ -1768,7 +1793,7 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   
 #   # Power law parameters and summary details for that year
 #   b.MLE     <- mle_results$b
-#   total_abundance <- sum(isd_data_prepped$expanded_abund_s) 
+#   total_abundance <- sum(isd_data_prepped$strat_total_abund_s) 
 #   b.confMin <- mle_results$confMin
 #   b.confMax <- mle_results$confMax
 #   
@@ -1810,8 +1835,8 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   if(plot_rects == TRUE) {
 #     p1 <- p1 +
 #       geom_rect(data = isd_data_prepped, 
-#                 aes(xmin = wmin, 
-#                     xmax = wmax, 
+#                 aes(xmin = wmin_g, 
+#                     xmax = wmax_g, 
 #                     ymin = lowCount, 
 #                     ymax = highCount),
 #                 color = "gray70",
@@ -1819,8 +1844,8 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   # Add line segments
 #   p1 <- p1 + 
 #     geom_segment(data = isd_data_prepped,
-#                  aes(x = wmin, 
-#                      xend = wmax, 
+#                  aes(x = wmin_g, 
+#                      xend = wmax_g, 
 #                      y = countGTEwmin, 
 #                      yend = countGTEwmin),
 #                  color = "blue") +
@@ -1853,8 +1878,8 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   if(plot_rects == TRUE) {
 #     p2 <- p2 +
 #       geom_rect(data = isd_data_prepped, 
-#                 aes(xmin = wmin, 
-#                     xmax = wmax, 
+#                 aes(xmin = wmin_g, 
+#                     xmax = wmax_g, 
 #                     ymin = lowCount, 
 #                     ymax = highCount),
 #                 color = "gray70",
@@ -1863,8 +1888,8 @@ mean_sizes_all_groups <- function(nefsc_bio,
 #   # Add the line segments for biomass bins
 #   p2 <- p2 + 
 #     geom_segment(data = isd_data_prepped,
-#                  aes(x = wmin, 
-#                      xend = wmax, 
+#                  aes(x = wmin_g, 
+#                      xend = wmax_g, 
 #                      y = countGTEwmin, 
 #                      yend = countGTEwmin),
 #                  color = "blue") +

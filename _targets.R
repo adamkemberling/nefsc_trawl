@@ -7,19 +7,21 @@ library(targets)
 library(tarchetypes)
 library(here)
 library(janitor)
-library(gmRi)
 library(patchwork)
 library(rnaturalearth)
 library(sf)
 library(tidyverse)
 
 ####  Resource Paths  
-oisst_path <- box_path(box_group = "RES_Data", subfolder = "/OISST/oisst_mainstays")
+oisst_path <- gmRi::box_path(box_group = "RES_Data", 
+                             subfolder = "/OISST/oisst_mainstays")
 
 ####  Build code and stratification functions  ####
 
+# Survdat cleanup functions
+source("~/Documents/Repositories/gmRi/R/nefsc_groundfish_access.R")
+
 # Size Spectra Build Functions
-# source(here("R/support/nefsc_ss_build_nodrop.R"))
 # source(here("R/support/maine_nh_trawl_build.R"))
 source(here("R/support/sizeSpectra_support.R"))
 source(here("R/support/temp_support.R"))
@@ -40,38 +42,33 @@ list(
   #####__ a. Full Survdat  ####
   # Preparing Survdat Data
   tar_target(
-    name = nefsc_clean,
+    name = survdat_clean,
     command = gmri_survdat_prep(survdat_source = "most recent") ),
   tar_target(
-    name = nefsc_survdat_lw,
-    command = add_lw_info(nefsc_clean, cutoff = T) ),
+    name = survdat_lw,
+    command = add_lw_info(survdat_clean, cutoff = T) ),
   tar_target(
     name = nefsc_stratified,
-    command = add_area_stratification(nefsc_survdat_lw, include_epu = F) ),
+    command = add_area_stratification(survdat_lw, include_epu = F) ),
   
   #####__ b. Biological Data  ####
   # survdat biological data - for actual length relationships
   tar_target(
-    name = nefsc_biological,
+    name = survdat_biological,
     command = gmri_survdat_prep(survdat_source = "bio") ),
   tar_target(
-    name = nefsc_bio_lw,
-    command = add_lw_info(nefsc_biological, cutoff = T) %>% 
+    name = survdat_bio_lw,
+    command = add_lw_info(survdat_biological, cutoff = T) %>% 
       mutate(Year = est_year,
              season = str_to_title(season))),
   
-  # tar_target(
-  #   name = bio_stratified,
-  #   command = add_area_stratification(nefsc_bio_lw, include_epu = F) %>% 
-  #     rename(Year = est_year) %>% 
-  #     mutate(season = str_to_title(season))),
 
   #####  2. Prep Size Spectrum Groups  #####
   
   # Prep wmin and wmax for all the data
   tar_target(
     name = wmin_grams,
-    command = prep_wmin_wmax(lw_trawl_data = nefsc_stratified)),
+    command = prep_sizeSpectra_data(lw_trawl_data = nefsc_stratified)),
   tar_target(
     name = nefsc_1g,
     command = min_weight_cutoff(nefsc_lw = wmin_grams, min_weight_g = 1)
@@ -82,7 +79,7 @@ list(
   
   
   
-  ##### 4. Manual log10 Size Spectra  ####
+  ##### 4. log10 SS Slopes  ####
   
   # tar_target(nefsc_l10_assigned,
   #            assign_log10_bins(wmin_grams = nefsc_1g)),
@@ -93,22 +90,19 @@ list(
   
   
   
-  ##### 5. Results for WARMEM Groups  ####
+  ##### 5. sizeSpectra Exponents  ####
   
-  # Run the mle calculation on survey abundance
-  tar_target(
-    name = nmfs_group_mle_ss,
-    command = ss_slopes_all_groups(nefsc_1g, 
-                                  min_weight_g = 1, 
-                                  abundance_vals = "observed")),
+  
+  
   # Run the mle calculation on stratified abundance
   tar_target(
-    name = nmfs_stratified_mle_ss,
+    name = strat_total_mle_results,
     command = ss_slopes_all_groups(nefsc_1g, 
-                                  min_weight_g = 1, 
-                                  abundance_vals = "stratified")),
+                                   min_weight_g = 1, 
+                                   abundance_vals = "stratified")),
   tar_target(size_spectrum_indices,
-             full_join(nmfs_stratified_mle_ss, nmfs_log10_slopes)),
+             full_join(strat_total_mle_results, nmfs_log10_slopes,
+                       by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
   
   
   
@@ -186,19 +180,19 @@ list(
   # Run the weighted mean sizes
   tar_target(
     mean_individual_sizes,
-    group_size_metrics(nefsc_bio = nefsc_bio_lw, 
+    group_size_metrics(nefsc_bio = survdat_bio_lw, 
                        .group_cols = c("Year", "survey_area", "season", "spec_class", "fishery"))),
   
   tar_target(
     mean_sizes_ss_groups,
-    mean_sizes_all_groups(nefsc_bio = nefsc_bio_lw, 
+    mean_sizes_all_groups(nefsc_bio = survdat_bio_lw, 
                           min_weight_g = 0))
   
   
   # ##### 8. Assemble Table of indices  ####
   # tar_target(
   #   group_community_indicators,
-  #   full_join(mean_sizes_ss_groups, nmfs_stratified_mle_ss)
+  #   full_join(mean_sizes_ss_groups, strat_total_mle_results)
   
   
   
@@ -237,7 +231,34 @@ list(
 ####  Additional non-necessary steps  ####
 
 
-##### 3. Process LME Group SS  #### 
+
+#####  x.  Misc.  ####
+
+# tar_target(
+#   name = bio_stratified,
+#   command = add_area_stratification(survdat_bio_lw, include_epu = F) %>% 
+#     rename(Year = est_year) %>% 
+#     mutate(season = str_to_title(season))),
+
+# # Run the mle calculation on survey abundance
+# tar_target(
+#   name = nmfs_group_mle_ss,
+#   command = ss_slopes_all_groups(nefsc_1g, 
+#                                 min_weight_g = 1, 
+#                                 abundance_vals = "observed")),
+
+# # Run the mle calculation on stratified mean abundance, should ignore tow area
+# tar_target(
+#   name = strat_mean_mle_ss,
+#   command = ss_slopes_all_groups(nefsc_1g,
+#                                 min_weight_g = 1,
+#                                 abundance_vals = "strat_mean")),
+
+
+
+
+
+##### x. Process LME Group SS  #### 
 
 
 # # Individual Years
@@ -300,7 +321,7 @@ list(
 #   command = min_length_cutoff(trawl_lens = menh_weights, cutoff_cm = 1) ),
 # tar_target(
 #   name = menh_databin,
-#   command = prep_wmin_wmax(lw_trawl_data = menh_filtered_lens) )
+#   command = prep_sizeSpectra_data(lw_trawl_data = menh_filtered_lens) )
 
 
 # # Global plot limits for individual size distributions

@@ -37,7 +37,7 @@ library(ruler)
 
 
 # Load the build code and stratification function
-box_paths  <- research_access_paths(os.use = "unix")
+box_paths  <- research_access_paths()
 mills_path <- box_paths$mills
 res_path   <- box_paths$res
 
@@ -69,9 +69,9 @@ The selected survdat pull is **`r params$survdat_source`**
 survdat_path <- switch(
   EXPR = params$survdat_source, 
   "2016" = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
-  "2020" = paste0(res_path, "NMFS_trawl/Survdat_Nye_Aug 2020.RData"),
-  "2021" = paste0(res_path, "NMFS_trawl/survdat_slucey_01152021.RData"),
-  "Feb 23 2021" = paste0(res_path, "NMFS_trawl/NEFSC_BTS_02242021.RData")
+  "2020" = paste0(res_path, "NMFS_trawl/prior_survdat_data/Survdat_Nye_Aug 2020.RData"),
+  "2021" = paste0(res_path, "NMFS_trawl/prior_survdat_data/survdat_slucey_01152021.RData"),
+  "Feb 23 2021" = paste0(res_path, "NMFS_trawl/2021_survdat/NEFSC_BTS_02242021.RData")
   )
                        
 

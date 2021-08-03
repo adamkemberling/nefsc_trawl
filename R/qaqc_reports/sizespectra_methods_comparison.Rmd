@@ -74,16 +74,14 @@ nefsc_1g <- nefsc_1g %>%
   select(Year, 
          station, 
          stratum, 
-         SpecCode,         #species
-         LngtClass,        #length
-         bodyMass,         # lw of individual in grams
-         Number,           # numlen_adj
-         bodyMass_sum,     # numlen_adj * weight_g
-         wmin,             # same as bodymass
-         wmax,             # weight of ind at length + 1
-         wmin_sum,         # wmin * numlen_adj
-         wmax_sum,         # wmax * numlen_adj
-         expanded_abund_s, #stratified abundance
+         SpecCode = comname,         #species
+         LngtClass = length_cm,        #length
+         bodyMass = ind_weight_g,         # lw of individual in grams
+         Number = numlen,           # numlen_adj
+         bodyMass_sum = sum_weight_g,     # numlen_adj * weight_g
+         wmin = wmin_g,             # same as bodymass
+         wmax = wmax_g,             # weight of ind at length + 1
+         strat_total_abund_s, #stratified abundance
          wmin_area_strat,  # wmin * strat abund
          wmax_area_strat)  #wmax * strat abund
 ```
@@ -187,7 +185,7 @@ hist(log10(rep(m1$bodyMass, m1$Number)),
 
 ```{r}
 
-# We already have stratified abundances m1$expanded_abund_s
+# We already have stratified abundances m1$strat_total_abund_s
 # so next we:
 
 # 1. aggregate individual bodymasses into each bin for overall totals
@@ -200,7 +198,7 @@ m1_aggregates <- m1_assigned %>%
             stratum = "all",
             observed_abundance   = sum(Number, na.rm = T),
             observed_weight_g    = sum(wmin, na.rm = T),
-            stratified_abundance = sum(expanded_abund_s, na.rm = T),
+            stratified_abundance = sum(strat_total_abund_s, na.rm = T),
             stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
   ungroup()
 
@@ -435,7 +433,7 @@ hist(x = log10(x),
 ####  Plotting the Aggregates
 
 ```{r}
-# We already have stratified abundances m1$expanded_abund_s
+# We already have stratified abundances m1$strat_total_abund_s
 # so next we:
 
 # 1. aggregate individual bodymasses into each bin for overall totals
@@ -449,7 +447,7 @@ mizer_aggregates <- mizer_assigned %>%
             stratum = "all",
             observed_abundance   = sum(Number, na.rm = T),
             observed_weight_g    = sum(wmin, na.rm = T),
-            stratified_abundance = sum(expanded_abund_s, na.rm = T),
+            stratified_abundance = sum(strat_total_abund_s, na.rm = T),
             stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
   ungroup()
 
@@ -691,7 +689,7 @@ mle_survey_abund = data.frame(xmin = xmin,
   
   
   
- # thats it
+
   
 ```
 
@@ -702,8 +700,16 @@ The only difference here is that instead of number at length from the survey we 
 ```{r}
 # Same code, just behind a function and using stratified abundance instead of numlen for numbers at length
 
+# changed the functions so we'll need the normal names here
+dbin_trunc_renamed <- dbin_trunc %>% 
+  rename(numlen = Number,
+         comname = SpecCode,
+         length_cm = LngtClass,
+         wmin_g = wmin,
+         wmax_g = wmax)
+
 #### 2,  stratified abundances:
-mle_stratified <- group_mle_calc(dataBinForLike = dbin_trunc, 
+mle_stratified <- group_mle_calc(dataBinForLike = dbin_trunc_renamed, 
                                  group_var = "all data",
                                  abundance_vals = "stratified",  
                                  vecDiff = 0.5) 
@@ -733,14 +739,14 @@ mle_results <- data.frame(Year          = "all",
 #   split(.$group_var) %>%
 #   map(isd_plot_prep, stratified_abundance = T)
 
-group_isd_prep <- isd_plot_prep(biomass_data = dbin_trunc, 
+group_isd_prep <- isd_plot_prep(biomass_data = dbin_trunc_renamed, 
                                 stratified_abundance = T, min_weight_g = 1)
 
 # Global limits for plot
-xlim.global <- c(0, max(dbin_trunc$wmax) )
+xlim.global <- c(0, max(dbin_trunc_renamed$wmax_g) )
 
 # Vector of years, for naming
-group_names <- sort(unique(dbin_trunc$group_var))
+group_names <- sort(unique(dbin_trunc_renamed$group_var))
 
 
 # # Plot the group

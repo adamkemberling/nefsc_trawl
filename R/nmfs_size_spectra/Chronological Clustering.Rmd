@@ -13,7 +13,12 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, comment = "", fig.height = 8, fig.width = 10)
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = F, 
+                      warning = F, 
+                      comment = "", 
+                      fig.height = 8, 
+                      fig.width = 10)
 
 ####  Packages  ####
 library(targets)
@@ -59,6 +64,9 @@ size_spectrum_indices <- size_spectrum_indices  %>%
                               levels = c("GoM", "GB", "SNE", "MAB")),
          yr = as.numeric(as.character(Year)))
 
+# SizeSpectra Results on Stratified Mean Catch
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(strat_mean_mle_ss))     
+
 
 ####  OISST Data
 
@@ -82,8 +90,7 @@ nefsc_1g <- nefsc_1g %>%
   mutate(fishery = case_when(
     fishery == "com" ~ "Commercially Targeted",
     fishery == "nc" ~ "Not Commercially Targeted",
-    TRUE ~ "Not Labelled"
-  ))
+    TRUE ~ "Not Labelled"))
 ```
 
 
@@ -94,12 +101,12 @@ nefsc_1g <- nefsc_1g %>%
 nefsc_size_bins <- nefsc_1g %>% 
   mutate(
     length_bin = case_when(
-      LngtClass <= 5   ~ "0 - 5cm",
-      LngtClass <= 10  ~ "5 - 10cm",
-      LngtClass <= 25  ~ "10 - 25cm",
-      LngtClass <= 50  ~ "25 - 50cm",
-      LngtClass <= 100 ~ "50 - 100cm",
-      LngtClass >= 100 ~ ">= 100cm"),
+      length_cm <= 5   ~ "0 - 5cm",
+      length_cm <= 10  ~ "5 - 10cm",
+      length_cm <= 25  ~ "10 - 25cm",
+      length_cm <= 50  ~ "25 - 50cm",
+      length_cm <= 100 ~ "50 - 100cm",
+      length_cm >= 100 ~ ">= 100cm"),
     length_bin = factor(length_bin, levels = c(
       "0 - 5cm", "5 - 10cm", "10 - 25cm",
       "25 - 50cm", "50 - 100cm", ">= 100cm")))
@@ -133,14 +140,12 @@ nefsc_size_bins <- nefsc_size_bins %>%
       spec_class == "pel" ~ "Pelagic",
       spec_class == "dem" ~ "Demersal",
       spec_class == "el"  ~ "Elasmobranch",
-      spec_class == "<NA>" ~ "NA"
-    ))
+      spec_class == "<NA>" ~ "NA"))
 
 # Make regions go N->S
 nefsc_size_bins <- nefsc_size_bins %>% 
-  mutate(
-    survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")
-    ))
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+         season = factor(season, levels = c("Spring", "Fall")))
 
 ```
 
@@ -152,11 +157,11 @@ nefsc_size_bins <- nefsc_size_bins %>%
 # Do some grouping
 regional_totals <- nefsc_size_bins %>% 
   group_by(Year, survey_area) %>% 
-  summarise(total_survey_catch = sum(Number),
-            total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
-  ungroup()
+  summarise(total_survey_catch = sum(numlen, na.rm = T),
+            total_lw_bio = sum(sum_weight_kg, na.rm = T),
+            total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+            total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+            .groups = "drop") 
 ```
 
 
@@ -170,10 +175,11 @@ regional_totals <- nefsc_size_bins %>%
 # length bins
 regional_lengths <- nefsc_size_bins %>% 
   group_by(Year, survey_area, length_bin) %>% 
-  summarise(lenbin_survey_catch = sum(Number),
+  summarise(lenbin_survey_catch = sum(numlen),
             lenbin_lw_bio       = sum(sum_weight_kg),
-            lenbin_strat_abund  = sum(expanded_abund_s),
-            lenbin_strat_lw_bio = sum(stratified_sum_bodymass)) %>% 
+            lenbin_strat_abund  = sum(strat_total_abund_s),
+            lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
+            .groups = "drop") %>% 
   left_join(regional_totals) %>% 
   mutate(
     perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
@@ -196,7 +202,7 @@ ggplot(regional_lengths,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance", 
+       subtitle = "Stratified Total Abundance", 
        x = "", 
        fill = "Length Bin") 
 
@@ -212,9 +218,9 @@ ggplot(regional_lengths,
   facet_wrap(~survey_area) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin")+ theme(legend.position = "none")
 
@@ -229,10 +235,11 @@ ggplot(regional_lengths,
 # weight bins
 regional_weights <- nefsc_size_bins %>% 
   group_by(Year, survey_area, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(regional_totals) %>% 
   mutate(
     perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
@@ -255,7 +262,7 @@ ggplot(regional_weights,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance" ,
+       subtitle = "Stratified Total Abundance" ,
        x = "",
        fill = "Weight Bin")
 
@@ -270,9 +277,9 @@ ggplot(regional_weights,
   facet_wrap(~survey_area) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area", 
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area", 
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Weight Bin") + theme(legend.position = "none")
 
@@ -285,11 +292,11 @@ ggplot(regional_weights,
 # Do some grouping
 seasonal_totals <- nefsc_size_bins %>% 
   group_by(Year, season) %>% 
-  summarise(total_survey_catch = sum(Number),
+  summarise(total_survey_catch = sum(numlen),
             total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
-  ungroup()
+            total_strat_abund = sum(strat_total_abund_s),
+            total_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop")
 ```
 
 
@@ -303,10 +310,11 @@ seasonal_totals <- nefsc_size_bins %>%
 # length bins
 seasonal_lengths <- nefsc_size_bins %>% 
   group_by(Year, season, length_bin) %>% 
-  summarise(lenbin_survey_catch = sum(Number),
+  summarise(lenbin_survey_catch = sum(numlen),
             lenbin_lw_bio       = sum(sum_weight_kg),
-            lenbin_strat_abund  = sum(expanded_abund_s),
-            lenbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            lenbin_strat_abund  = sum(strat_total_abund_s),
+            lenbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(seasonal_totals) %>% 
   mutate(
     perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
@@ -329,7 +337,7 @@ ggplot(seasonal_lengths,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance" ,
+       subtitle = "Stratified Total Abundance" ,
        x = "", 
        fill = "Length Bin")
 
@@ -345,9 +353,9 @@ ggplot(seasonal_lengths,
   facet_wrap(~season) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area", 
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area", 
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin") + theme(legend.position = "none")
 
@@ -362,10 +370,11 @@ ggplot(seasonal_lengths,
 # weight bins
 seasonal_weights <- nefsc_size_bins %>% 
   group_by(Year, season, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(seasonal_totals) %>% 
   mutate(
     perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
@@ -388,7 +397,7 @@ ggplot(seasonal_weights,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance" ,
+       subtitle = "Stratified Total Abundance" ,
        x = "", 
        fill = "Weight Bin")
 
@@ -404,9 +413,9 @@ ggplot(seasonal_weights,
   facet_wrap(~season) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Weight Bin") + theme(legend.position = "none")
 
@@ -420,11 +429,11 @@ ggplot(seasonal_weights,
 # Do some grouping
 fgroup_totals <- nefsc_size_bins %>% 
   group_by(Year, spec_class) %>% 
-  summarise(total_survey_catch = sum(Number),
+  summarise(total_survey_catch = sum(numlen),
             total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
-  ungroup()
+            total_strat_abund = sum(strat_total_abund_s),
+            total_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop")
 
 ```
 
@@ -438,11 +447,13 @@ fgroup_totals <- nefsc_size_bins %>%
 
 # length bins
 fgroup_lengths <- nefsc_size_bins %>% 
+  filter(is.na(spec_class) == FALSE) %>% 
   group_by(Year, spec_class, length_bin) %>% 
-  summarise(lenbin_survey_catch = sum(Number),
+  summarise(lenbin_survey_catch = sum(numlen),
             lenbin_lw_bio       = sum(sum_weight_kg),
-            lenbin_strat_abund  = sum(expanded_abund_s),
-            lenbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            lenbin_strat_abund  = sum(strat_total_abund_s),
+            lenbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(fgroup_totals) %>% 
   mutate(
     perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
@@ -466,7 +477,7 @@ ggplot(fgroup_lengths,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance" ,
+       subtitle = "Stratified Total Abundance" ,
        x = "", 
        fill = "Length Bin")
 
@@ -482,9 +493,9 @@ ggplot(fgroup_lengths,
   facet_wrap(~spec_class) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin")
 
@@ -498,11 +509,13 @@ ggplot(fgroup_lengths,
 
 # weight bins
 fgroup_weigths <- nefsc_size_bins %>% 
+  filter(is.na(spec_class) == FALSE) %>% 
   group_by(Year, spec_class, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(fgroup_totals) %>% 
   mutate(
     perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
@@ -526,7 +539,7 @@ ggplot(fgroup_weigths,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance", 
+       subtitle = "Stratified Total Abundance", 
        x = "", 
        fill = "Weight Bin")
 
@@ -542,9 +555,9 @@ ggplot(fgroup_weigths,
   facet_wrap(~spec_class) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Weight Bin")
 
@@ -559,8 +572,8 @@ Thought it may be helpful to have a table here to check which species are curren
 ```{r}
 # Display table of whichever specis fall into the categories
 nefsc_size_bins %>% 
-  distinct(SpecCode, scientific_name, spec_class) %>% 
-  rename(`Common Name` = SpecCode, 
+  distinct(comname, scientific_name, spec_class) %>% 
+  rename(`Common Name` = comname, 
          `Scientific Name` = scientific_name,
          `Functional Group` = spec_class) %>% 
   arrange(`Functional Group`, `Common Name`) %>% 
@@ -575,11 +588,11 @@ nefsc_size_bins %>%
 # Do some grouping
 fish_totals <- nefsc_size_bins %>% 
   group_by(Year, fishery) %>% 
-  summarise(total_survey_catch = sum(Number),
+  summarise(total_survey_catch = sum(numlen),
             total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
-  ungroup()
+            total_strat_abund = sum(strat_total_abund_s),
+            total_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") 
 
 ```
 
@@ -594,10 +607,11 @@ fish_totals <- nefsc_size_bins %>%
 # length bins
 fish_lengths <- nefsc_size_bins %>% 
   group_by(Year, fishery, length_bin) %>% 
-  summarise(lenbin_survey_catch = sum(Number),
+  summarise(lenbin_survey_catch = sum(numlen),
             lenbin_lw_bio       = sum(sum_weight_kg),
-            lenbin_strat_abund  = sum(expanded_abund_s),
-            lenbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            lenbin_strat_abund  = sum(strat_total_abund_s),
+            lenbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(fish_totals) %>% 
   mutate(
     perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
@@ -621,7 +635,7 @@ ggplot(fish_lengths,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance" ,
+       subtitle = "Stratified Total Abundance" ,
        x = "", 
        fill = "Length Bin")
 
@@ -638,9 +652,9 @@ ggplot(fish_lengths,
   facet_wrap(~fishery) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin")
 
@@ -655,10 +669,11 @@ ggplot(fish_lengths,
 # weight bins
 fish_weigths <- nefsc_size_bins %>% 
   group_by(Year, fishery, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(fish_totals) %>% 
   mutate(
     perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
@@ -682,7 +697,7 @@ ggplot(fish_weigths,
   scale_y_continuous(labels = comma_format()) +
   labs(y = "Total Predicted Abundance - Full Survey Area", 
        title = "Abundance",
-       subtitle = "Expected Area-Stratified Abundance", 
+       subtitle = "Stratified Total Abundance", 
        x = "", 
        fill = "Weight Bin")
 
@@ -698,9 +713,9 @@ ggplot(fish_weigths,
   facet_wrap(~fishery) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Weight Bin")
 
@@ -714,8 +729,8 @@ Thought it may be helpful to have a table here to check which species are curren
 ```{r}
 # Display table of whichever specis fall into the categories
 nefsc_size_bins %>% 
-  distinct(SpecCode, scientific_name, fishery) %>% 
-  rename(`Common Name` = SpecCode, 
+  distinct(comname, scientific_name, fishery) %>% 
+  rename(`Common Name` = comname, 
          `Scientific Name` = scientific_name,
          `Fishery Status` = fishery) %>% 
   arrange(`Fishery Status`, `Common Name`) %>% 
@@ -757,20 +772,20 @@ Season makes it kind of tricky to understand what is going on, so as a starting 
 # Do some grouping
 year_region_totals <- nefsc_size_bins %>% 
   group_by(Year, survey_area) %>% 
-  summarise(total_survey_catch = sum(Number),
+  summarise(total_survey_catch = sum(numlen),
             total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg),
+            total_strat_abund = sum(strat_total_abund_s),
+            total_strat_lw_bio = sum(strat_total_lwbio_s),
             .groups = "drop") 
 
 
 # weight bins
 year_region_weights <- nefsc_size_bins %>% 
   group_by(Year, survey_area, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg),
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
             .groups = "drop") %>% 
   left_join(year_region_totals) %>% 
   mutate(
@@ -787,9 +802,9 @@ ggplot(year_region_weights,
   facet_grid(survey_area~.) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin")
 ```
@@ -803,20 +818,21 @@ The first lens to look at is the seasonal variation across all the different are
 # Do some grouping
 warmem_totals <- nefsc_size_bins %>% 
   group_by(Year, survey_area, season) %>% 
-  summarise(total_survey_catch = sum(Number),
+  summarise(total_survey_catch = sum(numlen),
             total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
-  ungroup()
+            total_strat_abund = sum(strat_total_abund_s),
+            total_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop")
 
 
 # weight bins
 warmem_weights <- nefsc_size_bins %>% 
   group_by(Year, survey_area, season, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(warmem_totals) %>% 
   mutate(
     perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
@@ -832,9 +848,9 @@ ggplot(warmem_weights,
   facet_grid(survey_area~season) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin")
 ```
@@ -850,20 +866,21 @@ The second lens that I feel is important is the functional groups. This is the n
 # Do some grouping
 fgroup_totals <- nefsc_size_bins %>% 
   group_by(Year, survey_area, spec_class) %>% 
-  summarise(total_survey_catch = sum(Number),
+  summarise(total_survey_catch = sum(numlen),
             total_lw_bio = sum(sum_weight_kg),
-            total_strat_abund = sum(expanded_abund_s),
-            total_strat_lw_bio = sum(sum_weight_kg)) %>% 
-  ungroup()
+            total_strat_abund = sum(strat_total_abund_s),
+            total_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop")
 
 
 # weight bins
 fgroup_weights <- nefsc_size_bins %>% 
   group_by(Year, survey_area, spec_class, weight_bin) %>% 
-  summarise(wtbin_survey_catch = sum(Number),
+  summarise(wtbin_survey_catch = sum(numlen),
             wtbin_lw_bio       = sum(sum_weight_kg),
-            wtbin_strat_abund  = sum(expanded_abund_s),
-            wtbin_strat_lw_bio = sum(sum_weight_kg)) %>% 
+            wtbin_strat_abund  = sum(strat_total_abund_s),
+            wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+            .groups = "drop") %>% 
   left_join(fgroup_totals) %>% 
   mutate(
     perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
@@ -876,12 +893,12 @@ fgroup_weights <- nefsc_size_bins %>%
 ggplot(fgroup_weights, 
        aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
   geom_col(position = "stack") +
-  facet_grid(spec_class~survey_area) +
+  facet_grid(survey_area~spec_class) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
-  labs(y = "Total Expected Biomass (kg) - Full Survey Area",  
+  labs(y = "Stratified Total Biomass (kg) - Full Survey Area",  
        title = "Biomass",
-       subtitle = "Expected Area-Stratified Biomass", 
+       subtitle = "Stratified Total Biomass", 
        x = "", 
        fill = "Length Bin")
 ```
@@ -911,8 +928,7 @@ The next difference is that the individual body size data is presumed to follow 
   labs(x = "", 
        y = "Size Spectrum Slope (b)", 
        color = "",
-       title = "Results from Area-Stratified Abundance - Edwards Method") 
-)
+       title = "Results from Area-Stratified Abundance - Edwards Method"))
 
 
 ```
@@ -957,10 +973,18 @@ run_chron_clust <- function(in_dat){
   # Return list
   return(list(eucdist = eucdist, cl = cl))
 }
+```
 
 
-# Run for sizeSpectra Results
-ss_chron <- run_chron_clust(in_dat = ss_dat)
+
+```{r}
+
+# Run for chronological clustering for each area
+regions <- setNames(names(ss_dat), names(ss_dat))
+region_clusters <- map(regions, function(region_name){
+  ss_chron <- run_chron_clust(in_dat = select(ss_dat, one_of(region_name)))
+  return(ss_chron)
+})
 
 
 ```
@@ -970,21 +994,31 @@ ss_chron <- run_chron_clust(in_dat = ss_dat)
 
 ```{r}
 # broken stick model
-vegan::bstick(ss_chron$cl, plot=T)
+par(mfrow = c(2,2))
+imap(region_clusters, function(region_clust, region_id){
+  vegan::bstick(region_clust$cl, plot=T)
+  title(main = region_id)
+  })
+
+par(mfrow = c(1,1))
 ```
 
 **Dendrogram**
 
 ```{r}
-
-plot(ss_chron$cl, 
+par(mfrow = c(2,2))
+imap(region_clusters, function(region_clust, region_id){
+  plot(region_clust$cl, 
      hang = -0.1, 
      axes = FALSE, 
      cex = 0.8, 
      horiz = F)
-axis(side = 2, cex.axis = 1)
-title("sizeSpectra Clustering Metrics", cex = 1)
-mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+  axis(side = 2, cex.axis = 1)
+  title(main = paste0("sizeSpectra Clustering - ", region_id), cex = 1)
+  mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
+  })
+par(mfrow = c(1,1))
+
 
 ```
 
@@ -992,12 +1026,22 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 
 
 ```{r}
+
+# put breakpoints in table
+ss_breaks <- list(
+  "GB"  = data.frame(year = c(2008, 2003, 2002, 1980, 1982) + 0.5),
+  "GoM" = data.frame(year = c(1984, 1999, 1997, 2008, 2015) + 0.5),
+  "SNE" = data.frame(year = c(1992, 1994, 1990, 1987, 2012) + 0.5),
+  "MAB" = data.frame(year = c(2005, 2013, 2012, 2007, 2001) + 0.5)
+  
+) %>%  map_dfr(., ~ .x, .id = "survey_area")  %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")))
+
+
+# original code
 ss_patterns +
-  geom_vline(aes(xintercept = 1984.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2008.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2003.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1975.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1973.5), color = "gray40", linetype = 2, size = 0.7) 
+  geom_vline(data = ss_breaks, aes(xintercept = year), color = "gray40", linetype = 2, size = 0.7)
+  
 ```
 
 
@@ -1105,7 +1149,10 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 ss_patterns +
   geom_vline(aes(xintercept = 1987.5), color = "gray40", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 2008.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2004.5), color = "gray40", linetype = 2, size = 0.7) 
+  geom_vline(aes(xintercept = 2004.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2001.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1973.5), color = "gray40", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1974.5), color = "gray40", linetype = 2, size = 0.7) 
 ```
 
 
@@ -1130,8 +1177,7 @@ ss_patterns +
   labs(x = "", 
        y = "Size Spectrum Slope (b)", 
        color = "",
-       title = "Results from Area-Stratified Abundance - log10 bins")
-)
+       title = "Results from Area-Stratified Abundance - log10 bins"))
 ```
 
 
@@ -1189,9 +1235,7 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 l10_patterns +
   geom_vline(aes(xintercept = 1987.5), color = "gray40", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 1996.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1995.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2001.5), color = "gray40", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2002.5), color = "gray40", linetype = 2, size = 0.7)
+  geom_vline(aes(xintercept = 2008.5), color = "gray40", linetype = 2, size = 0.7) 
 ```
 
 
@@ -1269,9 +1313,9 @@ mtext(side = 2, line = 2.3, "Sum of squares", cex = 1, las = 0)
 # Re-plot patterns with breaks
 int_patterns +
   geom_vline(aes(xintercept = 1987.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 2011.5), color = "gray50", linetype = 2, size = 0.7) +
-  geom_vline(aes(xintercept = 1996.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 2008.5), color = "gray50", linetype = 2, size = 0.7) +
   geom_vline(aes(xintercept = 1995.5), color = "gray50", linetype = 2, size = 0.7) +
+  geom_vline(aes(xintercept = 1996.5), color = "gray50", linetype = 2, size = 0.7) +
   labs(subtitle = "Chronological Clustering Breakpoints")
 ```
 
@@ -1396,10 +1440,15 @@ Primarily
 ```{r}
 
 # Make groups based on breaks
-edwards_breaks <- list("1970-1987" = 1970:1987,
-                    "1988-2008" = 1988:2008,
-                    "2009-2019" = 2009:2019)
-temp_breaks    <- list("1981-1998" = 1981:1998, 
+edwards_breaks <- list("1970-1982" = 1970:1982,
+                       "1983-2003" = 1983:2003,
+                       "2004-2008" = 2004:2008,
+                       "2009-2016" = 2009:2016,
+                       "2017-2020" = 2017:2020)
+
+
+
+temp_breaks <- list("1981-1998" = 1981:1998, 
                     "1999-2002" = 1999:2002, 
                     "2003-2005" = 2003:2005,
                     "2006-2011" = 2006:2011, 
@@ -1437,9 +1486,9 @@ functional_group_splits <- nefsc_size_bins %>%
     yearly_data <- e_data %>% 
       group_by(Year, spec_class) %>% 
       summarise(
-        total_strat_biom = sum(expanded_lwbio_s), 
-        avg_ind_mass = weighted.mean(ind_weight_kg, Number),
-        avg_ind_len = weighted.mean(LngtClass, Number),
+        total_strat_biom = sum(strat_total_lwbio_s), 
+        avg_ind_mass = weighted.mean(ind_weight_kg, numlen),
+        avg_ind_len = weighted.mean(length_cm, numlen),
         .groups = "drop")
     
     # run linear models
@@ -1471,15 +1520,15 @@ functional_group_splits <- nefsc_size_bins %>%
                               "significance" = c(biom_sig, len_sig, imass_sig))
     
     # 2. Relative Biomass
-    total_biom <- sum(e_data$expanded_lwbio_s)
+    total_biom <- sum(e_data$strat_total_lwbio_s)
     relative_biom <- e_data %>% 
       group_by(spec_class) %>% 
       summarise(n_years = n_distinct(Year),
-                group_biom_total = sum(expanded_lwbio_s),
+                group_biom_total = sum(strat_total_lwbio_s),
                 avg_ann_biom = group_biom_total / n_years,
                 biom_frac = group_biom_total / total_biom,
-                avg_ind_mass = weighted.mean(ind_weight_kg, Number),
-                avg_ind_len = weighted.mean(LngtClass, Number),
+                avg_ind_mass = weighted.mean(ind_weight_kg, numlen),
+                avg_ind_len = weighted.mean(length_cm, numlen),
                 .groups = "drop") %>% 
       mutate(ebreak = label)
     
@@ -1525,7 +1574,7 @@ fgroup_rel_bio %>%
 
 ## Average Annual Biomass
 
-This figure visualizes the avarage total biomass (per year) for each functional group within the different size spectrum stanzas.
+This figure visualizes the average total biomass (per year) for each functional group within the different size spectrum stanzas.
 
 ```{r}
 
@@ -1586,13 +1635,51 @@ warmem_group_slopes <- imap_dfr(edwards_breaks, function(x,y){
 warmem_group_slopes %>% 
   ggplot(aes(x = e_break, y = b, color = e_break)) +
   scale_color_gmri() +
-  geom_jitter(width = 0.1) +
-  labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
+  geom_boxplot() +
+ labs(x = "Stanzas from ISD Exponent Breakpoint Analysis", 
        y = "Individual Size Distribution Exponent",
        color = "")
 
 ```
 
+
+
+```{r, eval = FALSE}
+# # Needed a place to put this testing code
+# 
+# col_select <- function(data_in, abundance_vals = "stratified"){
+#   
+#  # toggle which abundance calue to use with switch
+#   abundance_col <- switch(abundance_vals,
+#     "observed"   = sym("numlen"),
+#     "strat_mean" = sym("strat_mean_abund_s"),
+#     "stratified" = sym("strat_total_abund_s"))
+#   
+#   
+#   # Select just the columns we need:
+#   # Rename them to match the code for sizeSpectra
+#   data_out <- data_in %>% 
+#     dplyr::select(
+#       SpecCode = comname,
+#       wmin = wmin_g,
+#       wmax = wmax_g,
+#       #Number = one_of(abundance_col))
+#       Number = !!abundance_col)
+#   
+#   return(data_out)
+# 
+# }
+# 
+# # data to test with
+# data_test <- nefsc_1g %>% slice(1:20)
+# 
+# 
+# 
+# col_select(data_in = data_test, abundance_vals = "stratified")
+# col_select(data_in = data_test, abundance_vals = "observed")
+# col_select(data_in = data_test, abundance_vals = "strat_mean")
+
+```
 
 
 `r insert_gmri_footer()`

@@ -1,0 +1,19 @@
+---
+title: "Dumb stratification formulas"
+author: "Adam A. Kemberling"
+date: "7/20/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+$Strata~Weighted~CPUE_{ysi}~=~\frac{Catch_{ysi}}{Effort_{yi}}~*~\frac{Area~of~Strata_i}{Area~of~All~Strata_y}$
+
+
+$Area~Stratified~Abundance_{ysi}~=~\frac{Strata~Weighted~CPUE_{ysi}~*~Area~of~All~Strata_y~/~Area~of~Albatross~Tow}{q}$
+
+For better documentation see:
+https://noaa-edab.github.io/survdat/articles/calc_strat_mean.html

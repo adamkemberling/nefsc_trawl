@@ -1,0 +1,370 @@
+---
+title: "Area Stratification Example"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+####  Packages  ####
+library(targets)
+library(here)
+library(rnaturalearth)
+library(gmRi)
+library(sf)
+library(janitor)
+library(patchwork)
+library(tidyverse)
+library(knitr)
+
+
+####  Support Functions  ####
+source(here("R/support/sizeSpectra_support.R"))
+source(here("R/support/nefsc_ss_build_nodrop.R"))
+
+####  Resource Paths  ####
+box_paths  <- research_access_paths()
+mills_path <- box_paths$mills
+res_path   <- box_paths$res
+
+# Load the shapefiles for the polygons
+new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
+
+#### Set theme  ####
+theme_set(theme_bw())
+
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+# Example of Length-Specific Area Stratification
+
+Source methodology from Sean Lucey's survdat repository (ref needed)
+
+Goal is to step through the equations and intermediate steps used to get to area-stratified abundances and biomasses at length.
+
+## Example Data - Spotted Hake Example
+
+
+To establish a foundation of what is going on, and at what scales the different information is at for various columns I will step through an example using Spotted Hake catch.
+
+In this example I will start with the same data that is used for the size spectrum analysis. It has undergone the standard cleanup steps that would take place for any trawl data analysis, and has additionally been paired with length weight coefficients for various species, and then had area-stratified abundance/biomass calculated.
+
+Everything is in one place, so we should be able to track each component through the process. To begin lets first document what information is recorded in the dataset after the standard cleanup.
+
+```{r}
+# 1. Biological data used as input to size spectrum analysis
+# bodymass < 1g removed
+withr::with_dir(rprojroot::find_root('_targets.R'), tar_load(nefsc_stratified)) 
+```
+
+### Annual Details
+
+For this example we will focus on the year 2000. At the scale of the survey year we have the following information relevant to area-stratification.
+
+ 1. The code for all strata sampled that year   
+ 2. Their areas in $km^2$   
+ 3. The total survey area that year
+
+
+```{r}
+
+# Annual Details
+annual_details <- nefsc_stratified %>% 
+  filter(est_year == 2000)
+
+# Total Stratum Area surveyed
+stratum_sampled <- annual_details %>% distinct(stratum, .keep_all = T) 
+total_survey_area <- sum(stratum_sampled$s_area_km2)
+
+# which is added to the data as part of the build
+build_tsa <- stratum_sampled$tot_s_area[1]
+
+
+ann_summs <- tribble(
+  ~"Measure",            ~"Value",
+  "Year"                              , 2000,
+  "Area of All Stratum Sampled (km2)" , total_survey_area) %>% 
+  mutate(Value = round(Value, 2))
+  
+
+ann_summs %>% kable()
+```
+
+### Stratum Details
+
+Zooming in to a specific stratum we have additional information that is pertinent only to the stratum's physical extent and data within it. For this example the stratum we are looking at is stratum *1110*
+
+ 1. The number of tows taken that year, within the stratum (effort)   
+ 2. The area of this specific stratum   
+ 3. The area of this stratum, relative to total survey area (stratum area ratio)   
+ 
+ 
+ These values are eventually used to estimate a stratum and year specific catch rate for abundance and biomass. Knowing the area of a stratum relative to total is how the relative catch rates are weighted across atratum of different sizes.
+ 
+```{r}
+# Stratum Details
+stratum_details <- nefsc_stratified %>% 
+  filter(est_year == 2000,
+         stratum == 1110)
+
+
+# Annual Stratum Effort
+n_tows <- length(unique(stratum_details$station))
+
+# Area of Stratum
+strat_area <- stratum_details %>% distinct(s_area_km2) %>% pull(s_area_km2)
+
+# Area of Stratum Relative To total Area
+stratum_relative_area <- strat_area / total_survey_area
+
+# Put in Table
+ann_strat_summs <- tribble(
+  ~"Measure",            ~"Value",
+  "Area of this Stratum"   , strat_area,
+  "Area Relative to Total" , stratum_relative_area,
+  "Effort in this Year"    , n_tows) %>% 
+  mutate(Value = round(Value, 2))
+
+ann_strat_summs %>% kable()
+```
+
+### Stratum-Species Details
+
+As mentioned above, this example looks specifically at spotted hake data. For each species, the catch within a stratum, and for a certain year we arrive at the following information:
+
+ 1. The total abundance of that species   
+ 2. The total biomass recorded on the ship, by weighing the species individually, but not individuals   
+ 3. What the total biomass would be for each individual length caught   
+ 
+```{r}
+# Stratum and species Details
+stratum_details <- nefsc_stratified %>% 
+  filter(est_year == 2000,
+         stratum == 1110,
+         comname == "spotted hake")
+
+# Total Abundance
+# Total Biomass
+# Total Length Classes
+# Total Biomass at Length
+strat_summs <- tribble(
+  ~"Measure",             ~"Value",
+  "All Lengths Abundance"       , sum(stratum_details$numlen_adj),
+  "All Lengths LW Biomass (kg)" , sum(stratum_details$sum_weight_kg),
+  "All Lengths Biomass (g)"     , sum(stratum_details$biom_per_lclass * 1000),
+  "Distinct Lengths"      , length(unique(stratum_details$length))) %>% 
+  mutate(Value = round(Value, 2))
+
+
+strat_summs %>% 
+  kable()
+```
+ 
+
+Knowing those three values, and the stratum specific information (effort) we can derive stratum and species specific values for:
+ 
+  1. Abundance per tow   
+  2. Biomass per tow   
+  3. Length-Weight Biomass per tow (for each length)   
+
+```{r}
+# Annual CPUE
+abund_cpue <- as.numeric(strat_summs[strat_summs$Measure == "All Lengths Abundance", "Value"]) / n_tows
+lwbio_cpue <- as.numeric(strat_summs[strat_summs$Measure == "All Lengths LW Biomass (kg)", "Value"]) / n_tows
+biom_cpue  <- as.numeric(strat_summs[strat_summs$Measure == "All Lengths Biomass (g)", "Value"]) / n_tows
+
+# CPUE at Length
+ann_cpue_summs <- tribble(
+  ~"Measure",            ~"Value",
+  "Effort that year",    4, 
+  "Abundance per Tow",   abund_cpue,
+  "LW Biom per Tow (kg)",     lwbio_cpue,
+  "Biomass per tow (g)",     biom_cpue) %>% 
+  mutate(Values = round(Value, 2))
+
+ann_cpue_summs %>% kable()
+
+```
+
+
+### Station Details
+
+Zooming in even further we finally get to station level details. Information at this scale includes:
+
+ 1. The total abundance of that species (by length)   
+ 2. The total biomass recorded on the ship, by weighing the species individually, but not individuals 
+ 3. What the total biomass would be for each individual length caught   
+ 4. What the sum total length weight biomass would be, for each length (ind weight x number at length)   
+ 5. Total species biomass, spread evenly among the different lengths
+
+
+```{r}
+# Station Level Details
+station_details <- nefsc_stratified %>% 
+  filter(est_year == 2000,
+         stratum == 1110,
+         comname == "spotted hake",
+         station == 182)
+
+
+station_details %>% 
+  select(Year = est_year,
+         Stratum = stratum,
+         Species = comname,
+         Station = station, 
+         abundance,
+         biomass_g,
+         Length = length_cm,
+         numlen_adj,
+         ind_weight_kg,
+         sum_weight_kg,
+         biom_per_lclass) %>% 
+  kable()
+
+
+# in text values
+s_biomass <- station_details$biomass_g[1]
+n_lengths <- length(unique(station_details$length_cm))
+biom_per_row <- station_details$biom_per_lclass[1]
+```
+
+Number 5 on this list is something I record and track, it allows me to evenly distribute the total biomass of a station (that isn't distributed across lengths) and split it up evenly across the different lengths. This lets me use `dplyr::summarise()` to add up the biomass the same way I would for the length-specific biomass.
+
+How this works out is that the biomass of all lengths is evenly divided among the different lengths, or said differently:
+
+A value that is the same total across many rows (biomass), is instead displayed as an equal fraction across those rows.
+
+So in this case we have the total biomass for spotted hake as `r s_biomass`g, and you have `r n_lengths` different lengths (rows in table), so for convenience in comparing these two biomass sources later it is spread evenly as `r biom_per_row`g.
+
+## Length-Specific area stratified abundance?
+
+To get a length specific area-stratified abundance/biomass we start with the stratum specific catch rates.
+
+So in this example we have the following information.
+
+
+```{r}
+# Stratum and species Details
+stratum_details_clean <- stratum_details %>% 
+  arrange(length_cm)  %>% 
+  mutate(lwbio_per_tow = sum_weight_kg / strat_ntows)
+
+stratum_details_clean  %>% 
+  select(Year = est_year,
+         Stratum = stratum,
+         Species = comname,
+         Station = station, 
+         abundance,
+         biomass_g,
+         Length = length_cm,
+         numlen_adj,
+         ind_weight_kg,
+         sum_weight_kg,
+         biom_per_lclass) %>% 
+  slice(1:10) %>% 
+  kable()
+```
+
+
+And stepping through things for 17cm fish as an example:
+
+```{r}
+# pull these out
+details_17cm <- stratum_details_clean %>% 
+  filter(length_cm == 17) 
+
+# display info
+details_17cm %>% 
+  select(comname, length_cm, numlen_adj, ind_weight_kg, sum_weight_kg, strat_ntows, lwbio_per_tow) %>% 
+  kable()
+```
+
+**Step 1: Size specific catch**
+
+There were three 17cm spotted hake caught. The estimated biomass from their length-weight relationship is 0.0407kg per fish or 0.122 total for all three.
+
+**Step 2: Stratum specific catch rates, at length**
+
+Knowing that there were 4 tows in this stratum that year, that gives us a length-weight biomass of 0.0305kg per tow for 17cm spotted hake this year.
+
+
+**Step 3: Stratum Weighted CPUE and Total Abundance**
+
+Now that we have length specific abundance and biomass catch/tow, we can now process the following:
+
+ 1. area stratified cpue (biomass/km)   
+ 2. total abundance/biomass across all stratum   
+
+```{r}
+# Albatross tow area
+alb_tow_km2 <- 0.0384
+q <- 1
+
+# Abundance
+details_17cm %>% 
+  select(abund_tow_s, strat_mean_abund_s, strat_total_abund_s) %>% 
+  rename(
+    `Abundance per Tow` = abund_tow_s,
+    `Stratum-Weighted CPUE` = strat_mean_abund_s,
+    `Total Stratum LW Biomass` = strat_total_abund_s
+  ) %>% kable()
+
+
+# Biomass
+details_17cm %>% 
+  transmute(
+    lwbio_tow_s       = sum_weight_kg / strat_ntows,
+    wt_lwbio_s        = lwbio_tow_s * st_ratio,
+    expanded_lwbio_s  = (wt_lwbio_s * tot_s_area / alb_tow_km2) / q) %>% 
+  rename(
+    `LW Biomass per Tow` = lwbio_tow_s,
+    `Stratum-Weighted CPUE` = wt_lwbio_s,
+    `Total Stratum LW Biomass` = expanded_lwbio_s
+  ) %>% kable()
+```
+
+
+**BONUS: Confirm Alternative Approach to Total Abundance**
+
+Rather than process area-weighted CPUE, then work backwards to total abundance/biomass for a stratum. Its possible to get the stratum-specific CPUE in catch/km2 and then multiply that by the area of the stratum.
+
+```{r}
+# Abundance
+details_17cm %>% 
+  transmute(
+    abund_tow_s       = abund_tow_s,
+    abund_tow_km      = abund_tow_s / alb_tow_km2,
+    strat_total_abund_s  = round((abund_tow_km * s_area_km2) / q)
+  ) %>% 
+  rename(
+    `Abundance per Tow` = abund_tow_s,
+    `Abundance per km2` = abund_tow_km,
+    `Total Stratum LW Biomass` = strat_total_abund_s
+  ) %>% kable()
+
+# Biomass
+details_17cm %>% 
+  transmute(
+    lwbio_tow_s       = sum_weight_kg / strat_ntows,
+    lwbio_tow_km      = lwbio_tow_s / alb_tow_km2,
+    strat_total_lwbio_s  = round(lwbio_tow_km * s_area_km2) / q)  %>% 
+  rename(
+    `LW Biomass per Tow` = lwbio_tow_s,
+    `LW Biomass per km2` = lwbio_tow_km,
+    `Total Stratum LW Biomass` = strat_total_lwbio_s
+  ) %>% kable()
+```
+
+
+`r insert_gmri_footer()`
