@@ -62,9 +62,9 @@ This report seeks to check the accuracy of the spring and fall conversions of ha
 This document was done to directly compare the results of calculating size-spectrum characteristics using different methods. 
 
  
-[Size Spectrum and Body Size Chronological Clustering](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/Chronological-Clustering.html)
+[Size Spectrum Results and Biomass Allocation Across Body  Size](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/bodymass_allocation.html)
 
-This report digs into what the outcomes of the size spectrum estimations look like, and how their results break out when breakpoint analyses are applied.
+This report digs into what the outcomes of the size spectrum estimations look like, and how their results break out into different stanzas. There's also timelines of each region showing relative prevalence of differently sized individuals.
 
 ---
 

@@ -1,0 +1,840 @@
+---
+title: "Chronological Clustering"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = F, 
+                      warning = F, 
+                      comment = "", 
+                      fig.height = 8, 
+                      fig.width = 10)
+
+####  Packages  ####
+library(targets)
+library(here)
+library(sf)
+library(gmRi)
+library(patchwork)
+library(rioja)
+library(vegan)
+library(gt)
+library(knitr)
+library(tidyverse)
+
+# Support functions
+source(here("R/support/sizeSpectra_support.R"))
+
+theme_set(theme_minimal() + 
+            theme(legend.position = "bottom", 
+                  plot.title = element_text(hjust = 0.5)))
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+
+#  Patterns in Biomass Allocation
+
+The following code digs into where the biomass is allocated among the 62 species sampled by the NE Groundfish Survey. Stratified abundances are used. Individual lengths and bodymasses are used to isolate what proportion of the overall abundances and biomasses reside.
+
+Data is prepared and updated using {targets} to ensure a consistent data state and a reproducible workflow.
+
+**Target Data**
+
+Data for the report comes directly from the {targets} workflow found in `_targets.R`. For this markdown I'm loading in the results from the size spectrum slope analysis and the data that went into it so I can dig into any odd patterns I see. There is also regional SST based on the same trawl regions.
+
+```{r}
+####  Data  ####
+
+####  Size Spectrum Targets 
+
+# SS and manual bins together
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))   
+
+# Format Columns
+size_spectrum_indices <- size_spectrum_indices  %>% 
+  mutate(season = fct_rev(season),
+         survey_area = factor(survey_area, 
+                              levels = c("GoM", "GB", "SNE", "MAB")),
+         yr = as.numeric(as.character(Year)))
+
+
+
+####  OISST Data
+
+# OISST for all the regions
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(regional_oisst))          
+
+
+####  Size Data Targets
+
+# 1. Biological data used as input
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_1g))            
+
+# quick little format
+nefsc_1g <- nefsc_1g %>% 
+  mutate(fishery = case_when(
+    fishery == "com" ~ "Commercially Targeted",
+    fishery == "nc" ~ "Not Commercially Targeted",
+    TRUE ~ "Not Labelled"))
+```
+
+
+# Exploration of Abundance/Size Information {.tabset .tabset-pills}
+
+The biological data was filtered prior to doing the size spectrum analysis so that any individuals smaller than 1g were removed. Then to dig into where the biomass andd abundances were distributed I've made some size bins to help tease out what the community looks like.
+
+```{r}
+# Cut up discrete length and weight bins
+nefsc_size_bins <- nefsc_1g %>% 
+  mutate(
+    length_bin = case_when(
+      length_cm <= 5   ~ "0 - 5cm",
+      length_cm <= 10  ~ "5 - 10cm",
+      length_cm <= 25  ~ "10 - 25cm",
+      length_cm <= 50  ~ "25 - 50cm",
+      length_cm <= 75  ~ "50 - 75cm",
+      length_cm <= 100 ~ "75 - 100cm",
+      length_cm >= 100 ~ ">= 100cm"),
+    length_bin = factor(length_bin, levels = c(
+      "0 - 5cm", "5 - 10cm", "10 - 25cm",
+      "25 - 50cm", "50 - 75cm", "75 - 100cm", ">= 100cm")))
+
+
+# Weight bins
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(
+    weight_bin = case_when(
+      ind_weight_kg <= 0.001 ~ "0 - 1g",
+      ind_weight_kg <= 0.005 ~ "1 - 5g",
+      ind_weight_kg <= 0.010 ~ "5 - 10g",
+      ind_weight_kg <= 0.050 ~ "10 - 50g",
+      ind_weight_kg <= 0.100 ~ "50 - 100g",
+      ind_weight_kg <= 0.500 ~ "100 - 500g",
+      ind_weight_kg <= 1.000 ~ ".5 - 1kg",
+      ind_weight_kg <= 5.000 ~ "1 - 2kg",
+      ind_weight_kg <= 5.000 ~ "2 - 5kg",
+      ind_weight_kg <= 10.00 ~ "5 - 10kg",
+      ind_weight_kg >= 10.00 ~ ">= 10kg" ),
+    weight_bin = factor(weight_bin, levels = c(
+      "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
+      "50 - 100g", "100 - 500g", ".5 - 1kg",
+      "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
+
+
+# Rename the functional groups
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(
+    spec_class = case_when(
+      spec_class == "gf"  ~ "Groundfish",
+      spec_class == "pel" ~ "Pelagic",
+      spec_class == "dem" ~ "Demersal",
+      spec_class == "el"  ~ "Elasmobranch",
+      spec_class == "<NA>" ~ "NA"))
+
+# Make regions go N->S
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+         season = factor(season, levels = c("Spring", "Fall")))
+
+```
+
+**Group Summary Functions**
+
+The following function is used to process the same numbers for each combination of factor groups without me rewriting the function over and over again.
+
+```{r}
+
+# Function to process summaries for various factor combinations
+get_group_summaries <- function(...){
+  
+  # Do some grouping to get totals
+  group_totals <- nefsc_size_bins %>% 
+    group_by(...) %>% 
+    summarise(total_survey_catch = sum(numlen, na.rm = T),
+              total_lw_bio = sum(sum_weight_kg, na.rm = T),
+              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+  
+  # length bins
+  group_lengths <- nefsc_size_bins %>% 
+    group_by(..., length_bin) %>% 
+    summarise(lenbin_survey_catch = sum(numlen),
+              lenbin_lw_bio       = sum(sum_weight_kg),
+              lenbin_strat_abund  = sum(strat_total_abund_s),
+              lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
+      perc_lw_bio       = (lenbin_lw_bio - total_lw_bio) * 100,
+      perc_strat_abund  = (lenbin_strat_abund - total_strat_abund) * 100,
+      perc_strat_lw_bio = (lenbin_strat_lw_bio - total_strat_lw_bio) * 100)
+  
+  # weight bins
+  group_weights <- nefsc_size_bins %>% 
+    group_by(..., weight_bin) %>% 
+    summarise(wtbin_survey_catch = sum(numlen),
+              wtbin_lw_bio       = sum(sum_weight_kg),
+              wtbin_strat_abund  = sum(strat_total_abund_s),
+              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+
+return(list("length_bins" = drop_na(group_lengths),
+            "weight_bins" = drop_na(group_weights)))
+}
+
+
+# Process each group
+regions <- get_group_summaries(Year, survey_area)
+seasons <- get_group_summaries(Year, season)
+fgroups <- get_group_summaries(Year, spec_class)
+fishery <- get_group_summaries(Year, fishery)
+
+
+```
+
+**Same idea here, but for plotting them based on their groupings**
+
+```{r}
+
+# 1. Abundance by length
+abundance_by_length <- function(length_summary, facet_var){
+
+  ggplot(length_summary,
+       aes(Year, lenbin_strat_abund, fill = length_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Abundance",
+       title = "Abundance Allocation by Length",
+       x = "",
+       fill = "Individual Length (cm)")
+
+
+
+}
+
+# test
+# abundance_by_length(regions$length_bins, "survey_area")
+
+
+# 2. Biomass by length
+biomass_by_length <- function(length_summary, facet_var){
+
+ggplot(length_summary,
+       aes(Year, lenbin_strat_lw_bio, fill = length_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Biomass (kg)",
+       title = "Biomass Allocation by Length",
+       x = "",
+       fill = "Individual Length (cm)")
+
+}
+
+
+# 3. Abundance by bodymass
+abundance_by_bodymass <- function(bodymass_summary, facet_var){
+
+  ggplot(bodymass_summary,
+         aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Total Abundance",
+         title = "Abundance Allocation by Bodymass",
+         x = "",
+         fill = "Individual Weight (kg)")
+
+
+}
+
+
+
+
+
+# 4. Biomass across bodymass
+biomass_by_bodymass <- function(bodymass_summary, facet_var){
+
+  ggplot(bodymass_summary,
+         aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Total Biomass (kg)",
+         title = "Biomass Allocation by Bodymass",
+         x = "",
+         fill = "Individual Weight (kg)")
+
+
+}
+
+
+
+```
+
+
+
+## Regional Differences {.tabset}
+
+These first plots get at how the different regions compare to one another. Are we seeing stiking patterns across them all simultaneously, or are there localized patterns that only occur in some of them.
+
+````{r}
+# Do some grouping
+regions <- get_group_summaries(Year, survey_area)
+```
+
+### Length Bins
+
+
+```{r}
+
+# Get fraction for different length/weight classes
+
+# length bins
+regional_lengths <- regions$length_bins
+
+```
+
+
+
+```{r}
+
+# Abundance by length
+abundance_by_length(regional_lengths, "survey_area")
+
+
+```
+
+
+```{r}
+
+# biomass
+biomass_by_length(regional_lengths, "survey_area")
+
+```
+
+
+
+### Weight Bins
+
+```{r}
+
+# weight bins
+regional_weights <- regions$weight_bins
+
+```
+
+
+
+```{r}
+abundance_by_bodymass(regional_weights, "survey_area")
+
+```
+
+
+```{r}
+biomass_by_bodymass(regional_weights, "survey_area")
+
+```
+
+## Seasonal Differences  {.tabset}
+
+
+````{r}
+# Do some grouping
+seasons <- get_group_summaries(Year, season)
+```
+
+
+### Length Bins
+
+
+```{r}
+
+# Get fraction for different length/weight classes
+
+# length bins
+seasonal_lengths <- seasons$length_bins
+
+```
+
+
+
+```{r}
+abundance_by_length(seasonal_lengths, "season")
+
+
+```
+
+
+```{r}
+biomass_by_length(seasonal_lengths, "season")
+```
+
+
+
+### Weight Bins
+
+```{r}
+
+# weight bins
+seasonal_weights <- seasons$weight_bins
+
+```
+
+
+
+```{r}
+abundance_by_bodymass(seasonal_weights, "season")
+
+```
+
+
+```{r}
+biomass_by_bodymass(seasonal_weights, "season")
+
+```
+
+
+## Functional Group Differences {.tabset}
+
+
+```{r}
+# Do some grouping
+fgroups <- get_group_summaries(Year, spec_class)
+
+```
+
+
+### Length Bins
+
+
+```{r}
+
+# Get fraction for different length/weight classes
+
+# length bins
+fgroup_lengths <- fgroups$length_bins
+
+
+```
+
+
+
+```{r}
+
+abundance_by_length(fgroup_lengths, "spec_class")
+
+```
+
+
+```{r}
+biomass_by_length(fgroup_lengths, "spec_class")
+
+```
+
+
+
+### Weight Bins
+
+```{r}
+
+# weight bins
+fgroup_weights <- fgroups$weight_bins
+
+
+```
+
+
+
+```{r}
+abundance_by_bodymass(fgroup_weights, "spec_class")
+
+```
+
+
+```{r}
+biomass_by_bodymass(fgroup_weights, "spec_class")
+
+```
+
+
+
+### Functional Group Key
+
+Thought it may be helpful to have a table here to check which species are currently assigned to which group.
+
+```{r}
+# Display table of whichever specis fall into the categories
+nefsc_size_bins %>% 
+  distinct(comname, scientific_name, spec_class) %>% 
+  rename(`Common Name` = comname, 
+         `Scientific Name` = scientific_name,
+         `Functional Group` = spec_class) %>% 
+  arrange(`Functional Group`, `Common Name`) %>% 
+  DT::datatable(filter = "top", rownames = FALSE)
+```
+
+
+## Fishery Status Diffferences {.tabset}
+
+
+```{r}
+# Do some grouping
+fishery <- get_group_summaries(Year, fishery) 
+
+```
+
+
+### Length Bins
+
+
+```{r}
+
+# Get fraction for different length/weight classes
+
+# length bins
+fish_lengths <- fishery$length_bins
+
+
+```
+
+
+
+```{r}
+abundance_by_length(fish_lengths, "fishery")
+
+```
+
+
+```{r}
+# # Biomass from Survey using L-W
+biomass_by_length(fish_lengths, "fishery")
+
+```
+
+
+
+### Weight Bins
+
+```{r}
+
+# weight bins
+fish_weights <- fishery$weight_bins
+
+
+```
+
+
+
+```{r}
+abundance_by_bodymass(fish_weights, "fishery")
+
+```
+
+
+```{r}
+biomass_by_bodymass(fish_weights, "fishery")
+
+
+```
+
+
+### Fishery Group Key
+
+Thought it may be helpful to have a table here to check which species are currently assigned to which group.
+
+```{r}
+# Display table of whichever specis fall into the categories
+nefsc_size_bins %>% 
+  distinct(comname, scientific_name, fishery) %>% 
+  rename(`Common Name` = comname, 
+         `Scientific Name` = scientific_name,
+         `Fishery Status` = fishery) %>% 
+  arrange(`Fishery Status`, `Common Name`) %>% 
+  DT::datatable(filter = "top", rownames = FALSE)
+```
+
+
+---
+
+
+# Community Size Spectra Results 
+
+Community size spectrum slopes were estimated using 2 methods for comparison. An individual size distribution approach ISD developed by A. Edwards and using a more traditional method of binning biomass information into bins before fitting a slope to those bins.
+
+The first method usezthe {sizeSpectra} package which were shown to be the most accurate when using simulated data compared to any of the binning methods. 
+
+The second method uses binned abundances, with bodymass bins of width 0.5 on a log10 scale, so 10^0 - 10^0.5 etc. These bins were then normalized by dividing the abundances by the bin width to account for the increasing bin width.
+
+Starting data used for both methods was the same. A minimum individual biomass of 1 gram was used to avoid issue with sampling biases for smaller individuals. Area-stratified total abundances (and their corresponding length-based biomasses) were used to preserve the importance of the sampling design. 
+
+
+
+**Pull Results from Both Methods**
+
+```{r}
+# Pull the group ID for the slopes grouped on year, season, and region
+warmem_group_slopes <- size_spectrum_indices %>% 
+  filter(`group ID`== "single years * season * region")
+
+
+# Or just regions and years
+year_region_slopes <- size_spectrum_indices %>% 
+  filter(`group ID` == "single years * region")
+```
+
+## Biomass Data to Match Size Spectrum Analysis {.tabset .tabset-pills}
+
+### Region Only
+
+Season makes it kind of tricky to understand what is going on, so as a starting point I will show the results of just single years and the data from both seasons
+
+```{r}
+biomass_by_bodymass(regional_weights, "survey_area")
+
+```
+
+
+### Region & Season
+
+The first lens to look at is the seasonal variation across all the different areas. This is the typical grouping that we have been focusing on.
+
+```{r}
+# Do some grouping
+warmem_totals <- get_group_summaries(Year, survey_area, season)
+
+
+ggplot(warmem_totals$weight_bins, 
+       aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_grid(survey_area~season, scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Biomass (kg)",  
+       title = "Biomass Allocation by Weight",
+       x = "", 
+       fill = "Individual Weight (kg)")
+```
+
+
+
+
+### Region & Functional Group
+
+The second lens that I feel is important is the functional groups. This is the not the typical grouping that we have been focusing on, but clears the air on where the biomass increase is coming from.
+
+```{r}
+# Do some grouping
+fgroup_area <- get_group_summaries(Year, survey_area, spec_class)
+
+ggplot(fgroup_area$weight_bins, 
+       aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_grid(survey_area~spec_class, scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Biomass (kg)",  
+       title = "Biomass Allocation by Weight",
+       x = "", 
+       fill = "Individual Weight (kg)")
+```
+
+## Edwards Methodology {.tabset .tabset-pills}
+
+The Edwards methodology differs from the other methods for estimating size spectra by avoiding the subjective decisions around how to bin data prior to fitting the log-linear regression.
+
+Instead, Edwards uses the individual size distributions (how many individuals of any given length/weight). Abundances are totaled into discrete size bins based on expected biomass at length and length + 1, and individuals that fall within those bins are totaled to get abundances across a continuous distribution of individual bodymass. 
+
+The next difference is that the individual body size data is presumed to follow a bounded power-law distribution, with a minimum and maximum body size. Using the individual size data,  maximum likelihood estimation is used to solve for the parameter (b) that minimizes the negative log-likelihood.
+
+
+### Year and Region Only
+
+
+
+```{r}
+
+# Just years and regions
+(ss_patterns <- year_region_slopes %>% 
+  ggplot(aes(yr, b, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~.) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - Edwards Method"))
+
+
+```
+
+
+### Year, Region, and Season 
+
+
+
+```{r}
+
+# Plot the sizeSpectra slopes - year*region*season
+(ss_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, b, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - Edwards Method") 
+)
+
+
+
+```
+
+
+
+
+## Log10 Binning {.tabset .tabset-pills}
+
+
+### Slope 
+
+
+```{r}
+
+# plot trends of log10 slopes
+(l10_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, l10_slope_strat, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - log10 bins"))
+```
+
+
+
+### Intercept 
+
+
+```{r}
+
+# plot trends of log10 slopes
+(int_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, l10_int_strat, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Intercept", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - log10 bins")
+)
+```
+
+
+
+### Fit Statistics (adjusted r-squared) 
+
+For each of the slope/intercepts derived using a linear model and binned data I also pulled the adjusted r-square to get a sense of whether or not certain groups had poor fits that should be investigated.
+
+```{r}
+# Reshaping
+# Goal: Row for Years, columns for each different group
+l10_fit_dat <- warmem_group_slopes %>% 
+  select(Year, season, survey_area, l10_slope_strat, l10_int_strat, l10_rsqr_strat) %>% 
+  mutate(yr = as.numeric(Year))
+
+
+l10_fit_dat %>% 
+  ggplot(aes(yr, l10_rsqr_strat, color = survey_area)) +
+  geom_rect(xmin = -Inf, xmax = Inf, ymin = 0, ymax = 0.2, 
+            fill = "gray80", color = "transparent") +
+  geom_hline(yintercept = 0.2, linetype = 2, size = 0.5, color = "gray50") +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
+  labs(x = "", 
+       y = "Linear Model R-Square", 
+       color = "",
+       title = "Results from Area-Stratified Abundance - log10 bins")
+  
+
+```
+
+
+
+
+##  Sea Surface Temperature {.tabset .tabset-pills}
+
+### Long-Term Patterns
+
+```{r}
+
+# plot trends of log10 slopes
+(sst_patterns <- regional_oisst %>% 
+  ggplot(aes(yr, sst_anom, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~.) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Mean Temperature Anomaly", 
+       color = "",
+       title = "")
+)
+```
+
+
+
+
+
+`r insert_gmri_footer()`
