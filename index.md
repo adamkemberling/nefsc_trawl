@@ -13,7 +13,7 @@ The following markdown documents were made to verify various aspects of the rese
  
 A look at the overall data trends following "normal" data prep for the nefsc bottom trawl data. Includes overall abundance and biomass as well as the catch composition and stratified area abundances.
 
- 2. [Aggregation Level Validation & LW Relationship Fits](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/survdat_stratification_validation.html)
+ 2. [Aggregation Level Validation & LW Relationship Fits](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/stratification_validation.html)
 
 Report confirming the validity of getting area stratified abundance and biomass at an individual or size level, and then aggregating by year or season later. 
 
