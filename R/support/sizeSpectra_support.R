@@ -722,7 +722,7 @@ ggplot_isd <- function(isd_data_prepped,
       geom_line(data = PLB_df, aes(x.PLB, confMax), color = "darkred", linetype = 2) }
   
   # Finish off labels
-  p1 <- p1 + labs(x = "Individual Bodymass (Kg)",
+  p1 <- p1 + labs(x = "Individual Bodymass (g)",
                   y =  "Fishes with BodyMass \u2265 x",
                   title = group_name, 
                   tag = str_c("b = ", the_slope),
@@ -1303,7 +1303,7 @@ plot_log10_ss <- function(l10_assigned){
                 color = gmri_cols("orange")) +
     stat_poly_eq(formula = y ~ x,
                  aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                 label.y = 0.1, 
+                 label.y = 1.1, 
                  parse = TRUE) +
     labs(caption = "Survey Abundance", subtitle = "", title = "Manual log10 Binning")
   
@@ -1314,7 +1314,7 @@ plot_log10_ss <- function(l10_assigned){
                 color = gmri_cols("orange")) +
     stat_poly_eq(formula = y ~ x,
                  aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                 label.y = 0.1, 
+                 label.y = 1.1, 
                  parse = TRUE) +
     labs(caption = "Stratified Abundance")
   

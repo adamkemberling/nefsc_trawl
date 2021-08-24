@@ -725,6 +725,240 @@ The next difference is that the individual body size data is presumed to follow 
 
 ```
 
+### Odd Years {.tabset}
+
+In the previous figure, for Georges Bank there are a number of years when b is close to -1.2 that do not follow the rest of the trend.  These occur on 1974 and 1980. This section exists to see why that is:
+
+```{r}
+# Find the years
+odd_years <- warmem_group_slopes %>% 
+  filter(survey_area == "GB", 
+         b < -1.2) %>% 
+  split(.$Year)
+
+# Find the data
+odd_year_dat <- nefsc_size_bins %>% 
+  filter(survey_area == "GB",
+         Year %in% c(1974, 1980),
+         season == "Fall") %>% 
+  split(.$Year)
+```
+
+#### Individual Size Distribution
+
+The individual size distribution plots look like alot but are not too complicated with a little explanation.
+
+The blue bars are the width of what a given species biomass can be based on. What the species is, and its L-W relationship. Since fishes are measured to the nearest cm the leftbound is the biomass for that length, and the right bound is how much mass it could also have before jumping into the next 1cm increment.
+
+The height of the blue bars indicate how many individuals fall within that size range. Eventually building up the range of possible sizes caught, and how many there are/were.
+
+The red line is a bounded power law fit to those blue lines. The power law relationship between abundance and size is the foundation for all the size spectra methods, in this case individual sizes are used rather than the more typical larger bins.
+
+**Data Prep**
+
+```{r}
+# ISD plot preparation
+# counts how many of each size there are with overlapping sizes counting
+# towards the discrete size bins when possible
+isd_prepped <- map(odd_year_dat, ~ isd_plot_prep(as.data.frame(.x),
+                                                stratified_abundance = T,
+                                                min_weight_g = 1))
+
+```
+
+**Plotting Function**
+
+```{r}
+# Function for ISD plots 
+# should work on whatever the grouping variable is as long as the lists match
+#' @title Plot Individual Size Distribution Curves
+#'
+#' @param isd_data_prepped Data from isd_plot_prep
+#' @param mle_results Corresponding group results from group_mle_calc
+#' @param abundance_used Label to add for context of what abundance source was used
+#' @param plot_rects Flag to plot bodymass rectangles
+#' @param show_pl_fit Flag to include powerlaw fit
+#' @param xlim_global global xlimits so that other plots can be held side-by-side
+#' @param group_name name of the group for the data to use as label
+#'
+#' @return
+#' @export
+#'
+#' @examples
+ggplot_isd <- function(isd_data_prepped, 
+                       mle_results, 
+                       abundance_vals = "observed",
+                       plot_rects = TRUE,
+                       show_pl_fit = TRUE,
+                       xlim_global = NULL,
+                       group_name = NULL){
+  
+  # Columns and labels
+  abundance_lab <- c("observed" = "Survey Abundance", "stratified" = "Stratified Abundance")
+  abundance_label <- abundance_lab[[abundance_vals]]
+  
+  # Power law parameters and summary details for the group of data:
+  b.MLE           <- mle_results$b
+  total_abundance <- mle_results$n
+  b.confMin       <- mle_results$confMin
+  b.confMax       <- mle_results$confMax
+  
+  
+  # Create range of x values from the group to get power law predictions
+  # PLB = bounded power-law
+  # min and max weights for predictions
+  xmin  <- mle_results$xmin
+  xmax  <- mle_results$xmax
+  
+  # Create x values (individual bodymass) to predict across
+  # break up the Xlim into pieces between min and max
+  x.PLB <- seq(from = xmin, 
+               to   = xmax, 
+               length.out = 2000)   
+  
+  # get the length of that vector
+  x.PLB.length <- length(x.PLB)  
+  
+  # remove last entry, add an entry .9999 of the way there, and cap it with the last entry wtf
+  x.PLB <- c(x.PLB[-x.PLB.length], 0.99999 * x.PLB[x.PLB.length], x.PLB[x.PLB.length])
+  
+  
+  # Y values for plot limits/bounds/predictions from bounded power law pdf
+  y.PLB         <- (1 - sizeSpectra::pPLB(x = x.PLB, b = b.MLE, xmin = min(x.PLB), xmax = max(x.PLB))) * total_abundance
+  y.PLB.confMin <- (1 - sizeSpectra::pPLB(x = x.PLB, b = b.confMin, xmin = min(x.PLB), xmax = max(x.PLB))) * total_abundance
+  y.PLB.confMax <- (1 - sizeSpectra::pPLB(x = x.PLB, b = b.confMax, xmin = min(x.PLB), xmax = max(x.PLB))) * total_abundance
+  
+  
+  # Put it in a df to make it easier
+  PLB_df <- data.frame(
+    x.PLB   = x.PLB,
+    y.PLB   = y.PLB,
+    confMin = y.PLB.confMin,
+    confMax = y.PLB.confMax)
+  
+  
+  # Coefficient Labels
+  group_name <- str_replace_all(group_name, "_", " ")
+  the_slope  <- as.character(round(mle_results$b, 3))
+  
+  
+  ####  First Plot  
+  p1 <- ggplot()
+  
+  # Toggle Rectangles
+  if(plot_rects == TRUE) {
+    p1 <- p1 + geom_rect(data = isd_data_prepped, 
+                         aes(xmin = wmin_g, 
+                             xmax = wmax_g, 
+                             ymin = lowCount, 
+                             ymax = highCount),
+                         color = "gray70",
+                         fill = "transparent")}
+  
+  # Add segments for bin widths
+  p1 <- p1 + geom_segment(data = isd_data_prepped,
+                          aes(x = wmin_g, 
+                              xend = wmax_g, 
+                              y = countGTEwmin, 
+                              yend = countGTEwmin),
+                          color = "blue")
+  
+  
+  # Set limits to global limits if desired
+  if(is.null(xlim_global) == FALSE){
+    p1 <- p1 + scale_x_log10(limits = xlim_global, 
+                             labels = trans_format("log10", math_format(10^.x)))
+  } else{
+    p1 <- p1 + scale_x_log10(labels = trans_format("log10", math_format(10^.x)))
+  }
+  
+  
+  # Toggle to turn on the fit lines or not
+  if(show_pl_fit == TRUE) {
+    p1 <- p1 +
+      geom_line(data = PLB_df, aes(x.PLB, y.PLB), color = "darkred") +
+      geom_line(data = PLB_df, aes(x.PLB, confMin), color = "darkred", linetype = 2) +
+      geom_line(data = PLB_df, aes(x.PLB, confMax), color = "darkred", linetype = 2) }
+  
+  # Finish off labels
+  p1 <- p1 + labs(x = "Individual Bodymass (g)",
+                  y =  "Fishes with BodyMass \u2265 x",
+                  title = group_name, 
+                  tag = str_c("b = ", the_slope),
+                  caption = str_c(abundance_label, " used for size spectrum slope estimation.")) +
+    theme(plot.tag.position = "topright")
+  
+  
+
+  ####  Second Plot, log transformed y axis
+  
+  # Start plot
+  p2 <- p1
+  
+  # Change the y-axis, log transformation
+  p2 <- p2 + scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+    labs(x = "Individual Bodymass (g)",
+         y =  "Fishes with BodyMass \u2265 x",
+         title = group_name, 
+         tag = str_c("b = ", the_slope),
+         caption = str_c(abundance_label, " used for size spectrum slope estimation.")) +
+    theme(plot.tag.position = "topright")
+  
+  
+  # Build the stacked plot
+  p3 <- p1 / p2
+  
+  # Put figures in list
+  plot_list <- list(obs_y   = p1,
+                    log10_y = p2,
+                    stacked = p3)
+  
+  return(plot_list)
+}
+```
+
+**Individual Size Distributions**
+
+Like any of these methods sometimes the assumed relationship does not perfectly fit the data. In the case of these two years there appears to be in the 10g-1kg range.
+
+```{r}
+isd_1974 <- ggplot_isd(isd_data_prepped = isd_prepped$`1974`, 
+                       mle_results = odd_years$`1974`, 
+                       abundance_vals = "stratified", 
+                       plot_rects = FALSE, 
+                       show_pl_fit = TRUE, 
+                       group_name = "1974, Fall, GB")$obs_y
+
+isd_1980 <- ggplot_isd(isd_data_prepped = isd_prepped$`1980`, 
+                       mle_results = odd_years$`1974`, 
+                       abundance_vals = "stratified", 
+                       plot_rects = FALSE, 
+                       show_pl_fit = TRUE, 
+                       group_name = "1980, Fall, GB")$obs_y
+
+isd_1974 / isd_1980
+
+```
+
+#### Binned Biomass
+
+If I plot the same data using the binning approach you still see that the bins that cover 10^1 through 10^3 grams are higher than the fit line (analogous to red line for ISD). But, because the size distribution is no longer continuous, you can potentially run into issues of bins not accurately representing the data that goes into them.
+
+```{r}
+
+# Log10 binning, 0.5 increments on log10 scale
+# assign bins
+l10_assigned <- map(odd_year_dat, ~ assign_log10_bins(.x))
+
+# plot bin structure for survey abundance and stratified abundance
+l10_1974 <- plot_log10_ss(l10_assigned = l10_assigned$`1974`) 
+l10_1980 <- plot_log10_ss(l10_assigned = l10_assigned$`1980`) 
+
+
+# Grab just the stratified abundance one
+l10_1974[[2]] + labs(title = "1974, Fall, GB") |
+l10_1980[[2]] + labs(title = "1980, Fall, GB")
+```
 
 
 

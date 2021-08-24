@@ -168,7 +168,7 @@ summaries_long <- bind_rows(ann_summs, seas_summs) %>%
                values_to = "Total Survey Biomass (kg)", 
                cols = c(`L-W Biomass`, `Bulk Biomass`)) %>% 
   pivot_longer(names_to = "Stratified Biomass Source", 
-               values_to = "Area Projected Biomass (kg)", 
+               values_to = "Stratified Total Biomass (kg)", 
                cols = c(`Area Stratified Total L-W`,`Area Stratified Total BIOMASS`)) %>% 
   mutate(season = factor(season, levels = c("Spring + Fall", "Spring", "Fall")))
 
@@ -184,8 +184,10 @@ ggplot(summaries_long, aes(est_year, `Total Survey Biomass (kg)`, color = `Bioma
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
   labs(x = "",
-        caption = "All available species coefficients used (wigley & fishbase)") +
-  theme(legend.position = "bottom")
+       caption = "All available species coefficients used (wigley & fishbase)",
+       title = "Difference Prior to LW Relationship Validations") +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(title.position = "top", title.hjust = 0.5))
 ```
 
 ### Area-Stratified Biomass
@@ -194,16 +196,17 @@ ggplot(summaries_long, aes(est_year, `Total Survey Biomass (kg)`, color = `Bioma
 
 # What that biomass is extended out to total areas
 ggplot(summaries_long, 
-       aes(est_year, `Area Projected Biomass (kg)`, 
+       aes(est_year, `Stratified Total Biomass (kg)`, 
            color = `Stratified Biomass Source`)) +
   geom_line() +
   facet_grid(`Stratified Biomass Source`~season, scales = "free") +
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
   labs(x = "", 
-       caption = "All available species coefficients used (wigley & fishbase)") +
+       caption = "All available species coefficients used (wigley & fishbase)",
+       title = "Difference Prior to LW Relationship Validations") +
   theme_bw() + 
-  theme(legend.position = "top",
+  theme(legend.position = "bottom",
         axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   guides(color = guide_legend(title.position = "top", title.hjust = 0.5)) 
 
@@ -306,12 +309,13 @@ cod_21 %>%
 
 ---
 
-# Length Weight Relationships (RV ALBATROSS Years) {.tabset .tabset-pills}
+# Checking Length Weight Relationships  {.tabset .tabset-pills}
 
 It looks like the root cause is just the difference between what the mean prediction from species-specific coefficients is when compared to the biomass column in survdat.
 
 If we take the totals from the length-weight derived biomasses and the BIOMASS columns that match we can rank them by how often they over/underestimate biomass.
 
+**NOTE:**
 To be sure there is no problem with the survey change only data prior to 2008 will be used.
 
 
@@ -365,7 +369,7 @@ mismatch_plot <- function(x){
       scale_x_continuous(labels = comma_format()) +
       scale_color_gmri() +
       guides("color" = guide_legend(title = "")) +
-      labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
+      labs(x = "Underestimation of Biomass\nShipboard Weight - LW Biomass (kg)",
            y = "Underestimation Rank") +
     theme(legend.position = c(0.2, 1))
   
@@ -378,7 +382,7 @@ mismatch_plot <- function(x){
       scale_x_continuous(labels = comma_format()) +
       labs(x = "",
            y = "", 
-           subtitle = "L-W mass (kg) < 'survdat$Biomass (kg)'") +
+           subtitle = "L-W biomass < 'survdat$Biomass'") +
     theme(title = element_text(hjust = 0.5))
   
   # Focus on bottom 5
@@ -388,9 +392,9 @@ mismatch_plot <- function(x){
       geom_boxplot(aes(group = species_rank), color = gmri_cols("gmri blue")) +
       scale_color_gmri() +
       scale_x_continuous(labels = comma_format()) +
-      labs(x = "Underestimation of Biomass from LW Regressions\nShipboard Weight - LW Biomass (kg)",
+      labs(x = "Underestimation of Biomass\nShipboard Weight - LW Biomass (kg)",
            y = "", 
-           subtitle = "L-W mass (kg) > 'survdat$Biomass (kg)'") +
+           subtitle = "L-W mass > 'survdat$Biomass'") +
     theme(title = element_text(hjust = 0.5))
     
   
@@ -452,13 +456,12 @@ Take the species that stood out above and plot the mismatch versus the station a
 
 #species that are caught in large numbers
 subsampling_suspects <- c("spiny dogfish", "haddock", "blueback herring", 
-                          "american shad", "windowpane", "silver rag", "atlantic cod", 
-                          "pollock", "smooth dogfish", "acadian redfish", "butterfish")
+                          "american shad", "southern stingray", "atlantic cod", 
+                          "pollock", "alewife", "acadian redfish", "butterfish")
 
 
 # Ranks Across all Sources
-all_source_ranks <- weights_all %>%
-  mismatch_ranks() 
+all_source_ranks <- mismatch_ranks(weights_all) 
 
 
 
@@ -487,7 +490,7 @@ For example values 50% heavier or lighter.
 
 ```{r}
 # Percent Cutoff
-perc_cutoff <- 25
+perc_cutoff <- 15
 
 # Identify Coefficients that seem off
 perc_differences <- weights_all %>% 
@@ -555,8 +558,7 @@ wigley_cutoffs <- perc_differences %>%
   pull(comname)
 
 # concatenate them
-bad_coefficients <- 
-  c( fishbase_cutoffs, wigley_cutoffs)
+bad_coefficients <- c( fishbase_cutoffs, wigley_cutoffs)
 
 
 # drop things using cutoff
@@ -686,7 +688,7 @@ summaries_long <- bind_rows(ann_summs, seas_summs) %>%
                values_to = "Total Survey Biomass (kg)", 
                cols = c(`L-W Biomass`, `Bulk Biomass`)) %>% 
   pivot_longer(names_to = "Stratified Biomass Source", 
-               values_to = "Area Projected Biomass (kg)", 
+               values_to = "Stratified Total Biomass (kg)", 
                cols = c(`Area Stratified Total L-W`,`Area Stratified Total BIOMASS`)) %>% 
   mutate(season = factor(season, levels = c("Spring + Fall", "Spring", "Fall")))
 
@@ -706,7 +708,7 @@ ggplot(summaries_long,
 
 # What that biomass is extended out to total areas
 ggplot(summaries_long, 
-       aes(est_year, `Area Projected Biomass (kg)`, 
+       aes(est_year, `Stratified Total Biomass (kg)`, 
            color = `Stratified Biomass Source`)) +
   geom_line() +
   facet_grid(season~., scales = "free") +
