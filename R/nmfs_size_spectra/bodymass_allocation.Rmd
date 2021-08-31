@@ -1,5 +1,5 @@
 ---
-title: "Chronological Clustering"
+title: "NEFSC Trawl Bodymass Distribution"
 author: "Adam A. Kemberling"
 date: "`r Sys.Date()`"
 output: 
@@ -613,19 +613,10 @@ year_region_slopes <- size_spectrum_indices %>%
 
 ## Biomass Data to Match Size Spectrum Analysis {.tabset .tabset-pills}
 
-### Region Only
-
-Season makes it kind of tricky to understand what is going on, so as a starting point I will show the results of just single years and the data from both seasons
-
-```{r}
-biomass_by_bodymass(regional_weights, "survey_area")
-
-```
-
 
 ### Region & Season
 
-The first lens to look at is the seasonal variation across all the different areas. This is the typical grouping that we have been focusing on.
+The first lens to look at is the seasonal variation across all the different areas. This was the typical grouping that we have been focusing on.
 
 ```{r}
 # Do some grouping

@@ -121,45 +121,27 @@ Due to sub-sampling of large catches and inherent variability around the mean we
 # BIOMASS
 # Biomass_per_lclass distributes biomass equally across lengths,
 # Is also used for area stratified biomass, eliminates need to use distinct
-ann_summ_bio <- weights_21 %>% 
+ann_summs <- weights_21 %>% 
   group_by(est_year) %>% 
   summarise(`Bulk Biomass` = sum(biom_per_lclass),
             `Area Stratified Total BIOMASS` = sum(strat_total_biom_s),
-            season = "Spring + Fall",
-            .groups = "drop") 
-            
-
-# L-W
-ann_summ_lw <- weights_21 %>% 
-  group_by(est_year) %>% 
-  summarise(`L-W Biomass`               = sum(sum_weight_kg),
+            `L-W Biomass`               = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(strat_total_lwbio_s),
             season = "Spring + Fall",
             .groups = "drop") 
 
-# Join them
-ann_summs <- left_join(ann_summ_bio, ann_summ_lw)
 
 
 
 ####  Annual Summary, separate seasons  ####
 
-#BIOMASS
-seas_summ_bio <-  weights_21  %>% 
+seas_summs <-  weights_21  %>% 
   group_by(est_year, season) %>% 
   summarise(`Bulk Biomass` = sum(biom_per_lclass),
             `Area Stratified Total BIOMASS` = sum(strat_total_biom_s),
-            .groups = "drop")
-# L-W
-seas_summ_lw <- weights_21 %>% 
-  group_by(est_year, season) %>% 
-  summarise(`L-W Biomass` = sum(sum_weight_kg),
+            `L-W Biomass` = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(strat_total_lwbio_s),
             .groups = "drop")
-
-
-# Join them
-seas_summs <- left_join(seas_summ_bio, seas_summ_lw, by = c("est_year", "season"))
 
 
 # reformat for plotting
@@ -340,8 +322,7 @@ mismatch_ranks <- function(x){
               length_weight_biomass = sum(sum_weight_kg),
               ship_measured_biomass = sum(biom_per_lclass), # also in kg
               lw_underestimate = ship_measured_biomass - length_weight_biomass, 
-              .groups = "drop") %>% 
-    ungroup()
+              .groups = "drop") 
   
   
   # Format rankings to plot
@@ -486,12 +467,14 @@ all_source_ranks %>%
 
 If we assume that the total biomass weighed at a station is correct then we can use some cutoff value for an unacceptable deviation from the known weight.
 
-For example values 50% heavier or lighter.
-
-```{r}
+```{r cutoff value}
 # Percent Cutoff
 perc_cutoff <- 15
+```
 
+For example values `r perc_cutoff`% heavier or lighter.
+
+```{r}
 # Identify Coefficients that seem off
 perc_differences <- weights_all %>% 
   group_by(comname, source) %>% 
@@ -539,7 +522,7 @@ broken_coefficients %>%
 
 # Removing Bad Fits with Cutoff
 
-Certain coefficients for some species are not well aligned with the biomass recorded in the survey. These contribute to the big differences in stratified abundances/biomasses. If we set a reasonable cutoff threshold of 15%, these are what the timelines now look like and how many species get dropped from each source.
+Certain coefficients for some species are not well aligned with the biomass recorded in the survey. These contribute to the big differences in stratified abundances/biomasses. If we set a reasonable cutoff threshold of `r perc_cutoff`%, these are what the timelines now look like and how many species get dropped from each source.
 
 
 ```{r}
@@ -613,7 +596,7 @@ wigley_okay
 ```
 
 
-Species from the Wigley paper that did not meet the standards of the cutoff threshold were:
+Species from the Wigley paper that did not meet the standards of the `r perc_cutoff`% cutoff threshold were:
 
 ```{r}
 wigley_bad
@@ -621,7 +604,7 @@ wigley_bad
 
 
 
-The fishbase species that pass the cutoff are the following `r length(fishbase_okay)` species:
+The fishbase species that pass the `r perc_cutoff`% cutoff are the following `r length(fishbase_okay)` species:
 
 ```{r}
 fishbase_okay
@@ -631,55 +614,33 @@ fishbase_okay
 
 # Re-Assess Total BIOMASS & LW Biomass
 
+Once those species have been removed we can reassess how far off the biomass values are, and how much we should be able to trust the validity of the weights at length.
 
 ```{r}
+# Pull out species 
 weights_cutoff <- weights_all %>% filter(comname %in% wigley_okay)
 
 
 
-#BIOMASS
-# Because we are taking distinct records for BIOMASS 
-# we use biomass not per_lclass
-ann_summ_bio <- weights_cutoff %>% 
+# Annual Summary - both seasons combined
+ann_summs <- weights_cutoff %>% 
   group_by(est_year) %>% 
   summarise(`Bulk Biomass` = sum(biom_per_lclass),
             `Area Stratified Total BIOMASS` = sum(strat_total_biom_s),
             season = "Spring + Fall",
-            .groups = "drop") %>% 
-  ungroup()
-            
-
-# L-W
-ann_summ_lw <- weights_cutoff %>% 
-  group_by(est_year) %>% 
-  summarise(`L-W Biomass` = sum(sum_weight_kg),
+            `L-W Biomass` = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(strat_total_lwbio_s),
-            season = "Spring + Fall",
-            .groups = "drop") %>% 
-  ungroup()
-
-# Join them
-ann_summs <- left_join(ann_summ_bio, ann_summ_lw)
+            .groups = "drop") 
 
 
-
-####  Annual Summary, separate seasons  ####
-
-#BIOMASS
-seas_summ_bio <-  weights_cutoff  %>% 
+# Get summary for each season for every year
+seas_summs <-  weights_cutoff  %>% 
   group_by(est_year, season) %>% 
   summarise(`Bulk Biomass` = sum(biom_per_lclass),
             `Area Stratified Total BIOMASS` = sum(strat_total_biom_s),
-            .groups = "drop")
-# L-W
-seas_summ_lw <- weights_cutoff%>% 
-  group_by(est_year, season) %>% 
-  summarise(`L-W Biomass` = sum(sum_weight_kg),
+            `L-W Biomass` = sum(sum_weight_kg),
             `Area Stratified Total L-W` = sum(strat_total_lwbio_s),
             .groups = "drop")
-
-# Join them
-seas_summs <- left_join(seas_summ_bio, seas_summ_lw, by = c("est_year", "season"))
 
 
 # reformat for plotting
@@ -691,22 +652,34 @@ summaries_long <- bind_rows(ann_summs, seas_summs) %>%
                values_to = "Stratified Total Biomass (kg)", 
                cols = c(`Area Stratified Total L-W`,`Area Stratified Total BIOMASS`)) %>% 
   mutate(season = factor(season, levels = c("Spring + Fall", "Spring", "Fall")))
+```
 
+### Un-Stratified
+
+This plot charts the trends in the biomass recorded during the survey, survdat$BIOMASS and its length-specific counterpart.
+
+```{r}
 
 # Total Biomass from survey
 ggplot(summaries_long, 
        aes(est_year, `Total Survey Biomass (kg)`, color = `Biomass Source`)) +
   geom_line() +
-  facet_wrap(~season, ncol = 1) +
+  facet_grid(season~., scales = "free") +
   scale_y_continuous(labels = comma_format())+
   scale_color_gmri() +
   labs(x = "",
        title = "Success:",
        subtitle = "Removing bad L-W fits aligns biomass sources.") +
   theme(legend.position = "bottom")
+```
 
+### Area-Stratified
 
-# What that biomass is extended out to total areas
+Here are the trends for the area-stratified totals.
+
+```{r}
+
+# What that biomass is extended out to total areas of the survey
 ggplot(summaries_long, 
        aes(est_year, `Stratified Total Biomass (kg)`, 
            color = `Stratified Biomass Source`)) +
@@ -720,4 +693,92 @@ ggplot(summaries_long,
         axis.text.x = element_text(angle = 90, vjust = 0.5)) +
   guides(color = guide_legend(title.position = "top", title.hjust = 0.5))
 ```
+
+
+# Percent of Biomass Remaining
+
+By filtering out all these species it is possible that we are missing a meaningful proportion of the biomass caught in the survey. Here is what the total biomass was before and after, and what fraction of the biomass belongs to each of the functional groups.
+
+```{r}
+total_bio <- sum(weights_all$biom_per_lclass)
+cutoff_bio <- sum(weights_cutoff$biom_per_lclass)
+biom_perc <- round((cutoff_bio / total_bio) * 100, 2)
+
+```
+
+
+Across all years the amount of biomass included in the `r length(wigley_okay)` species is **`r biom_perc`%** of the biomass caught in the survey.
+
+Looking across different years the numbers look like this:
+
+
+
+
+```{r}
+# Yearly totals and seasonal totals for all species
+ann_summ_all <- weights_all %>% 
+  group_by(est_year) %>% 
+  summarise(`Bulk Biomass` = sum(biom_per_lclass),
+            `Area Stratified Total BIOMASS` = sum(strat_total_biom_s),
+            `L-W Biomass` = sum(sum_weight_kg),
+            `Area Stratified Total L-W` = sum(strat_total_lwbio_s),
+            season = "Spring + Fall",
+            .groups = "drop") 
+
+seas_summs_all <-  weights_all  %>% 
+  group_by(est_year, season) %>% 
+  summarise(`Bulk Biomass` = sum(biom_per_lclass),
+            `Area Stratified Total BIOMASS` = sum(strat_total_biom_s),
+            `L-W Biomass` = sum(sum_weight_kg),
+            `Area Stratified Total L-W` = sum(strat_total_lwbio_s),
+            .groups = "drop")
+
+
+# reformat for plotting
+summaries_long_all <- bind_rows(ann_summ_all, seas_summs_all) %>% 
+  pivot_longer(names_to = "Biomass Source", 
+               values_to = "Total Survey Biomass (kg)", 
+               cols = c(`L-W Biomass`, `Bulk Biomass`)) %>% 
+  pivot_longer(names_to = "Stratified Biomass Source", 
+               values_to = "Stratified Total Biomass (kg)", 
+               cols = c(`Area Stratified Total L-W`,`Area Stratified Total BIOMASS`)) %>% 
+  mutate(season = factor(season, levels = c("Spring + Fall", "Spring", "Fall")))
+
+
+```
+
+### Un-Stratified Biomass
+
+This plot charts the trends in the biomass recorded during the survey. Can only track survdat$BIOMASS here because the L-W version doesn't hold up for all species.
+
+```{r}
+
+# Comapare percentage of biomass that remains
+all_spec_totals <- bind_rows(ann_summ_all, seas_summs_all) %>% 
+  select(est_year, season, `Bulk Biomass`) %>% mutate(`Data Source` = "All Species")
+cutoff_totals <- bind_rows(ann_summs, seas_summs)  %>% 
+  select(est_year, season, `Bulk Biomass`) %>% mutate(`Data Source` = "Validated Species")
+
+# Combine for plot
+biom_check <- bind_rows(all_spec_totals, cutoff_totals) %>% 
+  pivot_wider(names_from = "Data Source", values_from = "Bulk Biomass") %>% 
+  mutate(
+    `Percent After Cutoff` = (`Validated Species` / `All Species`),
+    season = factor(season, levels = c("Spring + Fall", "Spring", "Fall")))
+
+
+
+# Total Biomass from survey - All Species
+ggplot(biom_check) +
+  geom_line(aes(est_year, `Percent After Cutoff`)) +
+  facet_grid(season~., scales = "free") +
+  scale_y_continuous(labels = percent_format())+
+  labs(x = "",
+       title = "Impact of Removing Species",
+       subtitle = "Percent of Biomass Remaining After Validation") +
+  theme(legend.position = "bottom")
+
+
+```
+
 

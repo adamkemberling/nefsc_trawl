@@ -284,7 +284,7 @@ group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratifi
 # }
 
 
-# Plotting group maximum likelihood size spectrum results
+# Plotting size spectrum exponents for a group of estimates
 group_mle_plot <- function(mle_res){
   plot <- mle_res %>% 
     ggplot(aes(Year, b, color = area, shape = season)) +
@@ -401,8 +401,8 @@ group_mle_slope_estimate <- function(wmin_grams,
 #'
 #' @examples
 ss_slopes_all_groups <- function(wmin_grams, 
-                                min_weight_g = 1, 
-                                abundance_vals = "stratified"){
+                                 min_weight_g = 1, 
+                                 abundance_vals = "stratified"){
   
   
   ####__  Set Bodymass Cutoff and Groups
