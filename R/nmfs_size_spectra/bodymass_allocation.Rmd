@@ -31,13 +31,17 @@ library(vegan)
 library(gt)
 library(knitr)
 library(tidyverse)
+library(ggstream)
 
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
 
 theme_set(theme_minimal() + 
             theme(legend.position = "bottom", 
-                  plot.title = element_text(hjust = 0.5)))
+                  plot.title = element_text(hjust = 0.5),
+                  axis.line.x = element_line(),
+                  axis.ticks.x = element_line(), 
+                  axis.text = element_text(size = 11)))
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -300,10 +304,112 @@ biomass_by_bodymass <- function(bodymass_summary, facet_var){
 ```
 
 
+## All Data {.tabset}
+
+These figures are helpful for just displaying how the overall size distributions have changed with abundance, biomass, or species type over the years:
+
+### Size Characteristics
+
+
+```{r}
+# make a column that contains all data
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(group_col = "All Data") 
+
+# run summary
+all_data_summs <- get_group_summaries(Year, group_col)
+```
+
+
+```{r all data stream plots}
+# Stream Plots
+
+len_abund_p <- ggplot(all_data_summs$length_bins, aes(Year, lenbin_strat_abund, fill = length_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Abundance", title = "Length Distributions") +
+  theme(axis.text.y = element_blank(),
+        legend.position = "none")
+
+# Length Bins
+len_bio_p <- ggplot(all_data_summs$length_bins, aes(Year, lenbin_strat_lw_bio, fill = length_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Biomass", fill = "Length Bin") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+
+
+
+# Weight Bins
+wt_abund_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Abundance", title = "Bodymass Distributions") +
+  theme(axis.text.y = element_blank(),
+        legend.position = "none")
+
+wt_bio_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Biomass", fill = "Weight Bin") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+
+
+# Plot it
+(len_abund_p / len_bio_p) | (wt_abund_p / wt_bio_p)
+```
+
+### Functional Groups
+
+```{r}
+all_fgroups <- nefsc_size_bins %>% 
+  drop_na(spec_class) %>% 
+  group_by(group_col, Year, spec_class) %>% 
+  summarise(total_survey_catch = sum(numlen, na.rm = T),
+            total_lw_bio = sum(sum_weight_kg, na.rm = T),
+            total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+            total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+
+# Abundance
+f_abund <- ggplot(all_fgroups, aes(Year, total_strat_abund, fill = spec_class)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Abundance", fill = "Functional Group", title = "Relative Abundances") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+# Biomass
+f_biom <- ggplot(all_fgroups, aes(Year, total_strat_lw_bio, fill = spec_class)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Biomass", fill = "Functional Group", title = "Relative Community Biomass") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+(f_abund | f_biom) +  plot_layout(guides = "collect")
+```
+
 
 ## Regional Differences {.tabset}
 
-These first plots get at how the different regions compare to one another. Are we seeing stiking patterns across them all simultaneously, or are there localized patterns that only occur in some of them.
+These first plots get at how the different regions compare to one another. Are we seeing striking patterns across them all simultaneously, or are there localized patterns that only occur in some of them.
 
 ````{r}
 # Do some grouping
@@ -622,6 +728,11 @@ The first lens to look at is the seasonal variation across all the different are
 # Do some grouping
 warmem_totals <- get_group_summaries(Year, survey_area, season)
 
+# # Stream Plot Version
+# ggplot(warmem_totals$weight_bins, aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+#   geom_stream(type = "ridge") +
+#   facet_grid(survey_area~season) +
+#   scale_fill_gmri()
 
 ggplot(warmem_totals$weight_bins, 
        aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
@@ -1059,6 +1170,29 @@ l10_fit_dat %>%
 ```
 
 
+# External Drivers
+
+Several external forces have been suggested as both drivers and/or contributors to changes in the composition of the Northeast Shelf fish community.
+
+Among them are:
+ * Changes in temperature regimes   
+ * Historical fishing removal   
+ * Climate Oscillations
+ * Trophic Cascades
+ 
+Each of these have different time horizons and periodicities associated with them. This timeline aims to place them on a common timeline to see the agreeance or alignment between competing factors
+
+```{r}
+library(vistime)
+
+timeline_data <- data.frame(
+  event = c(),
+  start = c(),
+  end = c(),
+  group = c()
+)
+
+```
 
 
 
