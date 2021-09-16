@@ -1180,17 +1180,49 @@ Among them are:
  * Climate Oscillations
  * Trophic Cascades
  
-Each of these have different time horizons and periodicities associated with them. This timeline aims to place them on a common timeline to see the agreeance or alignment between competing factors
+Each of these have different time horizons and periodicities associated with them. This timeline aims to place them on a common timeline to see the agreement or alignment between competing factors.
 
-```{r}
+Historical periods related to fishing gear changes and the decline of the groundfish fishery can be found here:[A brief History of the Groundfishing Industry of New England](https://www.fisheries.noaa.gov/new-england-mid-atlantic/commercial-fishing/brief-history-groundfishing-industry-new-england#period-2.-cod-to-haddock-(1920-1930))
+
+```{r, fig.height=4}
 library(vistime)
 
-timeline_data <- data.frame(
-  event = c(),
-  start = c(),
-  end = c(),
-  group = c()
+# Fishing History
+fishing_history <- data.frame(
+  event = c("Intoruction\nof Steam\nTrawlers", 
+            "Market\nExpansion", 
+            "Landings\nDecline", 
+            "Foreign\nFishing\nPressure", 
+            "2nd\nIndustrial\nRevolution",
+            "Too Many\nFisherman,\nToo Few\nFish"),
+  start = c("1906-01-01", "1920-01-01", "1930-01-01", "1960-01-01", "1977-01-01", "1985-01-01"),
+  end = c("1919-12-31", "1929-12-31", "1959-12-31", "1976-12-31", "1984-12-31", "1994-12-31"),
+  group = c("Fishing History")
 )
+
+# SST History
+sst_history <- data.frame(
+  event = c("Familiar Climate", "New Normal"),
+  start = c("1982-01-01", "2009-01-01"),
+  end = c("2008-12-31", "2020-12-31"),
+  group = c("Sea Surface Temperature")
+)
+
+# Survey History
+gf_history <- data.frame(
+  event = c("Last Large\nGroundfish Caught", "Low Abundance", "Many\nSmall Fishes"),
+  start = c("1971-01-01", "1990-01-01", "2010-01-01"),
+  end = c("1984-12-31", "2008-12-31", "2018-12-31"),
+  group = c("Survey Patterns")
+)
+
+
+# Full Timeline
+timeline_data <- bind_rows(list(fishing_history, sst_history, gf_history)) %>%
+  mutate(group = factor(group, levels = c("Fishing History", "Survey Patterns", "Sea Surface Temperature")))
+
+gg_vistime(timeline_data, optimize_y = T)
+# hc_vistime(timeline_data)
 
 ```
 
