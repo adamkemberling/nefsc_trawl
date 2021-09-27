@@ -67,7 +67,7 @@ This document was done to directly compare the results of calculating size-spect
 This report digs into what the outcomes of the size spectrum estimations look like, and how their results break out into different stanzas. There's also timelines of each region showing relative prevalence of differently sized individuals.
 
 
-[Patterns Across Entire Survey Area](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/sizze_spectrum_story.html)
+[Patterns Across Entire Survey Area](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/size_spectrum_story.html)
 
 ---
 

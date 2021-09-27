@@ -521,4 +521,8 @@ Though this value should be relatively stable through time, steepening over time
 
 **Intuition of the Intercept**
 
-The intercept of the bodymass size spectra has been used as an indication of the productivity of a system, with larger intercept values representative of environments with higher overall biomass amond its lowest trophic positions.
+The intercept of the bodymass size spectra has been used as an indication of the productivity of a system, with larger intercept values representative of environments with higher overall biomass among its lowest trophic positions.
+
+
+
+
