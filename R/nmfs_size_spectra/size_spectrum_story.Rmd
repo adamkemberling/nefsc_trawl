@@ -488,7 +488,7 @@ slope_timeline <- ggplot(yearly_indices, aes(yr, l10_slope_strat)) +
   geom_line(linetype = 2) +
   geom_point() +
   geom_smooth(method = "lm", formula = y~x) +
-  labs(x = "", y = "Size Spectrum Slope") +
+  labs(x = "", y = "Spectrum Slope") +
   theme(axis.text.x = element_blank())
 
 # Size Spectrum Intercept
@@ -496,7 +496,7 @@ int_timeline <- ggplot(yearly_indices, aes(yr, l10_int)) +
   geom_line(linetype = 2) +
   geom_point() +
   geom_smooth(method = "lm", formula = y~x) +
-  labs(x = "", y = "Size Spectrum Intercept")
+  labs(x = "", y = "Spectrum Intercept")
 
 
 
@@ -509,11 +509,16 @@ isd_timeline / slope_timeline / int_timeline
 
 ### What Does it Mean?
 
+ > Comparative studies among spectra for a number of aquatic environments suggests the major difference between areas is in the level of the intercept and of the spectral lines, and may reflect differences in basic nutrient supply and availability.
 
 **Intuition of Slope & Spectrum Exponents**
 
+The slope of the bodymass spectra reflects the transfer of energy (in the form of biomass) from the smaller -> larger individuals. In this context a steeper slope is indicative of a less efficient energy flux from smaller to larger sized members of the community.
 
+Though this value should be relatively stable through time, steepening over time can be indicative of external factors that would limit this energy transfer.
 
 
 
 **Intuition of the Intercept**
+
+The intercept of the bodymass size spectra has been used as an indication of the productivity of a system, with larger intercept values representative of environments with higher overall biomass amond its lowest trophic positions.
