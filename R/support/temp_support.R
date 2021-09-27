@@ -1,9 +1,6 @@
 
 # Temperature data:
-library(gmRi)
 library(tidyverse)
-library(sf)
-library(janitor)
 
 # make daily sst tables yearly
 make_yearly <- function(daily_sst){

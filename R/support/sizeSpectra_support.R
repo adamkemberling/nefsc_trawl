@@ -85,7 +85,7 @@ prep_sizeSpectra_data <- function(lw_trawl_data){
   # Format columns for consistency downstream
   ss_dat <- ss_dat %>%
     rename(
-      Year       = est_year,                  # year
+      Year         = est_year,                  # year
       # SpecCode   = comname,                   # common name
       # LngtClass  = length_cm,                 # length bin
       # Number     = numlen_adj,                # adjusted number at length
@@ -233,57 +233,6 @@ group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratifi
 
 
 
-# # Stratified abundance MLE calculation
-# strat_abund_mle_calc <- function(dataBinForLike, group_var, vecDiff = 0.5){
-#   
-#   # Select the right columns
-#   dataBinForLike <- dplyr::select(dataBinForLike,
-#                                   SpecCode,
-#                                   wmin_g,
-#                                   wmax_g,
-#                                   numlen = strat_total_abund_s)
-#   
-#   # Set n, xmin, xmax
-#   n    = sum(dataBinForLike$numlen)
-#   xmin = min(dataBinForLike$wmin)
-#   xmax = max(dataBinForLike$wmax)
-#   
-#   
-#   
-#   # Get the likelihood calculation for the bins
-#   # previously named MLEbins.nSeaFung.new
-#   mle_group_bins = calcLike(negLL.fn = negLL.PLB.bins.species,
-#                             p = -1.9,
-#                             vecDiff = vecDiff,
-#                             suppress.warnings = TRUE,
-#                             dataBinForLike = dataBinForLike,
-#                             n = n,
-#                             xmin = xmin,
-#                             xmax = xmax)
-#   
-#   
-#   # Store outputs in a dataframe
-#   mle_group_results <- data.frame(group_var = group_var,
-#                                   xmin = xmin,
-#                                   xmax = xmax,
-#                                   n = n,
-#                                   b = mle_group_bins$MLE,
-#                                   confMin = mle_group_bins$conf[1],
-#                                   confMax = mle_group_bins$conf[2]) 
-#   
-#   # Process C and standard error
-#   mle_group_results <- mle_group_results %>% 
-#     mutate(
-#       stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
-#       C = (b != -1 ) * (b + 1) / ( xmax^(b + 1) - xmin^(b + 1) ) + (b == -1) * 1 / ( log(xmax) - log(xmin)))
-#   
-#   
-#   
-#   # Spit out the final output
-#   return(mle_group_bins)
-# }
-
-
 # Plotting size spectrum exponents for a group of estimates
 group_mle_plot <- function(mle_res){
   plot <- mle_res %>% 
@@ -307,6 +256,52 @@ group_mle_plot <- function(mle_res){
 ####______________________####
 ####  Processing SS for Groups  ####
 
+
+
+#' @title Add Missing Groups
+#' 
+#' @description Adds factor columns back in to the table that were not expressly
+#' included as a grouping column. These columns are added in with values of "all" to
+#' communicate that all data across that factor are included.
+#'
+#' @param group_dataframe Table of distinct factor combinations used to provide summary details.
+#' This table is checked to see what columns are missing, which then will be added here.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+add_missing_groups <- function(group_dataframe){
+  
+  # 4. Make flags for group levels not specified
+  # for groups not listed, all levels are used
+  # ex. if year not used, then all years were used together
+  yr_flag     <- "Year" %in% names(group_dataframe)
+  szn_flag    <- "season" %in% names(group_dataframe)
+  area_flag   <- "survey_area" %in% names(group_dataframe)
+  decade_flag <- "decade" %in% names(group_dataframe)
+  class_flag  <- "spec_class" %in% names(group_dataframe)
+  
+  # flag for which ones to build
+  flag_checks <- c("Year"        = yr_flag, 
+                   "season"      = szn_flag, 
+                   "survey_area" = area_flag, 
+                   "decade"      = decade_flag,
+                   "spec_class"  = class_flag)
+  
+  # Columns to add as "all"
+  cols_2_add <- flag_checks[which(flag_checks == FALSE)] 
+  
+  # Add the columns that don't exist to grouping table
+  # the data value is "all" as all group levels are included
+  for (col_flag in seq_along(cols_2_add)) {
+    col_name <- names(cols_2_add[col_flag])
+    group_dataframe[, col_name] <- "all"}
+  
+  # Return the table with the new columns
+  return(group_dataframe)
+  
+}
 
 
 
@@ -346,30 +341,10 @@ group_mle_slope_estimate <- function(wmin_grams,
   col_syms <- syms(.group_cols)
   grouping_table <- dbin_truncated %>% distinct(!!!col_syms, group_var)
   
-  # 4. Make flags for group levels not specified
-  # for groups not listed, all levels are used
-  # ex. if year not used, then all years were used together
-  yr_flag     <- "Year" %in% names(grouping_table)
-  szn_flag    <- "season" %in% names(grouping_table)
-  area_flag   <- "survey_area" %in% names(grouping_table)
-  decade_flag <- "decade" %in% names(grouping_table)
+  # 4. Add in any missing groups as "all data"
+  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
   
-  # flag for which ones to build
-  flag_checks <- c("Year"        = yr_flag, 
-                   "season"      = szn_flag, 
-                   "survey_area" = area_flag, 
-                   "decade"      = decade_flag)
-  
-  #columns to add as "all"
-  cols_2_add <- flag_checks[which(flag_checks == FALSE)] 
-  
-  # Add the columns that don't exist to grouping table
-  # the data value is "all" as all group levels are included
-  for (col_flag in seq_along(cols_2_add)) {
-    col_name <- names(cols_2_add[col_flag])
-    grouping_table[, col_name] <- "all"}
-  
-  # Run size spectra slopes for each group
+  # 5. Run size spectra slopes for each group
   group_results <- dbin_truncated %>% 
     split(.$group_var) %>% 
     imap_dfr(.f = mle_function, abundance_vals = abundance_vals)
@@ -986,28 +961,8 @@ group_log10_slopes <- function(wmin_grams,
   grouping_table <- l10_assigned %>% distinct(!!!col_syms, group_var)
   
   
-  # 4. Make flags for group levels not specified
-  # for groups not listed, all levels are used
-  # ex. if year not used, then all years were used together
-  yr_flag     <- "Year" %in% names(grouping_table)
-  szn_flag    <- "season" %in% names(grouping_table)
-  area_flag   <- "survey_area" %in% names(grouping_table)
-  decade_flag <- "decade" %in% names(grouping_table)
-  
-  # flag for which ones to build
-  flag_checks <- c("Year"        = yr_flag, 
-                   "season"      = szn_flag, 
-                   "survey_area" = area_flag, 
-                   "decade"      = decade_flag)
-  
-  #columns to add as "all"
-  cols_2_add <- flag_checks[which(flag_checks == FALSE)] 
-  
-  # Add the columns that don't exist to grouping table
-  # the data value is "all" as all group levels are included
-  for (col_flag in seq_along(cols_2_add)) {
-    col_name <- names(cols_2_add[col_flag])
-    grouping_table[, col_name] <- "all"}
+  # 4. Add missing groups as "all data"
+  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
   
   
   ####  Running log10 slopes/intercepts
@@ -1331,11 +1286,11 @@ plot_log10_ss <- function(l10_assigned){
 
 # Get weighted mean lengths and weights using survey and total stratified abundances
 # Note: uses numlen because individuals were ID'd and measured
-group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
+group_size_metrics <- function(size_data, .group_cols = "Year", abund_vals = "numlen_adj"){
   
   # 1. Build group_level from desired group columns
-  dbin_truncated <- nefsc_bio %>% 
-    filter(is.na(indwt) == FALSE) %>% 
+  dbin_truncated <- size_data %>% 
+    filter(is.na(ind_weight_kg) == FALSE) %>% 
     mutate(decade = floor_decade(Year)) %>% 
     unite(col = "group_var", 
           {{.group_cols}}, 
@@ -1347,52 +1302,31 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
   col_syms <- syms(.group_cols)
   grouping_table <- dbin_truncated %>% distinct(!!!col_syms, group_var)
   
-  # 3. Make flags for group levels not specified
-  # for groups not listed, all levels are used
-  # ex. if year not used, then all years were used together
-  yr_flag      <- "Year" %in% names(grouping_table)
-  szn_flag     <- "season" %in% names(grouping_table)
-  area_flag    <- "survey_area" %in% names(grouping_table)
-  decade_flag  <- "decade" %in% names(grouping_table)
-  class_flag   <- "spec_class" %in% names(grouping_table)
-  #hare_flag    <- "hare_group" %in% names(grouping_table)
-  fishery_flag <- "fishery" %in% names(grouping_table)
+  # 3. Add missing groups as "all data"
+  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
   
-  # flag for which ones to build
-  flag_checks <- c("Year"        = yr_flag,
-                   "season"      = szn_flag,
-                   "survey_area" = area_flag,
-                   "decade"      = decade_flag,
-                   "spec_class"  = class_flag, 
-                   #"hare_group"  = hare_flag, 
-                   "fishery"     = fishery_flag)
+  # Set what abundance column to use
+  #we can use stratified rates instead of strat abundance because the proportions are the same
+  weighting_col <- switch (abund_vals,
+    "numlen_adj" = "numlen_adj",
+    "stratified" = "strat_mean_abund_s")
   
-  #columns to add as "all"
-  cols_2_add <- flag_checks[which(flag_checks == FALSE)] 
   
-  # Add the columns that don't exist to grouping table
-  # the data value is "all" as all group levels are included
-  for (col_flag in seq_along(cols_2_add)) {
-    col_name <- names(cols_2_add[col_flag])
-    grouping_table[, col_name] <- "all"}
-  
-  # Run size spectra slopes for each group
+  # Run Min/Max/Avg. Size for the group
   group_results <- dbin_truncated %>% 
     split(.$group_var) %>% 
     imap_dfr(function(group_data, group_name){
       
       # lengths
-      mean_len    <- weighted.mean(group_data[,"length_cm"], 
-                                   group_data[,"numlen_adj"], na.rm = T)
+      mean_len    <- weighted.mean(group_data[, "length_cm"], group_data[, weighting_col], na.rm = T)
       min_len     <- min(group_data[, "length_cm"], na.rm = T)
       max_len     <- max(group_data[, "length_cm"], na.rm = T)
       
       # weights
-      mean_weight <- weighted.mean(group_data[,"indwt"],  
-                                   group_data[,"numlen_adj"], na.rm = T)
-      min_weight  <- min(group_data[, "indwt"], na.rm = T)
-      max_weight  <- max(group_data[, "indwt"], na.rm = T)
-      total_abund <- sum(group_data[,"numlen_adj"], na.rm = T)
+      mean_weight <- weighted.mean(group_data[,"ind_weight_kg"], group_data[, weighting_col], na.rm = T)
+      min_weight  <- min(group_data[, "ind_weight_kg"], na.rm = T)
+      max_weight  <- max(group_data[, "ind_weight_kg"], na.rm = T)
+      total_abund <- sum(group_data[, "numlen_adj"], na.rm = T)
       
       # number of species
       num_species <- group_data %>% 
@@ -1400,8 +1334,6 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
         distinct(comname) %>% 
         length()
      
-  
-      
       # Put in table
       table_out <- data.frame(
           "group_var"    = group_name,
@@ -1413,6 +1345,7 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
           "mean_wt_kg"   = mean_weight,
           "min_wt_kg"    = min_weight,
           "max_wt_kg"    = max_weight) %>% 
+        
         # replace Inf with NA
         mutate(across(.cols = survey_abund:max_wt_kg, .fns = ~ifelse(is.infinite(abs(.x)), NA, .x)))
       
@@ -1426,10 +1359,8 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
                     Year, 
                     decade, 
                     season, 
-                    survey_area, 
-                    spec_class,
-                    # hare_group, 
-                    fishery), as.character))
+                    survey_area,
+                    spec_class), as.character))
   
   # Return the results
   return(group_results)
@@ -1440,16 +1371,17 @@ group_size_metrics <- function(nefsc_bio, .group_cols = "Year"){
 
 # Run all the groups, preserve the groups not stated for "overall" levels
 # Direct match to the groups in ss_slopes_all_groups
-mean_sizes_all_groups <- function(nefsc_bio, 
-                                  min_weight_g = 0){
+mean_sizes_all_groups <- function(size_data, 
+                                  min_weight_g = 0, 
+                                  abund_vals = "numlen_adj"){
   
   
   ####__  Set Bodymass Cutoff and Groups
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  dbin_truncated <- filter(nefsc_bio, 
-                           indwt >= min_weight_g * 1000) %>% 
+  dbin_truncated <- filter(size_data, 
+                           ind_weight_kg >= min_weight_g * 1000) %>% 
     mutate(decade = floor_decade(Year))
   
   
@@ -1459,58 +1391,68 @@ mean_sizes_all_groups <- function(nefsc_bio,
   message("running overall slope with all data")
   g1_res <- dbin_truncated %>% 
     mutate(group_var = "all_data") %>% 
-    group_size_metrics(.group_cols = c("group_var")) 
+    group_size_metrics(.group_cols = c("group_var"),
+                       abund_vals = abund_vals) 
   
   
   #####__ 2. All Years, each season 
   message("running overall slope for each season")
   g2_res <- dbin_truncated %>% 
-    group_size_metrics(.group_cols = c("season")) 
+    group_size_metrics(.group_cols = c("season"),
+                       abund_vals = abund_vals) 
   
   
   #####__ 3. All Years, regions  
   message("running overall slope for each region")
   g3_res <- dbin_truncated  %>% 
-    group_size_metrics(.group_cols = c("survey_area"))
+    group_size_metrics(.group_cols = c("survey_area"),
+                       abund_vals = abund_vals)
   
   
   #####__ 3. All Years, seasons * regions
   message("running overall slope for season * region")
   g4_res <- dbin_truncated %>% 
-    group_size_metrics(.group_cols = c("season", "survey_area"))
+    group_size_metrics(.group_cols = c("season", "survey_area"),
+                       abund_vals = abund_vals)
   
   #####__ 4. Every year, entire survey
   message("Calculating log(10) size spectrum slope each year")
   g5_res <- dbin_truncated  %>% 
-    group_size_metrics(.group_cols = c("Year")) 
+    group_size_metrics(.group_cols = c("Year"),
+                       abund_vals = abund_vals) 
   
   #####__ 5. every year, every region
   message("Calculating log(10) size spectrum slope each year in each region")
   g6_res <- dbin_truncated  %>% 
-    group_size_metrics(.group_cols = c("Year", "survey_area")) 
+    group_size_metrics(.group_cols = c("Year", "survey_area"),
+                       abund_vals = abund_vals) 
   
   #####__ 6. every year, only seasons
   message("Calculating log(10) size spectrum slope each year in each season")
   g7_res <- dbin_truncated %>% 
-    group_size_metrics(.group_cols = c("Year", "season"))
+    group_size_metrics(.group_cols = c("Year", "season"),
+                       abund_vals = abund_vals)
   
   
   #####__ 7. every year, region * season
   message("Calculating log(10) size spectrum slope each year in each region, for every season")
   g8_res <- dbin_truncated %>% 
-    group_size_metrics(.group_cols = c("Year", "season", "survey_area")) 
+    group_size_metrics(.group_cols = c("Year", "season", "survey_area"),
+                       abund_vals = abund_vals) 
   
   
   ####__ 8. decades
   message("Calculating log(10) size spectrum slope each decade")
   g9_res <- dbin_truncated %>% 
-    group_size_metrics(.group_cols = c("decade")) 
+    group_size_metrics(.group_cols = c("decade"),
+                       abund_vals = abund_vals) 
   
   
   ####__ 9. decades and area
   message("Calculating log(10) size spectrum slope each decade in each area")
   g10_res <- dbin_truncated %>% 
-    group_size_metrics(.group_cols = c("decade", "survey_area")) 
+    group_size_metrics(.group_cols = c("decade", "survey_area"),
+                       abund_vals = abund_vals) 
   
   
   # Put the reults in one table with an ID for how they groups are set up

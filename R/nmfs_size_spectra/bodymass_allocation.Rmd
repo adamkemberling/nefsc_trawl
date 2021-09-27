@@ -26,8 +26,8 @@ library(here)
 library(sf)
 library(gmRi)
 library(patchwork)
-library(rioja)
-library(vegan)
+# library(rioja)
+# library(vegan)
 library(gt)
 library(knitr)
 library(tidyverse)
@@ -848,9 +848,9 @@ odd_year_dat <- nefsc_size_bins %>%
 
 #### Individual Size Distribution
 
-The individual size distribution plots look like alot but are not too complicated with a little explanation.
+The individual size distribution plots look like a lot but are not too complicated with a little explanation.
 
-The blue bars are the width of what a given species biomass can be based on. What the species is, and its L-W relationship. Since fishes are measured to the nearest cm the leftbound is the biomass for that length, and the right bound is how much mass it could also have before jumping into the next 1cm increment.
+The blue bars are the width of what a given species biomass can be based on. What the species is, and its L-W relationship. Since fishes are measured to the nearest cm the left bound is the biomass for that length, and the right bound is how much mass it could also have before jumping into the next 1cm increment.
 
 The height of the blue bars indicate how many individuals fall within that size range. Eventually building up the range of possible sizes caught, and how many there are/were.
 
@@ -1212,7 +1212,7 @@ sst_history <- data.frame(
 gf_history <- data.frame(
   event = c("Last Large\nGroundfish Caught", "Low Abundance", "Many\nSmall Fishes"),
   start = c("1971-01-01", "1990-01-01", "2010-01-01"),
-  end = c("1984-12-31", "2008-12-31", "2018-12-31"),
+  end = c("1989-12-31", "2008-12-31", "2018-12-31"),
   group = c("Survey Patterns")
 )
 
@@ -1221,6 +1221,7 @@ gf_history <- data.frame(
 timeline_data <- bind_rows(list(fishing_history, sst_history, gf_history)) %>%
   mutate(group = factor(group, levels = c("Fishing History", "Survey Patterns", "Sea Surface Temperature")))
 
+# Plot the timeseries
 gg_vistime(timeline_data, optimize_y = T)
 # hc_vistime(timeline_data)
 

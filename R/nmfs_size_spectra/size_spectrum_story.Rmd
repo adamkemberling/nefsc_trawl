@@ -1,0 +1,519 @@
+---
+title: "Bodymass Size Spectrum Trends of the Northeastern US"
+description: |
+  Size distribution patterns across the historic New England fishing grounds.
+author:
+  - name: Adam Kemberling 
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+    affiliation_url: https://gmri.org
+date: "`r Sys.Date()`"
+output: distill::distill_article
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = F, 
+                      warning = F, 
+                      comment = "")
+
+####  Packages  ####
+library(targets)
+library(here)
+library(sf)
+library(gmRi)
+library(patchwork)
+library(gt)
+library(knitr)
+library(tidyverse)
+library(ggstream)
+library(ggwaffle)
+
+# Support functions
+source(here("R/support/sizeSpectra_support.R"))
+
+theme_set(theme_minimal() + 
+            theme(legend.position = "bottom", 
+                  plot.title = element_text(hjust = 0.5),
+                  axis.line.x = element_line(),
+                  axis.ticks.x = element_line(), 
+                  axis.text = element_text(size = 11)))
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+# History of the Region
+
+The waters of the Northeastern US and nearby Canada have been a center of attention for fisheries and fisheries management for over a century. 
+
+Over that period an extensive removal of fishes has occurred, through technologically-evolving fishing practices. Despite management efforts, the catch composition and size-distribution of the fishes present has not recovered to pre-industrial levels. 
+
+This document aims to highlight patterns in the modern bodymass-distribution, and provide insight into how the region's community has responded to these external forces. 
+
+All data displayed below comes from the Northeast Groundfish Survey and spans all survey areas from the Mid-Atlantic Bight North to the Gulf of Maine.
+
+```{r groundfish bins}
+
+# 1. Biological data used as input
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_1g))            
+
+# quick little format
+nefsc_1g <- nefsc_1g %>% 
+  mutate(fishery = case_when(
+    fishery == "com" ~ "Commercially Targeted",
+    fishery == "nc" ~ "Not Commercially Targeted",
+    TRUE ~ "Not Labelled"))
+
+
+# Cut up discrete length and weight bins
+nefsc_size_bins <- nefsc_1g %>% 
+  mutate(
+    length_bin = case_when(
+      length_cm <= 5   ~ "0 - 5cm",
+      length_cm <= 10  ~ "5 - 10cm",
+      length_cm <= 25  ~ "10 - 25cm",
+      length_cm <= 50  ~ "25 - 50cm",
+      length_cm <= 75  ~ "50 - 75cm",
+      length_cm <= 100 ~ "75 - 100cm",
+      length_cm >= 100 ~ ">= 100cm"),
+    length_bin = factor(length_bin, levels = c(
+      "0 - 5cm", "5 - 10cm", "10 - 25cm",
+      "25 - 50cm", "50 - 75cm", "75 - 100cm", ">= 100cm")))
+
+
+# Weight bins
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(
+    weight_bin = case_when(
+      ind_weight_kg <= 0.001 ~ "0 - 1g",
+      ind_weight_kg <= 0.005 ~ "1 - 5g",
+      ind_weight_kg <= 0.010 ~ "5 - 10g",
+      ind_weight_kg <= 0.050 ~ "10 - 50g",
+      ind_weight_kg <= 0.100 ~ "50 - 100g",
+      ind_weight_kg <= 0.500 ~ "100 - 500g",
+      ind_weight_kg <= 1.000 ~ ".5 - 1kg",
+      ind_weight_kg <= 5.000 ~ "1 - 2kg",
+      ind_weight_kg <= 5.000 ~ "2 - 5kg",
+      ind_weight_kg <= 10.00 ~ "5 - 10kg",
+      ind_weight_kg >= 10.00 ~ ">= 10kg" ),
+    weight_bin = factor(weight_bin, levels = c(
+      "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
+      "50 - 100g", "100 - 500g", ".5 - 1kg",
+      "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
+
+
+# Rename the functional groups
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(
+    spec_class = case_when(
+      spec_class == "gf"  ~ "Groundfish",
+      spec_class == "pel" ~ "Pelagic",
+      spec_class == "dem" ~ "Demersal",
+      spec_class == "el"  ~ "Elasmobranch",
+      spec_class == "<NA>" ~ "NA"))
+
+# Make regions go N->S
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+         season = factor(season, levels = c("Spring", "Fall")))
+```
+
+
+## Abundance and Size Trends
+
+Since the start of the groundfish survey in 1972 (already well into the decline of the region's fisheries), both the size composition of the community and the number of individuals has changed. 
+
+```{r group summ funs}
+
+# Function to process summaries for various factor combinations
+get_group_summaries <- function(...){
+  
+  # Do some grouping to get totals
+  group_totals <- nefsc_size_bins %>% 
+    group_by(...) %>% 
+    summarise(total_survey_catch = sum(numlen, na.rm = T),
+              total_lw_bio = sum(sum_weight_kg, na.rm = T),
+              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+  
+  # length bins
+  group_lengths <- nefsc_size_bins %>% 
+    group_by(..., length_bin) %>% 
+    summarise(lenbin_survey_catch = sum(numlen),
+              lenbin_lw_bio       = sum(sum_weight_kg),
+              lenbin_strat_abund  = sum(strat_total_abund_s),
+              lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
+      perc_lw_bio       = (lenbin_lw_bio - total_lw_bio) * 100,
+      perc_strat_abund  = (lenbin_strat_abund - total_strat_abund) * 100,
+      perc_strat_lw_bio = (lenbin_strat_lw_bio - total_strat_lw_bio) * 100)
+  
+  # weight bins
+  group_weights <- nefsc_size_bins %>% 
+    group_by(..., weight_bin) %>% 
+    summarise(wtbin_survey_catch = sum(numlen),
+              wtbin_lw_bio       = sum(sum_weight_kg),
+              wtbin_strat_abund  = sum(strat_total_abund_s),
+              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+
+return(list("length_bins" = drop_na(group_lengths),
+            "weight_bins" = drop_na(group_weights)))
+}
+
+
+# 1. Abundance by length
+abundance_by_length <- function(length_summary, facet_var){
+
+  ggplot(length_summary,
+       aes(Year, lenbin_strat_abund, fill = length_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Abundance",
+       title = "Abundance Allocation by Length",
+       x = "",
+       fill = "Individual Length (cm)")
+
+
+
+}
+
+
+# 2. Biomass by length
+biomass_by_length <- function(length_summary, facet_var){
+
+ggplot(length_summary,
+       aes(Year, lenbin_strat_lw_bio, fill = length_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Biomass (kg)",
+       title = "Biomass Allocation by Length",
+       x = "",
+       fill = "Individual Length (cm)")
+
+}
+
+
+# 3. Abundance by bodymass
+abundance_by_bodymass <- function(bodymass_summary, facet_var){
+
+  ggplot(bodymass_summary,
+         aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Total Abundance",
+         title = "Abundance Allocation by Bodymass",
+         x = "",
+         fill = "Individual Weight (kg)")
+
+
+}
+
+
+# 4. Biomass across bodymass
+biomass_by_bodymass <- function(bodymass_summary, facet_var){
+
+  ggplot(bodymass_summary,
+         aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Total Biomass (kg)",
+         title = "Biomass Allocation by Bodymass",
+         x = "",
+         fill = "Individual Weight (kg)")
+
+
+}
+
+
+```
+
+```{r}
+# make a column that contains all data
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(group_col = "All Data") 
+
+# run summary
+all_data_summs <- get_group_summaries(Year, group_col)
+```
+
+### Trends in Abundance
+
+Until around 2015, the abundance of fishes has been on a slow and steady rise. However, much of the rise in abundance has been in individuals smaller than 50cm in length, with the largest increase in the 10-25cm range.
+
+```{r}
+# Stream Plots
+len_abund_p <- ggplot(all_data_summs$length_bins, 
+                      aes(Year, lenbin_strat_abund/1e6, fill = length_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_grid(group_col ~ .) +
+  scale_x_continuous(expand = c(0,0), breaks = seq(1970, 2025, by = 5)) +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma_format()) +
+  labs(x = "", 
+       y = "Stratified Total Abundance\n(millions)", 
+       title = "Abundance by Length",
+       fill = "Individual Size (cm)") +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+len_abund_p
+```
+
+When looking at individual biomasses we see a similar pattern (abundance ~ biomass). Much of that increase in abundance is restricted to individuals weighing less than 0.5kg, with very little transfer of biomass to larger individuals in the population.
+
+
+```{r}
+# Weight Bins
+wt_abund_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_abund/1e6, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_grid(group_col ~ .) +
+  scale_x_continuous(expand = c(0,0), breaks = seq(1970, 2025, by = 5)) +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma_format()) +
+  labs(x = "", y = "Stratified Total Abundance\n(millions)", 
+       title = "Abundance by Individual Bodymass",
+       fill = "Individual Bodymass") +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+wt_abund_p
+
+```
+
+
+
+
+
+
+### Trends in Biomass
+
+When we look at the distribution of the overall biomass in the region we can see a similar pattern, but with more clarity on what share of "mass" is held by larger individuals.
+
+
+```{r}
+
+
+# Length Bins
+len_bio_p <- ggplot(all_data_summs$length_bins, aes(Year, lenbin_strat_lw_bio/1000, fill = length_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_grid(group_col ~ .) +
+  scale_x_continuous(expand = c(0,0), breaks = seq(1970, 2025, by = 5)) +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma_format()) +
+  labs(x = "", 
+       y = "Stratified Total Biomass\n(metric tons)", 
+       fill = "Individual Size (cm)",
+       title = "Biomass Distribution by Individual Length") +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+len_bio_p
+```
+
+
+When looking at how the overall biomass of the community is distributed across individual bodymass we can see a widening of the share held by fishes weighing 2kg or less, particularly in the 1-2kg range.
+
+
+```{r}
+wt_bio_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_lw_bio/1000, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_grid(group_col ~ .) +
+  scale_x_continuous(expand = c(0,0), breaks = seq(1970, 2025, by = 5)) +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma_format()) +
+  labs(x = "", 
+       y = "Stratified Total Biomass\n(metric tons)", 
+       fill = "Individual Bodymass",
+       title = "Biomass Distribution by Individual Bodymass") +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+
+wt_bio_p
+
+```
+
+
+# Fish Removal vs. Growth Suppression
+
+Two non-mutually exclusive explanations for why we don't see more larger individuals jump to  mind when looking at these patterns. The first is that there is some sort of selective pressure that is removing individuals from the population before they can reach the larger sizes they historically had. This could be either fishing pressures or natural mortality from things like predation, or some combination of both. The second is that it is no longer energetically favorable to grow to such larger sizes. This could be explained by a direct impact of temperature making it more energetically costly to reach such sizes, or indirectly through some disruption on the prey they forage on.
+
+
+## Are Species Getting Smaller?
+
+One thing to look at is whether populations within a species are on-average a smaller size than they were earlier in the timeseries. Another way to have less larger individuals is to have a change in species composition. In that scenario the abundance of smaller species would have increased more than some of the larger species.
+
+**NOTE:**
+Body size treendds and data are based on area-stratified abundances to reflect the survey design of the survey. 
+
+### Changes in Average Size
+
+The size organism that ecosystems can support is related to the productivity and energy transfer within it. Looking it patterns in body size over time can reflect changes in that productivity or the energy transfer dynamics.
+
+
+### What is the General Direction?
+
+When we look at the trends in average body size for species in each season we can see that a majority of them are trending smaller. Of the trends that show significant trends more than two thirds show a decline in average body size over the years.
+
+```{r}
+
+# Load the bodysize metrics - species year and survey
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(annual_individual_sizes))
+#glimpse(annual_individual_sizes)
+
+# Track changes in individual biomass using the weighted sizes
+weight_changes <- annual_individual_sizes %>% 
+  group_by(species_season = str_c(comname, season, sep = " - ")) %>% 
+  split(.$species_season) %>% 
+  map_dfr(.f = function(spec_season_dat){
+    
+    # build linear regression for body size
+    weight_lm <- lm(mean_wt_kg ~ as.numeric(Year), data = spec_season_dat)
+    mod_tidy <- broom::tidy(weight_lm)
+    weight_trend <- mod_tidy$estimate[2]
+    weight_signif <-  mod_tidy$p.value[2]
+    
+    # put in a table
+    mean_size_dat <- data.frame(
+      "weight_trend" = weight_trend,
+      "weight_signif" = weight_signif)
+    
+  }, .id = "grouping")
+
+
+
+
+# clean up the group names
+weight_changes <- weight_changes %>% 
+  mutate(comname = sub(" - .*", "", grouping),
+         season = sub(".* - ", "", grouping),
+         body_size_change = if_else(weight_trend < 0, "Decreasing", "Increasing"),
+         is_signif = if_else(weight_signif < 0.05, "< 0.05", "Not Significant"),
+         fct_reorder(.f = grouping, .x = weight_trend, .fun = "median"),
+         season = factor(season, levels = c("Spring", "Fall"))) 
+```
+
+
+```{r, fig.height=2}
+# Waffle plot 
+ggplot(
+  data = waffle_iron(
+    data = filter(weight_changes, is_signif == "< 0.05"),
+    mapping = aes_d(group = body_size_change), rows = 3),
+  aes(x, y, fill = group)) +
+  geom_waffle() +
+  scale_fill_gmri() +
+  coord_equal() +
+  theme_void() + theme(title = element_text(hjust = 0.75)) +
+  labs(fill = "Change in Avg. Body Size")
+```
+
+### What Species are Showing Change?
+
+When we line up specific cases in order we can see that of the species that are changing, very few are increasing, and of those they are only increasing in one of the survey seasons.
+
+In contrast, many of the species showing a decline in individual body size are consistent across seasons. Among the species showing the largest declines in size are commercially harvested groundfish: goosefish, Atlantic cod, haddock, and pollock.
+
+```{r, fig.height=8}
+
+# plot
+weight_changes %>% 
+  filter(is_signif == "< 0.05") %>% 
+  ggplot(aes(y = fct_reorder(grouping, .x = weight_trend, .fun = "median"), 
+             yend = fct_reorder(grouping, .x = weight_trend, .fun = "median"), 
+             x = weight_trend * 1000, 
+             xend = 0)) +
+    geom_segment() +
+    geom_point(aes(color = is_signif)) +
+    scale_color_gmri() +
+    facet_wrap(.~season, nrow = 2, scales = "free") +
+    labs(x = "Annual Change in Bodymass (g)", 
+         y = "Species and Survey Season",
+         color = "Trend Significance",
+         title = "Significant Trends in Individual Body Size") +
+  theme(axis.text.y = element_text(size = 8))
+
+
+```
+
+
+
+## Body Size Spectrum
+
+Another way to capture the overall body mass distribution within a community is through the body size or body mass spectrum. The body mass spectrum slope is an accounting of the trend between log(abundance) and log(bodymass) of the community.
+
+This relationship is rooted in energy transfer dynamics and the slope of this relationship has been suggested for use as a community index.
+
+The relationship  for the full survey area in both body size spectrum slope, and exponent of the individual size distribution (ISD) can be viewed as its own timeline.
+
+
+```{r}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))   
+
+# Format Columns
+yearly_indices <- size_spectrum_indices  %>% 
+  filter(`group ID` == "single years") %>% 
+  mutate(yr = as.numeric(as.character(Year)))
+
+
+# Plot 3 panels:
+# ISD exponent
+isd_timeline <- ggplot(yearly_indices, aes(yr, b)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "ISD exponent (b)") +
+  theme(axis.text.x = element_blank())
+
+# Normalized Size Spectrum Slope
+slope_timeline <- ggplot(yearly_indices, aes(yr, l10_slope_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "Size Spectrum Slope") +
+  theme(axis.text.x = element_blank())
+
+# Size Spectrum Intercept
+int_timeline <- ggplot(yearly_indices, aes(yr, l10_int)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "Size Spectrum Intercept")
+
+
+
+# Assemble
+isd_timeline / slope_timeline / int_timeline
+
+
+```
+
+
+### What Does it Mean?
+
+
+**Intuition of Slope & Spectrum Exponents**
+
+
+
+
+
+**Intuition of the Intercept**

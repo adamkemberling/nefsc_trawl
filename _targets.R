@@ -7,10 +7,9 @@ library(targets)
 library(tarchetypes)
 library(here)
 library(janitor)
-library(patchwork)
-library(rnaturalearth)
 library(sf)
 library(tidyverse)
+library(gmRi)
 
 ####  Resource Paths  
 oisst_path <- gmRi::box_path(box_group = "RES_Data", 
@@ -177,16 +176,30 @@ list(
   # Year, season, taxonomic group, functional group, economic status
   # "
   
-  # Run the weighted mean sizes
-  tar_target(
-    mean_individual_sizes,
-    group_size_metrics(nefsc_bio = survdat_bio_lw, 
-                       .group_cols = c("Year", "survey_area", "season", "spec_class", "fishery"))),
+  # NOTE: not using BIO data because it is a subset of lengths
+  # # Run the weighted mean sizes
+  # tar_target(
+  #   mean_individual_sizes,
+  #   group_size_metrics(size_data = survdat_bio_lw, 
+  #                      .group_cols = c("Year", "survey_area", "season", "spec_class", "fishery"))),
+  # 
   
+  # NOTE: Use all the data since all fish are measured, and we have LW weights
+  # Run the main suite of groupings
   tar_target(
     mean_sizes_ss_groups,
-    mean_sizes_all_groups(nefsc_bio = survdat_bio_lw, 
-                          min_weight_g = 0))
+    mean_sizes_all_groups(size_data = rename(as.data.frame(nefsc_stratified), Year = est_year),
+                          min_weight_g = 0, 
+                          abund_vals = "stratified")),
+ 
+  # Run the size change for each species across years using stratified abundances
+  tar_target(
+    annual_individual_sizes,
+    group_size_metrics(size_data = rename(as.data.frame(nefsc_stratified), Year = est_year),
+                       .group_cols = c("comname", "Year", "season"),
+                       abund_vals = "stratified"))
+  
+  
   
   
   # ##### 8. Assemble Table of indices  ####
