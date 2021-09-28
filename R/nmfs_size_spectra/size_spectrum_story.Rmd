@@ -509,7 +509,22 @@ isd_timeline / slope_timeline / int_timeline
 
 ### What Does it Mean?
 
+There is a big interest in using size spectrum slope as an ecological indicator. While methodology for estimating slope exists, whether through regression methods or likelihood methods, it can be difficult/tricky how to interprate.
+
+Here are some statements that have stuck with me:
+
+
+From Kerr & Dickie:
+
  > Comparative studies among spectra for a number of aquatic environments suggests the major difference between areas is in the level of the intercept and of the spectral lines, and may reflect differences in basic nutrient supply and availability.
+
+From Zoom recording of Axel Rossberg (size spectrum group):
+
+If you do measure slopes: you can see how close you are to different regimes (oligotrophic / eutrophic). These are two extreme and special cases of size spectrum dynamic "solutions".
+
+In the oligotrophic case the productivity is just right to be able to sustain the minimal power law and sustain a size spectrum.
+
+In the eutrophic case you have a situation where predators are not constrained by prey satiation
 
 **Intuition of Slope & Spectrum Exponents**
 
@@ -525,4 +540,14 @@ The intercept of the bodymass size spectra has been used as an indication of the
 
 
 
+
+
+### Where are we: Top-down vs. Bottuom-up
+
+The shape of size spectra are commonly characterized by "domes". The presence, magnitude, and location on the size-axis of these domes is impacted by both top-down and bottom-up forcings.
+
+
+From simulation studies it is generally accepted the large-domes are the result of top-down forcing.
+
+Simulation studies can also be used to show the impacts of fishing and gear selectivity on the shifting of these domes.
 
