@@ -1189,7 +1189,7 @@ library(vistime)
 
 # Fishing History
 fishing_history <- data.frame(
-  event = c("Intoruction\nof Steam\nTrawlers", 
+  event = c("Introduction\nof Steam\nTrawlers", 
             "Market\nExpansion", 
             "Landings\nDecline", 
             "Foreign\nFishing\nPressure", 

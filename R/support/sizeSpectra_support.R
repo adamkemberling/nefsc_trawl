@@ -862,8 +862,9 @@ isd_lite <- function(wmin_grams,
 
 #' @title Assign Manual log10 Bodymass Bins
 #'
-#' @description Manually assign log10 bins based on individual length-weight bodymass in increments
-#' of 0.5 on the log10 scale
+#' @description Manually assign log10 bins based on individual length-weight bodymass 
+#' in increments of 0.5 on the log10 scale. Returns data with bins assigned based on individual
+#' length-weight biomass
 #'
 #' @param wmin_grams Catch data prepared for mle calculation, use prep_wmin_wmax
 #'
@@ -877,18 +878,18 @@ assign_log10_bins <- function(wmin_grams){
   #### 1. Set up bodymass bins
   
   # filter missing weights
-  m1 <- wmin_grams %>% 
+  size_data <- wmin_grams %>% 
     filter(wmin_g > 0,
            is.na(wmin_g) == FALSE,
            wmax_g > 0,
            is.na(wmax_g) == FALSE)
 
   # Get bodymass on log10() scale
-  m1$log10_weight <- log10(m1$ind_weight_g)
+  size_data$log10_weight <- log10(size_data$ind_weight_g)
   
   # Set up the bins using 0.5 spacing - Pull min and max weights from data available
-  max_bin <- ceiling(max(m1$log10_weight))
-  min_bin <- floor(min(m1$log10_weight))
+  min_bin <- floor(min(size_data$log10_weight))
+  max_bin <- ceiling(max(size_data$log10_weight))
   n_bins  <- length(seq(max_bin, min_bin + 0.5, by = -0.5))
   
   # Build a bin key, could be used to clean up the incremental assignment or for apply style functions
@@ -897,12 +898,13 @@ assign_log10_bins <- function(wmin_grams){
     "right_lim" = seq(max_bin, min_bin + 0.5, by = -0.5),
     "log10_bins" = as.character(seq(n_bins, 1, by = -1))) %>% 
     mutate(
-      bin_label = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
-      bin_width = 10^right_lim - 10^left_lim )
+      bin_label    = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
+      bin_width    = 10^right_lim - 10^left_lim,
+      bin_midpoint = (10^right_lim + 10^left_lim) / 2)
   
   
   
-  # Loop through bins to assign the bin numbers
+  # Loop through bins to assign the bin details to the data
   l10_assigned <- l10_bin_structure %>%
     split(.$log10_bins) %>%
     map_dfr(function(l10_bin){
@@ -913,12 +915,15 @@ assign_log10_bins <- function(wmin_grams){
       bin_num <- as.character(l10_bin$log10_bin)
       
       # assign the label to the appropriate bodymasses
-      m1 %>% mutate(
+      size_data %>% mutate(
         log10_bins = ifelse( between(log10_weight, l_lim, r_lim), bin_num, NA),
         log10_bins = as.character(log10_bins)) %>%
         drop_na(log10_bins)
       
     })
+  
+  # Join in the size bins
+  l10_assigned <- left_join(l10_assigned, l10_bin_structure, by = "log10_bins")
   
   # return the data with the bins assigned
   return(l10_assigned)
@@ -927,8 +932,68 @@ assign_log10_bins <- function(wmin_grams){
 
 
 
+
+
+#' @title Determine normalized and de-normalized abundances
+#'
+#' @param l10_assigned size data containing the bin assignments to use
+#'
+#' @return
+#' @export
+#'
+#' @examples
+aggregate_l10_bins <- function(l10_assigned){
+  
+  # Pull out the bin structure
+  l10_bin_structure <- l10_assigned %>% 
+    distinct(log10_bins, left_lim, right_lim, log10_bins, 
+             bin_label, bin_width, bin_midpoint)
+  
+  # Get bin breaks
+  l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
+  
+  
+  # Get Totals for bodymass and abundances
+  l10_aggregates <- l10_assigned %>% 
+    group_by(log10_bins) %>% 
+    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
+              observed_weight_g    = sum(wmin_g, na.rm = T),
+              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
+              stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
+    ungroup()
+  
+  
+  # join back in what the limits and labels are
+  l10_prepped <- left_join(l10_aggregates, l10_bin_structure, by = "log10_bins")
+  
+  #### normalize abundances using the bin widths
+  l10_prepped <- l10_prepped %>% 
+    mutate(normalized_abund = observed_abundance / bin_width,
+           normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
+           norm_strat_abund = stratified_abundance / bin_width,
+           norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund))
+  
+  # Add de-normalized abundances (abundance * bin midpoint)
+  l10_prepped <- l10_prepped %>% 
+    mutate(
+      denorm_abund = normalized_abund * bin_midpoint,
+      denorm_strat_abund = norm_strat_abund * bin_midpoint)
+  
+  # Return the aggregations
+  return(l10_prepped)
+  
+}
+
+
+
+
+
+
+
+
+
 # Return the slope and intercept for manual estimation of size spectrum slope
-#' @ Process Size Spectrum Slope and Intercept using log10 bins for a group of data
+#' @title Process Size Spectrum Slope and Intercept using log10 bins for a group of data
 #'
 #' @param wmin_grams Catch data prepped using prep_wmin_wmax
 #' @param min_weight_g Minimum weight cutoff in grams
@@ -942,9 +1007,9 @@ group_log10_slopes <- function(wmin_grams,
                                min_weight_g, 
                                .group_cols = "Year"){
   
-  # 1. Set bodymass lower limit
-  l10_assigned <- assign_log10_bins(wmin_grams)
-  l10_assigned <- filter(l10_assigned, wmin_g >= min_weight_g )
+  # 1. Set bodymass lower limit, and assign bin labels
+  # l10_assigned <- assign_log10_bins(wmin_grams) # done as a prep
+  l10_assigned <- filter(wmin_grams, wmin_g >= min_weight_g )
   
   
   
@@ -966,58 +1031,23 @@ group_log10_slopes <- function(wmin_grams,
   
   
   ####  Running log10 slopes/intercepts
-  # TO DO - Add group labels back in here:
+  
+  
   # Run size spectra slopes for each group
   group_results <- l10_assigned %>% 
     split(.$group_var) %>% 
     imap_dfr(function(l10_assigned, group_label){
   
-      # 5. Set up the bins using 0.5 spacing - Pull min and max from data available
-      max_bin <- ceiling(max(l10_assigned$log10_weight))
-      min_bin <- floor(min(l10_assigned$log10_weight))
-      n_bins  <- length(seq(max_bin, min_bin + 0.5, by = -0.5))
+      # NOTE:
+      # code here moved to assign_log10_bins & aggregate_log10_bins
       
-      
-      # 6. Build a bin key, could be used to clean up the incremental assignment or for apply style functions
-      l10_bin_structure <- data.frame(
-        "left_lim"   = seq(max_bin - 0.5, min_bin, by = -0.5),
-        "right_lim"  = seq(max_bin, min_bin + 0.5, by = -0.5),
-        "log10_bins" = as.character(seq(n_bins, 1, by = -1)))
-      
-      # Add labels of weights for bins
-      l10_bin_structure <- l10_bin_structure %>% 
-        mutate(
-          bin_label = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
-          bin_width = 10^right_lim - 10^left_lim )
-  
-      # Get bin breaks
-      l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
-      
-      
-      # Aggregate counts into bins:
-      
-      # Get Totals for bodymass and abundances
-      l10_aggregates <- l10_assigned %>% 
-        group_by(log10_bins) %>% 
-        summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
-                  observed_weight_g    = sum(wmin_g, na.rm = T),
-                  stratified_abundance = sum(strat_total_abund_s, na.rm = T),
-                  stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
-        ungroup()
-  
-  
-      #### normalize abundances using bin widths
-      # join back in what the limits and labels are
-      l10_prepped <- left_join(l10_aggregates, l10_bin_structure, by = "log10_bins") %>% 
-        mutate(normalized_abund = observed_abundance / bin_width,
-               normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
-               norm_strat_abund = stratified_abundance / bin_width,
-               norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund))
+      # Total the abundances for each bin, normalize them
+      l10_prepped <- aggregate_l10_bins(l10_assigned)
       
       
       ####  Run linear models for slopes
-      # Formula for size spectrum slope
-      # log10(abundance) ~ log10 bin, aka the minimum bodymass for bin
+      # Formula for size spectrum slope: log10(abundance) ~ log10 bin, 
+      # aka the minimum bodymass for bin
       lm_abund       <- lm(log10(normalized_abund) ~ left_lim, data = l10_prepped)
       lm_abund_strat <- lm(log10(norm_strat_abund) ~ left_lim, data = l10_prepped)
   
@@ -1036,6 +1066,10 @@ group_log10_slopes <- function(wmin_grams,
       lm_rsqr       <- summary(lm_abund)$adj.r.squared
       lm_rsqr_strat <- summary(lm_abund_strat)$adj.r.squared
       
+      # sig
+      lm_sig       <- broom::tidy(lm_abund)$p.value[2]
+      lm_sig_strat <- broom::tidy(lm_abund_strat)$p.value[2]
+      
       # Put in Table
       l10_results <- data.frame(
         group_var       = group_label,
@@ -1044,7 +1078,9 @@ group_log10_slopes <- function(wmin_grams,
         l10_int         = lm_int,
         l10_int_strat   = lm_int_strat,
         l10_rsqr        = lm_rsqr,
-        l10_rsqr_strat  = lm_rsqr_strat)
+        l10_rsqr_strat  = lm_rsqr_strat,
+        l10_sig_raw     = lm_sig,
+        l10_sig_strat   = lm_sig_strat)
       
       # Return the group results
       return(l10_results)
@@ -1193,53 +1229,16 @@ log10_ss_all_groups <- function(wmin_grams,
 #' @examples
 plot_log10_ss <- function(l10_assigned){
   
-  # Set up the bins using 0.5 spacing - Pull min and max from data available
-  max_bin <- ceiling(max(l10_assigned$log10_weight))
-  min_bin <- floor(min(l10_assigned$log10_weight))
-  n_bins  <- length(seq(max_bin, min_bin + 0.5, by = -0.5))
+  # Bin aggregation moved to aggregate_log10_bins
   
-  
-  # Build a bin key, could be used to clean up the incremental assignment or for apply style functions
-  l10_bin_structure <- data.frame(
-    "left_lim"  = seq(max_bin - 0.5, min_bin, by = -0.5),
-    "right_lim" = seq(max_bin, min_bin + 0.5, by = -0.5),
-    "log10_bins" = as.character(seq(n_bins, 1, by = -1))) %>% 
-    mutate(
-      bin_label = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
-      bin_width = 10^right_lim - 10^left_lim )
-  
-  # Get bin breaks
-  l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
-  
-  
-  # Aggregate counts into bins:
-  # 1. aggregate individual bodymasses into each bin for overall totals
-  
-  # aggregating all years together
-  # aggregating all stratum together
-  l10_aggregates <- l10_assigned %>% 
-    group_by(log10_bins) %>% 
-    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
-              observed_weight_g    = sum(wmin_g, na.rm = T),
-              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
-              stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
-    ungroup()
-  
-  # join back in what the limits and labels are
-  # normalize abundances using bin widths
-  l10_prepped <- left_join(l10_aggregates, l10_bin_structure, by = "log10_bins") %>% 
-    mutate(
-      normalized_abund = observed_abundance / bin_width,
-      normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
-      norm_strat_abund = stratified_abundance / bin_width,
-      norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund))
+  # Get totals for each bin:
+  l10_prepped <- aggregate_l10_bins(l10_assigned)
   
   
   #### Plots Correcting for the bin widths
   norm_abund_plot <- l10_prepped %>% 
     ggplot(aes(left_lim, normalized_abund)) +
     geom_col(fill = gmri_cols("green")) +
-    #geom_point(color = gmri_cols("green")) +
     scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
     labs(x = "Log10(bodymass)", y = "Normalized Abundances",
          subtitle = "Abundances Divided by Bin Widths")
@@ -1247,7 +1246,6 @@ plot_log10_ss <- function(l10_assigned){
   norm_strat_abund_plot <- l10_prepped  %>% 
     ggplot(aes(left_lim, norm_strat_abund)) +
     geom_col(fill = gmri_cols("green")) +
-    #geom_point(color = gmri_cols("green")) +
     scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
     labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
   
@@ -1276,6 +1274,76 @@ plot_log10_ss <- function(l10_assigned){
   # assemble with patchwork
   plot_out <- (p1 | p2)
   return(plot_out)
+  
+  
+}
+
+
+#' @title Plot normalized abundance of Size Spectra
+#' 
+#' @description Single panel plot of the distribution of abundance on log size bins.
+#'
+#' @param l10_assigned Catch data prepped using assign_log10_bins
+#' @param stratified Stratified or survey abundances
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_normalized_ss <- function(l10_assigned, stratified = TRUE){
+  
+  # Get totals for each bin:
+  l10_prepped <- aggregate_l10_bins(l10_assigned)
+  
+  #### Plots Correcting for the bin widths
+  norm_strat_abund_plot <- l10_prepped  %>% 
+    ggplot(aes(left_lim, norm_strat_abund)) +
+    geom_col(fill = gmri_cols("green")) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+    labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
+  
+  
+  # Stratified Abundances
+  p1 <- norm_strat_abund_plot +
+    geom_smooth(formula = y ~ x,
+                method = "lm",
+                color = gmri_cols("orange")) +
+    stat_poly_eq(formula = y ~ x,
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                 label.y = 1.1, 
+                 parse = TRUE) +
+    labs(caption = "Abundance normalized by bin-width.")
+  
+  # Return plot
+  return(p1)
+}
+
+
+#' @title Plot De-normalized abundances of size spectra
+#'
+#' @param l10_assigned Catch data prepped using assign_log10_bins
+#' @param stratified Stratified or survey abundances
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_denormalized_ss <- function(l10_assigned, stratified = TRUE){
+  
+  # Get totals for each bin:
+  l10_prepped <- aggregate_l10_bins(l10_assigned)
+  
+  #### Plots Correcting for the bin widths
+  p1 <- l10_prepped  %>% 
+    ggplot(aes(left_lim, denorm_strat_abund)) +
+    geom_point(color = gmri_cols("green")) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+    labs(x = "Log10(bodymass)", 
+         y = "De-Normalized Stratified Abundances",
+         caption = "Normalized abundance, multiplied by bin mid-point.")
+  
+  # Return plot
+  return(p1)
   
   
 }

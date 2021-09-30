@@ -28,6 +28,7 @@ library(knitr)
 library(tidyverse)
 library(ggstream)
 library(ggwaffle)
+library(bcp)
 
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
@@ -422,7 +423,7 @@ ggplot(
   scale_fill_gmri() +
   coord_equal() +
   theme_void() + theme(title = element_text(hjust = 0.75)) +
-  labs(fill = "Change in Avg. Body Size")
+  labs(fill = "Change in Avg. Body Weight")
 ```
 
 ### What Species are Showing Change?
@@ -464,14 +465,15 @@ This relationship is rooted in energy transfer dynamics and the slope of this re
 The relationship  for the full survey area in both body size spectrum slope, and exponent of the individual size distribution (ISD) can be viewed as its own timeline.
 
 
-```{r}
+```{r, fig.height=10}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(size_spectrum_indices))   
 
 # Format Columns
 yearly_indices <- size_spectrum_indices  %>% 
   filter(`group ID` == "single years") %>% 
-  mutate(yr = as.numeric(as.character(Year)))
+  mutate(yr = as.numeric(as.character(Year)),
+         sig_fit = ifelse(l10_sig_strat < 0.05, "Significant", "Non-Significant"))
 
 
 # Plot 3 panels:
@@ -487,29 +489,160 @@ isd_timeline <- ggplot(yearly_indices, aes(yr, b)) +
 slope_timeline <- ggplot(yearly_indices, aes(yr, l10_slope_strat)) +
   geom_line(linetype = 2) +
   geom_point() +
+  scale_color_gmri() +
   geom_smooth(method = "lm", formula = y~x) +
   labs(x = "", y = "Spectrum Slope") +
   theme(axis.text.x = element_blank())
 
 # Size Spectrum Intercept
-int_timeline <- ggplot(yearly_indices, aes(yr, l10_int)) +
+int_timeline <- ggplot(yearly_indices, aes(yr, l10_int_strat)) +
   geom_line(linetype = 2) +
   geom_point() +
   geom_smooth(method = "lm", formula = y~x) +
-  labs(x = "", y = "Spectrum Intercept")
+  labs(x = "", y = "Spectrum Intercept") +
+  theme(axis.text.x = element_blank())
 
+# Size Spectrum Fit r-squared
+rsq_timeline <- ggplot(yearly_indices, aes(yr, l10_rsqr_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "R-Squared")
 
 
 # Assemble
-isd_timeline / slope_timeline / int_timeline
+isd_timeline / slope_timeline / int_timeline / rsq_timeline
 
 
 ```
 
+**Diagnostics**
+
+For all years there was a significant linear relationship between normalized log10(abundance) and log10(bodymass). The year with the lowest r-squared was 1996 with an adjusted r-square of 0.63. The underlying data reveals that even for the worst fitting relationship there is a spike in biomass in the middle bins along the full size distribution.
+
+```{r, fig.height = 6}
+nefsc_1g_binned <- assign_log10_bins(nefsc_1g)
+dat_96 <- filter(nefsc_1g_binned, Year == 1996)
+
+# Plot the normalized
+norm_plot <- plot_normalized_ss(dat_96) +
+  labs(subtitle = "1996: Normalized Spectra")
+
+# plot the de-normalized abundances
+denorm_plot <- plot_denormalized_ss(dat_96)  +
+  labs(subtitle = "1996: De-Normalized Spectra")
+
+norm_plot / denorm_plot
+```
+
+**Changing Over Time**
+
+
+```{r}
+yearly_indices %>% 
+  mutate(decade = floor_decade(Year)) %>% 
+ggplot()+
+  geom_abline(aes(slope = l10_slope_strat, 
+                  intercept = l10_int_strat),
+              alpha = 0.4)+
+  facet_wrap(~decade) +
+  scale_x_continuous(limits = c(0,5)) +
+  scale_y_continuous(limits=c(0,10)) +
+  labs(x = "Individual Bodymass (10^x)", y = "Abundance (10^x)")
+  
+  
+```
+
+
+### Overall Breakpoints
+
+It is evident from the slope timeseries that there has been significant changes in spectra slope and intercepts over time. To answer whether a regime change has occurred we can perform a change point analysis.
+
+```{r}
+# Functions developed in 10_change_points.R
+library(bcp)
+
+# run bcp and flag changepoints using threshold
+flag_bcp <- function(response_var,  
+                     predictor_var = NULL, 
+                     id_var, burnin = 10000,
+                     mcmc = 10000, 
+                     return.mcmc = T, 
+                     threshold_prob = 0.3){
+ 
+  bcp_x <- bcp(y = response_var, 
+               x = predictor_var, 
+               burnin = burnin, 
+               mcmc = mcmc, 
+               return.mcmc = return.mcmc)
+  sink("/dev/null")
+  bcp_sum <- as.data.frame(summary(bcp_x))
+  sink()
+  bcp_sum$id <- id_var
+  flag_dat <- bcp_sum[which(bcp_x$posterior.prob > threshold_prob), ]
+  flag_dat <- as.data.frame(flag_dat)
+  return(flag_dat)
+  
+}
+
+# plot bcp breaks
+plot_bcp_breaks <- function(bcp_data, 
+                            bcp_breaks, 
+                            region_label, 
+                            y_label = "sizeSpectra Exponent (b)",
+                            y_col = "b"){
+  
+  # Set label elevation
+  label_y <- mean(as.data.frame(bcp_data)[, y_col], na.rm = T) - 1
+  
+  # plot with breakpoint
+  ggplot(bcp_data, aes_string("yr", y_col)) + 
+    geom_line() + 
+    geom_point() + 
+    geom_vline(data = bcp_breaks, aes(xintercept = id), linetype = 2, color = "gray50") +
+    ggrepel::geom_label_repel(data = bcp_breaks, 
+                              aes(x = id, y = label_y, label = str_c(round(Probability, 2), "%"))) +
+    labs(x = "Year", 
+         y = y_label, 
+         subtitle = str_c(region_label, " - Bayesian Change Points"))
+}
+```
+
+
+
+```{r}
+# All regions
+mle_bcp <- flag_bcp(response_var = yearly_indices$b, 
+                    id_var = yearly_indices$yr, 
+                    threshold_prob = 0.3)
+
+slope_bcp <- flag_bcp(response_var = yearly_indices$l10_slope_strat, 
+                      id_var = yearly_indices$yr, 
+                      threshold_prob = 0.3)
+
+int_bcp <- flag_bcp(response_var = yearly_indices$l10_int_strat, 
+                    id_var = yearly_indices$yr, 
+                    threshold_prob = 0.3)
+
+# Plot the breaks
+plot_bcp_breaks(bcp_data = yearly_indices, 
+                bcp_breaks = int_bcp, 
+                region_label = "All Data", 
+                y_label = "Spectrum Intercept",
+                y_col = "l10_int_strat")
+```
+
+
+For the data across all regions, only the spectrum intercept shows support for a changepoint when using a probability of 30% or greater.
+
+
+
+
+
 
 ### What Does it Mean?
 
-There is a big interest in using size spectrum slope as an ecological indicator. While methodology for estimating slope exists, whether through regression methods or likelihood methods, it can be difficult/tricky how to interprate.
+There is a big interest in using size spectrum slope as an ecological indicator. While methodology for estimating slope exists, whether through regression methods or likelihood methods, it can be difficult/tricky how to interpret.
 
 Here are some statements that have stuck with me:
 
@@ -536,18 +669,64 @@ Though this value should be relatively stable through time, steepening over time
 
 **Intuition of the Intercept**
 
-The intercept of the bodymass size spectra has been used as an indication of the productivity of a system, with larger intercept values representative of environments with higher overall biomass among its lowest trophic positions.
+The intercept of the bodymass size spectra has been used as an indication of the productivity of a system, with larger intercept values representative of environments with higher overall biomass. This interpretation should be used cautiously as larger intercepts can also be the result of other dynamics (think see-saw).
 
 
 
 
 
-### Where are we: Top-down vs. Bottuom-up
+### Where are We? Top-down vs. Bottom-up
 
-The shape of size spectra are commonly characterized by "domes". The presence, magnitude, and location on the size-axis of these domes is impacted by both top-down and bottom-up forcings.
+The shape of size spectra are commonly characterized by "domes". The presence, magnitude, and location on the size-axis of these domes is impacted by both top-down and bottom-up forcing.
 
-
-From simulation studies it is generally accepted the large-domes are the result of top-down forcing.
+From simulation studies it is generally accepted the large-domes result from top-down forcings (at longer time scales).
 
 Simulation studies can also be used to show the impacts of fishing and gear selectivity on the shifting of these domes.
+
+
+**Do we See Domes?**
+
+
+One consideration that I have not sorted out, is how to interpret changes to the internal structure of the size spectrum. Primarily the presence/absence or shifting of domes within the size spectra.
+
+
+Now, when we look at large portions of the data (or all of it), the power-law relationship over-estimates the tails of the spectrum.
+
+This is clear in both the normalized size spectra (abundance / bin-width) and the de-normalized size spectra (normalized abundance * bin mid-point).
+
+```{r, fig.height = 6}
+# Assign the bins
+# tar_load(nefsc_1g_binned)
+nefsc_1g_binned <- assign_log10_bins(nefsc_1g)
+
+# Plot the normalized
+norm_plot <- plot_normalized_ss(nefsc_1g_binned) +
+  labs(subtitle = "Normalized Spectra")
+
+# plot the de-normalized abundances
+denorm_plot <- plot_denormalized_ss(nefsc_1g_binned)  +
+  labs(subtitle = "De-Normalized Spectra")
+
+norm_plot / denorm_plot
+```
+
+But for each individual year, there is the potential for an independent structure that reflects the abundances of that subset:
+
+```{r, fig.height = 6}
+# Pull 2012 data
+dat_2012 <- nefsc_1g_binned %>% 
+  filter(Year == 2012)
+
+# Plot the normalized
+norm_plot <- plot_normalized_ss(dat_2012) +
+  labs(subtitle = "Normalized Spectra")
+
+# plot the de-normalized abundances
+denorm_plot <- plot_denormalized_ss(dat_2012)  +
+  labs(subtitle = "De-Normalized Spectra")
+
+norm_plot / denorm_plot
+
+```
+
 

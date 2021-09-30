@@ -64,10 +64,13 @@ list(
 
   #####  2. Prep Size Spectrum Groups  #####
   
-  # Prep wmin and wmax for all the data
+  # Prep the minimum size (wmin) and-
+  # the maximum size (wmax) in grams for all the data
   tar_target(
     name = wmin_grams,
     command = prep_sizeSpectra_data(lw_trawl_data = nefsc_stratified)),
+  
+  # Apply a minimum size cutoff
   tar_target(
     name = nefsc_1g,
     command = min_weight_cutoff(nefsc_lw = wmin_grams, min_weight_g = 1)
@@ -80,10 +83,13 @@ list(
   
   ##### 4. log10 SS Slopes  ####
   
-  # tar_target(nefsc_l10_assigned,
-  #            assign_log10_bins(wmin_grams = nefsc_1g)),
+  # Assing the bin structure to the lw data
+  tar_target(nefsc_1g_binned,
+             assign_log10_bins(nefsc_1g)),
+  
+  # Run the different groupings through the slope estimation
   tar_target(nmfs_log10_slopes,
-             log10_ss_all_groups(wmin_grams = nefsc_1g,
+             log10_ss_all_groups(wmin_grams = nefsc_1g_binned,
                                  min_weight_g = 1)),
   
   

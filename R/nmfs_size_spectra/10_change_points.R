@@ -88,7 +88,9 @@ ggplot(gom_test, aes(yr, b)) +
 flag_bcp <- function(response_var,  predictor_var = NULL, id_var, burnin = 10000, mcmc = 10000, return.mcmc = T, threshold_prob = 0.3){
   
   bcp_x <- bcp(y = response_var, x = predictor_var, burnin = burnin, mcmc = mcmc, return.mcmc = return.mcmc)
+  sink("/dev/null")
   bcp_sum <- as.data.frame(summary(bcp_x))
+  sink()
   bcp_sum$id <- id_var
   flag_dat <- bcp_sum[which(bcp_x$posterior.prob > threshold_prob), ]
   flag_dat <- as.data.frame(flag_dat)
