@@ -1,0 +1,829 @@
+---
+title: "SURVDAT Data Cleanup Steps"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {rmarkdown::render(input)})
+---
+
+```{r setup, include=FALSE}
+# Set knitr options
+knitr::opts_chunk$set(echo = TRUE, message = T, warning = F, comment = NA)
+options(knitr.kable.NA = '')
+
+library(tidyverse)
+library(gmRi)
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+# Standard Trawl Data Prep
+
+**Purpose:**
+
+The general cleanup process for the Northeast Groundfish Survey Data is done to achieve several QA/QC objectives:   
+
+ 1. Ensure consistency in attribute names that are commonly used in analyses   
+ 2. Remove data from strata that are no longer sampled following the 2008 vessel switch   
+ 3. Data type formatting   
+
+
+
+## SURVDAT Prep Function
+
+To promote a consistent cleanup routine, the cleanup steps practiced here at GMRI were condensed into several cleanup functions which were later added to the community R-package. The primary function is `gmRi::gmri_survdat_prep()`. This function both locates to desired `survdat` data source, and prepares it for analyses by performing the standard cleanup steps.
+
+To better understand what steps are performed by this function, the code has been broken up into the discrete steps below.
+
+### Function Arguments
+
+The cleanup function has two arguments: `survdat` & `survdat_source`. The first argument `survdat` allows a user to supply a dataframe from the environment to perform the cleanup steps on, this is NULL by default but lets users supply their own data and is helpful for comparing different versions. The second argument directs the function to load specific versions off of Box, our cloud storage provider. Options for this include the most recent survdat data, data from the RV bigelow only, without survey adjustments, and the survdat data that contains the full suite of biological data.
+
+The function argument documentation can be seen below:
+
+```{r import code, eval = FALSE}
+#' @title  Load survdat file with standard data filters, keep all columns
+#'
+#'
+#' @description Processing function to prepare survdat data for size spectra analyses.
+#' Options to select various survdat pulls, or provide your own available.
+#'
+#'
+#' @param survdat optional starting dataframe in the R environment to run through size spectra build.
+#' @param survdat_source String indicating which survdat file to load from box
+#'
+#' @return Returns a dataframe filtered and tidy-ed for size spectrum analysis.
+```
+
+
+### Step 1: Importing 
+
+```{r, eval = FALSE}
+####  Resource Paths
+  mills_path  <- box_path("mills")
+  nmfs_path   <- box_path("res", "NMFS_trawl")
+
+
+
+  ####  1. Import SURVDAT File  ####
+
+  # Testing:
+  #survdat_source <- "bigelow"     ; survdat <- NULL
+  #survdat_source <- "most recent" ; survdat <- NULL
+
+  # convenience change to make it lowercase
+  survdat_source <- tolower(survdat_source)
+
+
+  # Build Paths to survdat for standard options
+  survdat_path <- switch(
+    EXPR = survdat_source,
+    "2016"        = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
+    "2019"        = paste0(nmfs_path,  "prior_survdat_data/Survdat_Nye_allseason.RData"),
+    "2020"        = paste0(nmfs_path,  "prior_survdat_data/Survdat_Nye_Aug 2020.RData"),
+    "2021"        = paste0(nmfs_path,  "prior_survdat_data/survdat_slucey_01152021.RData"),
+    "bigelow"     = paste0(nmfs_path,  "2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
+    "most recent" = paste0(nmfs_path,  "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"),
+    "bio"         = paste0(nmfs_path,  "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
+
+  # If providing a starting point for survdat pass it in:
+  if(is.null(survdat) == FALSE){
+    trawldat <- janitor::clean_names(survdat)
+  } else if(is.null(survdat) == TRUE){
+
+    # If not then load using the correct path
+    load(survdat_path)
+    
+    # Bigelow data doesn't load in as "survdat"
+    if(survdat_source == "bigelow"){
+      survdat <- survdat.big
+      rm(survdat.big)}
+
+    # Most recent pulls load a list that then contain survdat
+    if(survdat_source %in% c("bio", "most recent")){
+      survdat <- survey$survdat }
+
+    # clean names up for convenience
+    trawldat <- janitor::clean_names(survdat)
+  }
+
+  # remove survdat once the data is in
+  rm(survdat)
+```
+
+
+### Step 2: Column Naming QA/QC
+
+This step was included to correct any inconsistencies in the inclusions/omissions of columns, or the different names given to the same columns encountered across different pulls of the survey data. In this step the key offenders are flagged for their presence/absence and the data is then reformatted to a consistent form  that the remainder of the code expects.
+
+```{r, eval = FALSE}
+#### 2.  Column Detection  ####
+
+####__ a. Missing column flags  ####
+
+# Flags for missing columns that need to be merged in or built
+has_comname  <- "comname" %in% names(trawldat)
+has_id_col   <- "id" %in% names(trawldat)
+has_towdate  <- "est_towdate" %in% names(trawldat)
+has_month    <- "est_month" %in% names(trawldat)
+
+# Flags for renaming or subsetting the data due to presence/absence of columns
+has_year      <- "est_year" %in% names(trawldat)
+has_catchsex  <- "catchsex" %in% names(trawldat)
+has_decdeg    <- "decdeg_beglat" %in% names(trawldat)
+has_avg_depth <- "avgdepth" %in% names(trawldat)
+
+
+####__ b. Missing comname  ####
+
+# Use SVSPP to get common names for species
+if(has_comname == FALSE){
+  message("no comnames found, merging records in with spp_keys/sppclass.csv")
+  # Load sppclass codes and common names
+  spp_classes <- readr::read_csv(
+      paste0(nmfs_path, "spp_keys/sppclass.csv"),
+      col_types = readr::cols())
+  spp_classes <- janitor::clean_names(spp_classes)
+  spp_classes <- dplyr::mutate(spp_classes,
+           comname  = stringr::str_to_lower(common_name),
+           scientific_name = stringr::str_to_lower(scientific_name))
+  spp_classes <- dplyr::distinct(spp_classes, svspp, comname, scientific_name)
+
+
+  # Add the common names over and format for rest of build
+  trawldat <- dplyr::mutate(trawldat, svspp = stringr::str_pad(svspp, 3, "left", "0"))
+  trawldat <- dplyr::left_join(trawldat, spp_classes, by = "svspp")
+
+}
+
+
+####__ c. Missing ID  ####
+if(has_id_col == FALSE) {
+  message("creating station id from cruise-station-stratum fields")
+  # Build ID column
+  trawldat <- dplyr::mutate(trawldat,
+    cruise6 = stringr::str_pad(cruise6, 6, "left", "0"),
+    station = stringr::str_pad(station, 3, "left", "0"),
+    stratum = stringr::str_pad(stratum, 4, "left", "0"),
+    id      = stringr::str_c(cruise6, station, stratum))}
+
+
+####__ d. Field renaming  ####
+
+# Rename select columns for consistency
+if(has_year == FALSE)      {
+  message("renaming year column to est_year")
+  trawldat <- dplyr::rename(trawldat, est_year = year) }
+if(has_decdeg == FALSE) {
+  message("renaming lat column to decdeg_beglat")
+  trawldat <- dplyr::rename(trawldat, decdeg_beglat = lat) }
+if(has_decdeg == FALSE) {
+  message("renaming lon column to decdeg_beglon")
+  trawldat <- dplyr::rename(trawldat, decdeg_beglon = lon) }
+if(has_avg_depth == FALSE)      {
+  message("renaming depth column to avgdepth")
+  trawldat <- dplyr::rename(trawldat, avgdepth = depth) }
+
+
+####____ d. build date structure for quick grab of date components
+if(has_towdate == TRUE) {
+  message("building month/day columns from est_towdate")
+  trawldat <- dplyr::mutate(trawldat,
+                            est_month = stringr::str_sub(est_towdate, 6,7),
+                            est_month = as.numeric(est_month),
+                            est_day   = stringr::str_sub(est_towdate, -2, -1),
+                            est_day   = as.numeric(est_day), .before = season)}
+```
+
+### Step 3: Column Changes
+
+In this step we format the different columns for consistent capitalization patterns, as well as padding any columns that use numeric ID's that sometimes read in without leading zeros. The units for biomass and length were added to their column names to remove confusion down the line. Finally, instances where there is biomass reported but no abundance or the vice versa scenario of abundance without biomass are corrected to show some very small non-zero value rather than NA.
+
+```{r, eval = FALSE}
+#### 4. Column Changes  ####
+trawldat <- dplyr::mutate(trawldat,
+
+    # Text Formatting
+    comname = tolower(comname),
+    id      = format(id, scientific = FALSE),
+    svspp   = as.character(svspp),
+    svspp   = stringr::str_pad(svspp, 3, "left", "0"),
+    season  = stringr::str_to_title(season),
+
+    # Format Stratum number,
+    # exclude leading and trailing codes for inshore/offshore,
+    # used for matching to stratum areas
+    strat_num = stringr::str_sub(stratum, 2, 3))
+
+# Rename to make units more clear
+trawldat <- dplyr::rename(trawldat,
+  biomass_kg = biomass,
+  length_cm = length)
+
+# Replace 0's that must be greater than 0
+trawldat <- dplyr::mutate(trawldat,
+  biomass_kg = ifelse(biomass_kg == 0 & abundance > 0, 0.0001, biomass_kg),
+  abundance = ifelse(abundance == 0 & biomass_kg > 0, 1, abundance))
+
+```
+
+### Step 4: Row Filtering
+
+This is the first step where data is targeted and removed. The things that we filter out at this step are:   
+ 1. Stratum that are no longer sampled, and Canadian stratum   
+ 2. Stations that were sampled outside of the major Spring/Fall survey seasons   
+ 3. Data prior to 1970   
+ 4. Data with `NA` values for abundance or biomass   
+ 5. Specific species (shrimps and unidentified fishes)
+
+```{r, eval = FALSE}
+#### 5. Row Filtering  ####
+
+# Things filtered:
+# 1. Strata
+# 2. Seasons
+# 3. Year limits
+# 4. Vessels
+# 5. Species Exclusion
+
+# Eliminate Canadian Strata and Strata No longer in Use
+trawldat <- dplyr::filter(trawldat,
+    stratum >= 01010,
+    stratum <= 01760,
+    stratum != 1310,
+    stratum != 1320,
+    stratum != 1330,
+    stratum != 1350,
+    stratum != 1410,
+    stratum != 1420,
+    stratum != 1490)
+
+# Filter to just Spring and Fall
+trawldat <- dplyr::filter(trawldat, season %in% c("Spring", "Fall"))
+trawldat <- dplyr::mutate(trawldat, season = factor(season, levels = c("Spring", "Fall")))
+
+# Filter years
+trawldat <- dplyr::filter(trawldat,
+                          est_year >= 1970,
+                          est_year < 2020)
+
+# Drop NA Biomass and Abundance Records
+trawldat <- dplyr::filter(trawldat,
+                          !is.na(biomass_kg),
+                          !is.na(abundance))
+
+# Exclude the Skrimps
+trawldat <-  dplyr::filter(trawldat, svspp %not in% c(285:299, 305, 306, 307, 316, 323, 910:915, 955:961))
+
+# Exclude the unidentified fish
+trawldat <- dplyr::filter(trawldat, svspp %not in% c(0, 978, 979, 980, 998))
+
+# # Only the Albatross and Henry Bigelow? - eliminates 1989-1991
+# trawldat_t <- dplyr::filter(trawldat, svvessel %in% c("AL", "HB"))
+
+```
+
+### Step 5: Region Assignment and Spatial Filtering
+
+At this step we assign a `survey_area` column to the data that corresponds to collections of survey strata. These areas have been used in previous work and roughly coincide with the Ecological Production Units (EPU's).
+
+There is some flexibility to filter out data to specific areas here, but primarily the survey areas are just assigned.
+
+```{r, eval = FALSE}
+#### 6. Spatial Filtering - Stratum  ####
+
+# This section merges stratum area info in
+# And drops stratum that are not sampled or in Canada
+# these are used to relate catch/effort to physical areas in km squared
+
+# Stratum Area Key for which stratum correspond to larger regions we use
+strata_key <- list(
+  "Georges Bank"          = as.character(13:23),
+  "Gulf of Maine"         = as.character(24:40),
+  "Southern New England"  = stringr::str_pad(as.character(1:12),
+                                             width = 2, pad = "0", side = "left"),
+  "Mid-Atlantic Bight"    = as.character(61:76))
+
+
+# Add the labels to the data
+trawldat <- dplyr::mutate(
+  trawldat,
+  survey_area =  dplyr::case_when(
+    strat_num %in% strata_key$`Georges Bank`         ~ "GB",
+    strat_num %in% strata_key$`Gulf of Maine`        ~ "GoM",
+    strat_num %in% strata_key$`Southern New England` ~ "SNE",
+    strat_num %in% strata_key$`Mid-Atlantic Bight`   ~ "MAB",
+    TRUE                                             ~ "stratum not in key"))
+
+
+# Use strata_select to pull the strata we want individually
+# Comment out regions you wish to not include
+strata_select <- c(strata_key$`Georges Bank`,
+                   strata_key$`Gulf of Maine`,
+                   strata_key$`Southern New England`,
+                   strata_key$`Mid-Atlantic Bight`)
+
+
+# Filtering areas using strata_select
+trawldat <- dplyr::filter(trawldat, strat_num %in% strata_select)
+trawldat <- dplyr::mutate(trawldat, stratum = as.character(stratum))
+
+```
+
+### Step 6: Number at Length and Adjusted Numbers at Length
+
+Up until this point the survdat dataset contains information about total abundance & biomass of each species caught at a station, as well as the lengths of most individuals, with individual weights for fewer still.
+
+The `abundance` and `biomass` columns record the aggregate totals for each species, and ignore individual variation within the catch. These two columns are also adjusted for all data sampled using the RV Henry Bigelow. The adjustment scales these two  values to be consistent with what the RV Albatross and its gear would have theoretically sampled using species-specific conversions.
+
+**NOTE:**
+The columns that provide information on individuals (`length_cm`, `numlen`) do not have species-specific conversions and remain their original values. This (and some other minor issues) lead to instances where the `abundance` value does not equal the `sum()` of its constituents `sum(numlen)` across the different lengths recorded.
+
+To ensure that number at length values track with the adjustments done on `abundance` & `biomass` we perform a similar conversion. The outcome of the conversion is a new column `numlen_adj` which when summed across lengths for a species equals the `abundance` recorded in the data.
+
+```{r, eval = FALSE}
+#### 7. Adjusting NumLength  ####
+
+# NOTE:
+# numlen is not adjusted to correct for the change in survey vessels and gear
+# these values consequently do not equal abundance, nor biomass which are adjusted
+
+# Because of this and also some instances of bad data,
+# there are cases of more/less measured than initially tallied* in abundance
+# this section ensures that numlen totals out to be the same as abundance
+
+
+# If catchsex is not a column then total abundance is assumed pooled
+if(has_catchsex == TRUE){
+  abundance_groups <- c("id", "comname", "catchsex", "abundance")
+} else {
+  message("catchsex column not found, ignoring sex for numlen adjustments")
+  abundance_groups <- c("id", "comname", "abundance")}
+
+
+# Get the abundance value for each sex
+# arrived at by summing across each length
+abundance_check <- dplyr::group_by(trawldat, !!!rlang::syms(abundance_groups))
+abundance_check <- dplyr::summarise(abundance_check,
+    abund_actual = sum(numlen),
+    n_len_class  = dplyr::n_distinct(length_cm),
+    .groups      = "keep")
+abundance_check <- dplyr::ungroup(abundance_check)
+
+
+# Get the ratio between the original abundance column
+# and the sum of numlen we just grabbed
+conv_factor <- dplyr::distinct(trawldat, !!!rlang::syms(abundance_groups), length_cm)
+conv_factor <- dplyr::inner_join(conv_factor, abundance_check, by = abundance_groups)
+conv_factor <- dplyr::mutate(conv_factor, convers = abundance / abund_actual)
+
+
+
+# Merge back and convert the numlen field
+# original numlen * conversion factor = numlength adjusted
+survdat_processed <- dplyr::left_join(trawldat, conv_factor, by = c(abundance_groups, "length_cm"))
+survdat_processed <- dplyr::mutate(survdat_processed, numlen_adj = numlen * convers, .after = numlen)
+survdat_processed <- dplyr::select(survdat_processed, -c(abund_actual, convers))
+
+
+# remove conversion factor from environment
+rm(abundance_check, conv_factor, strata_key, strata_select)
+
+
+```
+
+
+### Step 7: Ensure Data Quality and No Duplication
+
+The final step before returning the clean data is to ensure that we have data from every station, and every distinct record of a species/sex/length recorded at those stations is returned without any duplication.  
+
+```{r, eval = FALSE}
+#### 8. Distinct Station & Species Length Info   ####
+
+# For each station we need unique combinations of
+# station_id, species, catchsex, length_cm, adjusted_numlen
+# to capture what and how many of each length fish is caught
+
+# Record of unique station catches:
+# One row for every species * sex * length_cm, combination in the data
+trawl_lens <- dplyr::filter(survdat_processed,
+                is.na(length_cm) == FALSE,
+                is.na(numlen) == FALSE,
+                numlen_adj > 0)
+
+
+# Do we want to just keep all the station info here as well?
+# question to answer is whether any other columns repeat,
+# or if these are the only ones
+trawl_clean <- dplyr::distinct(trawl_lens,
+  id, svspp, comname, catchsex, abundance, n_len_class,
+  length_cm, numlen, numlen_adj, biomass_kg, .keep_all = TRUE)
+
+
+
+
+# Return the dataframe
+# Contains 1 Row for each length class of every species caught
+return(trawl_clean)
+```
+
+### Complete Function
+
+**NOTE:**
+
+This is a copy of the full function and may or may not remain up to date as the primary copy changes over time (likely not). For the most recent version please use the {gmRi} package function.
+
+```{r}
+#' @title  Load survdat file with standard data filters, keep all columns
+#'
+#'
+#' @description Processing function to prepare survdat data for size spectra analyses.
+#' Options to select various survdat pulls, or provide your own available.
+#'
+#'
+#' @param survdat optional starting dataframe in the R environment to run through size spectra build.
+#' @param survdat_source String indicating which survdat file to load from box
+#'
+#' @return Returns a dataframe filtered and tidy-ed for size spectrum analysis.
+#' @export
+#'
+#' @examples
+#' # not run
+#' # gmri_survdat_prep(survdat_source = "most recent")
+gmri_survdat_prep <- function(survdat = NULL, survdat_source = "most recent"){
+
+  ####  Resource Paths
+  mills_path  <- box_path("mills")
+  nmfs_path   <- box_path("res", "NMFS_trawl")
+
+
+
+  ####  1. Import SURVDAT File  ####
+
+  # Testing:
+  #survdat_source <- "bigelow"     ; survdat <- NULL
+  #survdat_source <- "most recent" ; survdat <- NULL
+
+  # convenience change to make it lowercase
+  survdat_source <- tolower(survdat_source)
+
+
+  # Build Paths to survdat for standard options
+  survdat_path <- switch(EXPR = survdat_source,
+                         "2016"        = paste0(mills_path, "Projects/WARMEM/Old survey data/Survdat_Nye2016.RData"),
+                         "2019"        = paste0(nmfs_path,  "prior_survdat_data/Survdat_Nye_allseason.RData"),
+                         "2020"        = paste0(nmfs_path,  "prior_survdat_data/Survdat_Nye_Aug 2020.RData"),
+                         "2021"        = paste0(nmfs_path,  "prior_survdat_data/survdat_slucey_01152021.RData"),
+                         "bigelow"     = paste0(nmfs_path,  "2021_survdat/survdat_Bigelow_slucey_01152021.RData"),
+                         "most recent" = paste0(nmfs_path,  "2021_survdat/NEFSC_BTS_all_seasons_03032021.RData"),
+                         "bio"         = paste0(nmfs_path,  "2021_survdat/NEFSC_BTS_2021_bio_03192021.RData") )
+
+
+
+  # If providing a starting point for survdat pass it in:
+  if(is.null(survdat) == FALSE){
+    trawldat <- janitor::clean_names(survdat)
+  } else if(is.null(survdat) == TRUE){
+
+    # If not then load using the correct path
+    load(survdat_path)
+
+
+    # Bigelow data doesn't load in as "survdat"
+    if(survdat_source == "bigelow"){
+      survdat <- survdat.big
+      rm(survdat.big)}
+
+    # Most recent pulls load a list containing survdat
+    if(survdat_source %in% c("bio", "most recent")){
+      survdat <- survey$survdat }
+
+    # clean names up for convenience
+    trawldat <- janitor::clean_names(survdat)
+  }
+
+  # remove survdat once the data is in
+  rm(survdat)
+
+
+
+  #### 2.  Column Detection  ####
+
+  ####__ a. Missing column flags  ####
+
+  # Flags for missing columns that need to be merged in or built
+  has_comname  <- "comname" %in% names(trawldat)
+  has_id_col   <- "id" %in% names(trawldat)
+  has_towdate  <- "est_towdate" %in% names(trawldat)
+  has_month    <- "est_month" %in% names(trawldat)
+
+  # Flags for renaming or subsetting the data due to presence/absence of columns
+  has_year      <- "est_year" %in% names(trawldat)
+  has_catchsex  <- "catchsex" %in% names(trawldat)
+  has_decdeg    <- "decdeg_beglat" %in% names(trawldat)
+  has_avg_depth <- "avgdepth" %in% names(trawldat)
+
+
+
+
+
+
+
+  ####__ b. Missing comname  ####
+
+  # Use SVSPP to get common names for species
+  if(has_comname == FALSE){
+    message("no comnames found, merging records in with spp_keys/sppclass.csv")
+    # Load sppclass codes and common names
+    spp_classes <- readr::read_csv(
+        paste0(nmfs_path, "spp_keys/sppclass.csv"),
+        col_types = readr::cols())
+    spp_classes <- janitor::clean_names(spp_classes)
+    spp_classes <- dplyr::mutate(spp_classes,
+             comname  = stringr::str_to_lower(common_name),
+             scientific_name = stringr::str_to_lower(scientific_name))
+    spp_classes <- dplyr::distinct(spp_classes, svspp, comname, scientific_name)
+
+
+    # Add the common names over and format for rest of build
+    trawldat <- dplyr::mutate(trawldat, svspp = stringr::str_pad(svspp, 3, "left", "0"))
+    trawldat <- dplyr::left_join(trawldat, spp_classes, by = "svspp")
+
+  }
+
+
+  ####__ c. Missing ID  ####
+  if(has_id_col == FALSE) {
+    message("creating station id from cruise-station-stratum fields")
+    # Build ID column
+    trawldat <- dplyr::mutate(trawldat,
+      cruise6 = stringr::str_pad(cruise6, 6, "left", "0"),
+      station = stringr::str_pad(station, 3, "left", "0"),
+      stratum = stringr::str_pad(stratum, 4, "left", "0"),
+      id      = stringr::str_c(cruise6, station, stratum))}
+
+
+  ####__ d. Field renaming  ####
+
+  # Rename select columns for consistency
+  if(has_year == FALSE)      {
+    message("renaming year column to est_year")
+    trawldat <- dplyr::rename(trawldat, est_year = year) }
+  if(has_decdeg == FALSE) {
+    message("renaming lat column to decdeg_beglat")
+    trawldat <- dplyr::rename(trawldat, decdeg_beglat = lat) }
+  if(has_decdeg == FALSE) {
+    message("renaming lon column to decdeg_beglon")
+    trawldat <- dplyr::rename(trawldat, decdeg_beglon = lon) }
+  if(has_avg_depth == FALSE)      {
+    message("renaming depth column to avgdepth")
+    trawldat <- dplyr::rename(trawldat, avgdepth = depth) }
+
+
+
+  ####____ d. build date structure for quick grab of date components
+  if(has_towdate == TRUE) {
+    message("building month/day columns from est_towdate")
+    trawldat <- dplyr::mutate(trawldat,
+                              est_month = stringr::str_sub(est_towdate, 6,7),
+                              est_month = as.numeric(est_month),
+                              est_day   = stringr::str_sub(est_towdate, -2, -1),
+                              est_day   = as.numeric(est_day), .before = season)}
+
+
+
+  #### 4. Column Changes  ####
+  trawldat <- dplyr::mutate(trawldat,
+
+      # Text Formatting
+      comname = tolower(comname),
+      id      = format(id, scientific = FALSE),
+      svspp   = as.character(svspp),
+      svspp   = stringr::str_pad(svspp, 3, "left", "0"),
+      season  = stringr::str_to_title(season),
+
+      # Format Stratum number,
+      # exclude leading and trailing codes for inshore/offshore,
+      # used for matching to stratum areas
+      strat_num = stringr::str_sub(stratum, 2, 3))
+
+  # Rename to make units more clear
+  trawldat <- dplyr::rename(trawldat,
+    biomass_kg = biomass,
+    length_cm = length)
+
+  # Replace 0's that must be greater than 0
+  trawldat <- dplyr::mutate(trawldat,
+    biomass_kg = ifelse(biomass_kg == 0 & abundance > 0, 0.0001, biomass_kg),
+    abundance = ifelse(abundance == 0 & biomass_kg > 0, 1, abundance))
+
+
+
+
+
+
+  #### 5. Row Filtering  ####
+
+  # Things filtered:
+  # 1. Strata
+  # 2. Seasons
+  # 3. Year limits
+  # 4. Vessels
+  # 5. Species Exclusion
+
+  # Eliminate Canadian Strata and Strata No longer in Use
+  trawldat <- dplyr::filter(trawldat,
+      stratum >= 01010,
+      stratum <= 01760,
+      stratum != 1310,
+      stratum != 1320,
+      stratum != 1330,
+      stratum != 1350,
+      stratum != 1410,
+      stratum != 1420,
+      stratum != 1490)
+
+  # Filter to just Spring and Fall
+  trawldat <- dplyr::filter(trawldat, season %in% c("Spring", "Fall"))
+  trawldat <- dplyr::mutate(trawldat, season = factor(season, levels = c("Spring", "Fall")))
+
+  # Filter years
+  trawldat <- dplyr::filter(trawldat,
+                            est_year >= 1970,
+                            est_year < 2020)
+
+  # Drop NA Biomass and Abundance Records
+  trawldat <- dplyr::filter(trawldat,
+                            !is.na(biomass_kg),
+                            !is.na(abundance))
+
+  # Exclude the Skrimps
+  trawldat <-  dplyr::filter(trawldat, svspp %not in% c(285:299, 305, 306, 307, 316, 323, 910:915, 955:961))
+
+  # Exclude the unidentified fish
+  trawldat <- dplyr::filter(trawldat, svspp %not in% c(0, 978, 979, 980, 998))
+
+  # # Only the Albatross and Henry Bigelow? - eliminates 1989-1991
+  # trawldat_t <- dplyr::filter(trawldat, svvessel %in% c("AL", "HB"))
+
+
+
+
+
+
+  #### 6. Spatial Filtering - Stratum  ####
+
+  # This section merges stratum area info in
+  # And drops stratum that are not sampled or in Canada
+  # these are used to relate catch/effort to physical areas in km squared
+
+  # Stratum Area Key for which stratum correspond to larger regions we use
+  strata_key <- list(
+    "Georges Bank"          = as.character(13:23),
+    "Gulf of Maine"         = as.character(24:40),
+    "Southern New England"  = stringr::str_pad(as.character(1:12),
+                                               width = 2, pad = "0", side = "left"),
+    "Mid-Atlantic Bight"    = as.character(61:76))
+
+
+  # Add the labels to the data
+  trawldat <- dplyr::mutate(
+    trawldat,
+    survey_area =  dplyr::case_when(
+      strat_num %in% strata_key$`Georges Bank`         ~ "GB",
+      strat_num %in% strata_key$`Gulf of Maine`        ~ "GoM",
+      strat_num %in% strata_key$`Southern New England` ~ "SNE",
+      strat_num %in% strata_key$`Mid-Atlantic Bight`   ~ "MAB",
+      TRUE                                             ~ "stratum not in key"))
+
+
+  # Use strata_select to pull the strata we want individually
+  strata_select <- c(strata_key$`Georges Bank`,
+                     strata_key$`Gulf of Maine`,
+                     strata_key$`Southern New England`,
+                     strata_key$`Mid-Atlantic Bight`)
+
+
+  # Filtering areas using strata_select
+  trawldat <- dplyr::filter(trawldat, strat_num %in% strata_select)
+  trawldat <- dplyr::mutate(trawldat, stratum = as.character(stratum))
+
+
+
+
+
+  #### 7. Adjusting NumLength  ####
+
+  # NOTE:
+  # numlen is not adjusted to correct for the change in survey vessels and gear
+  # these values consequently do not equal abundance, nor biomass which are adjusted
+
+  # Because of this and also some instances of bad data,
+  # there are cases of more/less measured than initially tallied* in abundance
+  # this section ensures that numlen totals out to be the same as abundance
+
+
+  # If catchsex is not a column then total abundance is assumed pooled
+  if(has_catchsex == TRUE){
+    abundance_groups <- c("id", "comname", "catchsex", "abundance")
+  } else {
+    message("catchsex column not found, ignoring sex for numlen adjustments")
+    abundance_groups <- c("id", "comname", "abundance")}
+
+
+  # Get the abundance value for each sex
+  # arrived at by summing across each length
+  abundance_check <- dplyr::group_by(trawldat, !!!rlang::syms(abundance_groups))
+  abundance_check <- dplyr::summarise(abundance_check,
+      abund_actual = sum(numlen),
+      n_len_class  = dplyr::n_distinct(length_cm),
+      .groups      = "keep")
+  abundance_check <- dplyr::ungroup(abundance_check)
+
+
+  # Get the ratio between the original abundance column
+  # and the sum of numlen we just grabbed
+  conv_factor <- dplyr::distinct(trawldat, !!!rlang::syms(abundance_groups), length_cm)
+  conv_factor <- dplyr::inner_join(conv_factor, abundance_check, by = abundance_groups)
+  conv_factor <- dplyr::mutate(conv_factor, convers = abundance / abund_actual)
+
+
+
+  # Merge back and convert the numlen field
+  # original numlen * conversion factor = numlength adjusted
+  survdat_processed <- dplyr::left_join(trawldat, conv_factor, by = c(abundance_groups, "length_cm"))
+  survdat_processed <- dplyr::mutate(survdat_processed, numlen_adj = numlen * convers, .after = numlen)
+  survdat_processed <- dplyr::select(survdat_processed, -c(abund_actual, convers))
+
+
+  # remove conversion factor from environment
+  rm(abundance_check, conv_factor, strata_key, strata_select)
+
+
+
+
+
+  #### 8. Distinct Station & Species Length Info   ####
+
+  # For each station we need unique combinations of
+  # station_id, species, catchsex, length_cm, adjusted_numlen
+  # to capture what and how many of each length fish is caught
+
+  # Record of unique station catches:
+  # One row for every species * sex * length_cm, combination in the data
+  trawl_lens <- dplyr::filter(survdat_processed,
+                  is.na(length_cm) == FALSE,
+                  is.na(numlen) == FALSE,
+                  numlen_adj > 0)
+
+
+  # Do we want to just keep all the station info here as well?
+  # question to answer is whether any other columns repeat,
+  # or if these are the only ones
+  trawl_clean <- dplyr::distinct(trawl_lens,
+    id, svspp, comname, catchsex, abundance, n_len_class,
+    length_cm, numlen, numlen_adj, biomass_kg, .keep_all = TRUE)
+
+
+
+
+  # Return the dataframe
+  # Contains 1 Row for each length class of every species caught
+  return(trawl_clean)
+
+}
+
+```
+
+
+### Implementation
+
+When put together as a single function the cleanup can be implemented as seen below. For situations where you are providing a dataset to clean ex. `mydata`, simply supply it using the argument `survdat = mydata`.
+
+```{r, eval = FALSE}
+survdat_2019 <- gmri_survdat_prep(survdat_source = "most recent")
+```
+
+
+---
+
+# Secondary Steps:
+
+## Length Weight Data Prep
+
+Following the standard clean up steps, there may also be a need to perform size-based analyses. For these analyses published length-weight relationships are used to estimate the weight-at-length for species where those coefficients are available.
+
+A second function `gmRi::add_lw_info()` exists for the purpose of adding0
+
+## Area-Stratified Abundances and Biomasses
+
+Once length-weight information is added, we are able to now get size-specific area-stratified abundance and biomass numbers. This step is implemented using a third function: `gmRi::add_area_stratification()`
+
+
+`r insert_gmri_footer()`

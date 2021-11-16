@@ -361,7 +361,7 @@ Two non-mutually exclusive explanations for why we don't see more larger individ
 One thing to look at is whether populations within a species are on-average a smaller size than they were earlier in the timeseries. Another way to have less larger individuals is to have a change in species composition. In that scenario the abundance of smaller species would have increased more than some of the larger species.
 
 **NOTE:**
-Body size treendds and data are based on area-stratified abundances to reflect the survey design of the survey. 
+Body size trends and data are based on area-stratified abundances to reflect the survey design of the survey. 
 
 ### Changes in Average Size
 
@@ -385,45 +385,75 @@ weight_changes <- annual_individual_sizes %>%
   split(.$species_season) %>% 
   map_dfr(.f = function(spec_season_dat){
     
-    # build linear regression for body size
+    # Build linear regression for body mass
     weight_lm <- lm(mean_wt_kg ~ as.numeric(Year), data = spec_season_dat)
     mod_tidy <- broom::tidy(weight_lm)
     weight_trend <- mod_tidy$estimate[2]
     weight_signif <-  mod_tidy$p.value[2]
     
+    #  Linear model for length
+    length_lm <- lm(mean_len_cm ~ as.numeric(Year), data = spec_season_dat)
+    len_tidy <- broom::tidy(length_lm)
+    length_trend <- len_tidy$estimate[2]
+    length_signif <-  len_tidy$p.value[2]
+    
+    
     # put in a table
     mean_size_dat <- data.frame(
       "weight_trend" = weight_trend,
-      "weight_signif" = weight_signif)
+      "weight_signif" = weight_signif,
+      "length_trend" = length_trend,
+      "length_signif" = length_signif)
     
   }, .id = "grouping")
 
 
 
 
-# clean up the group names
+# clean up the group names and format for waffle plot
 weight_changes <- weight_changes %>% 
   mutate(comname = sub(" - .*", "", grouping),
          season = sub(".* - ", "", grouping),
-         body_size_change = if_else(weight_trend < 0, "Decreasing", "Increasing"),
-         is_signif = if_else(weight_signif < 0.05, "< 0.05", "Not Significant"),
-         fct_reorder(.f = grouping, .x = weight_trend, .fun = "median"),
+         weight_change = case_when(
+           weight_signif >= 0.05 ~ "No Change",
+           weight_trend < 0 ~ "Decreasing",
+           weight_trend > 0 ~ "Increasing"),
+          length_change = case_when(
+           length_signif >= 0.05 ~ "No Change",
+           length_trend < 0 ~ "Decreasing",
+           length_trend > 0 ~ "Increasing"),
          season = factor(season, levels = c("Spring", "Fall"))) 
+
+
 ```
 
 
-```{r, fig.height=2}
+```{r, fig.height=1.5}
 # Waffle plot 
 ggplot(
   data = waffle_iron(
-    data = filter(weight_changes, is_signif == "< 0.05"),
-    mapping = aes_d(group = body_size_change), rows = 3),
+    data = weight_changes, 
+    mapping = aes_d(group = weight_change), rows = 5),
   aes(x, y, fill = group)) +
   geom_waffle() +
   scale_fill_gmri() +
   coord_equal() +
   theme_void() + theme(title = element_text(hjust = 0.75)) +
   labs(fill = "Change in Avg. Body Weight")
+```
+
+```{r, fig.height=1.5}
+# Waffle plot 
+ggplot(
+  data = waffle_iron(
+    data = weight_changes,
+    mapping = aes_d(group = length_change), rows = 5),
+  aes(x, y, fill = group)) +
+  geom_waffle() +
+  scale_fill_gmri() +
+  coord_equal() +
+  theme_void() + theme(title = element_text(hjust = 0.75)) +
+  labs(fill = "Change in Avg. Body Length")
 ```
 
 ### What Species are Showing Change?
@@ -436,13 +466,13 @@ In contrast, many of the species showing a decline in individual body size are c
 
 # plot
 weight_changes %>% 
-  filter(is_signif == "< 0.05") %>% 
+  filter(weight_signif == "< 0.05") %>% 
   ggplot(aes(y = fct_reorder(grouping, .x = weight_trend, .fun = "median"), 
              yend = fct_reorder(grouping, .x = weight_trend, .fun = "median"), 
              x = weight_trend * 1000, 
              xend = 0)) +
     geom_segment() +
-    geom_point(aes(color = is_signif)) +
+    geom_point(aes(color = weight_signif)) +
     scale_color_gmri() +
     facet_wrap(.~season, nrow = 2, scales = "free") +
     labs(x = "Annual Change in Bodymass (g)", 

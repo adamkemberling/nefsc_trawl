@@ -2,6 +2,11 @@
 
 ---
 
+## Survey Data Cleanup Code
+
+[SURVDAT Prep Functions](https://adamkemberling.github.io/nefsc_trawl/01_Survdat_Standard_Cleanup.html)
+
+
 ## QA/QC Reports
 
 The following markdown documents were made to verify various aspects of the research workflow. These were made to validate integral steps like the validity of length-weight relationships, the application of area-stratification, and the investigation of patterns that stand out within these reports.
@@ -11,7 +16,7 @@ The following markdown documents were made to verify various aspects of the rese
 
  1. [NEFSC size spectrum build EDA](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/nefsc_eda.html)
  
-A look at the overall data trends following "normal" data prep for the nefsc bottom trawl data. Includes overall abundance and biomass as well as the catch composition and stratified area abundances.
+A look at the overall data trends following "normal" data prep for the NEFSC bottom trawl data. Includes overall abundance and biomass as well as the catch composition and stratified area abundances.
 
  2. [Aggregation Level Validation & LW Relationship Fits](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/stratification_validation.html)
 
