@@ -26,8 +26,6 @@ library(here)
 library(sf)
 library(gmRi)
 library(patchwork)
-# library(rioja)
-# library(vegan)
 library(gt)
 library(knitr)
 library(tidyverse)
@@ -373,7 +371,7 @@ wt_bio_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_lw_bio, fil
 
 ### Functional Groups
 
-```{r}
+```{r fgroup stream plots}
 all_fgroups <- nefsc_size_bins %>% 
   drop_na(spec_class) %>% 
   group_by(group_col, Year, spec_class) %>% 
@@ -411,10 +409,12 @@ f_biom <- ggplot(all_fgroups, aes(Year, total_strat_lw_bio, fill = spec_class)) 
 
 These first plots get at how the different regions compare to one another. Are we seeing striking patterns across them all simultaneously, or are there localized patterns that only occur in some of them.
 
-````{r}
+```{r}
 # Do some grouping
 regions <- get_group_summaries(Year, survey_area)
+
 ```
+
 
 ### Length Bins
 
@@ -473,7 +473,7 @@ biomass_by_bodymass(regional_weights, "survey_area")
 ## Seasonal Differences  {.tabset}
 
 
-````{r}
+```{r}
 # Do some grouping
 seasons <- get_group_summaries(Year, season)
 ```

@@ -1,0 +1,372 @@
+---
+title: "NEFSC Trawl Bodymass Distribution"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = F, 
+                      warning = F, 
+                      comment = "", 
+                      fig.height = 8, 
+                      fig.width = 10)
+
+####  Packages  ####
+library(FSAdata)
+library(FSA)
+library(car)
+library(tidyverse)
+library(gmRi)
+library(ggridges)
+
+
+# set theme
+theme_set(theme_minimal() + 
+            theme(legend.position = "bottom", 
+                  plot.title = element_text(hjust = 0.5),
+                  axis.line.y = element_line(),
+                  axis.ticks.y = element_line(), 
+                  axis.line.x = element_line(),
+                  axis.ticks.x = element_line(), 
+                  axis.text = element_text(size = 11),
+                  strip.text = element_text(color = "white", 
+                                            face = "bold",
+                                            size = 11),
+                  strip.background = element_rect(
+                    color = "white", 
+                    fill = "#36454F", 
+                    size = 1, 
+                    linetype="solid"), 
+                  legend.background = element_rect(fill = "transparent", 
+                                                   color = "black"))
+          )
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+
+# Exploring Size-at-age Changes 
+
+
+
+## Loading Bio Data
+
+
+```{r}
+
+# Access Biological Data with {gmRi}
+nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
+
+
+```
+
+
+#  Fitting Von-Bertalanffy Growth
+
+
+
+
+## Data Prep
+
+```{r}
+####  Data Prep  #### 
+# Setting up for group analyses
+
+# Rank species by how many measurements there are
+species_abunds <- nmfs_bio %>% count(comname) %>% arrange(desc(n)) # ordered by number measured
+
+# species to run it on:
+vonbert_species <- sort(c("atlantic cod", "haddock", "summer flounder", "winter flounder", "acadian redfish",
+                     "silver hake", "red hake", "american plaice", "yellowtail flounder",
+                     "atlantic herring", "white hake", "butterfish","witch flounder", 
+                     "atlantic mackerel", "windowpane"))
+names(vonbert_species) <- vonbert_species
+
+seasons <- c("Summer", "Fall")
+
+
+# Does not work for:
+# skates, dogfish, fourspot flounder, goosefish
+
+
+#### 5 year increments
+
+
+
+##### pull species and make group id for later
+species_data <- map(vonbert_species, function(species_name){
+  
+  yr5_breaks <- seq(1970, 2020, by = 5)
+  yr5_ends <- seq(1974, 2024, by = 5)
+  yr5_labels <- str_c(yr5_breaks, "-", yr5_ends)
+  yr5_labels <- yr5_labels[1:(length(yr5_labels)-1)]
+  
+  nmfs_bio %>%
+    filter(comname == species_name,
+           season %in% seasons,
+           is.na(age) == FALSE) %>% 
+    mutate(five_yr_group = cut(est_year, 
+                         breaks = yr5_breaks, 
+                         labels = yr5_labels,
+                         include.lowest = TRUE,
+                         ordered_result = TRUE),
+           decade = floor_decade(est_year),
+           group_id = str_c(est_year, comname, sep = "-"))  %>% 
+    as.data.frame()
+})
+
+
+```
+
+
+
+
+## Fitting to 5-year periods
+
+Von-Bertalanffy parameterization:
+
+```{r}
+( vb <- vbFuns(param="Typical") )
+```
+
+
+```{r}
+# Function to Pull Vonbert Coefficients
+vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
+  
+  # Von Bert Fitting Using: {FSA}
+  # Don't run on fewer than a minimum number of obervations
+  num_aged <- nrow(length_age_dat)
+  if(num_aged < min_obs){
+    na_df <- data.frame("Linf" = NA, "K" = NA, "t0" = NA, "n_aged" = num_aged)
+    return(na_df)
+  }
+  
+  # Use nls to estimate VBGF parameters using starting points
+  vbert_fit <- nls(length_cm ~ vb(age, Linf, K, t0), 
+                   data = length_age_dat, 
+                   start = start_points)
+  
+  # Access parameters with coef()
+  vbert_coef <- as.data.frame(t(coef(vbert_fit))) %>% 
+    mutate(n_aged = num_aged)
+  return(vbert_coef)
+  
+  
+}
+```
+
+
+
+```{r}
+
+
+# Function for running that for a  single Species
+species_vonbert <- function(comname, split_col, min_obs){
+  
+  # Get starting points from all data
+  test_starts <-  vbStarts(length_cm ~ age, data = species_data[[comname]])
+  
+  # Get coefficients for groups
+  species_data[[comname]] %>% 
+    split(.[split_col]) %>% 
+    map_dfr(vonbert_coef, test_starts, min_obs = min_obs, .id = split_col) %>% 
+    mutate(comname = comname)
+}
+```
+
+
+```{r}
+
+# Running everything?
+species_coef <- vonbert_species %>% 
+  map_dfr(species_vonbert, split_col =  "five_yr_group", min_obs = 25)
+```
+
+##  Plotting Coefficients  {.tabset .tabset-pills}
+
+```{r}
+# pick species and coefficients
+plot_vonbert_coef <- function(comnames, x_col, coef_name){
+  
+  x_col_sym <- sym(x_col)
+  coef_sym <- sym(coef_name)
+  coef_label <- switch (
+    coef_name,
+    Linf = "Asymptotic Max Length (cm)",
+    K = "Body Growth Coefficient (K)",
+    t0 = "t0",
+    n_aged = "Number Aged"
+  )
+  species_coef %>% 
+    filter(comname %in% comnames) %>% 
+    ggplot(aes(y = {{coef_sym}}, x = {{x_col_sym}})) +
+    geom_line(group = 1, linetype = 3) +
+    geom_point(size = 0.8) +
+    scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+    facet_wrap(~comname, ncol = 1, scales = "free") +
+    labs(x = "Date Period", y = coef_label)
+  
+}
+
+```
+
+
+### L-infinity
+
+```{r}
+
+
+plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "red hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "Linf")
+
+
+```
+
+
+### K
+
+
+```{r}
+plot_vonbert_coef(comnames = c("atlantic cod", "silver hake", "red hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "K")
+
+
+```
+
+### t0
+
+```{r}
+plot_vonbert_coef(comnames = c("atlantic cod", "silver hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "t0")
+```
+
+### Number Aged
+
+```{r}
+plot_vonbert_coef(comnames = c("atlantic cod", "silver hake", "red hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "n_aged")
+```
+
+
+
+## Tracking Cohorts
+
+### Bubble Plots {.tabset .tabset-pills}
+
+```{r}
+# Plotting age distribution
+plot_age_bubbleplot <- function(species){
+  species_data[[species]] %>% 
+    count(comname, est_year, age) %>% 
+    ggplot(aes(y = est_year, x = age, size = n)) +
+      geom_point(shape = 21, color = "white", fill = gmri_cols("gmri blue")) +
+      scale_y_reverse() +
+      facet_wrap(~comname) +
+      labs(y = "Year", x = "Age", size = "Number Measured") +
+      guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
+  }
+
+
+# Process Each species
+bubble_plots <- map(.x = vonbert_species, .f = plot_age_bubbleplot)
+```
+
+#### Atlantic Cod
+
+```{r}
+bubble_plots[["atlantic cod"]]
+```
+
+#### Haddock
+
+```{r}
+bubble_plots[["haddock"]]
+```
+
+#### Acadian Redfish
+
+```{r}
+bubble_plots[["acadian redfish"]]
+```
+
+#### Winter Flounder
+
+```{r}
+bubble_plots[["winter flounder"]]
+```
+
+#### Silver Hake
+
+```{r}
+bubble_plots[["silver hake"]]
+```
+
+
+### Ridgeplots {.tabset .tabset-pills}
+
+```{r}
+# Plotting age distribution as ggridges
+plot_age_ridgeplot <- function(species){
+  species_data[[species]] %>% 
+    mutate(yr = factor(est_year),
+           yr = fct_rev(yr)) %>% 
+    ggplot(aes(x = age, y = yr)) +
+      geom_density_ridges(fill = gmri_cols("gmri blue"), color = "white") +
+      facet_wrap(~comname) +
+      scale_x_continuous(limits = c(0,NA)) +
+      labs(x = "Age", y = "Year") +
+      guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
+  
+}
+
+# Process Each species
+ridge_plots <- map(vonbert_species, plot_age_ridgeplot)
+```
+
+#### Atlantic Cod
+
+```{r}
+ridge_plots[["atlantic cod"]]
+```
+
+#### Haddock
+
+```{r}
+ridge_plots[["haddock"]]
+```
+
+#### Acadian Redfish
+
+```{r}
+ridge_plots[["acadian redfish"]]
+```
+
+#### Winter Flounder
+
+```{r}
+ridge_plots[["winter flounder"]]
+```
+
+#### Silver Hake
+
+```{r}
+ridge_plots[["silver hake"]]
+```
+
+
+
+`r insert_gmri_footer()`

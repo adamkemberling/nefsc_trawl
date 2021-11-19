@@ -188,7 +188,7 @@ Links to other resources and reports detailing EDA, troubleshooting, and
 analysis outcomes for NMFS trawl data can be found at the github pages
 [index](https://adamkemberling.github.io/nefsc_trawl/).
 
-## Data Preparation
+## Standard Data Preparation
 
 Data for these analyses was obtained from the Northeast Fisheries
 Science Center. Details on how data is cleaned prior to any analyses can

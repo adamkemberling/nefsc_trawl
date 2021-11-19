@@ -11,7 +11,7 @@
 
 <meta name="author" content="Adam A. Kemberling" />
 
-<meta name="date" content="2021-11-16" />
+<meta name="date" content="2021-11-19" />
 
 <title>SURVDAT Data Cleanup Steps</title>
 
@@ -249,7 +249,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">SURVDAT Data Cleanup Steps</h1>
 <h4 class="author">Adam A. Kemberling</h4>
-<h4 class="date">2021-11-16</h4>
+<h4 class="date">2021-11-19</h4>
 
 </div>
 
@@ -464,55 +464,55 @@ a {
 <div id="step-1-importing" class="section level3">
 <h3>Step 1: Importing</h3>
 <pre class="r"><code>####  Resource Paths
-  mills_path  &lt;- box_path(&quot;mills&quot;)
-  nmfs_path   &lt;- box_path(&quot;res&quot;, &quot;NMFS_trawl&quot;)
+mills_path  &lt;- box_path(&quot;mills&quot;)
+nmfs_path   &lt;- box_path(&quot;res&quot;, &quot;NMFS_trawl&quot;)
 
 
 
-  ####  1. Import SURVDAT File  ####
+####  1. Import SURVDAT File  ####
 
-  # Testing:
-  #survdat_source &lt;- &quot;bigelow&quot;     ; survdat &lt;- NULL
-  #survdat_source &lt;- &quot;most recent&quot; ; survdat &lt;- NULL
+# Testing:
+#survdat_source &lt;- &quot;bigelow&quot;     ; survdat &lt;- NULL
+#survdat_source &lt;- &quot;most recent&quot; ; survdat &lt;- NULL
 
-  # convenience change to make it lowercase
-  survdat_source &lt;- tolower(survdat_source)
+# convenience change to make it lowercase
+survdat_source &lt;- tolower(survdat_source)
 
 
-  # Build Paths to survdat for standard options
-  survdat_path &lt;- switch(
-    EXPR = survdat_source,
-    &quot;2016&quot;        = paste0(mills_path, &quot;Projects/WARMEM/Old survey data/Survdat_Nye2016.RData&quot;),
-    &quot;2019&quot;        = paste0(nmfs_path,  &quot;prior_survdat_data/Survdat_Nye_allseason.RData&quot;),
-    &quot;2020&quot;        = paste0(nmfs_path,  &quot;prior_survdat_data/Survdat_Nye_Aug 2020.RData&quot;),
-    &quot;2021&quot;        = paste0(nmfs_path,  &quot;prior_survdat_data/survdat_slucey_01152021.RData&quot;),
-    &quot;bigelow&quot;     = paste0(nmfs_path,  &quot;2021_survdat/survdat_Bigelow_slucey_01152021.RData&quot;),
-    &quot;most recent&quot; = paste0(nmfs_path,  &quot;2021_survdat/NEFSC_BTS_all_seasons_03032021.RData&quot;),
-    &quot;bio&quot;         = paste0(nmfs_path,  &quot;2021_survdat/NEFSC_BTS_2021_bio_03192021.RData&quot;) )
+# Build Paths to survdat for standard options
+survdat_path &lt;- switch(
+  EXPR = survdat_source,
+  &quot;2016&quot;        = paste0(mills_path, &quot;Projects/WARMEM/Old survey data/Survdat_Nye2016.RData&quot;),
+  &quot;2019&quot;        = paste0(nmfs_path,  &quot;SURVDAT_archived/Survdat_Nye_allseason.RData&quot;),
+  &quot;2020&quot;        = paste0(nmfs_path,  &quot;SURVDAT_archived/Survdat_Nye_Aug 2020.RData&quot;),
+  &quot;2021&quot;        = paste0(nmfs_path,  &quot;SURVDAT_archived/survdat_slucey_01152021.RData&quot;),
+  &quot;bigelow&quot;     = paste0(nmfs_path,  &quot;SURVDAT_current/survdat_Bigelow_slucey_01152021.RData&quot;),
+  &quot;most recent&quot; = paste0(nmfs_path,  &quot;SURVDAT_current/NEFSC_BTS_all_seasons_03032021.RData&quot;),
+  &quot;bio&quot;         = paste0(nmfs_path,  &quot;SURVDAT_current/NEFSC_BTS_2021_bio_03192021.RData&quot;) )
 
-  # If providing a starting point for survdat pass it in:
-  if(is.null(survdat) == FALSE){
-    trawldat &lt;- janitor::clean_names(survdat)
-  } else if(is.null(survdat) == TRUE){
+# If providing a starting point for survdat pass it in:
+if(is.null(survdat) == FALSE){
+  trawldat &lt;- janitor::clean_names(survdat)
+} else if(is.null(survdat) == TRUE){
 
-    # If not then load using the correct path
-    load(survdat_path)
-    
-    # Bigelow data doesn&#39;t load in as &quot;survdat&quot;
-    if(survdat_source == &quot;bigelow&quot;){
-      survdat &lt;- survdat.big
-      rm(survdat.big)}
+  # If not then load using the correct path
+  load(survdat_path)
+  
+  # Bigelow data doesn&#39;t load in as &quot;survdat&quot;
+  if(survdat_source == &quot;bigelow&quot;){
+    survdat &lt;- survdat.big
+    rm(survdat.big)}
 
-    # Most recent pulls load a list that then contain survdat
-    if(survdat_source %in% c(&quot;bio&quot;, &quot;most recent&quot;)){
-      survdat &lt;- survey$survdat }
+  # Most recent pulls load a list that then contain survdat
+  if(survdat_source %in% c(&quot;bio&quot;, &quot;most recent&quot;)){
+    survdat &lt;- survey$survdat }
 
-    # clean names up for convenience
-    trawldat &lt;- janitor::clean_names(survdat)
-  }
+  # clean names up for convenience
+  trawldat &lt;- janitor::clean_names(survdat)
+}
 
-  # remove survdat once the data is in
-  rm(survdat)</code></pre>
+# remove survdat once the data is in
+rm(survdat)</code></pre>
 </div>
 <div id="step-2-column-naming-qaqc" class="section level3">
 <h3>Step 2: Column Naming QA/QC</h3>
@@ -800,8 +800,8 @@ trawl_clean &lt;- dplyr::distinct(trawl_lens,
 # Contains 1 Row for each length class of every species caught
 return(trawl_clean)</code></pre>
 </div>
-<div id="complete-function" class="section level3">
-<h3>Complete Function</h3>
+<div id="full-cleanup-function" class="section level3">
+<h3>Full Cleanup Function</h3>
 <p><strong>NOTE:</strong></p>
 <p>This is a copy of the full function and may or may not remain up to date as the primary copy changes over time (likely not). For the most recent version please use the {gmRi} package function.</p>
 <pre class="r"><code>#&#39; @title  Load survdat file with standard data filters, keep all columns
@@ -838,15 +838,17 @@ gmri_survdat_prep &lt;- function(survdat = NULL, survdat_source = &quot;most rec
   survdat_source &lt;- tolower(survdat_source)
 
 
+  
   # Build Paths to survdat for standard options
-  survdat_path &lt;- switch(EXPR = survdat_source,
-                         &quot;2016&quot;        = paste0(mills_path, &quot;Projects/WARMEM/Old survey data/Survdat_Nye2016.RData&quot;),
-                         &quot;2019&quot;        = paste0(nmfs_path,  &quot;prior_survdat_data/Survdat_Nye_allseason.RData&quot;),
-                         &quot;2020&quot;        = paste0(nmfs_path,  &quot;prior_survdat_data/Survdat_Nye_Aug 2020.RData&quot;),
-                         &quot;2021&quot;        = paste0(nmfs_path,  &quot;prior_survdat_data/survdat_slucey_01152021.RData&quot;),
-                         &quot;bigelow&quot;     = paste0(nmfs_path,  &quot;2021_survdat/survdat_Bigelow_slucey_01152021.RData&quot;),
-                         &quot;most recent&quot; = paste0(nmfs_path,  &quot;2021_survdat/NEFSC_BTS_all_seasons_03032021.RData&quot;),
-                         &quot;bio&quot;         = paste0(nmfs_path,  &quot;2021_survdat/NEFSC_BTS_2021_bio_03192021.RData&quot;) )
+  survdat_path &lt;- switch(
+    EXPR = survdat_source,
+    &quot;2016&quot;        = paste0(mills_path, &quot;Projects/WARMEM/Old survey data/Survdat_Nye2016.RData&quot;),
+    &quot;2019&quot;        = paste0(nmfs_path,  &quot;SURVDAT_archived/Survdat_Nye_allseason.RData&quot;),
+    &quot;2020&quot;        = paste0(nmfs_path,  &quot;SURVDAT_archived/Survdat_Nye_Aug 2020.RData&quot;),
+    &quot;2021&quot;        = paste0(nmfs_path,  &quot;SURVDAT_archived/survdat_slucey_01152021.RData&quot;),
+    &quot;bigelow&quot;     = paste0(nmfs_path,  &quot;SURVDAT_current/survdat_Bigelow_slucey_01152021.RData&quot;),
+    &quot;most recent&quot; = paste0(nmfs_path,  &quot;SURVDAT_current/NEFSC_BTS_all_seasons_03032021.RData&quot;),
+    &quot;bio&quot;         = paste0(nmfs_path,  &quot;SURVDAT_current/NEFSC_BTS_2021_bio_03192021.RData&quot;) )
 
 
 
