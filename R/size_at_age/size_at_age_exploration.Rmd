@@ -17,8 +17,8 @@ knitr::opts_chunk$set(echo = TRUE,
                       message = F, 
                       warning = F, 
                       comment = "", 
-                      fig.height = 8, 
-                      fig.width = 10)
+                      fig.height = 6, 
+                      fig.width = 8)
 
 ####  Packages  ####
 library(FSAdata)
@@ -31,23 +31,28 @@ library(ggridges)
 
 # set theme
 theme_set(theme_minimal() + 
-            theme(legend.position = "bottom", 
-                  plot.title = element_text(hjust = 0.5),
-                  axis.line.y = element_line(),
-                  axis.ticks.y = element_line(), 
-                  axis.line.x = element_line(),
-                  axis.ticks.x = element_line(), 
-                  axis.text = element_text(size = 11),
-                  strip.text = element_text(color = "white", 
-                                            face = "bold",
-                                            size = 11),
-                  strip.background = element_rect(
-                    color = "white", 
-                    fill = "#36454F", 
-                    size = 1, 
-                    linetype="solid"), 
-                  legend.background = element_rect(fill = "transparent", 
-                                                   color = "black"))
+            theme(
+              # Titles
+              plot.title = element_text(hjust = 0.5),
+              # Axes
+              axis.line.y = element_line(),
+              axis.ticks.y = element_line(), 
+              axis.line.x = element_line(),
+              axis.ticks.x = element_line(), 
+              axis.text = element_text(size = 11),
+              # Facets
+              strip.text = element_text(color = "white", 
+                                        face = "bold",
+                                        size = 11),
+              strip.background = element_rect(
+                color = "white", 
+                fill = "#36454F", 
+                size = 1, 
+                linetype="solid"), 
+              # Legends
+              legend.position = "bottom", 
+              legend.background = element_rect(fill = "transparent", 
+                                               color = "black"))
           )
 ```
 
@@ -238,7 +243,7 @@ plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "red hake"),
 
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "silver hake", "red hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "K")
 
@@ -248,7 +253,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "silver hake", "red hake"),
 ### t0
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "silver hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "t0")
 ```
@@ -256,7 +261,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "silver hake"),
 ### Number Aged
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "silver hake", "red hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "n_aged")
 ```
@@ -309,10 +314,10 @@ bubble_plots[["acadian redfish"]]
 bubble_plots[["winter flounder"]]
 ```
 
-#### Silver Hake
+#### Haddock
 
 ```{r}
-bubble_plots[["silver hake"]]
+bubble_plots[["haddock"]]
 ```
 
 
@@ -361,10 +366,10 @@ ridge_plots[["acadian redfish"]]
 ridge_plots[["winter flounder"]]
 ```
 
-#### Silver Hake
+#### Haddock
 
 ```{r}
-ridge_plots[["silver hake"]]
+ridge_plots[["haddock"]]
 ```
 
 
