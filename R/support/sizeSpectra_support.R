@@ -14,6 +14,96 @@ library(tidyverse)
 ####_____________________####
 ####  Prep NEFSC Data  ####
 
+
+
+
+# Build dataOrig for sizeSpectra
+#' @title Prep Data for sizeSpectra - convert to grams
+#' 
+#' @description Renames fields and prepares things in grams to use with sizeSpectra function. I hate 
+#' how this is written, so confusing with so many columns that are too similar.
+#' 
+#' 
+#' 
+#' Re-work 07/21/2021
+#' 
+#' Changes from kg to grams for wmin_g and wmax
+#'
+#' @param lw_trawl_data data that contains length weight relationships and numbers caught
+#'
+#' @return
+#' @export
+#'
+#' @examples
+prep_sizeSpectra_data <- function(lw_trawl_data){
+  
+  # Filter out empty weights
+  ss_dat <- lw_trawl_data  %>% 
+    filter(is.na(ind_weight_kg) == FALSE)
+  
+  
+  # Format columns for consistency downstream
+  ss_dat <- ss_dat %>%
+    rename(
+      Year         = est_year,                  # year
+      # SpecCode   = comname,                   # common name
+      # LngtClass  = length_cm,                 # length bin
+      # Number     = numlen_adj,                # adjusted number at length
+      # LWa        = a,                         # length/weight parameter
+      # LWb        = b                          # length/weight parameter
+    )
+  
+  # Get bodymass in g, and the biomass from the catch frequencies
+  ss_dat <- ss_dat %>%                     
+    mutate(
+      ind_weight_g   = ind_weight_kg * 1000,              # weight in grams of individual
+      sum_weight_g   = numlen_adj * ind_weight_g,                 # number at size times the mass
+      lw_group       = str_c(comname, season, catchsex) # the source of l-w coefficients
+    ) 
+  
+  
+  # Get Upper Length Bin Weights
+  # Assumes that for all species the lengths only jump in 1 cm increments
+  # Captures min/max predicted weight across that length increment
+  ss_dat <- ss_dat %>%
+    mutate(
+      lngt_max  = length_cm + 1,                # maximum length for a fish of wmin
+      ln_wmax  = (ln_a + b * log(lngt_max)),  # max weight for fish of that wmin
+      wmin_g    = ind_weight_g,                     # minimum weight of individual in grams
+      wmax_g    = exp(ln_wmax) * 1000           # max weight of individual in grams
+    )                
+  
+  
+  # If available do stratified abundance as well
+  if("strat_total_abund_s" %in% names(ss_dat)){
+    ss_dat <- ss_dat %>% 
+      mutate(
+        stratified_sum_bodymass = strat_total_abund_s * ind_weight_g,       
+        wmin_area_strat         = strat_total_abund_s * wmin_g,           
+        wmax_area_strat         = strat_total_abund_s * wmax_g           
+      )
+  }
+  
+  # Arrange
+  ss_dat <- ss_dat %>% 
+    arrange(Year, season, comname, length_cm)
+  
+  # Filter zero and NA weights
+  ss_dat <- filter(ss_dat,
+                   wmin_g != 0,
+                   is.na(wmin_g) == FALSE,
+                   wmax_g!= 0,
+                   is.na(wmax_g) == FALSE)
+  
+  # return data prepped for sizeSpectra
+  return(ss_dat)
+  
+}
+
+
+
+
+
 ####  Filter Min Length
 
 # data for testing:
@@ -47,7 +137,7 @@ min_length_cutoff <- function(trawl_lens, cutoff_cm = 1){
 min_weight_cutoff <- function(nefsc_lw, min_weight_g = 1){
   dplyr::filter(nefsc_lw,
                 is.na(length_cm) == FALSE, 
-                ind_weight_kg >= (min_weight_g/1000)) }
+                ind_weight_kg >= (min_weight_g/1000))  }
 
 
 
@@ -57,91 +147,86 @@ min_weight_cutoff <- function(nefsc_lw, min_weight_g = 1){
 
 
 
-# Build dataOrig for sizeSpectra
-#' @title Prep Data for sizeSpectra - convert to grams
-#' 
-#' @description Renames fields and prepares things in grams to use with sizeSpectra function. I hate 
-#' how this is written, so confusing with so many columns that are too similar.
-#' 
-#' 
-#' 
-#' Re-work 07/21/2021
-#' 
-#' Changes from kg to grams for wmin_g and wmax
+
+
+
+#' @title Add Size Group Formatting
 #'
-#' @param lw_trawl_data data that contains length weight relationships and numbers caught
+#' @description Sets up the text labels and formatting for grouping and 
+#' plotting groups by size, weigh, or season
+#'
+#' @param nefsc_1g 
 #'
 #' @return
 #' @export
 #'
 #' @examples
-prep_sizeSpectra_data <- function(lw_trawl_data){
+size_bin_formatting <- function(nefsc_1g){
   
-  # Filter out empty weights
-  ss_dat <- lw_trawl_data  %>% 
-    filter(is.na(ind_weight_kg) == FALSE)
-    
-  
-  # Format columns for consistency downstream
-  ss_dat <- ss_dat %>%
-    rename(
-      Year         = est_year,                  # year
-      # SpecCode   = comname,                   # common name
-      # LngtClass  = length_cm,                 # length bin
-      # Number     = numlen_adj,                # adjusted number at length
-      # LWa        = a,                         # length/weight parameter
-      # LWb        = b                          # length/weight parameter
-      )
-  
-  # Get bodymass in g, and the biomass from the catch frequencies
-  ss_dat <- ss_dat %>%                     
+  # Cut up discrete length and weight bins
+  nefsc_size_bins <- nefsc_1g %>% 
     mutate(
-      ind_weight_g   = ind_weight_kg * 1000,              # weight in grams of individual
-      sum_weight_g   = numlen_adj * ind_weight_g,                 # number at size times the mass
-      lw_group       = str_c(comname, season, catchsex) # the source of l-w coefficients
-      ) 
+      length_bin = case_when(
+        length_cm <= 5   ~ "0 - 5cm",
+        length_cm <= 10  ~ "5 - 10cm",
+        length_cm <= 25  ~ "10 - 25cm",
+        length_cm <= 50  ~ "25 - 50cm",
+        length_cm <= 75  ~ "50 - 75cm",
+        length_cm <= 100 ~ "75 - 100cm",
+        length_cm >= 100 ~ ">= 100cm"),
+      length_bin = factor(length_bin, levels = c(
+        "0 - 5cm", "5 - 10cm", "10 - 25cm",
+        "25 - 50cm", "50 - 75cm", "75 - 100cm", ">= 100cm")))
   
-
-  # Get Upper Length Bin Weights
-  # Assumes that for all species the lengths only jump in 1 cm increments
-  # Captures min/max predicted weight across that length increment
-  ss_dat <- ss_dat %>%
-    mutate(
-      lngt_max  = length_cm + 1,                # maximum length for a fish of wmin
-      ln_wmax  = (ln_a + b * log(lngt_max)),  # max weight for fish of that wmin
-      wmin_g    = ind_weight_g,                     # minimum weight of individual in grams
-      wmax_g    = exp(ln_wmax) * 1000           # max weight of individual in grams
-    )                
-      
   
-  # If available do stratified abundance as well
-  if("strat_total_abund_s" %in% names(ss_dat)){
-    ss_dat <- ss_dat %>% 
+  # Weight bins
+  nefsc_size_bins <- nefsc_size_bins %>% 
     mutate(
-      stratified_sum_bodymass = strat_total_abund_s * ind_weight_g,       
-      wmin_area_strat         = strat_total_abund_s * wmin_g,           
-      wmax_area_strat         = strat_total_abund_s * wmax_g           
-    )
+      weight_bin = case_when(
+        ind_weight_kg <= 0.001 ~ "0 - 1g",
+        ind_weight_kg <= 0.005 ~ "1 - 5g",
+        ind_weight_kg <= 0.010 ~ "5 - 10g",
+        ind_weight_kg <= 0.050 ~ "10 - 50g",
+        ind_weight_kg <= 0.100 ~ "50 - 100g",
+        ind_weight_kg <= 0.500 ~ "100 - 500g",
+        ind_weight_kg <= 1.000 ~ ".5 - 1kg",
+        ind_weight_kg <= 5.000 ~ "1 - 2kg",
+        ind_weight_kg <= 5.000 ~ "2 - 5kg",
+        ind_weight_kg <= 10.00 ~ "5 - 10kg",
+        ind_weight_kg >= 10.00 ~ ">= 10kg" ),
+      weight_bin = factor(weight_bin, levels = c(
+        "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
+        "50 - 100g", "100 - 500g", ".5 - 1kg",
+        "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
+  
+  
+  # Rename the functional groups
+  nefsc_size_bins <- nefsc_size_bins %>% 
+    mutate(
+      spec_class = case_when(
+        spec_class == "gf"  ~ "Groundfish",
+        spec_class == "pel" ~ "Pelagic",
+        spec_class == "dem" ~ "Demersal",
+        spec_class == "el"  ~ "Elasmobranch",
+        spec_class == "<NA>" ~ "NA"))
+  
+  # Make regions go N->S
+  nefsc_size_bins <- nefsc_size_bins %>% 
+    mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+           season = factor(season, levels = c("Spring", "Fall")))
+  
+  
+  # change texxt for fishery status
+  nefsc_size_bins <- nefsc_size_bins %>% 
+    mutate(fishery = case_when(
+      fishery == "com" ~ "Commercially Targeted",
+      fishery == "nc" ~ "Not Commercially Targeted",
+      TRUE ~ "Not Labelled"))
+  
+return(nefsc_size_bins)
+  
+  
   }
-  
-  # Arrange
-  ss_dat <- ss_dat %>% 
-    arrange(Year, season, comname, length_cm)
-  
-  # Filter zero and NA weights
-  ss_dat <- filter(ss_dat,
-                   wmin_g != 0,
-                   is.na(wmin_g) == FALSE,
-                   wmax_g!= 0,
-                   is.na(wmax_g) == FALSE)
-  
-  # return data prepped for sizeSpectra
-  return(ss_dat)
-  
-}
-
-
-
 
 
 
@@ -1541,6 +1626,30 @@ mean_sizes_all_groups <- function(size_data,
   # Return the summary table
   return(table_complete)
   
+}
+
+
+####______________________####
+####  Growth Characteristics ####
+
+# pick species
+pick_vonbert_species <- function(survdat_biological){
+  "work in progress"
+}
+
+
+
+
+# set time increments
+set_vonbert_groups <- function(vonbert_groups){
+  "work in progress"
+}
+
+
+
+# process growth coef
+estimate_vonbert_coef <- function(species_size_age_data){
+  "work in progress"
 }
 
 

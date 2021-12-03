@@ -26,6 +26,7 @@ library(FSA)
 library(car)
 library(tidyverse)
 library(gmRi)
+library(targets)
 library(ggridges)
 
 
@@ -69,7 +70,11 @@ theme_set(theme_minimal() +
 ```{r}
 
 # Access Biological Data with {gmRi}
-nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
+# nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(survdat_biological))
+nmfs_bio <- survdat_biological
+
 
 
 ```
@@ -80,41 +85,59 @@ nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
 
 
 
-## Data Prep
+## Species Data Prep
+
+In the original proposal it was stated that 17 species would be used, species that are regularly measured and aged. Ordering all species by the number aged we can pull out the following top species:
 
 ```{r}
 ####  Data Prep  #### 
-# Setting up for group analyses
+
+
+# # Manually make list:
+# # species to run it on:
+# vonbert_species <- sort(c("atlantic cod", "haddock", "summer flounder", "winter flounder", "acadian redfish",
+#                      "silver hake", "red hake", "american plaice", "yellowtail flounder",
+#                      "atlantic herring", "white hake", "butterfish","witch flounder", 
+#                      "atlantic mackerel", "windowpane"))
+# names(vonbert_species) <- vonbert_species
+
+
 
 # Rank species by how many measurements there are
-species_abunds <- nmfs_bio %>% count(comname) %>% arrange(desc(n)) # ordered by number measured
+species_abunds <- nmfs_bio %>% 
+  filter(is.na(age) == FALSE) %>% 
+  count(comname) %>% arrange(desc(n)) # ordered by number measured
 
-# species to run it on:
-vonbert_species <- sort(c("atlantic cod", "haddock", "summer flounder", "winter flounder", "acadian redfish",
-                     "silver hake", "red hake", "american plaice", "yellowtail flounder",
-                     "atlantic herring", "white hake", "butterfish","witch flounder", 
-                     "atlantic mackerel", "windowpane"))
+# Reorder top 17 alphabetically
+vonbert_species <- sort(species_abunds$comname[1:17])
+```
+
+These will be the species that we assess length-at-age characteristics for: **`r pander::pander(vonbert_species)`**
+
+
+We also only care about data from the two main survey seasons, so we limit the data to just those seasons before splitting it out into lists for each species. The lists contain all data for a given species, broken into groups at a set interval of time. In this case it is five year increments.
+
+```{r}
+# Name the list so it carries through
 names(vonbert_species) <- vonbert_species
 
+# Does not work for because of bad start points or no age data:
+# skates, dogfish, fourspot flounder, goosefish
+
+# Seasons to use data from
 seasons <- c("Summer", "Fall")
 
 
-# Does not work for:
-# skates, dogfish, fourspot flounder, goosefish
-
-
-#### 5 year increments
-
-
-
-##### pull species and make group id for later
+##### Pull species and make group id for later
 species_data <- map(vonbert_species, function(species_name){
   
+  #### Make 5 year increments
   yr5_breaks <- seq(1970, 2020, by = 5)
   yr5_ends <- seq(1974, 2024, by = 5)
   yr5_labels <- str_c(yr5_breaks, "-", yr5_ends)
   yr5_labels <- yr5_labels[1:(length(yr5_labels)-1)]
   
+  # Drop NA ages, set increment labels
   nmfs_bio %>%
     filter(comname == species_name,
            season %in% seasons,
@@ -137,11 +160,36 @@ species_data <- map(vonbert_species, function(species_name){
 
 ## Fitting to 5-year periods
 
-Von-Bertalanffy parameterization:
+The Von-Bertalanffy parameterization used is the "Typical" von Bertalanffy parameterization, also known as the Beverton-Holt parameterization, which is implemented using the {FSA} package.
+
+We can check that this is the case by displaying the equations:
+
+```{r, fig.height=1, eval = FALSE}
+typical <- growthFunShow(param = "Typical", "vonBertalanffy")
+ggplot() +
+  annotate(x = 1, y = 1, label = typical, geom = "text") +
+  labs(title = '"Typical" Parameterization') + 
+  theme_void()
+```
+
+
+```{r, fig.height=1}
+bholt <- growthFunShow(param = "BevertonHolt", "vonBertalanffy")
+ggplot() +
+  annotate(x = 1, y = 1, label = bholt, geom = "text") +
+  labs(title = '"Beverton-Holt" Parameterization') + 
+  theme_void()
+```
+
+
+To start things off we first set the von Bert parameterization to solve using nonlinear least squares: `nls()`
 
 ```{r}
 ( vb <- vbFuns(param="Typical") )
 ```
+
+
+Then once we have set that as the function we want to use, we can write a wrapper around it that will take input length and age data, some reasonable parameter starting points, and some minimum number of observations that we set to make sure groups with very few aged fish don't break the workflow.
 
 
 ```{r}
@@ -152,7 +200,8 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
   # Don't run on fewer than a minimum number of obervations
   num_aged <- nrow(length_age_dat)
   if(num_aged < min_obs){
-    na_df <- data.frame("Linf" = NA, "K" = NA, "t0" = NA, "n_aged" = num_aged)
+    na_df <- data.frame("Linf" = NA, "K" = NA, "t0" = NA, "n_aged" = num_aged, 
+                        "len_age_1" = NA, "len_age_2" = NA, "len_age_3" = NA)
     return(na_df)
   }
   
@@ -163,13 +212,17 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
   
   # Access parameters with coef()
   vbert_coef <- as.data.frame(t(coef(vbert_fit))) %>% 
-    mutate(n_aged = num_aged)
+    mutate(n_aged = num_aged,
+           len_age_1 = Linf * (1  - exp(-1 * K * (1 - t0))),
+           len_age_2 = Linf * (1  - exp(-1 * K * (2 - t0))),
+           len_age_3 = Linf * (1  - exp(-1 * K * (3 - t0))))
   return(vbert_coef)
   
   
 }
 ```
 
+This next function is a little redundant, but makes it easier to use `purrr::map` and repeat the estimations for each species: 
 
 
 ```{r}
@@ -189,6 +242,7 @@ species_vonbert <- function(comname, split_col, min_obs){
 }
 ```
 
+Once everything is prepped we can then fun the von Bert parameter estimation for all the species we are interested using the desired groups.
 
 ```{r}
 
@@ -198,6 +252,8 @@ species_coef <- vonbert_species %>%
 ```
 
 ##  Plotting Coefficients  {.tabset .tabset-pills}
+
+Since the table of coefficients is somewhat simple here is a function to select a species, the x_column to use (corresponding to the time grouping), and the name of the coefficient to plot.
 
 ```{r}
 # pick species and coefficients
@@ -209,9 +265,11 @@ plot_vonbert_coef <- function(comnames, x_col, coef_name){
     coef_name,
     Linf = "Asymptotic Max Length (cm)",
     K = "Body Growth Coefficient (K)",
-    t0 = "t0",
-    n_aged = "Number Aged"
-  )
+    t0 = "Hypothetical Age of Zero Size (t0)",
+    n_aged = "Number Aged",
+    len_age_1 = "Age 1 length (cm)",
+    len_age_2 = "Age 2 length (cm)",
+    len_age_3 = "Age 3 length (cm)")
   species_coef %>% 
     filter(comname %in% comnames) %>% 
     ggplot(aes(y = {{coef_sym}}, x = {{x_col_sym}})) +
@@ -226,12 +284,14 @@ plot_vonbert_coef <- function(comnames, x_col, coef_name){
 ```
 
 
+Using that function we can now take a look at the coefficients for any given species/coefficient combination.
+
 ### L-infinity
 
 ```{r}
 
 
-plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "red hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "acadian redfish"), 
                   x_col = "five_yr_group", 
                   coef_name = "Linf")
 
@@ -243,7 +303,7 @@ plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "red hake"),
 
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
                   x_col = "five_yr_group", 
                   coef_name = "K")
 
@@ -253,7 +313,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"),
 ### t0
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
                   x_col = "five_yr_group", 
                   coef_name = "t0")
 ```
@@ -261,12 +321,34 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"),
 ### Number Aged
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "red hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
                   x_col = "five_yr_group", 
                   coef_name = "n_aged")
 ```
 
+### Age 1 Size
 
+```{r}
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_1")
+```
+
+### Age 2 Size
+
+```{r}
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_2")
+```
+
+### Age 3 Size
+
+```{r}
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_3")
+```
 
 ## Tracking Cohorts
 
@@ -373,5 +455,9 @@ ridge_plots[["haddock"]]
 ```
 
 
+## Calculate sizes at age
+
+
+## Export Size at Age and Coefficients
 
 `r insert_gmri_footer()`

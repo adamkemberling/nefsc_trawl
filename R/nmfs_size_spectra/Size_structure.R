@@ -1,7 +1,7 @@
 
 
 ####  Size Structure of Haddock, Cod and Species Guilds
-
+# uses weighted average of biomass / stratified total abundance
 
 ####  Load Packages  ####
 library(targets)

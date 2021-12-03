@@ -3,16 +3,19 @@
 
 
 ####  Load Packages
-library(targets)
-library(tarchetypes)
-library(here)
-library(janitor)
-library(sf)
-library(tidyverse)
-library(gmRi)
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(targets))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(scales))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(readr))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(patchwork))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(tarchetypes))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(here))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(janitor))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(sf))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(tidyverse))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(gmRi))))
 
 ####  Resource Paths  
-oisst_path <- gmRi::box_path(box_group = "RES_Data", 
+oisst_path <- gmRi::box_path(box_group = "res", 
                              subfolder = "/OISST/oisst_mainstays")
 
 ####  Build code and stratification functions  ####
@@ -62,7 +65,7 @@ list(
              season = str_to_title(season))),
   
 
-  #####  2. Prep Size Spectrum Groups  #####
+  #####  2. Size Spectrum Prep  #####
   
   # Prep the minimum size (wmin) and-
   # the maximum size (wmax) in grams for all the data
@@ -77,6 +80,11 @@ list(
   ),
   
   
+  # Format the group labels and add discrete size groups for length/width
+  tar_target(
+    name = nefsc_1g_labelled,
+    command = size_bin_formatting(nefsc_1g)
+  ),
   
   
   
@@ -85,7 +93,9 @@ list(
   
   # Assing the bin structure to the lw data
   tar_target(nefsc_1g_binned,
-             assign_log10_bins(nefsc_1g)),
+             assign_log10_bins(nefsc_1g_labelled)),
+  
+  
   
   # Run the different groupings through the slope estimation
   tar_target(nmfs_log10_slopes,
@@ -102,7 +112,7 @@ list(
   # Run the mle calculation on stratified abundance
   tar_target(
     name = strat_total_mle_results,
-    command = ss_slopes_all_groups(nefsc_1g, 
+    command = ss_slopes_all_groups(nefsc_1g_labelled, 
                                    min_weight_g = 1, 
                                    abundance_vals = "stratified")),
   tar_target(size_spectrum_indices,
@@ -174,7 +184,7 @@ list(
   
   
   
-  ##### 7. Mean Sizes  ####
+  ##### 7. Mean Size Change  ####
   
   # "
   # Time series of mean length and weight will be constructed for the fish 
@@ -203,19 +213,31 @@ list(
     annual_individual_sizes,
     group_size_metrics(size_data = rename(as.data.frame(nefsc_stratified), Year = est_year),
                        .group_cols = c("comname", "Year", "season"),
-                       abund_vals = "stratified"))
+                       abund_vals = "stratified")),
+  
+  
+  
+  #####  8. Growth Characteristics  ####
+  
+  # starts with "survdat_biological"
+  # ref code: size_at_age_exploration.Rmd
+  
+  tar_target(vonbert_growth_coef,
+             estimate_vonbert_coef(survdat_biological))
   
   
   
   
-  # ##### 8. Assemble Table of indices  ####
+  
+  
+  # ##### 9. Assemble Table of indices  ####
   # tar_target(
   #   group_community_indicators,
   #   full_join(mean_sizes_ss_groups, strat_total_mle_results)
   
   
   
-  ##### 9. Chronological Clustering  ####
+  ##### 10. Chronological Clustering  ####
   # "
   # Based on these indicators, we will identify several multi-year “stanzas” 
   # with contrasting ecosystem conditions. These will be identified objectively
@@ -249,118 +271,6 @@ list(
 ####______####
 ####  Additional non-necessary steps  ####
 
-
-
-#####  x.  Misc.  ####
-
-# tar_target(
-#   name = bio_stratified,
-#   command = add_area_stratification(survdat_bio_lw, include_epu = F) %>% 
-#     rename(Year = est_year) %>% 
-#     mutate(season = str_to_title(season))),
-
-# # Run the mle calculation on survey abundance
-# tar_target(
-#   name = nmfs_group_mle_ss,
-#   command = ss_slopes_all_groups(nefsc_1g, 
-#                                 min_weight_g = 1, 
-#                                 abundance_vals = "observed")),
-
-# # Run the mle calculation on stratified mean abundance, should ignore tow area
-# tar_target(
-#   name = strat_mean_mle_ss,
-#   command = ss_slopes_all_groups(nefsc_1g,
-#                                 min_weight_g = 1,
-#                                 abundance_vals = "strat_mean")),
-
-
-
-
-
-##### x. Process LME Group SS  #### 
-
-
-# # Individual Years
-# tar_target(
-#   name = stratified_annual_ss,
-#   command = group_mle_slope_estimate(wmin_grams = nefsc_1g,
-#                                     min_weight_g = 1, 
-#                                     abundance_vals = "stratified",
-#                                     .group_cols = c("Year"))),
-# 
-# # Specific Areas
-# tar_target(
-#   name = stratified_area_ss,
-#   command = group_mle_slope_estimate(wmin_grams = nefsc_1g,
-#                                     min_weight_g = 1, 
-#                                     abundance_vals = "stratified",
-#                                     .group_cols = c("survey_area"))),
-# # Seasons
-# tar_target(
-#   name = stratified_season_ss,
-#   command = group_mle_slope_estimate(wmin_grams = nefsc_1g,
-#                                     min_weight_g = 1, 
-#                                     abundance_vals = "stratified",
-#                                     .group_cols = c("season"))),
-# # Years and seasons
-# tar_target(
-#   name = stratified_yr_season_ss,
-#   command = group_mle_slope_estimate(wmin_grams = nefsc_1g,
-#                                     min_weight_g = 1,
-#                                     abundance_vals = "stratified",
-#                                     .group_cols = c("Year", "season"))),
-# # Years and areas
-# tar_target(
-#   name = stratified_yr_area_ss,
-#   command = group_mle_slope_estimate(wmin_grams = nefsc_1g,
-#                                     min_weight_g = 1,
-#                                     abundance_vals = "stratified",
-#                                     .group_cols = c("Year", "survey_area"))),
-# # Year Season Area
-# tar_target(
-#   name = stratified_decade_area_ss,
-#   command = group_mle_slope_estimate(wmin_grams = nefsc_1g,
-#                                     min_weight_g = 1,
-#                                     abundance_vals = "stratified",
-#                                     .group_cols = c("Year", "survey_area", "season"))),
-
-
-# # Preparing Maine + NH Survey Data
-# # name matching super broken 4/8/2021
-# tar_target(
-#   name = menh_lens,
-#   command = load_menh_data(data_option = "length frequencies") ),
-# tar_target(
-#   name = menh_weights,
-#   command = add_lw_to_menh(menh_length_frequencies = menh_lens) ),
-# 
-# # menh
-# tar_target(
-#   name = menh_filtered_lens,
-#   command = min_length_cutoff(trawl_lens = menh_weights, cutoff_cm = 1) ),
-# tar_target(
-#   name = menh_databin,
-#   command = prep_sizeSpectra_data(lw_trawl_data = menh_filtered_lens) )
-
-
-# # Global plot limits for individual size distributions
-# tar_target(name = isd_plot_lims,
-#            command = c( 0, max(nefsc_1g$wmax) )),
-
-
-# Size Spectrum Group Comparisons
-# tar_target(factor_groupings,
-#            command = list(
-#              "All Data"            = c("All Data"),
-#              "Annual slopes"       = c("Year"),
-#              "Years and seasons"   = c("Year", "season"),
-#              "Years and regions"   = c("Year", "survey_area"),
-#              "Seasons Overall"     = c("season"),
-#              "Seasons and Regions" = c("season", "survey_area"),
-#              "Regions Overall"     = c("survey_area"),
-#              "Years, Regions, and Seasons" = c("Year", "season", "survey_area") )),
-# 
-# tar_target(group_sizespectra_slopes, w + x, pattern = map(w, x)),
 
 
 

@@ -34,12 +34,18 @@ library(ggstream)
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
 
-theme_set(theme_minimal() + 
-            theme(legend.position = "bottom", 
-                  plot.title = element_text(hjust = 0.5),
-                  axis.line.x = element_line(),
-                  axis.ticks.x = element_line(), 
-                  axis.text = element_text(size = 11)))
+# Set theme  
+theme_set(theme_bw() +
+            theme(legend.position = "bottom",
+                  strip.text = element_text(color = "white", 
+                                            face = "bold"),
+                  strip.background = element_rect(
+                    color = "white", 
+                    fill = "#36454F", 
+                    size = 0.75, 
+                    linetype="solid"), 
+            legend.background = element_rect(fill = "transparent", 
+                                             color = "black")))
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -84,14 +90,14 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 
 # 1. Biological data used as input
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_1g))            
-
-# quick little format
-nefsc_1g <- nefsc_1g %>% 
-  mutate(fishery = case_when(
-    fishery == "com" ~ "Commercially Targeted",
-    fishery == "nc" ~ "Not Commercially Targeted",
-    TRUE ~ "Not Labelled"))
+                tar_load(nefsc_1g_labelled))            
+nefsc_size_bins <- nefsc_1g_labelled
+# # quick little format
+# nefsc_1g <- nefsc_1g %>% 
+#   mutate(fishery = case_when(
+#     fishery == "com" ~ "Commercially Targeted",
+#     fishery == "nc" ~ "Not Commercially Targeted",
+#     TRUE ~ "Not Labelled"))
 ```
 
 
@@ -100,57 +106,57 @@ nefsc_1g <- nefsc_1g %>%
 The biological data was filtered prior to doing the size spectrum analysis so that any individuals smaller than 1g were removed. Then to dig into where the biomass andd abundances were distributed I've made some size bins to help tease out what the community looks like.
 
 ```{r}
-# Cut up discrete length and weight bins
-nefsc_size_bins <- nefsc_1g %>% 
-  mutate(
-    length_bin = case_when(
-      length_cm <= 5   ~ "0 - 5cm",
-      length_cm <= 10  ~ "5 - 10cm",
-      length_cm <= 25  ~ "10 - 25cm",
-      length_cm <= 50  ~ "25 - 50cm",
-      length_cm <= 75  ~ "50 - 75cm",
-      length_cm <= 100 ~ "75 - 100cm",
-      length_cm >= 100 ~ ">= 100cm"),
-    length_bin = factor(length_bin, levels = c(
-      "0 - 5cm", "5 - 10cm", "10 - 25cm",
-      "25 - 50cm", "50 - 75cm", "75 - 100cm", ">= 100cm")))
-
-
-# Weight bins
-nefsc_size_bins <- nefsc_size_bins %>% 
-  mutate(
-    weight_bin = case_when(
-      ind_weight_kg <= 0.001 ~ "0 - 1g",
-      ind_weight_kg <= 0.005 ~ "1 - 5g",
-      ind_weight_kg <= 0.010 ~ "5 - 10g",
-      ind_weight_kg <= 0.050 ~ "10 - 50g",
-      ind_weight_kg <= 0.100 ~ "50 - 100g",
-      ind_weight_kg <= 0.500 ~ "100 - 500g",
-      ind_weight_kg <= 1.000 ~ ".5 - 1kg",
-      ind_weight_kg <= 5.000 ~ "1 - 2kg",
-      ind_weight_kg <= 5.000 ~ "2 - 5kg",
-      ind_weight_kg <= 10.00 ~ "5 - 10kg",
-      ind_weight_kg >= 10.00 ~ ">= 10kg" ),
-    weight_bin = factor(weight_bin, levels = c(
-      "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
-      "50 - 100g", "100 - 500g", ".5 - 1kg",
-      "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
-
-
-# Rename the functional groups
-nefsc_size_bins <- nefsc_size_bins %>% 
-  mutate(
-    spec_class = case_when(
-      spec_class == "gf"  ~ "Groundfish",
-      spec_class == "pel" ~ "Pelagic",
-      spec_class == "dem" ~ "Demersal",
-      spec_class == "el"  ~ "Elasmobranch",
-      spec_class == "<NA>" ~ "NA"))
-
-# Make regions go N->S
-nefsc_size_bins <- nefsc_size_bins %>% 
-  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
-         season = factor(season, levels = c("Spring", "Fall")))
+# # Cut up discrete length and weight bins
+# nefsc_size_bins <- nefsc_1g %>% 
+#   mutate(
+#     length_bin = case_when(
+#       length_cm <= 5   ~ "0 - 5cm",
+#       length_cm <= 10  ~ "5 - 10cm",
+#       length_cm <= 25  ~ "10 - 25cm",
+#       length_cm <= 50  ~ "25 - 50cm",
+#       length_cm <= 75  ~ "50 - 75cm",
+#       length_cm <= 100 ~ "75 - 100cm",
+#       length_cm >= 100 ~ ">= 100cm"),
+#     length_bin = factor(length_bin, levels = c(
+#       "0 - 5cm", "5 - 10cm", "10 - 25cm",
+#       "25 - 50cm", "50 - 75cm", "75 - 100cm", ">= 100cm")))
+# 
+# 
+# # Weight bins
+# nefsc_size_bins <- nefsc_size_bins %>% 
+#   mutate(
+#     weight_bin = case_when(
+#       ind_weight_kg <= 0.001 ~ "0 - 1g",
+#       ind_weight_kg <= 0.005 ~ "1 - 5g",
+#       ind_weight_kg <= 0.010 ~ "5 - 10g",
+#       ind_weight_kg <= 0.050 ~ "10 - 50g",
+#       ind_weight_kg <= 0.100 ~ "50 - 100g",
+#       ind_weight_kg <= 0.500 ~ "100 - 500g",
+#       ind_weight_kg <= 1.000 ~ ".5 - 1kg",
+#       ind_weight_kg <= 5.000 ~ "1 - 2kg",
+#       ind_weight_kg <= 5.000 ~ "2 - 5kg",
+#       ind_weight_kg <= 10.00 ~ "5 - 10kg",
+#       ind_weight_kg >= 10.00 ~ ">= 10kg" ),
+#     weight_bin = factor(weight_bin, levels = c(
+#       "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
+#       "50 - 100g", "100 - 500g", ".5 - 1kg",
+#       "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
+# 
+# 
+# # Rename the functional groups
+# nefsc_size_bins <- nefsc_size_bins %>% 
+#   mutate(
+#     spec_class = case_when(
+#       spec_class == "gf"  ~ "Groundfish",
+#       spec_class == "pel" ~ "Pelagic",
+#       spec_class == "dem" ~ "Demersal",
+#       spec_class == "el"  ~ "Elasmobranch",
+#       spec_class == "<NA>" ~ "NA"))
+# 
+# # Make regions go N->S
+# nefsc_size_bins <- nefsc_size_bins %>% 
+#   mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+#          season = factor(season, levels = c("Spring", "Fall")))
 
 ```
 
@@ -696,7 +702,7 @@ nefsc_size_bins %>%
 
 Community size spectrum slopes were estimated using 2 methods for comparison. An individual size distribution approach ISD developed by A. Edwards and using a more traditional method of binning biomass information into bins before fitting a slope to those bins.
 
-The first method usezthe {sizeSpectra} package which were shown to be the most accurate when using simulated data compared to any of the binning methods. 
+The first method uses the {sizeSpectra} package which were shown to be the most accurate when using simulated data compared to any of the binning methods. 
 
 The second method uses binned abundances, with bodymass bins of width 0.5 on a log10 scale, so 10^0 - 10^0.5 etc. These bins were then normalized by dividing the abundances by the bin width to account for the increasing bin width.
 

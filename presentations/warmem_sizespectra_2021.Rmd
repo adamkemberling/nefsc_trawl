@@ -1,0 +1,1073 @@
+---
+title: "2021 WARMEM Size Spectra Update"
+author: "Adam A. Kemberling"
+institution: "Gulf of Maine Research Institute"
+updated: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      seal: FALSE
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+background-image: url(libs/slide_templates/GMRI_template_slide1.png)
+background-size: cover
+class: center middle inverse
+
+
+# 2021 WARMEM Size Spectra Update
+#### Adam A. Kemberling
+##### Gulf of Maine Research Institute
+updated: `r Sys.Date()`
+
+```{r setup, include=FALSE}
+
+# Chunk Options
+knitr::opts_chunk$set(eval = TRUE,
+                      echo = F, 
+                      message = F, 
+                      warning = F, 
+                      comment = "",
+                      dpi = 180,
+                      fig.height = 4,
+                      fig.width = 6,
+                      fig.align = "center")
+
+# widget controls
+options(htmltools.dir.version = FALSE,
+        htmltools.preserve.raw = FALSE)
+
+
+# Widget sizing
+htmlwidgets::sizingPolicy(viewer.suppress = TRUE,
+             knitr.figure = FALSE,
+             browser.fill = FALSE,
+             browser.padding = 75,
+             knitr.defaultWidth = 500,
+             knitr.defaultHeight = 400, 
+             viewer.defaultWidth = 500, 
+             viewer.defaultHeight = 400)
+
+
+# libraries
+library(gmRi)
+library(targets)
+library(tidyverse)
+library(gt)
+library(ggstream)
+library(patchwork)
+library(ggwaffle)
+library(scales)
+library(reldist)
+
+# Set theme  
+theme_set(theme_bw() +
+            theme(legend.position = "bottom",
+                  strip.text = element_text(color = "white", 
+                                            face = "bold"),
+                  strip.background = element_rect(
+                    color = "white", 
+                    fill = "#36454F", 
+                    size = 0.75, 
+                    linetype="solid"), 
+            legend.background = element_rect(fill = "transparent", 
+                                             color = "black")))
+```
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+# Intro:
+
+ * This slide deck covers the major findings of the size-spectrum analyses performed on NMFS trawl data.   
+ 
+ * The aim is to present current progress for feedback on how to bring the analysis together for a final write up.
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Research Background:
+
+**From the Proposal:**
+
+In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment. This leads to our second hypothesis: 
+
+ > H2. Warming alters the community through the direct influence of temperature on metabolism, growth, and population productivity. 
+
+We expect that changes in growth rates, especially in immature fish, will be the first response in the community to increases in temperature and may be especially prominent during the heatwaves. After several years of warm conditions, the size of adults will decline. 
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Research Objectives:
+
+> For each region, we will develop several time series indicators: a) Community composition metrics, b) Mean size of the aggregate community and key functional groups, c) Slope and intercept of the size spectrum. These indicators will allow us to explore the three hypotheses and will support the size-spectrum and dynamic food-web modeling. 
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Trawl Data Processing
+
+**<u>Fish data:</u>** 
+Data on fish abundance, size, and age come from the bottom trawl surveys conducted by the Northeast Fisheries Science Center (NEFSC) in the autumn (since 1963) and spring (since 1968). 
+
+There are two main schema that are used for different analysis steps:
+
+```{r, results='asis'}
+withr::with_dir(
+  rprojroot::find_root('_targets.R'), 
+  tar_visnetwork(
+    allow = c("gmri_survdat_prep", "add_lw_info", "add_area_stratification", 
+              "survdat_clean", "survdat_lw", "nefsc_stratified", "wmin_grams",
+              "nefsc_1g", #"nefsc_1g_labelled", #"size_bin_formatting",
+              "annual_individual_sizes",
+              "survdat_biological", "vonbert_growth_coef")))
+
+```
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Species Used for Size Spectrum & Average Length/Weight
+
+For size-based analyses it was necessary to limit the data to species that had suitable weight at length information. The following species are those that are included in any of the size spectrum analyses
+
+
+
+```{r}
+# load the labelled size bin data
+withr::with_dir(
+  rprojroot::find_root('_targets.R'), 
+  tar_load("nefsc_1g_labelled"))
+
+# format factors
+nefsc_size_bins <- nefsc_1g_labelled  %>% 
+    mutate(
+      survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+      season = factor(season, levels = c("Spring", "Fall")))
+
+# # Display table of whichever specis fall into the categories
+# nefsc_size_bins %>% 
+#   distinct(comname, scientific_name, spec_class) %>% 
+#   rename(`Common Name` = comname, 
+#          `Scientific Name` = scientific_name,
+#          `Functional Group` = spec_class) %>% 
+#   arrange(`Functional Group`, `Common Name`) %>% 
+#   DT::datatable(filter = "top", rownames = FALSE)
+
+species_used <- nefsc_size_bins %>% distinct(comname) %>% pull(comname)
+```
+
+**Number of species =** `r length(species_used)` 
+
+
+*`r pander::pander(species_used)`*
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### General Trends
+
+For any general trends in abundance, biomass, size we used size-specific **area-stratified abundances** to account for the difference in stratum area and effort that accompany the sampling design.
+
+
+These are then totaled/averaged as needed for the regions/seasons/years of interest:
+
+```{r}
+
+
+# Function to process summaries for various factor combinations
+get_group_summaries <- function(size_bin_data, ...){
+  
+  # Do some grouping to get totals
+  group_totals <- size_bin_data %>% 
+    group_by(...) %>% 
+    summarise(total_survey_catch = sum(numlen, na.rm = T),
+              total_lw_bio = sum(sum_weight_kg, na.rm = T),
+              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+  
+  # length bins
+  group_lengths <- size_bin_data %>% 
+    group_by(..., length_bin) %>% 
+    summarise(lenbin_survey_catch = sum(numlen),
+              lenbin_lw_bio       = sum(sum_weight_kg),
+              lenbin_strat_abund  = sum(strat_total_abund_s),
+              lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
+      perc_lw_bio       = (lenbin_lw_bio - total_lw_bio) * 100,
+      perc_strat_abund  = (lenbin_strat_abund - total_strat_abund) * 100,
+      perc_strat_lw_bio = (lenbin_strat_lw_bio - total_strat_lw_bio) * 100)
+  
+  # weight bins
+  group_weights <- size_bin_data %>% 
+    group_by(..., weight_bin) %>% 
+    summarise(wtbin_survey_catch = sum(numlen),
+              wtbin_lw_bio       = sum(sum_weight_kg),
+              wtbin_strat_abund  = sum(strat_total_abund_s),
+              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+
+return(list("length_bins" = drop_na(group_lengths),
+            "weight_bins" = drop_na(group_weights)))
+}
+```
+
+
+
+```{r}
+# make a column that contains all data
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(group_col = "All Data") 
+
+# run summary
+all_data_summs <- get_group_summaries(nefsc_size_bins, Year, group_col)
+```
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Length Patterns
+
+
+```{r}
+# Stream Plots
+
+len_abund_p <- ggplot(all_data_summs$length_bins, aes(Year, lenbin_strat_abund, fill = length_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Abundance", fill = "Length Bin") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(
+    title.position = "top", 
+    title.hjust = 0.5))
+
+# Length Bins
+len_bio_p <- ggplot(all_data_summs$length_bins, aes(Year, lenbin_strat_lw_bio, fill = length_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Biomass", fill = "Length Bin") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+
+# Plot it
+(len_abund_p | len_bio_p) + plot_layout(guides = "collect")  + plot_annotation( title = "Distribution of Abundance and Biomass: Length bins")
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Bodymass Patterns
+
+
+```{r}
+# Weight Bins
+wt_abund_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Abundance", 
+      fill = "Weight Bin") +
+  theme(axis.text.y = element_blank())  +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+wt_bio_p <- ggplot(all_data_summs$weight_bins, aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_wrap(~group_col) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Biomass", fill = "Weight Bin") +
+  theme(axis.text.y = element_blank()) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+
+# plot them together
+(wt_abund_p | wt_bio_p) + plot_layout(guides = "collect") + plot_annotation( title = "Distribution of Abundance and Biomass: Bodymass bins")
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Regional Patterns (1 of 2)
+
+```{r}
+# make a column that contains all data
+all_regions <- nefsc_size_bins %>% 
+  mutate(group_col = str_c(survey_area, "-", spec_class))
+
+# run summary
+all_region_summs <- get_group_summaries(all_regions, Year, group_col) %>% 
+  map(~ separate(.x, col = group_col, sep = "-", into = c("survey_area", "spec_class")))
+```
+
+
+```{r}
+# Weight Bins
+wt_abund_p <- ggplot(all_region_summs$weight_bins, aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_grid(survey_area ~ spec_class) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", y = "Stratified Total Abundance", 
+       title = "Distribution of Stratified Abundance: Bodymass bins", 
+       fill = "Weight Bin") +
+  theme(axis.text.y = element_blank(), 
+        axis.text.x = element_text(angle = 45, hjust = 1))  +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+
+# plot them together
+wt_abund_p
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Regional Patterns (2 of 2)
+
+
+```{r}
+wt_bio_p <- ggplot(all_region_summs$weight_bins, aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+  geom_stream(type = "ridge", color = "gray80", size = 0.1) +
+  scale_fill_gmri() +
+  facet_grid(survey_area ~ spec_class) +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "", 
+       y = "Stratified Total Biomass", 
+       title = "Distribution of Stratified Biomass: Bodymass bins", 
+       fill = "Weight Bin") +
+  theme(axis.text.y = element_blank(), 
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5))
+
+wt_bio_p
+
+```
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Noteable Species (Atlantic Cod)
+
+
+```{r}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_stratified))
+
+
+# Do some text formatting
+nefsc_stratified <- nefsc_stratified %>% 
+  mutate(
+    id = as.character(id),
+    spec_class = case_when(
+      spec_class == "dem" ~ "Demersal",
+      spec_class == "gf" ~ "Groundfish",
+      spec_class == "pel" ~ "Pelagic",
+      spec_class == "el" ~ "Elasmobranch",
+      TRUE ~ "Unclassified"),
+    season = factor(season, levels = c("Spring", "Fall")),
+    Year = fct_rev(factor(est_year)),
+    decade = floor_decade(est_year),
+    decade = fct_rev(decade))
+
+
+```
+
+
+```{r}
+####  Single Species Plot Functions  ####
+
+
+# Plot stratified abundance and changes in size
+plot_species_dist <- function(comname_choice){
+  
+  species_dat <- filter(nefsc_stratified, comname == comname_choice)
+  
+  # Get yearly totals
+  species_summs <- species_dat %>% 
+    group_by(Year, length_cm) %>% 
+    summarise(n_lengths = n(),
+              survey_catch = sum(numlen_adj),
+              survey_bio = sum(biom_per_lclass),
+              strat_catch = sum(strat_total_abund_s),
+              strat_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    mutate(yr = as.numeric(as.character(Year)))
+  
+  # Abundances
+  p1 <- species_summs  %>% 
+    group_by(yr) %>% 
+    summarise(strat_catch = sum(strat_catch)/1e6, .groups = "drop") %>% 
+    ggplot(aes(x = yr, y = strat_catch)) +
+      # geom_segment(aes(xend = yr, yend = 0)) + 
+      geom_ribbon(aes(ymin = 0, ymax = strat_catch, fill = "strat_abund"), alpha = 0.4, show.legend = FALSE) +
+      geom_point(aes(color = "strat_abund"), show.legend = FALSE) + 
+      geom_line(aes(color = "strat_abund"), linetype = 3, size = 0.3, show.legend = FALSE) +
+      scale_color_gmri() +
+      scale_fill_gmri() +
+      scale_y_continuous(labels = comma_format()) +
+      labs(y = "Stratified Abundance\n(millions)", title = str_to_title(comname_choice)) +
+      theme(axis.title.x = element_blank())
+  
+  # Biomass
+  p2 <- species_summs  %>% 
+    group_by(yr) %>% 
+    summarise(strat_bio = sum(strat_bio)/1e6, .groups = "drop") %>% 
+    ggplot(aes(x = yr, y = strat_bio)) +
+      # geom_segment(aes(xend = yr, yend = 0)) + 
+    geom_ribbon(aes(ymin = 0, ymax = strat_bio, fill = "strat_bio"), alpha = 0.4, show.legend = FALSE) +
+      geom_point(aes(color = "strat_bio"), show.legend = FALSE) + 
+      geom_line(aes(color = "strat_bio"), linetype = 3, size = 0.3, show.legend = FALSE) +
+      scale_color_gmri() +
+      scale_fill_gmri() +
+      scale_y_continuous(labels = comma_format()) +
+      labs(y = "Stratified Biomass\n(million kg)") +
+      theme(axis.title.x = element_blank())
+  
+  # Mean and 95% size
+  size_summaries <- species_summs %>% 
+    group_by(yr) %>% 
+    summarise(mean_len = weighted.mean(length_cm, strat_catch),
+              max_len = max(length_cm), 
+              len_95 = wtd.quantile(length_cm, q = 0.95, weight = strat_catch, na.rm = T),
+              len_75 = wtd.quantile(length_cm, q = 0.75, weight = strat_catch, na.rm = T),
+              len_25 = wtd.quantile(length_cm, q = 0.25, weight = strat_catch, na.rm = T),
+              len_05 = wtd.quantile(length_cm, q = 0.05, weight = strat_catch, na.rm = T),
+              .groups = "drop")
+  
+  # scaling and displaying distribution
+  p3 <- ggplot(size_summaries) +
+    geom_point(aes(x = yr, y = mean_len, color = "Mean Length (cm)")) +
+    geom_smooth(aes(yr, max_len, color = "Max Length (cm)"), formula = y ~ s(x, bs = "cs", k = 14), method = "gam", se = F) +
+    geom_point(aes(x = yr, y = max_len, color = "Max Length (cm)")) +
+    geom_smooth(aes(yr, mean_len, color = "Mean Length (cm)"), formula = y ~ s(x, bs = "cs", k = 14), method = "gam", se = F) +
+    geom_point(aes(x = yr, y = len_05, color = "05pct. Length (cm)")) +
+    geom_smooth(aes(yr, len_05, color = "05pct. Length (cm)"), formula = y ~ s(x, bs = "cs", k = 14), method = "gam", se = F) +
+    geom_point(aes(x = yr, y = len_25, color = "25pct. Length (cm)")) +
+    geom_smooth(aes(yr, len_25, color = "25pct. Length (cm)"), formula = y ~ s(x, bs = "cs", k = 14), method = "gam", se = F) +
+    geom_point(aes(x = yr, y = len_75, color = "75pct. Length (cm)")) +
+    geom_smooth(aes(yr, len_75, color = "75pct. Length (cm)"), formula = y ~ s(x, bs = "cs", k = 14), method = "gam", se = F) +
+    geom_point(aes(x = yr, y = len_95, color = "95pct. Length (cm)")) +
+    geom_smooth(aes(yr, len_95, color = "95pct. Length (cm)"), formula = y ~ s(x, bs = "cs", k = 14), method = "gam", se = F) +
+    labs(x = "", y = "Length (cm)", color = "") +
+    scale_color_gmri() +
+    theme(legend.position = "bottom")
+  
+  
+  p_out <- (p1 / p2 / p3) 
+  return(p_out)
+}
+```
+
+
+```{r}
+# Test
+plot_species_dist("atlantic cod")
+```
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Noteable Species (Haddock)
+
+```{r}
+plot_species_dist("haddock")
+```
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Noteable Species (Spiny Dogfish)
+
+```{r}
+plot_species_dist("spiny dogfish")
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Noteable Species (Acadian Redfish)
+
+```{r}
+plot_species_dist("acadian redfish")
+```
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Changes in Average Size
+
+Using all the catch data available, and the estimated weights at length, we can infer these changes in the average body weight across the different species.
+
+```{r, fig.height=2}
+# Load the bodysize metrics - species year and survey
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(annual_individual_sizes))
+#glimpse(annual_individual_sizes)
+
+# Track changes in individual biomass using the weighted sizes
+weight_changes <- annual_individual_sizes %>% 
+  group_by(species_season = str_c(comname, season, sep = " - ")) %>% 
+  split(.$species_season) %>% 
+  map_dfr(.f = function(spec_season_dat){
+    
+    # Build linear regression for body mass
+    weight_lm <- lm(mean_wt_kg ~ as.numeric(Year), data = spec_season_dat)
+    mod_tidy <- broom::tidy(weight_lm)
+    weight_trend <- mod_tidy$estimate[2]
+    weight_signif <-  mod_tidy$p.value[2]
+    
+    #  Linear model for length
+    length_lm <- lm(mean_len_cm ~ as.numeric(Year), data = spec_season_dat)
+    len_tidy <- broom::tidy(length_lm)
+    length_trend <- len_tidy$estimate[2]
+    length_signif <-  len_tidy$p.value[2]
+    
+    
+    # put in a table
+    mean_size_dat <- data.frame(
+      "weight_trend" = weight_trend,
+      "weight_signif" = weight_signif,
+      "length_trend" = length_trend,
+      "length_signif" = length_signif)
+    
+  }, .id = "grouping")
+
+
+
+
+# clean up the group names and format for waffle plot
+weight_changes <- weight_changes %>% 
+  mutate(comname = sub(" - .*", "", grouping),
+         season = sub(".* - ", "", grouping),
+         weight_change = case_when(
+           weight_signif >= 0.05 ~ "No Change",
+           weight_trend < 0 ~ "Decreasing",
+           weight_trend > 0 ~ "Increasing"),
+          length_change = case_when(
+           length_signif >= 0.05 ~ "No Change",
+           length_trend < 0 ~ "Decreasing",
+           length_trend > 0 ~ "Increasing"),
+         season = factor(season, levels = c("Spring", "Fall"))) 
+
+
+
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Changes in Average Seasonal Weight
+
+```{r, fig.height=2}
+# Count changes for label?
+count(weight_changes, weight_change) %>% 
+  setNames(c("Change in Avg. Seasonal Weight", "n")) %>% 
+  knitr::kable()
+```
+
+
+```{r, fig.height=2}
+# Waffle plot 
+ggplot(
+  data = waffle_iron(
+    data = weight_changes, 
+    mapping = aes_d(group = weight_change), rows = 5),
+  aes(x, y, fill = group)) +
+  geom_waffle() +
+  scale_fill_gmri() +
+  coord_equal() +
+  theme_void() + 
+  theme(title = element_text(hjust = 0.75),
+        legend.position = "top") +
+  labs(fill = "Change in Avg. Body Weight", caption = "squares indicate relative proportions, not a 1:1 representation")
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Changes in Average Seasonal Length
+
+```{r, fig.height=2}
+# Count changes for label?
+count(weight_changes, length_change) %>% 
+  setNames(c("Change in Avg. Seasonal Length", "n")) %>% 
+  knitr::kable()
+```
+
+
+```{r, fig.height=2}
+# Waffle plot 
+ggplot(
+  data = waffle_iron(
+    data = weight_changes, 
+    mapping = aes_d(group = length_change), rows = 5),
+  aes(x, y, fill = group)) +
+  geom_waffle() +
+  scale_fill_gmri() +
+  coord_equal() +
+  theme_void() + 
+  theme(title = element_text(hjust = 0.75),
+        legend.position = "top") +
+  labs(fill = "Change in Avg. Body Length", caption = "squares indicate relative proportions, not a 1:1 representation")
+```
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Changes in Life History Characteristics
+
+When looking more closely at changes in growth parameters we used the biological dataset, which contains the age data needed to fit length~age relationships over time.
+
+```{r}
+# Show the network
+withr::with_dir(
+  rprojroot::find_root('_targets.R'), 
+  tar_visnetwork(
+    allow = c("gmri_survdat_prep", 
+              "survdat_biological", "vonbert_growth_coef")))
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+
+###  Growth Characteristic Results
+
+For the following seventeen species we have estimated the following life history parameters using the Von Bertalannfy Growth function:
+
+
+```{r}
+# Access Biological Data with {gmRi}
+# nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(survdat_biological))
+nmfs_bio <- survdat_biological
+
+
+
+# Rank species by how many measurements there are
+species_abunds <- nmfs_bio %>% 
+  filter(is.na(age) == FALSE) %>% 
+  count(comname) %>% arrange(desc(n)) # ordered by number measured
+
+# Reorder top 17 alphabetically
+vonbert_species <- sort(species_abunds$comname[1:17])
+```
+
+ **`r pander::pander(vonbert_species)`**
+
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum As Community Indicator
+
+> **<ins>Size spectrum</ins>:**
+
+>The size spectrum provides an alternative way of assessing changes in community structure.  It is typically constructed as the distribution of biomass or abundance as a function of length or weight classes in log-log space.
+
+> This distribution can be described by its <u>slope and intercept</u>.  The slope is considered as an invariant property of unexploited ecosystems that emerges from the scaling of individual-level processes (Guiet et al. 2016b), but variation in the slope has been associated with fishing pressure (Bianchi et al. 2000, Shin et al. 2005) and environmental conditions (Guiet et al. 2016a).  
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum Prep: Starting Data
+
+Starting data used for both methods was the same. A minimum individual biomass of 1g was used to avoid issue with sampling biases for smaller individuals.
+
+Area-stratified total abundances (and their corresponding length-based biomasses) were used to preserve the importance of the sampling design. 
+
+
+```{r}
+# SS and manual bins together
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))   
+
+# Format Columns
+size_spectrum_indices <- size_spectrum_indices  %>% 
+  mutate(season = fct_rev(season),
+         survey_area = factor(survey_area, 
+                              levels = c("GoM", "GB", "SNE", "MAB")),
+         yr = as.numeric(as.character(Year)))
+
+# Pull the group ID for the slopes grouped on year, season, and region
+warmem_group_slopes <- size_spectrum_indices %>% 
+  filter(`group ID`== "single years * season * region")
+
+
+# Or just regions and years
+year_region_slopes <- size_spectrum_indices %>% 
+  filter(`group ID` == "single years * region")
+
+# Or Just the years, Format Columns
+yearly_indices <- size_spectrum_indices  %>% 
+  filter(`group ID` == "single years") %>% 
+  mutate(yr = as.numeric(as.character(Year)),
+         sig_fit = ifelse(l10_sig_strat < 0.05, "Significant", "Non-Significant"))
+```
+
+
+```{r}
+# Show pipeline
+withr::with_dir(
+  rprojroot::find_root('_targets.R'), 
+  tar_visnetwork(
+    allow = c("gmri_survdat_prep", "add_lw_info", "add_area_stratification", 
+              "survdat_clean", "survdat_lw", "nefsc_stratified", "wmin_grams",
+              "nefsc_1g", "nefsc_1g_labelled", 
+              "size_bin_formatting",
+              "prep_sizeSpectra_data", "min_weight_cutoff",
+              #"nefsc_1g_binned", "strat_total_mle_results", "nmfs_log10_slopes",
+              #"log10_ss_all_groups", "ss_slopes_all_groups", 
+              #"size_spectrum_indices"
+              )))
+
+```
+
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum Prep: Methods
+
+Community size spectrum slopes were estimated using 2 methods for comparison. An individual size distribution approach (ISD) & the more traditional method of totaling biomass into bins by size before fitting a slope.
+
+
+```{r}
+withr::with_dir(
+  rprojroot::find_root('_targets.R'), 
+  tar_visnetwork(
+    allow = c(#"gmri_survdat_prep", "add_lw_info", "add_area_stratification", 
+              #"survdat_clean", "survdat_lw", "nefsc_stratified", "wmin_grams",
+              #"nefsc_1g", 
+              "nefsc_1g_labelled", 
+              #"prep_sizeSpectra_data", "min_weight_cutoff",
+              "nefsc_1g_binned", "strat_total_mle_results", 
+              "nmfs_log10_slopes",
+              "log10_ss_all_groups", "ss_slopes_all_groups", 
+              "size_spectrum_indices"
+              )))
+
+```
+
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum Prep: sizeSpectra
+
+The first method uses the {sizeSpectra} package and solves for the *Exponent of Size Spectra* using the un-binned individual size distribution. 
+
+This method uses MLE to solve for the exponent of size spectra assuming a bounded power law distribution, with limits at the minimum size cutoff andd the maximum observed biomass.
+
+```{r}
+# example of ISD plot
+
+# Support functions
+source(here::here("R/support/sizespectra_support.R"))
+
+# Pick area/year/etc.
+plot_yr <- 2000
+plot_area <- "MAB"
+plot_season <- "Spring"
+
+
+# Find the years
+one_year <- warmem_group_slopes %>%
+  filter(survey_area == plot_area,
+         Year == plot_yr, 
+         season == plot_season) %>%
+  split(.$Year)
+
+
+# Find the data
+one_year_dat <- nefsc_size_bins %>% 
+  filter(survey_area == plot_area,
+         Year == plot_yr,
+         season == plot_season) %>% 
+  split(.$Year)
+
+# prep plot data
+isd_prepped <- map(one_year_dat, ~ isd_plot_prep(as.data.frame(.x),
+                                                 stratified_abundance = T,
+                                                 min_weight_g = 1))
+
+
+isd_example <- ggplot_isd(
+  isd_data_prepped = isd_prepped[[as.character(plot_yr)]], 
+  mle_results = one_year[[as.character(plot_yr)]], 
+  abundance_vals = "stratified", 
+  plot_rects = FALSE, 
+  show_pl_fit = TRUE, 
+  group_name = str_c(plot_yr, ", ", plot_season, ", ", plot_area))
+
+isd_example$log10_y
+```
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum Prep: Binning
+
+The second method uses binned abundances, with log10 bodymass bins of width 0.5: ex. 10^0, 10^0.5 etc. These bins are then normalized by dividing by the bin width.
+
+This approach is less sensitive to variations in the internal composition of the size spectrum.
+
+```{r}
+# Example of Binned plot
+# Log10 binning, 0.5 increments on log10 scale
+# assign bins
+l10_assigned <- map(one_year_dat, ~ assign_log10_bins(.x))
+
+# plot bin structure for survey abundance and stratified abundance
+l10_example <- plot_log10_ss(l10_assigned = l10_assigned[[as.character(plot_yr)]]) 
+
+
+
+# Grab just the stratified abundance one
+l10_example[[2]] + labs(title = str_c(plot_yr, ", ", plot_season, ", ", plot_area))
+```
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Overall Size Spectrum Results: All Data (1 of 2)
+
+
+
+```{r}
+
+
+# Plot 3 panels:
+# ISD exponent
+isd_timeline <- ggplot(yearly_indices, aes(yr, b)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "ISD exponent (b)") +
+  theme(axis.text.x = element_blank())
+
+# Normalized Size Spectrum Slope
+slope_timeline <- ggplot(yearly_indices, aes(yr, l10_slope_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  scale_color_gmri() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "Spectrum Slope")
+
+# Size Spectrum Intercept
+int_timeline <- ggplot(yearly_indices, aes(yr, l10_int_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "Spectrum Intercept") +
+  theme(axis.text.x = element_blank())
+
+# Size Spectrum Fit r-squared
+rsq_timeline <- ggplot(yearly_indices, aes(yr, l10_rsqr_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "R-Squared")
+```
+
+
+```{r}
+# Assemble
+isd_timeline / slope_timeline + plot_annotation(title = "Slope vs. Exponent of Size Spectra: All Data")
+```
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+### Overall Size Spectrum Results: All Data (2 of 2)
+
+
+```{r}
+int_timeline / rsq_timeline + plot_annotation(title = "Size Spectrum Slope and R-square: All Data")
+```
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+## Region Groups
+
+Following the same steps as above, size spectrum slopes, intercepts, and exponents of size spectra were processed for a number of factor groups:
+ * Year   
+ * Region   
+ * Season   
+ * Species Guild   
+ * Fishery
+ 
+As a starting point we will look at how the different regions change over time (but other comparisons are available).
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Exponents of Size Spectra (MLE)
+
+
+
+```{r}
+# Plot the sizeSpectra slopes - year*region*season
+(ss_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, b, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Region and Seasonal Variation in Exponents of Size Spectra") 
+)
+```
+
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum Slope
+
+
+
+```{r}
+# plot trends of log10 slopes
+(l10_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, l10_slope_strat, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Slope (b)", 
+       color = "",
+       title = "Region and Seasonal Variation in Size Spectrum Slope"))
+```
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### Size Spectrum Intercept
+
+
+
+
+```{r}
+# plot trends of log10 slopes
+(int_patterns <- warmem_group_slopes %>% 
+  ggplot(aes(yr, l10_int_strat, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = y ~ x, 
+              alpha = 0.2) +
+  facet_grid(survey_area~season) +
+  scale_color_gmri() +
+  labs(x = "", 
+       y = "Size Spectrum Intercept", 
+       color = "",
+       title = "Region and Seasonal Variation in Size Spectrum Intercept")
+)
+```
+
+
+
+
+
+
