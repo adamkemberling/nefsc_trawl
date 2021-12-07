@@ -8,7 +8,7 @@
 
 ## Presentations
 
-[WARMEM 2021 Update](https://adamkemberling.github.io/nefsc_trawl/presentations/Northeast-Trawl-Size-Spectrum.html)
+[WARMEM 2021 Update](https://adamkemberling.github.io/nefsc_trawl/presentations/Northeast_Trawl_Size_Spectrum.html)
 
 
 ## QA/QC Reports

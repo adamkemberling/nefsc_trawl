@@ -98,6 +98,8 @@ background-size: cover
 ## **Background:** Ecosystem Impacts of Warming
 
 
+**From the WARMEM Proposal:**
+
  > #### Warming is the most robust change projected by global climate models (Deser et al. 2010), and most marine ecosystems, including the northwest Atlantic Shelf are projected to experience temperatures that regularly exceed past variability by the middle of the century (Henson et al. 2017, Alexander et al. 2018).
 
 ---
@@ -108,7 +110,29 @@ background-size: cover
 ##  **Background:**  Warming in the NW Atlantic
 
 
-> ####  The warming trend that we have described in the Gulf of Maine and in the northwest Atlantic more broadly provides an opportunity to test these assumptions and to develop a more detailed, mechanistic understanding of how ecosystems respond to rapid warming and to temperature events
+```{r}
+# OISST for all the regions
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(regional_oisst))      
+
+# plot trends of log10 slopes
+(sst_patterns <- regional_oisst %>% 
+  ggplot(aes(yr, sst_anom, color = survey_area)) +
+  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", formula = y ~ x,
+              alpha = 0.2, se = F, linetype = 1) +
+  facet_wrap(~survey_area, ncol = 3) +
+  scale_color_gmri() +
+    theme(legend.position = "none") +
+  labs(x = "", 
+       y = "Mean Temperature Anomaly", 
+       color = "",
+       subtitle = "Regionally Increasing Sea Surface Temperatures",
+       caption = "Data from OISSTv2, climate reference period 1982-2011.")
+)
+```
+
 
 
 ---
@@ -143,6 +167,8 @@ background-size: cover
 ## Impact of Warming on Size Spectrum:
 
 In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment. 
+
+**In the case of the NW Atlantic:** sustained increases in temperature should have a physiological impact on the community.
 
 This leads to our second hypothesis: 
 
@@ -234,27 +260,28 @@ We expect that changes in growth rates, especially in immature fish, will be the
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-## Constructing size spectrum
+## Constructing NMFS Trawl Size Spectrum
 
-The Steps to construct a size spectrum include:   
- 1. Use published weight-at-length relationships to get individual weights for different lengths caught 
- 2. Use area-stratification to estimate stratified abundances at length
- 3. Use stratified abundances at length to estimate size spectra for the study regions (GoM, GB, SNE, MAB)   
-  * Assign bodymass bins on log10 scale of equal width
-  * Total the stratified abundances for each size bin
+The Steps to construct size spectra from the NMFS Trawl Data:   
+ 1. Perform area-stratification to estimate stratified abundances at length
+ 2. Use published weight-at-length relationships to get individual weights for different lengths caught, stratified biomass at length
+ 3. Using stratified abundances, estimate size spectra for the study regions (GoM, GB, SNE, MAB)   
+  * Assign abundances to bodymass bins on log10 scale
+  * Total the stratified abundances for each bin
   * **Normalize** abundances by dividing by the bin-width
-  * Fit size spectrum 
+  * Fit size spectra
 
 
 
 ---
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
-## Starting Data 
+
+## Survey Data Prep
 
 Data on fish abundance, size, and age come from the bottom trawl surveys conducted by the Northeast Fisheries Science Center (NEFSC) in the autumn (since 1963) and spring (since 1968). 
 
-There are two main schema: the "catch" data and the "biological" data
+There are two main datasets the "catch" data and the "biological" data:
 
 ```{r, results='asis'}
 withr::with_dir(
@@ -269,11 +296,24 @@ withr::with_dir(
 ```
 
 
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+## Step 1: Stratified Abundances
+
+Stratified abundances at length were calculated for each year, season, and survey strata sampled. 
+
+These area-stratified abundances were used to account for differences in sampling effort and the relative size of each stratum.
+
+For details on the area-stratification and Length-Weight QA/QC please see [Area stratification validation markdown](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/stratification_validation.html)
+
+
 
 ---
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
-## Step 1: Bodymass from Length
+## Step 2: Bodymasses from Length
 
 ```{r}
 # 1. Biological data used as input
@@ -284,18 +324,6 @@ species_used <- nefsc_1g_binned %>% distinct(comname) %>% arrange(comname) %>%  
 ```
 
 **After QA/QC `r length(species_used)` species were used:** *`r pander::pander(species_used)`*
-
----
-background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
-background-size: cover
-
-## Step 2: Stratified Abundances
-
-Stratified abundances at length were calculated for each year, season, and survey strata sampled. 
-
-These area-stratified abundances were used to account for differences in sampling effort and the relative size of each stratum.
-
-For details on the area-stratification and Length-Weight QA/QC please see [Area stratification validation markdown](https://adamkemberling.github.io/nefsc_trawl/R/qaqc_reports/stratification_validation.html)
 
 
 
@@ -377,12 +405,14 @@ geom_smooth(formula = y ~ x,
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-## Regional Results:
+## Regional Progress Update:
 
-**Progress Update**
+
 Size Spectrum Results for **Slope, intercept, and exponent of size spectra (alternative method)** have been estimated for <u>all regions and for each season</u>.
  
-Before jumping into these emergent properties, here is some background in the differences among the different regions.
+These are stored in a results table and are staged for testing relationships to external drivers. 
+
+Here is some background on the differences among the different regions.
 
 
 ---
@@ -503,8 +533,7 @@ all_region_summs$weight_bins %>%
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-## Gulf of Maine Biomass Trends
-
+## Gulf of Maine Abundance Trends
 
 
 ```{r, fig.height=3}
@@ -524,23 +553,6 @@ gom_all_summs <- gom_all %>%
 ```
 
 
-```{r}
-ggplot(gom_all_summs, aes(x = Year, y = strat_biom, color = season)) +
-  geom_point() +
-  geom_ribbon(aes(ymin = 0, ymax = strat_biom, fill = season), alpha = 0.4) +
-  scale_fill_gmri() +
-  scale_color_gmri() +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_wrap(~season, ncol = 1, scales = "free") +
-  labs(y = "Stratified Total Biomass (kg)", subtitle = "Relatively Stable Gulf of Maine Biomass")
-```
-
-
----
-background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
-background-size: cover
-
-## Gulf of Maine Abundance Trends
 
 
 ```{r}
@@ -552,6 +564,27 @@ ggplot(gom_all_summs, aes(x = Year, y = strat_abund, color = season)) +
   scale_y_continuous(labels = scales::comma_format()) +
   facet_wrap(~season, ncol = 1, scales = "free") +
   labs(y = "Stratified Abundance", subtitle = "Increasing Gulf of Maine Abundances")
+```
+
+
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+## Gulf of Maine Biomass Trends
+
+
+```{r}
+ggplot(gom_all_summs, aes(x = Year, y = strat_biom, color = season)) +
+  geom_point() +
+  geom_ribbon(aes(ymin = 0, ymax = strat_biom, fill = season), alpha = 0.4) +
+  scale_fill_gmri() +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  facet_wrap(~season, ncol = 1, scales = "free") +
+  labs(y = "Stratified Total Biomass (kg)", subtitle = "Relatively Stable Gulf of Maine Biomass")
 ```
 
 
@@ -833,7 +866,7 @@ background-size: cover
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-## All Areas: Size Spectrum Slopes
+## Size Spectrum Slopes: All Areas
 
 
 ```{r}
@@ -852,11 +885,11 @@ ggplot(all_season_indices, aes(yr, b, color = season)) +
 
  
  
- ---
+---
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-## All Areas: Average Size Changes
+## Average Size Changes: All Areas
 
 ```{r}
 # Load the bodysize metrics - species year and survey
@@ -983,7 +1016,7 @@ background-size: cover
 
 ## Things we are still working on: 
 
- 1. Size and growth characteristics
+ 1. Size and growth characteristics of specific species
  2. Relationships with external drivers
 
 
@@ -999,19 +1032,36 @@ background-size: cover
 
 > Is this consistent with the community indicators?
 
+> Is the mechanism just temperature as a departure from normal, or is it an accumulation or successive temperature impact?
 
 ---
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
-### Data to check into?
 
-The original premise in the proposal highlights elevated temperatures as an important driver of community size patterns. 
+## Potential  Drivers?
+
+> Temperature Data: (surface temperature, anomalies, lagged, deltas)
+
+> Zooplankton Community (CPR)
+
+> Fishing effort?
+
+> Fishing landings
+
+> Community metrics
 
 
-Are there other noteworthy drivers we could use? Fishing effort?
 
 
 
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
 
+## Bonus: Full Research Pipeline
 
+```{r}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_visnetwork())
+```
 
