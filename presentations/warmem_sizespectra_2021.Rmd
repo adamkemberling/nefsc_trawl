@@ -83,11 +83,11 @@ theme_set(theme_bw() +
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-# Intro:
+## WARMEM SizeSpectrum Analysis: 2021
 
- * This slide deck covers the major findings of the size-spectrum analyses performed on NMFS trawl data.   
+ * **About:**This slide deck covers the major findings of the size-spectrum analyses performed on NMFS trawl data.   
  
- * The aim is to present current progress for feedback on how to bring the analysis together for a final write up.
+ * **Goals:** Present relevant background and current progress for feedback.
 
 
 
@@ -95,7 +95,7 @@ background-size: cover
 background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
-### Research Background:
+### WARMEM Proposal Background:
 
 **From the Proposal:**
 
@@ -111,7 +111,42 @@ background-size: cover
 
 ### Research Objectives:
 
-> For each region, we will develop several time series indicators: a) Community composition metrics, b) Mean size of the aggregate community and key functional groups, c) Slope and intercept of the size spectrum. These indicators will allow us to explore the three hypotheses and will support the size-spectrum and dynamic food-web modeling. 
+> For each region, we will develop several time series indicators: 
+
+>a) Community composition metrics, 
+
+>b) Mean size of the aggregate community and key functional groups, 
+
+>c) Slope and intercept of the size spectrum. These indicators will allow us to explore the three hypotheses and will support the size-spectrum and dynamic food-web modeling. 
+
+
+---
+background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
+background-size: cover
+
+### What is a size spectrum
+
+### Constructing size spectrum
+
+### Lengths to bodymass
+
+### Patterns in Biomass
+
+### How do the size spectrum features look
+
+### How does that relate to patterns in biomass ex. area
+
+### Things we are working on: Size and growth characteristics
+
+### Analyses to think of?
+
+### Data to check in to?
+
+
+
+
+
+
 
 
 
@@ -124,7 +159,7 @@ background-size: cover
 **<u>Fish data:</u>** 
 Data on fish abundance, size, and age come from the bottom trawl surveys conducted by the Northeast Fisheries Science Center (NEFSC) in the autumn (since 1963) and spring (since 1968). 
 
-There are two main schema that are used for different analysis steps:
+There are two main schema: the "catch" data and the "biological" data
 
 ```{r, results='asis'}
 withr::with_dir(
@@ -549,7 +584,7 @@ background-size: cover
 
 Using all the catch data available, and the estimated weights at length, we can infer these changes in the average body weight across the different species.
 
-```{r, fig.height=2}
+```{r}
 # Load the bodysize metrics - species year and survey
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(annual_individual_sizes))
@@ -827,9 +862,7 @@ background-size: cover
 
 ### Size Spectrum Prep: sizeSpectra
 
-The first method uses the {sizeSpectra} package and solves for the *Exponent of Size Spectra* using the un-binned individual size distribution. 
-
-This method uses MLE to solve for the exponent of size spectra assuming a bounded power law distribution, with limits at the minimum size cutoff andd the maximum observed biomass.
+The first method uses the {sizeSpectra} package and solves for the *Exponent of Size Spectra* using the un-binned individual size distribution. This method solves for the exponent of size spectra.
 
 ```{r}
 # example of ISD plot
@@ -883,9 +916,7 @@ background-size: cover
 
 ### Size Spectrum Prep: Binning
 
-The second method uses binned abundances, with log10 bodymass bins of width 0.5: ex. 10^0, 10^0.5 etc. These bins are then normalized by dividing by the bin width.
-
-This approach is less sensitive to variations in the internal composition of the size spectrum.
+The second method uses binned abundances, with log10 bodymass bins of width 0.5: ex. 10^0, 10^0.5 etc. These bins are then normalized by dividing by the bin width. This approach is less sensitive to the internal composition of the size spectrum.
 
 ```{r}
 # Example of Binned plot
