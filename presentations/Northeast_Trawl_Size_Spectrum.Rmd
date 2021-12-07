@@ -873,14 +873,15 @@ background-size: cover
 # Join the different seasons back
 all_season_indices <- bind_rows(list(warmem_group_slopes, year_region_slopes))
 
-ggplot(all_season_indices, aes(yr, b, color = season)) +
-  geom_line(linetype = 3, size = 0.5) +
-  geom_point() +
-  #geom_smooth(method = "lm", formula = y ~ x, se = F) +
+ggplot(all_season_indices, aes(yr, b, color = survey_area)) +
+  #geom_line(linetype = 3, size = 0.5) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "lm", formula = y ~ x, se = F) +
   facet_grid(survey_area~season) + 
   scale_color_gmri() +
   labs(y = "Size Spectrum Slope\n(Log10 Bins)",
-       color = "Season")
+       x = "",
+       color = "")
 ```
 
  
@@ -890,6 +891,10 @@ background-image: url(libs/slide_templates/GMRI_template_slide_white.png)
 background-size: cover
 
 ## Average Size Changes: All Areas
+
+The following two slides use the stratified catch data, prior to the removal of individuals smaller than 1g.
+
+The changes in size are across all areas in the survey and are done individually by survey season.
 
 ```{r}
 # Load the bodysize metrics - species year and survey
