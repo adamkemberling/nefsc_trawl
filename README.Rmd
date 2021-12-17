@@ -8,7 +8,6 @@ library(gmRi)
 ```
 
 
-`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
 # NEFSC Trawl Survey Analyses
 

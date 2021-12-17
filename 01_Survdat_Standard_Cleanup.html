@@ -11,7 +11,7 @@
 
 <meta name="author" content="Adam A. Kemberling" />
 
-<meta name="date" content="2021-11-19" />
+<meta name="date" content="2021-12-13" />
 
 <title>SURVDAT Data Cleanup Steps</title>
 
@@ -249,7 +249,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">SURVDAT Data Cleanup Steps</h1>
 <h4 class="author">Adam A. Kemberling</h4>
-<h4 class="date">2021-11-19</h4>
+<h4 class="date">2021-12-13</h4>
 
 </div>
 
@@ -1167,6 +1167,15 @@ gmri_survdat_prep &lt;- function(survdat = NULL, survdat_source = &quot;most rec
 <h3>Implementation</h3>
 <p>When put together as a single function the cleanup can be implemented as seen below. For situations where you are providing a dataset to clean ex. <code>mydata</code>, simply supply it using the argument <code>survdat = mydata</code>.</p>
 <pre class="r"><code>survdat_2019 &lt;- gmri_survdat_prep(survdat_source = &quot;most recent&quot;)</code></pre>
+<pre><code>creating station id from cruise-station-stratum fields</code></pre>
+<pre><code>renaming year column to est_year</code></pre>
+<pre><code>renaming lat column to decdeg_beglat</code></pre>
+<pre><code>renaming lon column to decdeg_beglon</code></pre>
+<pre><code>renaming depth column to avgdepth</code></pre>
+<pre><code>building month/day columns from est_towdate</code></pre>
+<pre class="r"><code># Save for Sharing Clean Data
+nmfs_path &lt;- box_path(&quot;res&quot;, &quot;NMFS_trawl/SURVDAT_processed&quot;)
+write_csv(survdat_2019, paste0(nmfs_path, &quot;/NMFS_survdat_gmri_tidy.csv&quot;))</code></pre>
 <hr />
 </div>
 </div>

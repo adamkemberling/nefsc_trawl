@@ -808,8 +808,12 @@ gmri_survdat_prep <- function(survdat = NULL, survdat_source = "most recent"){
 
 When put together as a single function the cleanup can be implemented as seen below. For situations where you are providing a dataset to clean ex. `mydata`, simply supply it using the argument `survdat = mydata`.
 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 survdat_2019 <- gmri_survdat_prep(survdat_source = "most recent")
+
+# Save for Sharing Clean Data
+nmfs_path <- box_path("res", "NMFS_trawl/SURVDAT_processed")
+write_csv(survdat_2019, paste0(nmfs_path, "/NMFS_survdat_gmri_tidy.csv"))
 ```
 
 
