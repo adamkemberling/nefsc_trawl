@@ -31,6 +31,8 @@ source(here("R/support/temp_support.R"))
 
 
 
+####_____________________________####
+
 ####__  Targets Pipeline  __####
 
 # Define target pipeline: Outlines high-level steps of the analysis
@@ -222,8 +224,12 @@ list(
   # starts with "survdat_biological"
   # ref code: size_at_age_exploration.Rmd
   
+  tar_target(vonbert_species_bio,
+             select_vonbert_species(survdat_biological)),
+  
+  
   tar_target(vonbert_growth_coef,
-             estimate_vonbert_coef(survdat_biological))
+             estimate_vonbert_coef(vonbert_species_bio))
   
   
   

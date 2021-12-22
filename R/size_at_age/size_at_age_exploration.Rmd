@@ -21,6 +21,8 @@ knitr::opts_chunk$set(echo = TRUE,
                       fig.width = 8)
 
 ####  Packages  ####
+library(lme4)
+library(DT)
 library(FSAdata)
 library(FSA)
 library(car)
@@ -28,6 +30,7 @@ library(tidyverse)
 library(gmRi)
 library(targets)
 library(ggridges)
+library(patchwork)
 
 
 # set theme
@@ -73,8 +76,39 @@ theme_set(theme_minimal() +
 # nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(survdat_biological))
-nmfs_bio <- survdat_biological
 
+# Core cleanup:
+# Make 5 year increments
+bio_5yr_prep <- function(survdat_biological){
+  
+  # Drop NA age data, restirct to summer and fall
+  nmfs_bio <- survdat_biological %>% 
+  filter(is.na(age) == FALSE,
+         season %in% c("Summer", "Fall"))
+  
+  yr5_breaks <- seq(1970, 2020, by = 5)
+  yr5_ends <- seq(1974, 2024, by = 5)
+  yr5_labels <- str_c(yr5_breaks, "-", yr5_ends)
+  yr5_labels <- yr5_labels[1:(length(yr5_labels)-1)]
+
+
+  #Add 5-year groups, decade labels
+  nmfs_bio <- nmfs_bio %>% 
+    mutate(
+      yearclass = est_year - (age-1),
+        five_yr_group = cut(
+          est_year, 
+          breaks = yr5_breaks, 
+          labels = yr5_labels,
+          include.lowest = TRUE,
+          ordered_result = TRUE),
+        decade = floor_decade(est_year)) %>% 
+    as.data.frame()
+}
+
+
+# run cleanup
+nmfs_bio <- bio_5yr_prep(survdat_biological = survdat_biological)
 
 
 ```
@@ -92,23 +126,12 @@ In the original proposal it was stated that 17 species would be used, species th
 ```{r}
 ####  Data Prep  #### 
 
-
-# # Manually make list:
-# # species to run it on:
-# vonbert_species <- sort(c("atlantic cod", "haddock", "summer flounder", "winter flounder", "acadian redfish",
-#                      "silver hake", "red hake", "american plaice", "yellowtail flounder",
-#                      "atlantic herring", "white hake", "butterfish","witch flounder", 
-#                      "atlantic mackerel", "windowpane"))
-# names(vonbert_species) <- vonbert_species
-
-
-
 # Rank species by how many measurements there are
 species_abunds <- nmfs_bio %>% 
-  filter(is.na(age) == FALSE) %>% 
-  count(comname) %>% arrange(desc(n)) # ordered by number measured
+  count(comname) %>% 
+  arrange(desc(n)) # ordered by number measured
 
-# Reorder top 17 alphabetically
+# Reorder alphabetically
 vonbert_species <- sort(species_abunds$comname[1:17])
 ```
 
@@ -124,35 +147,41 @@ names(vonbert_species) <- vonbert_species
 # Does not work for because of bad start points or no age data:
 # skates, dogfish, fourspot flounder, goosefish
 
-# Seasons to use data from
-seasons <- c("Summer", "Fall")
 
 
 ##### Pull species and make group id for later
 species_data <- map(vonbert_species, function(species_name){
   
-  #### Make 5 year increments
-  yr5_breaks <- seq(1970, 2020, by = 5)
-  yr5_ends <- seq(1974, 2024, by = 5)
-  yr5_labels <- str_c(yr5_breaks, "-", yr5_ends)
-  yr5_labels <- yr5_labels[1:(length(yr5_labels)-1)]
-  
   # Drop NA ages, set increment labels
   nmfs_bio %>%
-    filter(comname == species_name,
-           season %in% seasons,
-           is.na(age) == FALSE) %>% 
-    mutate(five_yr_group = cut(est_year, 
-                         breaks = yr5_breaks, 
-                         labels = yr5_labels,
-                         include.lowest = TRUE,
-                         ordered_result = TRUE),
-           decade = floor_decade(est_year),
-           group_id = str_c(est_year, comname, sep = "-"))  %>% 
-    as.data.frame()
+    filter(comname == species_name) %>% 
+    mutate(group_id = str_c(est_year, comname, sep = "-")) 
 })
 
 
+```
+
+
+## Age Data Availability
+
+The availability of data for fitting growth curves varies by species & sex for the different seasons and years of the survey.
+
+```{r, fig.height = 12}
+
+# check crosstable
+#xtabs(~yearclass + age, bind_rows(species_data, .id = "common name"))
+
+
+
+bind_rows(species_data, .id = "common name") %>% 
+  count(comname, est_year, yearclass, age) %>% 
+ggplot(aes(est_year, age, size = n, color = yearclass)) +
+  geom_point() +
+  scale_color_gmri(discrete = FALSE) +
+  labs(x = "Year", y = "Age", size = "Number Aged", color = "Cohort Year") + 
+  facet_wrap(~comname, ncol = 3) + 
+  guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5),
+         size = guide_legend(title.position = "top", title.hjust = 0.5))
 ```
 
 
@@ -211,6 +240,7 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
                    start = start_points)
   
   # Access parameters with coef()
+  # Estimate sizes at age
   vbert_coef <- as.data.frame(t(coef(vbert_fit))) %>% 
     mutate(n_aged = num_aged,
            len_age_1 = Linf * (1  - exp(-1 * K * (1 - t0))),
@@ -247,8 +277,8 @@ Once everything is prepped we can then fun the von Bert parameter estimation for
 ```{r}
 
 # Running everything?
-species_coef <- vonbert_species %>% 
-  map_dfr(species_vonbert, split_col =  "five_yr_group", min_obs = 25)
+species_coef <- vonbert_species[c(1:17)] %>% 
+  map_dfr(species_vonbert, split_col =  "five_yr_group", min_obs = 30)
 ```
 
 ##  Plotting Coefficients  {.tabset .tabset-pills}
@@ -357,14 +387,25 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"),
 ```{r}
 # Plotting age distribution
 plot_age_bubbleplot <- function(species){
-  species_data[[species]] %>% 
+  age_bubble <- species_data[[species]] %>% 
     count(comname, est_year, age) %>% 
-    ggplot(aes(y = est_year, x = age, size = n)) +
+    ggplot(aes(x = est_year, y = age, size = n)) +
       geom_point(shape = 21, color = "white", fill = gmri_cols("gmri blue")) +
-      scale_y_reverse() +
       facet_wrap(~comname) +
-      labs(y = "Year", x = "Age", size = "Number Measured") +
+      labs(x = "Year", y = "Age", size = "Number Measured") +
       guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
+  
+  size_bubble <- species_data[[species]] %>% 
+    count(comname, est_year, age, length_cm) %>% 
+    ggplot(aes(x = est_year, y = length_cm)) +
+      geom_jitter(aes(color = age), height = 0, width = 0.3, alpha = 0.75) +
+      scale_color_gmri(discrete = FALSE) +
+      facet_wrap(~comname) +
+      labs(x = "Year", y = "Length (cm)", color = "Age")   +
+      guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5))
+  
+  figs <- age_bubble / size_bubble
+  return(figs)
   }
 
 
@@ -455,9 +496,11 @@ ridge_plots[["haddock"]]
 ```
 
 
-## Calculate sizes at age
+## Change in Size at Age
 
 
 ## Export Size at Age and Coefficients
+
+
 
 `r insert_gmri_footer()`

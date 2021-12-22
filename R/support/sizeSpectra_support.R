@@ -1633,7 +1633,7 @@ mean_sizes_all_groups <- function(size_data,
 ####  Growth Characteristics ####
 
 # pick species
-pick_vonbert_species <- function(survdat_biological){
+select_vonbert_species <- function(survdat_biological){
   "work in progress"
 }
 
@@ -1641,7 +1641,7 @@ pick_vonbert_species <- function(survdat_biological){
 
 
 # set time increments
-set_vonbert_groups <- function(vonbert_groups){
+set_vonbert_groups <- function(cutoff_rank){
   "work in progress"
 }
 
