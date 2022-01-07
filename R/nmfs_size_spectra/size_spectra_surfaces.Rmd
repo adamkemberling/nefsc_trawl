@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = F, 
                       comment = "", 
                       fig.height = 6, 
-                      fig.width = 8)
+                      fig.width = 6)
 
 ####  Packages  ####
 library(targets)
@@ -133,10 +133,14 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(size_spectrum_indices))
 
+# Pull the ones that are regions and years
+region_indices <- size_spectrum_indices %>% filter(`group ID` == "single years * region") %>% mutate(Year = as.numeric(Year)) %>% 
+  split(.$survey_area)
 
 # Split the data into the groups we want to compare:
 areas_binned <- nefsc_1g_binned %>% 
   split(.$survey_area)
+
 
 # Get annual totals within each area
 areas_aggregated <- areas_binned %>% 
@@ -156,7 +160,6 @@ areas_aggregated <- areas_binned %>%
 
 ```{r surface plot function}
 ####  Surface Plots
-
 spectra_surface <- function(l10_totals, plot_title){
   
   # Pull data for matrix
@@ -187,6 +190,40 @@ spectra_surface <- function(l10_totals, plot_title){
 }
 
 
+# Spectrum parameter plots
+plot_params <- function(area_abbrev){
+  slope_p <- ggplot(region_indices[[area_abbrev]], aes(Year, l10_slope_strat)) +
+    geom_line() +
+    geom_point() +
+    labs(y = "Size Spectrum Slope", x = "")
+  
+  int_p <- ggplot(region_indices[[area_abbrev]], aes(Year, l10_int_strat)) +
+    geom_line() +
+    geom_point() +
+    labs(y = "Size Spectrum Intercept")
+  
+  
+  bin_data <- areas_aggregated[[area_abbrev]] %>% 
+    mutate(Year = as.numeric(Year),
+           l10_bins = factor(log10_bins))
+  bin_p <- ggplot(bin_data, aes(x = Year, y = norm_strat_abund, color = l10_bins)) +
+    geom_line(aes(group = log10_bins)) +
+    geom_point() + 
+    scale_color_viridis_d(direction = -1) +
+    guides(color = guide_legend(title.position = "top", title.hjust = 0.5)) +
+    labs(x = "Year", y = "Log( Abundance )", color = "Body Size Bin log10(g)")
+  
+  layout <- "
+  AA##
+  AACC
+  BBCC
+  BB##
+  "
+  plot_mosaic <- slope_p / int_p / bin_p
+  return( plot_mosaic)
+}
+
+
 ```
 
 
@@ -197,6 +234,11 @@ spectra_surface <- function(l10_totals, plot_title){
 spectra_surface(l10_totals = areas_aggregated$GoM, "Gulf of Maine")
 ```
 
+```{r, fig.height=8}
+plot_params("GoM")
+```
+
+
 
 ### Georges Bank
 
@@ -204,11 +246,21 @@ spectra_surface(l10_totals = areas_aggregated$GoM, "Gulf of Maine")
 spectra_surface(l10_totals = areas_aggregated$GB, "Georges Bank")
 ```
 
+```{r, fig.height=8}
+plot_params("GB")
+```
+
+
 ### Southern New England
 
 ```{r}
 spectra_surface(l10_totals = areas_aggregated$SNE, "Southern New England")
 ```
+
+```{r, fig.height=8}
+plot_params("SNE")
+```
+
 
 ### Mid-Atlantic Bight
 
@@ -217,6 +269,9 @@ spectra_surface(l10_totals = areas_aggregated$SNE, "Southern New England")
 spectra_surface(l10_totals = areas_aggregated$MAB, "Mid-Atlantic Bight")
 ```
 
+```{r, fig.height=8}
+plot_params("MAB")
+```
 
 
 
