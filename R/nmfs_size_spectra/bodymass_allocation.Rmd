@@ -728,7 +728,7 @@ year_region_slopes <- size_spectrum_indices %>%
 
 ### Region & Season
 
-The first lens to look at is the seasonal variation across all the different areas. This was the typical grouping that we have been focusing on.
+The first lens to look at is the seasonal variation across all the different areas. This was the typical grouping that we have been focusing on.1
 
 ```{r}
 # Do some grouping
@@ -1037,14 +1037,14 @@ isd_1974 <- ggplot_isd(isd_data_prepped = isd_prepped$`1974`,
                        show_pl_fit = TRUE, 
                        group_name = "1974, Fall, GB")$obs_y
 
-isd_1980 <- ggplot_isd(isd_data_prepped = isd_prepped$`1980`, 
-                       mle_results = odd_years$`1974`, 
-                       abundance_vals = "stratified", 
-                       plot_rects = FALSE, 
-                       show_pl_fit = TRUE, 
-                       group_name = "1980, Fall, GB")$obs_y
+# isd_1980 <- ggplot_isd(isd_data_prepped = isd_prepped$`1980`, 
+#                        mle_results = odd_years$`1974`, 
+#                        abundance_vals = "stratified", 
+#                        plot_rects = FALSE, 
+#                        show_pl_fit = TRUE, 
+#                        group_name = "1980, Fall, GB")$obs_y
 
-isd_1974 / isd_1980
+isd_1974 #/ isd_1980
 
 ```
 
@@ -1060,12 +1060,12 @@ l10_assigned <- map(odd_year_dat, ~ assign_log10_bins(.x))
 
 # plot bin structure for survey abundance and stratified abundance
 l10_1974 <- plot_log10_ss(l10_assigned = l10_assigned$`1974`) 
-l10_1980 <- plot_log10_ss(l10_assigned = l10_assigned$`1980`) 
+#l10_1980 <- plot_log10_ss(l10_assigned = l10_assigned$`1980`) 
 
 
 # Grab just the stratified abundance one
-l10_1974[[2]] + labs(title = "1974, Fall, GB") |
-l10_1980[[2]] + labs(title = "1980, Fall, GB")
+l10_1974[[2]] + labs(title = "1974, Fall, GB") 
+#l10_1980[[2]] + labs(title = "1980, Fall, GB")
 ```
 
 
@@ -1083,8 +1083,8 @@ l10_1980[[2]] + labs(title = "1980, Fall, GB")
   ggplot(aes(yr, l10_slope_strat, color = survey_area)) +
   geom_line(aes(group = survey_area), linetype = 3) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x, 
-              alpha = 0.2) +
+  # geom_smooth(method = "lm", formula = y ~ x, 
+  #             alpha = 0.2) +
   facet_grid(survey_area~season) +
   scale_color_gmri() +
   labs(x = "", 
@@ -1105,8 +1105,8 @@ l10_1980[[2]] + labs(title = "1980, Fall, GB")
   ggplot(aes(yr, l10_int_strat, color = survey_area)) +
   geom_line(aes(group = survey_area), linetype = 3) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x, 
-              alpha = 0.2) +
+  # geom_smooth(method = "lm", formula = y ~ x, 
+  #             alpha = 0.2) +
   facet_grid(survey_area~season) +
   scale_color_gmri() +
   labs(x = "", 
@@ -1137,8 +1137,8 @@ l10_fit_dat %>%
   geom_hline(yintercept = 0.2, linetype = 2, size = 0.5, color = "gray50") +
   geom_line(aes(group = survey_area), linetype = 3) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x, 
-              alpha = 0.2) +
+  # geom_smooth(method = "lm", formula = y ~ x, 
+  #             alpha = 0.2) +
   facet_grid(survey_area~season) +
   scale_color_gmri() +
   scale_y_continuous(limits = c(0,1), expand = c(0,0)) +
@@ -1150,6 +1150,138 @@ l10_fit_dat %>%
 
 ```
 
+## Size Spectrum Surfaces
+
+```{r, eval = FALSE}
+# remotes::install_github("tylermorganwall/rayshader")
+library(rayshader)
+
+# Set Season and area
+# seas_3d <- "Fall"
+area_3d <- "GB"
+
+# Pull Data for some specific subset
+t_data <- nefsc_size_bins %>% 
+  filter(survey_area == area_3d) %>% 
+  split(.$Year)
+
+# Assign bins
+t_year <- map(t_data, assign_log10_bins)
+
+# Aggregate by bin
+t_agg <- map_dfr(t_year, aggregate_l10_bins, .id = "Year") %>% 
+  mutate(Year = as.numeric(Year),
+         log10_bins = as.numeric(log10_bins),
+         norm_strat_abund = log10(norm_strat_abund),
+         norm_strat_abund = ifelse(is.na(norm_strat_abund), 0, norm_strat_abund),
+         survey_area = "Georges Bank",
+         season = "Summer and Fall")
+
+
+library(plotly)
+yourdata <- select(t_agg, log10_bins, Year, norm_strat_abund)
+
+pivot_wider(yourdata, names_from = Year, values_from = norm_strat_abund)
+
+# defining data in the vector
+x <- yourdata$norm_strat_abund
+  
+# defining row names and column names
+rown <- sort(unique(yourdata$log10_bins))
+coln <- sort(unique(yourdata$Year))
+  
+# creating matrix
+m <- matrix(x, nrow = 3, byrow = TRUE, 
+            dimnames = list(rown, coln))
+
+# Making matrix
+m2 <- matrix(nrow = max(yourdata$log10_bins) - (min(yourdata$log10_bins)-1), 
+             ncol = max(yourdata$Year) - (min(yourdata$Year)-1))
+dim(m2)
+
+rownames(m2) <- sort(unique(yourdata$log10_bins))
+colnames(m2) <- sort(unique(yourdata$Year))
+m2[as.matrix(yourdata[1:2])] <- yourdata$norm_strat_abund
+m2
+
+spectrum_mat <- as.matrix(xtabs(norm_strat_abund~log10_bins + Year, data = yourdata))
+plot_ly(
+      x = as.numeric(colnames(spectrum_mat)), 
+      y = as.numeric(rownames(spectrum_mat)), 
+      z = spectrum_mat
+    ) %>% 
+  add_surface() %>%
+  layout(
+    title = "",
+    scene = list(
+      xaxis = list(title = "Year"),
+      yaxis = list(title = "Log10( BodyMass )"),
+      zaxis = list(title = "Log10( Normalized Abundance) "),
+      camera = list(eye = list(x = 1.95, y = -1.25, z = 1.25))
+    ))
+```
+
+
+```{r, eval = FALSE}
+# Rayshader fails:
+
+
+# # Plot 3d using geom_contour
+# (contour_3d <- t_agg %>% 
+#   ggplot(aes(log10_bins, 
+#              Year, 
+#              z = norm_strat_abund,
+#            color = norm_strat_abund)) +
+#   geom_contour_filled() +
+#   facet_wrap(~ season) +
+#   labs(x = "Log10 Bodymass (g)",
+#        fill = "Log10 Stratified Abundance Density"))
+# 
+
+
+# plot_gg(contour_3d,
+#         multicore = TRUE, 
+#         raytrace = TRUE, 
+#         width = 7, 
+#         height = 4, 
+#         scale = 300, 
+#         windowsize = c(1400, 866), 
+#         zoom = 0.6, 
+#         phi = 30, 
+#         theta = 30)
+
+
+
+# # 3d Surfaces using raster
+# gg_3d <- t_agg %>% 
+#   ggplot(aes(log10_bins, Year, 
+#            z = norm_strat_abund,
+#            color = norm_strat_abund)) +
+#   #geom_contour_filled() +
+#   geom_raster() +
+#   facet_wrap(~ season) +
+#   scale_fill_viridis_c(option = "A", 
+#                        breaks = c(0:6), na.value = "transparent") +
+#   labs(x = "Individual Bodymass (g)",
+#        fill = "Log10 Stratified Abundance Density") +
+#   guides(fill = guide_colorsteps(title.hjust = 0.5, 
+#                                  title.position = "top", barwidth = unit(3.5, "in"))) +
+#   theme(legend.position = "bottom")
+# 
+# # render it
+# plot_gg(gg_3d, 
+#         multicore = TRUE, 
+#         width = 6 ,
+#         height=5, fov = 70)
+# render_depth(focallength=100,
+#              focus=0.72)
+
+
+# Would be better if prepared for using geom_polygon
+# need to create cell edge coordinates based on year (y) and log10 bins (x) so that it is four points instead of the center point. The fill would then just be the same
+# the challenge would be how to make edges meet left, right, top, bottom
+
+```
 
 
 

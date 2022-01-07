@@ -1633,8 +1633,32 @@ mean_sizes_all_groups <- function(size_data,
 ####  Growth Characteristics ####
 
 # pick species
-select_vonbert_species <- function(survdat_biological){
+select_vonbert_species <- function(survdat_biological, rank_cutoff = 17){
+  
+  # Status
   "work in progress"
+  
+  # Rank species by how many measurements there are
+  species_abunds <- survdat_biological %>% 
+    count(comname) %>% 
+    arrange(desc(n)) # ordered by number measured
+  
+  # Reorder alphabetically
+  vonbert_species <- sort(species_abunds$comname[1:rank_cutoff])
+  
+  # Name the list so it carries through
+  names(vonbert_species) <- vonbert_species
+  
+  # Put each species into its own list by common name
+  vonbert_species_data <- map(vonbert_species, function(species_name){
+    
+    # Drop NA ages, set increment labels
+    survdat_biological %>%
+      filter(comname == species_name) %>% 
+      mutate(yearclass = est_year - age) 
+  })
+  
+  return(vonbert_species_data)
 }
 
 

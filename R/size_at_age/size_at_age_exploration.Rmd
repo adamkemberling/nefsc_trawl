@@ -31,6 +31,7 @@ library(gmRi)
 library(targets)
 library(ggridges)
 library(patchwork)
+library(nlme)
 
 
 # set theme
@@ -164,24 +165,38 @@ species_data <- map(vonbert_species, function(species_name){
 
 ## Age Data Availability
 
-The availability of data for fitting growth curves varies by species & sex for the different seasons and years of the survey.
+The availability of data for fitting growth curves varies by species & sex for the different seasons and years of the survey. Some species are also much longer lived and have a longer age range that may be difficult to accurately fit without good representation in the data
 
 ```{r, fig.height = 12}
 
 # check crosstable
 #xtabs(~yearclass + age, bind_rows(species_data, .id = "common name"))
 
-
-
 bind_rows(species_data, .id = "common name") %>% 
-  count(comname, est_year, yearclass, age) %>% 
-ggplot(aes(est_year, age, size = n, color = yearclass)) +
-  geom_point() +
-  scale_color_gmri(discrete = FALSE) +
-  labs(x = "Year", y = "Age", size = "Number Aged", color = "Cohort Year") + 
-  facet_wrap(~comname, ncol = 3) + 
-  guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5),
-         size = guide_legend(title.position = "top", title.hjust = 0.5))
+  group_by(comname, catchsex, decade) %>% 
+  summarise(
+    number_aged = n(),
+    ages_measured = n_distinct(age),
+    min_age = min(age),
+    max_age = max(age),
+    age_range = max_age - min_age,
+    num_per_age = number_aged / age_range,
+    .groups = "drop") %>% 
+  mutate(across(where(is.numeric), round, 1),
+         age_range = NULL) %>% 
+  setNames(
+    c("Common Name", "Sex", "Decade", "# Aged", "# of Ages", "Age Min", "Age Max", "Avg. Fish / Age")
+  ) %>% DT::datatable()
+
+# bind_rows(species_data, .id = "common name") %>% 
+#   count(comname, est_year, yearclass, age) %>% 
+# ggplot(aes(est_year, age, size = n, color = yearclass)) +
+#   geom_point() +
+#   scale_color_gmri(discrete = FALSE) +
+#   labs(x = "Year", y = "Age", size = "Number Aged", color = "Cohort Year") + 
+#   facet_wrap(~comname, ncol = 3) + 
+#   guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5),
+#          size = guide_legend(title.position = "top", title.hjust = 0.5))
 ```
 
 
@@ -193,21 +208,22 @@ The Von-Bertalanffy parameterization used is the "Typical" von Bertalanffy param
 
 We can check that this is the case by displaying the equations:
 
-```{r, fig.height=1, eval = FALSE}
+```{r, fig.height=1, eval = TRUE}
+# "typical" von bert
 typical <- growthFunShow(param = "Typical", "vonBertalanffy")
-ggplot() +
-  annotate(x = 1, y = 1, label = typical, geom = "text") +
+typical_plot <- ggplot() +
+  annotate(x = 1, y = 1, label = typical, geom = "text", size = 6) +
   labs(title = '"Typical" Parameterization') + 
   theme_void()
-```
 
 
-```{r, fig.height=1}
 bholt <- growthFunShow(param = "BevertonHolt", "vonBertalanffy")
-ggplot() +
-  annotate(x = 1, y = 1, label = bholt, geom = "text") +
+bholt_plot <- ggplot() +
+  annotate(x = 1, y = 1, label = bholt, geom = "text", size = 6) +
   labs(title = '"Beverton-Holt" Parameterization') + 
   theme_void()
+
+typical_plot | bholt_plot
 ```
 
 
@@ -229,8 +245,13 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
   # Don't run on fewer than a minimum number of obervations
   num_aged <- nrow(length_age_dat)
   if(num_aged < min_obs){
-    na_df <- data.frame("Linf" = NA, "K" = NA, "t0" = NA, "n_aged" = num_aged, 
-                        "len_age_1" = NA, "len_age_2" = NA, "len_age_3" = NA)
+    na_df <- data.frame("Linf" = NA, 
+                        "K" = NA, 
+                        "t0" = NA, 
+                        "n_aged" = num_aged, 
+                        "len_age_1" = NA, 
+                        "len_age_2" = NA, 
+                        "len_age_3" = NA)
     return(na_df)
   }
   
@@ -495,11 +516,63 @@ ridge_plots[["winter flounder"]]
 ridge_plots[["haddock"]]
 ```
 
+## Cohort Based Von Bertalannffy
 
-## Change in Size at Age
+Fish born as part of the same cohort are likely to exhibit similar patterns in growth due to their exposure to similar environments at the same points in their development.
+
+For this reason and others it may be meaningful to capture that cohort effect when tracking changes in growth coefficients.
+
+One way to do this is with mixed effects models.
+
+```{r, eval = FALSE}
+
+# Grab one species to use as tester
+test_species <- species_data$`acadian redfish` %>% 
+  mutate(
+    age = as.numeric(age),
+    year = factor(est_year),
+    yearclass = factor(yearclass))
+
+
+# Formula for nlme model
+vbert_form <- ~ Linf * (1 - exp(-K * (t - t0)))
+
+# Attempt to include random effect for cohort with "yearclass"
+#vbert_form <-  ~ Linf * (1 - exp(-K * (t - t0))) + (1 | yearclass)
+
+
+# use derive to construct function
+nfun <- deriv(expr = vbert_form,
+              namevec = c("Linf", "K", "t0"),
+              function.arg = c("Linf", "K", "t0"))
+
+# Set starting points vector
+test_starts <-  vbStarts(length_cm ~ as.numeric(age), data = test_species)
+
+# Play around until it runs
+nlmer(length_cm ~ nfun(age, Linf, K, t0)  ~ (1 | yearclass),
+      data = test_species, 
+      start = test_starts)
+```
+
+
+
 
 
 ## Export Size at Age and Coefficients
+
+
+# Catch Weighted Average Size and Age
+
+For average age and average size by species the stratified abundances are used. Length is freely available, whereas age must be estimated by length.
+
+
+## Average Age
+
+
+## Average Size
+
+
 
 
 

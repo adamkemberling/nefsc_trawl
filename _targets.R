@@ -219,18 +219,18 @@ list(
   
   
   
-  #####  8. Growth Characteristics  ####
+  #####  8. Size at Age Characteristics  ####
   
   # starts with "survdat_biological"
   # ref code: size_at_age_exploration.Rmd
   
   tar_target(vonbert_species_bio,
-             select_vonbert_species(survdat_biological)),
+             select_vonbert_species(survdat_biological, rank_cutoff = 17))#,
   
   
-  tar_target(vonbert_growth_coef,
-             estimate_vonbert_coef(vonbert_species_bio))
-  
+  # tar_target(vonbert_growth_coef,
+  #            estimate_vonbert_coef(vonbert_species_bio))
+  # 
   
   
   

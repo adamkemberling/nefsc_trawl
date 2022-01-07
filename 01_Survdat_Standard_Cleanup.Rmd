@@ -19,6 +19,7 @@ options(knitr.kable.NA = '')
 
 library(tidyverse)
 library(gmRi)
+library(patchwork)
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -75,7 +76,7 @@ nmfs_path   <- box_path("res", "NMFS_trawl")
 
 # Testing:
 #survdat_source <- "bigelow"     ; survdat <- NULL
-#survdat_source <- "most recent" ; survdat <- NULL
+survdat_source <- "most recent" ; survdat <- NULL
 
 # convenience change to make it lowercase
 survdat_source <- tolower(survdat_source)
@@ -245,6 +246,9 @@ This is the first step where data is targeted and removed. The things that we fi
 ```{r, eval = FALSE}
 #### 5. Row Filtering  ####
 
+# Preserve pre-filtered data for comparison
+trawldat_unfiltered <- trawldat
+
 # Things filtered:
 # 1. Strata
 # 2. Seasons
@@ -288,6 +292,63 @@ trawldat <- dplyr::filter(trawldat, svspp %not in% c(0, 978, 979, 980, 998))
 # trawldat_t <- dplyr::filter(trawldat, svvessel %in% c("AL", "HB"))
 
 ```
+
+
+```{r, eval = FALSE}
+# Mapping the stratum we don't use
+
+# import strata shapes
+strata_sf <- sf::read_sf(str_c(box_path("res", "Shapefiles/BottomTrawlStrata"), "BTS_Strata.shp"))
+
+# pull the ones we keep
+clean_sf <- strata_sf %>% 
+ janitor::clean_names() %>% 
+  filter(strata >= 01010 ,
+         strata <= 01760,
+         strata != 1310,
+         strata != 1320,
+         strata != 1330,
+         strata != 1350,
+         strata != 1410,
+         strata != 1420,
+         strata != 1490) 
+
+
+# Show the ones typically dropped on map
+dropped_strata_map <- ggplot() +
+  geom_sf(data = strata_sf, aes(fill = "Not Routinely Used")) + 
+  geom_sf(data = clean_sf, aes(fill = "Kept for Analysis")) + labs(fill = "")
+
+# Apply the labels we normally use
+strata_key <- list(
+  "Georges Bank"          = as.character(13:23),
+  "Gulf of Maine"         = as.character(24:40),
+  "Southern New England"  = stringr::str_pad(as.character(1:12),
+                                             width = 2, pad = "0", side = "left"),
+  "Mid-Atlantic Bight"    = as.character(61:76))
+
+
+# Add the labels to the data
+strata_sf_regions <- dplyr::mutate(
+  clean_sf,
+  strata = str_pad(strata, width = 5, pad = "0", side = "left"),
+  strat_num = str_sub(strata, 3,4),
+  survey_area =  dplyr::case_when(
+    strat_num %in% strata_key$`Georges Bank`         ~ "GB",
+    strat_num %in% strata_key$`Gulf of Maine`        ~ "GoM",
+    strat_num %in% strata_key$`Southern New England` ~ "SNE",
+    strat_num %in% strata_key$`Mid-Atlantic Bight`   ~ "MAB",
+    TRUE                                             ~ "stratum not in key"))
+
+strata_region_map <- ggplot() +
+  geom_sf(data = strata_sf_regions, 
+          aes(fill = survey_area))
+
+# Show maps
+dropped_strata_map / strata_region_map
+
+```
+
 
 ### Step 5: Region Assignment and Spatial Filtering
 

@@ -1,0 +1,40 @@
+model{
+    for(i in 1:N){
+      length[i] ~ dnorm(y.hat[i], tau.y)
+      y.hat[i] = Linf[group[i]] * (1-exp(-k[group[i]] * (age[i] - t0[group[i]] )))
+  }
+ 
+  # SD
+  tau.y ~ dunif(0,100)
+  sigma ~ dunif(0,100)
+   
+  # Level-2 parameters
+  for(j in 1:G){
+    Linf[j]  ~ dnorm(mu.Linf.raw, tau.Linf)
+    k[j] ~ dnorm(mu.Linf.raw, tau.Linf) 
+    t0[j]  ~ dnorm(mu.Linf.raw, tau.Linf) 
+    B.raw.hat[j,1] ~ dnorm(mu.Linf.raw, tau.Linf)
+    B.raw.hat[j,2] ~ dnorm(mu.k.raw, tau.k)
+    B.raw.hat[j,3] ~ dnorm(mu.t0.raw, tau.t0)
+  }
+   
+  # Priors for level-2 parameters
+  mu.Linf.raw ~ dnorm(0,0.0001)
+  mu.k.raw ~ dnorm(0,0.0001)
+  mu.t0.raw ~ dnorm(0,0.0001)
+   
+  # Get hyperparameters on untransformed scale
+  # mu.Linf 
+  # mu.k 
+  # mu.t0
+   
+  # Precision
+  tau.Linf = pow(sig.Linf,-2)
+  tau.k = pow(sig.Linf,-2)
+  tau.t0 = pow(sig.Linf,-2)
+   
+  # SD of parameters
+  sig.Linf ~ dunif(0,10)
+  sig.k ~ dunif(0,10)
+  sig.t0 ~ dunif(0,10)
+}

@@ -1,0 +1,223 @@
+---
+title: "Bodymass Size Spectra Surfaces"
+author: "Adam A. Kemberling"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: TRUE
+    toc_float:
+        collapsed: FALSE
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = F, 
+                      warning = F, 
+                      comment = "", 
+                      fig.height = 6, 
+                      fig.width = 8)
+
+####  Packages  ####
+library(targets)
+library(here)
+library(sf)
+library(gmRi)
+library(patchwork)
+library(knitr)
+library(tidyverse)
+library(rnaturalearth)
+library(plotly)
+
+# Support functions
+source(here("R/support/sizeSpectra_support.R"))
+res_path <- box_path("res")
+
+# Set theme  
+theme_set(theme_bw() +
+            theme(legend.position = "bottom",
+                  strip.text = element_text(color = "white", 
+                                            face = "bold"),
+                  strip.background = element_rect(
+                    color = "white", 
+                    fill = "#36454F", 
+                    size = 0.75, 
+                    linetype="solid"), 
+            legend.background = element_rect(fill = "transparent", 
+                                             color = "black")))
+```
+
+`r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+
+#  What is a Bodymass Size Spectrum?
+
+A community size spectrum is the relationship between abundance and body size. This shape and structure of this relationship has been shown to be temporally stable and reflect characteristics of the environments that support it (productivity levels). 
+
+This relationship is often plotted on a log body size x log abundance scale which reveals a linear relationship between the two. The slope and intercept of this relationship have been used to make comparisons across ecosystems regarding their productivity and the efficiency of energy transfer within a community.
+
+
+## Regions of Interest
+
+```{r}
+# Load the shapefiles for the polygons
+new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
+canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
+
+# Load the strata
+survey_strata <- read_sf(str_c(res_path, "Shapefiles/BottomTrawlStrata/BTS_Strata.shp"))  %>% 
+  janitor::clean_names() %>% 
+  filter(strata >= 01010 ,
+         strata <= 01760,
+         strata != 1310,
+         strata != 1320,
+         strata != 1330,
+         strata != 1350,
+         strata != 1410,
+         strata != 1420,
+         strata != 1490) 
+
+
+# Key to which strata = which regions
+strata_key <- list(
+  "Georges Bank"          = as.character(13:23),
+  "Gulf of Maine"         = as.character(24:40),
+  "Southern New England"  = str_pad(as.character(1:12), width = 2, pad = "0", side = "left"),
+  "Mid-Atlantic Bight"    = as.character(61:76))
+
+
+# Assign Areas
+survey_strata <- survey_strata %>% 
+  mutate(
+    strata = str_pad(strata, width = 5, pad = "0", side = "left"),
+    strata_num = str_sub(strata, 3, 4),
+    area = case_when(
+      strata_num %in% strata_key$`Georges Bank` ~ "Georges Bank",
+      strata_num %in% strata_key$`Gulf of Maine` ~ "Gulf of Maine",
+      strata_num %in% strata_key$`Southern New England` ~ "Southern New England",
+      strata_num %in% strata_key$`Mid-Atlantic Bight` ~ "Mid-Atlantic Bight",
+    TRUE ~ "Outside Major Study Areas"
+  )) %>% 
+  select(finstr_id, strata, strata_num, area, a2, str2, set, stratuma, str3, geometry)
+
+
+# Map it
+strata_plot <- ggplot() +
+  geom_sf(data = new_england) +
+  geom_sf(data = canada) +
+  geom_sf(data = survey_strata, aes(fill = area)) +
+  coord_sf(xlim = c(-77, -65), ylim = c(34, 45.75), expand = FALSE) +
+  guides(fill = guide_legend(nrow = 2)) +
+  theme_bw() +
+  theme(legend.position = "bottom", legend.title = element_blank()) +
+  labs(subtitle = "Survey Regions")
+
+strata_plot
+```
+
+
+## Visualizing the Spectra
+
+The body size spectra were estimated for each of these regions independently. Abundances were area-stratified, then grouped into log bodymass bins. 3d Surfaces below display how the shape of the spectra change over time. This is paired with the underlying parameters of the annual size spectra.
+
+
+
+```{r}
+# Load the data
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_1g_binned))            
+
+# Load the spectra coefficients
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))
+
+
+# Split the data into the groups we want to compare:
+areas_binned <- nefsc_1g_binned %>% 
+  split(.$survey_area)
+
+# Get annual totals within each area
+areas_aggregated <- areas_binned %>% 
+  map(function(area_data){
+    area_data %>% 
+      split(.$Year) %>% 
+      map_dfr(function(yr_data){
+        aggregate_l10_bins(yr_data) %>%
+          mutate(log10_bins = as.numeric(log10_bins),
+                 norm_strat_abund = log10(norm_strat_abund),
+                 norm_strat_abund = ifelse(is.na(norm_strat_abund), 0, norm_strat_abund))
+          
+      }, .id = "Year")
+  })
+```
+
+
+```{r surface plot function}
+####  Surface Plots
+
+spectra_surface <- function(l10_totals, plot_title){
+  
+  # Pull data for matrix
+  dat <- select(l10_totals, log10_bins, Year, norm_strat_abund)
+  
+  # Make matrix to plot
+  spectrum_mat <- as.matrix(xtabs(norm_strat_abund~log10_bins + Year, data = dat))
+
+  # Build plotly plot
+  surf_plot <- plot_ly(
+      x = as.numeric(colnames(spectrum_mat)), 
+      y = as.numeric(rownames(spectrum_mat)), 
+      z = spectrum_mat
+    ) %>% 
+  add_surface() %>%
+  layout(
+    title = str_c(plot_title, " - Bodymass Spectrum"),
+    scene = list(
+      xaxis = list(title = "Year"),
+      yaxis = list(title = "Log10( BodyMass (g) )"),
+      zaxis = list(title = "Log10( Abundance) "),
+      camera = list(eye = list(x = 1, y = 1, z = 1.25))
+    ))
+  
+  #return plot
+  return(surf_plot)
+  
+}
+
+
+```
+
+
+###  Gulf of Maine
+
+
+```{r}
+spectra_surface(l10_totals = areas_aggregated$GoM, "Gulf of Maine")
+```
+
+
+### Georges Bank
+
+```{r}
+spectra_surface(l10_totals = areas_aggregated$GB, "Georges Bank")
+```
+
+### Southern New England
+
+```{r}
+spectra_surface(l10_totals = areas_aggregated$SNE, "Southern New England")
+```
+
+### Mid-Atlantic Bight
+
+
+```{r}
+spectra_surface(l10_totals = areas_aggregated$MAB, "Mid-Atlantic Bight")
+```
+
+
+
+
+`r insert_gmri_footer()`

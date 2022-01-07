@@ -81,6 +81,11 @@ This report digs into what the outcomes of the size spectrum estimations look li
 [Patterns Across Entire Survey Area](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/size_spectrum_story.html)
 
 
+
+[Size Spectrum Surfaces](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/size_spectra_surfaces.html)
+
+
+
 ## Size at Age Analyses
 
 [Von-Bert Size at Age relationships](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/size_at_age_exploration.html)
