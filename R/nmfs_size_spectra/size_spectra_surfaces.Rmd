@@ -120,7 +120,9 @@ strata_plot
 
 ## Visualizing the Spectra
 
-The body size spectra were estimated for each of these regions independently. Abundances were area-stratified, then grouped into log bodymass bins. 3d Surfaces below display how the shape of the spectra change over time. This is paired with the underlying parameters of the annual size spectra.
+The body size spectra were estimated for each of these regions independently. Abundances were area-stratified, then grouped into log bodymass bins. 3d Surfaces below display how the shape of the spectra change over time. 
+
+These surfaces are followed by the resulting size spectrum parameters of the annual size spectra.
 
 
 
@@ -163,10 +165,10 @@ areas_aggregated <- areas_binned %>%
 spectra_surface <- function(l10_totals, plot_title){
   
   # Pull data for matrix
-  dat <- select(l10_totals, log10_bins, Year, norm_strat_abund)
+  dat <- select(l10_totals, left_lim, Year, norm_strat_abund)
   
   # Make matrix to plot
-  spectrum_mat <- as.matrix(xtabs(norm_strat_abund~log10_bins + Year, data = dat))
+  spectrum_mat <- as.matrix(xtabs(norm_strat_abund~left_lim + Year, data = dat))
 
   # Build plotly plot
   surf_plot <- plot_ly(
@@ -205,7 +207,7 @@ plot_params <- function(area_abbrev){
   
   bin_data <- areas_aggregated[[area_abbrev]] %>% 
     mutate(Year = as.numeric(Year),
-           l10_bins = factor(log10_bins))
+           l10_bins = factor(left_lim))
   bin_p <- ggplot(bin_data, aes(x = Year, y = norm_strat_abund, color = l10_bins)) +
     geom_line(aes(group = log10_bins)) +
     geom_point() + 
