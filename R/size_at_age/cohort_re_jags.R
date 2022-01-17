@@ -28,7 +28,7 @@ haddock <- vonbert_species_bio$haddock %>%
     age = as.numeric(age),
     year = factor(est_year),
     cohort_year = yearclass) %>% 
-  # filter(cohort_year >= 1970) %>% 
+  filter(cohort_year >= 1970) %>% 
   mutate(yearclass = factor(yearclass),
          yearclass = fct_drop(yearclass)) %>% 
   drop_na(length_cm, age)
@@ -43,18 +43,19 @@ ggplot(haddock, aes(age, length_cm, color = yearclass)) +
 # Plot Cohort Abundances & Number of Ages Present in Data
 yearclass_counts <- haddock %>% count(yearclass) 
 cohort_ages <- haddock %>% count(yearclass, age)
-ggplot(cohort_ages, aes(x = age, y = yearclass)) + 
+ggplot(cohort_ages, aes(x = yearclass, y = age)) + 
   geom_text(data = yearclass_counts, 
-            aes(y = yearclass, x = -1.5, 
+            aes(x = yearclass, y = -1.5, 
                 label = str_pad(str_c("N = ", n), width = 10, side = "right", pad = " ")), 
             size = 2.25) +
   geom_point(aes(size = n)) + 
+  coord_flip() + 
   theme_classic() + 
   theme(legend.position = "bottom") +
-  labs(x = "Age", y = "Cohort Year")
+  labs(x = "Cohort Year", y = "Age")
 
 # Check that lengths are good
-# range(haddock$length_cm)
+range(haddock$length_cm)
 
 #Save the data so Grant can test
 # saveRDS(haddock, file = here::here("data/single_species/haddock_bio.rds"))
@@ -88,20 +89,20 @@ jags.mod <-
   # Level-2 parameters for each group (location, cohort, etc.)
   for(j in 1:G){
     # T(L, R) used to truncate left and right limits
-    Linf[j]  ~ dnorm(mu.Linf, tau.Linf)
-    k[j]     ~ dnorm(mu.k, tau.k) 
+    Linf[j]  ~ dnorm(log.mu.Linf, tau.Linf)
+    k[j]     ~ dnorm(log.mu.k, tau.k) 
     t0[j]    ~ dnorm(mu.t0, tau.t0) 
   }
+   
+  # Priors for level-2 parameters
+  log.mu.Linf ~ dnorm(0, 0.0001)
+  log.mu.k    ~ dnorm(0, 0.0001)
+  mu.t0       ~ dnorm(0, 0.0001)
    
   # Get hyperparameters on untransformed scale (if transformed)
   mu.Linf = exp(log.mu.Linf) 
   mu.k    = exp(log.mu.k)
   # mu.t0
-
-  # Priors for level-2 parameters
-  log.mu.Linf ~ dnorm(0, 0.0001)
-  log.mu.k    ~ dnorm(0, 0.0001)
-  mu.t0       ~ dnorm(0, 0.0001)
    
   # Precision
   tau.Linf = pow(sig.Linf, -2)
@@ -124,8 +125,8 @@ params = c("Linf",
            "k", 
            "t0", 
            "log.mu.Linf", 
-           "log.mu.k", 
            "mu.Linf", 
+           
            "mu.k", 
            "mu.t0", 
            "sig.Linf",
@@ -135,7 +136,7 @@ params = c("Linf",
 )
 
 ##### MCMC DIMENSIONS #####
-ni = 1500
+ni = 2000
 nb = 4000
 na = 1000
 nt = 10
@@ -154,9 +155,6 @@ runJagsOut <- run.jags(model = here::here("R/size_at_age/yearclass_jags_model.tx
                        summarise = FALSE ,
                        plots = FALSE )
 
-# Converged?
-# plot(runJagsOut)
-
 # Summary
 jags_summ <- summary(runJagsOut)
 
@@ -174,9 +172,9 @@ linf_post <- out_tidy %>% select(starts_with("Linf")) %>%
   pivot_longer(cols = everything(), names_to = "yearclass_num", values_to = "Linf") %>% 
   left_join(yearclass_id_key, by = "yearclass_num")
 
-ggplot(linf_post, aes(x = Linf, y = fct_rev(yearclass))) +
-  geom_boxplot() + 
-  labs(x = "Posterior Distribution: Linf (cm)", y = "Cohort Year")
+ggplot(linf_post, aes(x = yearclass, y = Linf)) +
+  geom_boxplot() + labs(y = "Linf Posterior Distribution (cm)") +
+  coord_flip()
 
 # Pulling K
 K_post <- out_tidy %>% select(starts_with("k")) %>%
@@ -184,9 +182,9 @@ K_post <- out_tidy %>% select(starts_with("k")) %>%
   pivot_longer(cols = everything(), names_to = "yearclass_num", values_to = "K") %>% 
   left_join(yearclass_id_key, by = "yearclass_num")
 
-ggplot(K_post, aes(x = K, y = fct_rev(yearclass))) +
-  geom_boxplot() + 
-  labs(y = "Posterior Distribution: K")
+ggplot(K_post, aes(x = yearclass, y = K)) +
+  geom_boxplot() + labs(y = "K Posterior Distribution") +
+  coord_flip()
 
 
 # Pulling t0
@@ -195,8 +193,9 @@ t0_post <- out_tidy %>% select(starts_with("t0")) %>%
   pivot_longer(cols = everything(), names_to = "yearclass_num", values_to = "t0") %>% 
   left_join(yearclass_id_key, by = "yearclass_num")
 
-ggplot(t0_post, aes(x = t0, y = fct_rev(yearclass))) +
-  geom_boxplot() + labs(y = "Posterior Distribution: t0 ")
+ggplot(t0_post, aes(x = yearclass, y = t0)) +
+  geom_boxplot() + labs(y = "t0 Posterior Distribution") +
+  coord_flip()
 
 
 
