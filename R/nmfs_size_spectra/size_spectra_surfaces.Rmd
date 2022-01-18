@@ -33,7 +33,7 @@ library(plotly)
 
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
-res_path <- box_path("res")
+res_path <- cs_path("res")
 
 # Set theme  
 theme_set(theme_bw() +
@@ -63,8 +63,8 @@ This relationship is often plotted on a log body size x log abundance scale whic
 
 ```{r}
 # Load the shapefiles for the polygons
-new_england <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
-canada <- ne_states("canada") %>% st_as_sf(crs = 4326) 
+new_england <- ne_states("united states of america", returnclass = "sf")
+canada <- ne_states("canada", returnclass = "sf")
 
 # Load the strata
 survey_strata <- read_sf(str_c(res_path, "Shapefiles/BottomTrawlStrata/BTS_Strata.shp"))  %>% 
@@ -117,6 +117,44 @@ strata_plot <- ggplot() +
 strata_plot
 ```
 
+## Comparing the Spectra {.tabset .tabset-pills}
+
+```{r}
+# Load the spectra coefficients
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))
+
+# Pull the ones that are regions and years
+region_dat <- size_spectrum_indices %>% 
+  filter(`group ID` == "single years * region") %>% mutate(Year = as.numeric(Year)) %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "MAB", "SNE")))
+
+# Put them in list for lata
+region_indices <- region_dat %>% 
+  split(.$survey_area)
+
+
+
+slopes <- region_dat %>% 
+  ggplot(aes(Year, l10_slope_strat)) +
+  geom_line(size = 0.5, color = "gray50") +
+  geom_point(size = 1,color = "gray10") +
+  facet_wrap(~survey_area, ncol = 1) +
+  labs(subtitle = "Size Spectrum Slope", y = "")
+
+ints <- region_dat %>% 
+  ggplot(aes(Year, l10_int_strat)) +
+  geom_line(size = 0.5, color = "gray50") +
+  geom_point(size = 1,color = "gray10") +
+  facet_wrap(~survey_area, ncol = 1) +
+  labs(subtitle = "Size Spectrum Intercept", y ="")
+
+slopes | ints
+```
+
+
+
+
 
 ## Visualizing the Spectra
 
@@ -127,17 +165,10 @@ These surfaces are followed by the resulting size spectrum parameters of the ann
 
 
 ```{r}
-# Load the data
+# Load the data used to estimate spectra
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(nefsc_1g_binned))            
 
-# Load the spectra coefficients
-withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(size_spectrum_indices))
-
-# Pull the ones that are regions and years
-region_indices <- size_spectrum_indices %>% filter(`group ID` == "single years * region") %>% mutate(Year = as.numeric(Year)) %>% 
-  split(.$survey_area)
 
 # Split the data into the groups we want to compare:
 areas_binned <- nefsc_1g_binned %>% 
