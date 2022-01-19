@@ -42,7 +42,8 @@ theme_set(theme_bw() +
                                             face = "bold"),
                   strip.background = element_rect(
                     color = "white", 
-                    fill = "#36454F", 
+                    #fill = "#36454F", # charcoal
+                    fill = "#00736D",
                     size = 0.75, 
                     linetype="solid"), 
             legend.background = element_rect(fill = "transparent", 
@@ -117,7 +118,7 @@ strata_plot <- ggplot() +
 strata_plot
 ```
 
-## Comparing the Spectra {.tabset .tabset-pills}
+## Comparing Spectra Parameters {.tabset .tabset-pills}
 
 ```{r}
 # Load the spectra coefficients
@@ -152,6 +153,81 @@ ints <- region_dat %>%
 slopes | ints
 ```
 
+## Biomass and Abundance Trends
+
+```{r}
+# Load the data used to estimate spectra
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_1g_binned))      
+
+
+# Get yearly biomass and abundance
+yearly_summs <- nefsc_1g_binned %>% 
+  group_by(Year, survey_area) %>% 
+  summarise(strat_biomass = sum(strat_total_lwbio_s, na.rm = T),
+            strat_abund = sum(strat_total_abund_s, na.rm = T),
+            .groups = "drop") %>% 
+  ungroup() %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE",  "MAB")))
+
+
+
+abund_p <- ggplot(yearly_summs, aes(Year, strat_abund)) +
+  geom_line(size = 0.5, color = "gray50") +
+  geom_point(size = 1,color = "gray10") +
+  facet_wrap(~survey_area, ncol = 1, scales = "free") +
+  scale_y_continuous(labels = comma_format()) +
+  labs(subtitle = "Stratified Abundance", y ="")
+
+
+biom_p <- ggplot(yearly_summs, aes(Year, strat_biomass)) +
+  geom_line(size = 0.5, color = "gray50") +
+  geom_point(size = 1,color = "gray10") +
+  facet_wrap(~survey_area, ncol = 1, scales = "free") +
+  scale_y_continuous(labels = comma_format()) +
+  labs(subtitle = "Stratified Biomass", y ="")
+
+
+
+abund_p | biom_p
+```
+
+
+
+## Big Fish & Small Fish Trends
+
+
+```{r}
+fish_sizes <- nefsc_1g_binned %>% 
+  mutate(fish_size = ifelse(ind_weight_kg <= 2, "Small <= 2kg", "Large > 2kg")) %>% 
+  group_by(Year, survey_area, fish_size) %>% 
+  summarise(strat_biomass = sum(strat_total_lwbio_s, na.rm = T),
+            strat_abund = sum(strat_total_abund_s, na.rm = T),
+            .groups = "drop") %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE",  "MAB")),
+         fish_size = factor(fish_size, levels = c("Small <= 2kg", "Large > 2kg")))
+```
+
+
+```{r, fig.width=8}
+ggplot(fish_sizes, aes(Year, strat_abund)) +
+  geom_line(size = 0.5, color = "gray50") +
+  geom_point(size = 1,color = "gray10") +
+  facet_grid(fish_size~survey_area, scales = "free") +
+  scale_y_continuous(labels = comma_format()) +
+  labs(subtitle = "Stratified Abundance", y ="")
+```
+
+
+```{r, fig.width=8}
+ggplot(fish_sizes, aes(Year, strat_biomass)) +
+  geom_line(size = 0.5, color = "gray50") +
+  geom_point(size = 1,color = "gray10") +
+  facet_grid(fish_size~survey_area, scales = "free") +
+  scale_y_continuous(labels = comma_format()) +
+  labs(subtitle = "Stratified Biomass", y ="")
+
+```
 
 
 
@@ -165,11 +241,7 @@ These surfaces are followed by the resulting size spectrum parameters of the ann
 
 
 ```{r}
-# Load the data used to estimate spectra
-withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_1g_binned))            
-
-
+      
 # Split the data into the groups we want to compare:
 areas_binned <- nefsc_1g_binned %>% 
   split(.$survey_area)
@@ -305,6 +377,11 @@ spectra_surface(l10_totals = areas_aggregated$MAB, "Mid-Atlantic Bight")
 ```{r, fig.height=8}
 plot_params("MAB")
 ```
+
+
+
+`r insert_gmri_footer()`
+
 
 
 
