@@ -36,18 +36,35 @@ source(here("R/support/sizeSpectra_support.R"))
 res_path <- cs_path("res")
 
 # Set theme  
-theme_set(theme_bw() +
-            theme(legend.position = "bottom",
-                  strip.text = element_text(color = "white", 
-                                            face = "bold"),
-                  strip.background = element_rect(
-                    color = "white", 
-                    #fill = "#36454F", # charcoal
-                    fill = "#00736D",
-                    size = 0.75, 
-                    linetype="solid"), 
-            legend.background = element_rect(fill = "transparent", 
-                                             color = "black")))
+
+# Set ggplot theme for figures
+theme_set(theme_bw() + 
+            theme(
+              # Titles
+              plot.title = element_text(hjust = 0, face = "bold", size = 14),
+              plot.subtitle = element_text(size = 12),
+              plot.caption = element_text(size = 7.2, margin = margin(t = 20), color = "gray40"),
+              legend.title = element_text(size = 9),
+              legend.text = element_text(size = 7.5),
+              # Axes
+              axis.line.y = element_line(color = "black"),
+              axis.ticks.y = element_line(), 
+              axis.line.x = element_line(color = "black"),
+              axis.ticks.x = element_line(), 
+              axis.text = element_text(size = 12),
+              axis.title = element_text(size = 12),
+              rect = element_rect(fill = "transparent", color = "black"),
+              # Facets
+              strip.text = element_text(color = "white", 
+                                        face = "bold",
+                                        size = 11),
+              strip.background = element_rect(
+                color = "#00736D", 
+                fill = "#00736D", 
+                size = 1, 
+                linetype="solid"))
+)
+
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -99,8 +116,8 @@ survey_strata <- survey_strata %>%
       strata_num %in% strata_key$`Gulf of Maine` ~ "Gulf of Maine",
       strata_num %in% strata_key$`Southern New England` ~ "Southern New England",
       strata_num %in% strata_key$`Mid-Atlantic Bight` ~ "Mid-Atlantic Bight",
-    TRUE ~ "Outside Major Study Areas"
-  )) %>% 
+    TRUE ~ "Outside Major Study Areas"),
+    area = factor(area, levels = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"))) %>% 
   select(finstr_id, strata, strata_num, area, a2, str2, set, stratuma, str3, geometry)
 
 
@@ -108,12 +125,14 @@ survey_strata <- survey_strata %>%
 strata_plot <- ggplot() +
   geom_sf(data = new_england) +
   geom_sf(data = canada) +
-  geom_sf(data = survey_strata, aes(fill = area)) +
+  geom_sf(data = survey_strata, aes(fill = area), alpha = 0.8) +
   coord_sf(xlim = c(-77, -65), ylim = c(34, 45.75), expand = FALSE) +
   guides(fill = guide_legend(nrow = 2)) +
-  theme_bw() +
-  theme(legend.position = "bottom", legend.title = element_blank()) +
-  labs(subtitle = "Survey Regions")
+  scale_fill_gmri() +
+  scale_x_continuous(breaks = seq(-180, 180, by =5)) +
+  theme(legend.position = c(0.7, 0.125), legend.title = element_blank()) +
+  labs(title = "Study Area",
+       fill = "Survey Regions")
 
 strata_plot
 ```
@@ -141,14 +160,14 @@ slopes <- region_dat %>%
   geom_line(size = 0.5, color = "gray50") +
   geom_point(size = 1,color = "gray10") +
   facet_wrap(~survey_area, ncol = 1) +
-  labs(subtitle = "Size Spectrum Slope", y = "")
+  labs(title = "Size Spectrum Slope", y = "Slope")
 
 ints <- region_dat %>% 
   ggplot(aes(Year, l10_int_strat)) +
   geom_line(size = 0.5, color = "gray50") +
   geom_point(size = 1,color = "gray10") +
   facet_wrap(~survey_area, ncol = 1) +
-  labs(subtitle = "Size Spectrum Intercept", y ="")
+  labs(title = "Size Spectrum Intercept", y ="Intercept")
 
 slopes | ints
 ```
@@ -168,24 +187,26 @@ yearly_summs <- nefsc_1g_binned %>%
             strat_abund = sum(strat_total_abund_s, na.rm = T),
             .groups = "drop") %>% 
   ungroup() %>% 
-  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE",  "MAB")))
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE",  "MAB")),
+         strat_biom_mill = strat_biomass/1e6,
+         strat_abund_mill = strat_abund/1e6)
 
 
 
-abund_p <- ggplot(yearly_summs, aes(Year, strat_abund)) +
+abund_p <- ggplot(yearly_summs, aes(Year, strat_abund_mill)) +
   geom_line(size = 0.5, color = "gray50") +
   geom_point(size = 1,color = "gray10") +
   facet_wrap(~survey_area, ncol = 1, scales = "free") +
   scale_y_continuous(labels = comma_format()) +
-  labs(subtitle = "Stratified Abundance", y ="")
+  labs(title = "Stratified Abundance", y ="Abundance (millions)")
 
 
-biom_p <- ggplot(yearly_summs, aes(Year, strat_biomass)) +
+biom_p <- ggplot(yearly_summs, aes(Year, strat_biom_mill)) +
   geom_line(size = 0.5, color = "gray50") +
   geom_point(size = 1,color = "gray10") +
   facet_wrap(~survey_area, ncol = 1, scales = "free") +
-  scale_y_continuous(labels = comma_format()) +
-  labs(subtitle = "Stratified Biomass", y ="")
+  scale_y_continuous(labels = comma_format(), trans = ) +
+  labs(title = "Stratified Biomass", y ="Biomass (million kg)")
 
 
 
@@ -204,28 +225,31 @@ fish_sizes <- nefsc_1g_binned %>%
   summarise(strat_biomass = sum(strat_total_lwbio_s, na.rm = T),
             strat_abund = sum(strat_total_abund_s, na.rm = T),
             .groups = "drop") %>% 
-  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE",  "MAB")),
+  mutate(strat_biom_mill = strat_biomass/1e6,
+         strat_abund_mill = strat_abund/1e6,
+         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE",  "MAB")),
          fish_size = factor(fish_size, levels = c("Small <= 2kg", "Large > 2kg")))
 ```
 
 
 ```{r, fig.width=8}
-ggplot(fish_sizes, aes(Year, strat_abund)) +
+ggplot(fish_sizes, aes(Year, strat_abund_mill)) +
   geom_line(size = 0.5, color = "gray50") +
   geom_point(size = 1,color = "gray10") +
-  facet_grid(fish_size~survey_area, scales = "free") +
+  facet_grid(fish_size ~ survey_area, scales = "free", ) +
   scale_y_continuous(labels = comma_format()) +
-  labs(subtitle = "Stratified Abundance", y ="")
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  labs(title = "Stratified Abundance of Small and Large Fish Groups", y ="Abundance\n(millions)", x = "")
 ```
 
 
 ```{r, fig.width=8}
-ggplot(fish_sizes, aes(Year, strat_biomass)) +
+ggplot(fish_sizes, aes(Year, strat_biom_mill)) +
   geom_line(size = 0.5, color = "gray50") +
   geom_point(size = 1,color = "gray10") +
   facet_grid(fish_size~survey_area, scales = "free") +
   scale_y_continuous(labels = comma_format()) +
-  labs(subtitle = "Stratified Biomass", y ="")
+  labs(title = "Stratified Biomass of Small and Large Fish Groups", y = "Biomass\n(million kg)")
 
 ```
 
@@ -283,7 +307,7 @@ spectra_surface <- function(l10_totals, plot_title){
   layout(
     title = str_c(plot_title, " - Bodymass Spectrum"),
     scene = list(
-      xaxis = list(title = "Year"),
+      xaxis = list(title = "Year", autorange = "reversed"),
       yaxis = list(title = "Log10( BodyMass (g) )"),
       zaxis = list(title = "Log10( Abundance) "),
       camera = list(eye = list(x = 1, y = 1, z = 1.25))
@@ -324,12 +348,139 @@ plot_params <- function(area_abbrev){
   BBCC
   BB##
   "
-  plot_mosaic <- slope_p / int_p / bin_p
+  
+  # title
+  tidy_name <- switch (area_abbrev,
+    "GoM" = "Gulf of Maine",
+    "GB" = "Georges Bank",
+    "SNE" = "Southern New England",
+    "MAB" = "Mid-Atlantic Bight"
+  )
+  
+  plot_mosaic <- (slope_p / int_p)# / bin_p
+  plot_mosaic <- plot_mosaic + plot_annotation(title = tidy_name)
   return( plot_mosaic)
 }
 
 
 ```
+
+
+### Regional Comparisons
+
+
+
+```{r}
+# All Data, Just comparing Regions
+allyr_slopes <- region_dat %>% 
+  ggplot(aes(survey_area, l10_slope_strat, color = survey_area)) +
+  ggdist::stat_halfeye(
+     aes(fill = survey_area),
+     adjust = .5, 
+     width = .6, 
+     .width = 0, 
+     justification = -.2, 
+     point_colour = NA) + 
+  geom_boxplot(
+    width = .15, 
+    outlier.shape = NA) +
+  geom_point(
+    size = 1.3,
+    alpha = .3,
+    position = position_jitter(
+      seed = 1, width = .1)) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  scale_y_continuous(limits = c(-1.65, -0.6)) +
+  facet_wrap(~survey_area, nrow = 1, scales = "free_x") +
+  theme(legend.position = "none") +
+  labs(x = "", y = "Size Spectrum Slope", color = "Time Period", 
+       title =  "Regional Comparison: Size Spectra Slopes (all years)")
+
+
+allyr_slopes
+```
+
+```{r}
+# Early year slopes
+
+early_yr_slopes <-  region_dat %>% 
+  # mutate(recent_yr = ifelse(Year >= 2000, "2000 +", "< 2000")) %>% 
+  filter(Year < 2000) %>% 
+  ggplot(aes(survey_area, l10_slope_strat, color = survey_area)) +
+  ggdist::stat_halfeye(
+     aes(fill = survey_area),
+     adjust = .5, 
+     width = .6, 
+     .width = 0, 
+     justification = -.2, 
+     point_colour = NA) + 
+  geom_boxplot(
+    width = .15, 
+    outlier.shape = NA) +
+  geom_point(
+    size = 1.3,
+    alpha = .3,
+    position = position_jitter(
+      seed = 1, width = .1
+    )
+  ) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+   scale_y_continuous(limits = c(-1.65, -0.6)) +
+  facet_wrap(~survey_area, nrow = 1, scales = "free_x") +
+  theme(legend.position = "none") +
+  labs(x = "", y = "Size Spectrum Slope", color = "Time Period", 
+       title =  "Regional Comparison: Size Spectra Slopes (before 2000)")
+
+
+early_yr_slopes
+```
+
+
+
+```{r}
+# Recent Year Comparison
+recent_yr_slopes <-  region_dat %>% 
+  # mutate(recent_yr = ifelse(Year >= 2000, "2000 +", "< 2000")) %>% 
+  filter(Year >= 2000) %>% 
+  ggplot(aes(survey_area, l10_slope_strat, color = survey_area)) +
+  ggdist::stat_halfeye(
+     aes(fill = survey_area),
+     adjust = .5, 
+     width = .6, 
+     .width = 0, 
+     justification = -.2, 
+     point_colour = NA) + 
+  geom_boxplot(
+    width = .15, 
+    outlier.shape = NA) +
+  geom_point(
+    size = 1.3,
+    alpha = .3,
+    position = position_jitter(
+      seed = 1, width = .1
+    )
+  ) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  scale_y_continuous(limits = c(-1.65, -0.6)) +
+  facet_wrap(~survey_area, nrow = 1, scales = "free_x") +
+  theme(legend.position = "none") +
+  labs(x = "", y = "Size Spectrum Slope", color = "Time Period", 
+       title =  "Regional Comparison: Size Spectra Slopes (2000+)")
+
+
+recent_yr_slopes
+```
+
+
+
+
+```{r}
+allyr_slopes / early_yr_slopes / recent_yr_slopes
+```
+
 
 
 ###  Gulf of Maine
@@ -383,6 +534,3 @@ plot_params("MAB")
 `r insert_gmri_footer()`
 
 
-
-
-`r insert_gmri_footer()`

@@ -165,14 +165,16 @@ species_data <- map(vonbert_species, function(species_name){
 
 ## Age Data Availability
 
-The availability of data for fitting growth curves varies by species & sex for the different seasons and years of the survey. Some species are also much longer lived and have a longer age range that may be difficult to accurately fit without good representation in the data
+The availability of data for fitting growth curves varies by species & sex for the different seasons and years of the survey. Some species are much longer lived and have a larger age range that may be difficult to accurately fit without good representation in the data.
 
 ```{r, fig.height = 12}
 
 # check crosstable
 #xtabs(~yearclass + age, bind_rows(species_data, .id = "common name"))
+all_vonbert <- bind_rows(species_data, .id = "common name") 
 
-bind_rows(species_data, .id = "common name") %>% 
+# Make summary table
+all_vonbert %>% 
   group_by(comname, catchsex, decade) %>% 
   summarise(
     number_aged = n(),
@@ -185,19 +187,108 @@ bind_rows(species_data, .id = "common name") %>%
   mutate(across(where(is.numeric), round, 1),
          age_range = NULL) %>% 
   setNames(
-    c("Common Name", "Sex", "Decade", "# Aged", "# of Ages", "Age Min", "Age Max", "Avg. Fish / Age")
-  ) %>% DT::datatable()
+    c("Common Name", "Sex", "Decade", "# Aged", "# of Ages", "Age Min", "Age Max", "Avg. Fish / Age")) %>% DT::datatable()
 
-# bind_rows(species_data, .id = "common name") %>% 
-#   count(comname, est_year, yearclass, age) %>% 
+# bind_rows(species_data, .id = "common name") %>%
+#   count(comname, est_year, yearclass, age) %>%
 # ggplot(aes(est_year, age, size = n, color = yearclass)) +
 #   geom_point() +
 #   scale_color_gmri(discrete = FALSE) +
-#   labs(x = "Year", y = "Age", size = "Number Aged", color = "Cohort Year") + 
-#   facet_wrap(~comname, ncol = 3) + 
+#   labs(x = "Year", y = "Age", size = "Number Aged", color = "Cohort Year") +
+#   facet_wrap(~comname, ncol = 3) +
 #   guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5),
 #          size = guide_legend(title.position = "top", title.hjust = 0.5))
 ```
+
+
+
+## Changes in Size at Age - Raw Data
+
+From the raw data we have measurements of individuals sampled and the age that they were later given by otolith readers. Without needing to fir growth curves we can look at how these sizes change over the years:
+
+
+```{r}
+# Pull a species and get average weight at age for each year
+library(geomtextpath)
+library(directlabels)
+
+# Plotting a species changing weight at age:
+plot_size_at_age <- function(comname, param = "weight"){
+  
+  #tester: comname <- "haddock"
+  
+  # Pull species
+  this_species <- all_vonbert %>% 
+  filter(comname == comname) %>% 
+    mutate(decade = str_c(decade, "'s")) %>% 
+    filter(est_year >= 1990,
+           age <= 8) %>% 
+    mutate(age = fct_drop(factor(age)))
+  
+  # Get yearly averages
+  yrly_avgs <- this_species %>% 
+  group_by(est_year, age, yearclass, decade) %>% 
+  summarise(avg_len = mean(length_cm, na.rm = T),
+            avg_weight = mean(indwt, na.rm = T),
+            .groups = "drop")
+  
+  # filter out last ten yrs
+  last_five <- filter(yrly_avgs, between(yearclass, 2014, 2018))
+  
+  # last yr
+  last_yr <- filter(yrly_avgs, yearclass == 2019)
+  
+  
+  # Build Plots for decades
+  this_species  %>% 
+  ggplot(aes(age, indwt)) +
+    ggdist::stat_halfeye(justification = -.2,
+                         .width = 0,
+                         point_colour = NA) +
+    geom_boxplot(width = .12, 
+                 outlier.colour = NA,
+                 alpha = 0.5) +
+    geom_line(data = last_five, 
+              aes(age, avg_weight, group = yearclass, color = "2014-2018")) +
+    geom_dl(data = last_five, 
+            aes(age, avg_weight, label = yearclass, color = "2014-2018"), method = "last.points") +
+    geom_line(data = last_yr, 
+              aes(age, avg_weight, color = "2019")) +
+     geom_dl(data = last_yr, 
+             aes(age, avg_weight, label = yearclass, color = "2019"), method = "last.points") +
+     scale_color_gmri() +
+    facet_wrap(~decade, ncol = 1) +
+    ylim(c(0, 1)) +
+    labs(x = "Age", y = "Weight (kg)", color = "Cohort Average",
+         title = str_to_title(comname))
+  
+  
+  # Build complicated plot with all years
+# yrly_avgs %>% 
+#    ggplot(aes(age, avg_weight, group = yearclass)) +
+#      geom_boxplot(data = this_species, aes(age, indwt), color = "gray50", alpha = 0.5, outlier.color = NA) +
+#     geom_line(data = last_five, aes(age, avg_weight, group = yearclass, color = "2014-2018")) +
+#     geom_dl(data = last_five, aes(age, avg_weight, label = yearclass, color = "2014-2018"), method = "last.points") +
+#     geom_line(data = last_yr, aes(age, avg_weight, color = "2019")) +
+#      geom_dl(data = last_yr, aes(age, avg_weight, label = yearclass, color = "2019"), method = "last.points") +
+#      scale_color_gmri() +
+#      labs(x = "Age", y = "Weight (kg)", color = "Cohort", title = str_to_title(comname)) +
+#      xlim(c(0,10)) +
+#   ylim(0,5)
+    
+  
+}
+
+
+
+
+
+```
+
+
+
+
+
 
 
 
