@@ -13,12 +13,15 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
+
+# Chunk Options
 knitr::opts_chunk$set(echo = TRUE, 
                       message = F, 
                       warning = F, 
                       comment = "", 
                       fig.height = 6, 
                       fig.width = 8)
+
 
 ####  Packages  ####
 library(lme4)
@@ -32,7 +35,8 @@ library(targets)
 library(ggridges)
 library(patchwork)
 library(nlme)
-
+library(geomtextpath)
+library(directlabels)
 
 # set theme
 theme_set(theme_minimal() + 
@@ -63,13 +67,9 @@ theme_set(theme_minimal() +
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
-
-# Exploring Size-at-age Changes 
-
-
+# Exploring Size-at-age Changes
 
 ## Loading Bio Data
-
 
 ```{r}
 
@@ -114,11 +114,7 @@ nmfs_bio <- bio_5yr_prep(survdat_biological = survdat_biological)
 
 ```
 
-
-#  Fitting Von-Bertalanffy Growth
-
-
-
+# Fitting Von-Bertalanffy Growth
 
 ## Species Data Prep
 
@@ -137,7 +133,6 @@ vonbert_species <- sort(species_abunds$comname[1:17])
 ```
 
 These will be the species that we assess length-at-age characteristics for: **`r pander::pander(vonbert_species)`**
-
 
 We also only care about data from the two main survey seasons, so we limit the data to just those seasons before splitting it out into lists for each species. The lists contain all data for a given species, broken into groups at a set interval of time. In this case it is five year increments.
 
@@ -161,7 +156,6 @@ species_data <- map(vonbert_species, function(species_name){
 
 
 ```
-
 
 ## Age Data Availability
 
@@ -200,26 +194,22 @@ all_vonbert %>%
 #          size = guide_legend(title.position = "top", title.hjust = 0.5))
 ```
 
-
-
 ## Changes in Size at Age - Raw Data
 
 From the raw data we have measurements of individuals sampled and the age that they were later given by otolith readers. Without needing to fir growth curves we can look at how these sizes change over the years:
 
-
 ```{r}
 # Pull a species and get average weight at age for each year
-library(geomtextpath)
-library(directlabels)
+
 
 # Plotting a species changing weight at age:
-plot_size_at_age <- function(comname, param = "weight"){
+plot_size_at_age <- function(comname_select, param = "weight"){
   
   #tester: comname <- "haddock"
   
   # Pull species
   this_species <- all_vonbert %>% 
-  filter(comname == comname) %>% 
+  filter(comname == comname_select) %>% 
     mutate(decade = str_c(decade, "'s")) %>% 
     filter(est_year >= 1990,
            age <= 8) %>% 
@@ -240,58 +230,38 @@ plot_size_at_age <- function(comname, param = "weight"){
   
   
   # Build Plots for decades
-  this_species  %>% 
-  ggplot(aes(age, indwt)) +
-    ggdist::stat_halfeye(justification = -.2,
-                         .width = 0,
-                         point_colour = NA) +
-    geom_boxplot(width = .12, 
-                 outlier.colour = NA,
-                 alpha = 0.5) +
-    geom_line(data = last_five, 
-              aes(age, avg_weight, group = yearclass, color = "2014-2018")) +
-    geom_dl(data = last_five, 
-            aes(age, avg_weight, label = yearclass, color = "2014-2018"), method = "last.points") +
-    geom_line(data = last_yr, 
-              aes(age, avg_weight, color = "2019")) +
-     geom_dl(data = last_yr, 
-             aes(age, avg_weight, label = yearclass, color = "2019"), method = "last.points") +
-     scale_color_gmri() +
-    facet_wrap(~decade, ncol = 1) +
-    ylim(c(0, 1)) +
-    labs(x = "Age", y = "Weight (kg)", color = "Cohort Average",
-         title = str_to_title(comname))
+  saa_plot <- ggplot(this_species) +
+    geom_boxplot(aes(age, indwt, fill = decade), position = "dodge",
+                 width = .5, alpha = 0.4,
+                 outlier.colour = NA) +
+    scale_fill_gmri() +
+    labs(x = "Age", y = "Weight (kg)", 
+         fill = "Decadal Distribution",
+         title = str_to_title(comname_select),
+         subtitle = "Decadal Change to Size at Age")
+  
+  # Put Last Five Years on Its Own plot
+  plot_5yr <-  ggplot(last_five) +
+    geom_line(aes(age, avg_weight, group = yearclass, color = fct_rev(factor(yearclass)))) +
+    geom_dl(aes(age, avg_weight, label = yearclass, color = fct_rev(factor(yearclass))),
+            method = list("last.points", directlabels::dl.trans(y = y + 0.75, x = x + 0))) +
+     scale_color_grey() +
+    scale_y_continuous(expand = expansion(mult = c(0, .2))) +
+    labs(x = "Age", y = "Weight (kg)", 
+         subtitle = "Averages for Last 5 Years",
+         color = "Cohort Average")
   
   
-  # Build complicated plot with all years
-# yrly_avgs %>% 
-#    ggplot(aes(age, avg_weight, group = yearclass)) +
-#      geom_boxplot(data = this_species, aes(age, indwt), color = "gray50", alpha = 0.5, outlier.color = NA) +
-#     geom_line(data = last_five, aes(age, avg_weight, group = yearclass, color = "2014-2018")) +
-#     geom_dl(data = last_five, aes(age, avg_weight, label = yearclass, color = "2014-2018"), method = "last.points") +
-#     geom_line(data = last_yr, aes(age, avg_weight, color = "2019")) +
-#      geom_dl(data = last_yr, aes(age, avg_weight, label = yearclass, color = "2019"), method = "last.points") +
-#      scale_color_gmri() +
-#      labs(x = "Age", y = "Weight (kg)", color = "Cohort", title = str_to_title(comname)) +
-#      xlim(c(0,10)) +
-#   ylim(0,5)
-    
+  return((saa_plot / plot_5yr))
   
 }
 
 
-
+plot_size_at_age("atlantic cod", param = "weight")
+#plot_size_at_age("acadian redfish", param = "weight")
 
 
 ```
-
-
-
-
-
-
-
-
 
 ## Fitting to 5-year periods
 
@@ -317,16 +287,13 @@ bholt_plot <- ggplot() +
 typical_plot | bholt_plot
 ```
 
-
 To start things off we first set the von Bert parameterization to solve using nonlinear least squares: `nls()`
 
 ```{r}
 ( vb <- vbFuns(param="Typical") )
 ```
 
-
 Then once we have set that as the function we want to use, we can write a wrapper around it that will take input length and age data, some reasonable parameter starting points, and some minimum number of observations that we set to make sure groups with very few aged fish don't break the workflow.
-
 
 ```{r}
 # Function to Pull Vonbert Coefficients
@@ -364,8 +331,7 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
 }
 ```
 
-This next function is a little redundant, but makes it easier to use `purrr::map` and repeat the estimations for each species: 
-
+This next function is a little redundant, but makes it easier to use `purrr::map` and repeat the estimations for each species:
 
 ```{r}
 
@@ -393,7 +359,7 @@ species_coef <- vonbert_species[c(1:17)] %>%
   map_dfr(species_vonbert, split_col =  "five_yr_group", min_obs = 30)
 ```
 
-##  Plotting Coefficients  {.tabset .tabset-pills}
+## Plotting Coefficients {.tabset .tabset-pills}
 
 Since the table of coefficients is somewhat simple here is a function to select a species, the x_column to use (corresponding to the time grouping), and the name of the coefficient to plot.
 
@@ -425,7 +391,6 @@ plot_vonbert_coef <- function(comnames, x_col, coef_name){
 
 ```
 
-
 Using that function we can now take a look at the coefficients for any given species/coefficient combination.
 
 ### L-infinity
@@ -440,9 +405,7 @@ plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "acadian redfish"),
 
 ```
 
-
 ### K
-
 
 ```{r}
 plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
@@ -555,7 +518,6 @@ bubble_plots[["winter flounder"]]
 bubble_plots[["haddock"]]
 ```
 
-
 ### Ridgeplots {.tabset .tabset-pills}
 
 ```{r}
@@ -646,25 +608,14 @@ nlmer(length_cm ~ nfun(age, Linf, K, t0)  ~ (1 | yearclass),
       start = test_starts)
 ```
 
-
-
-
-
 ## Export Size at Age and Coefficients
-
 
 # Catch Weighted Average Size and Age
 
 For average age and average size by species the stratified abundances are used. Length is freely available, whereas age must be estimated by length.
 
-
 ## Average Age
 
-
 ## Average Size
-
-
-
-
 
 `r insert_gmri_footer()`
