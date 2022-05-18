@@ -7,20 +7,21 @@ library(sf)
 
 
 # Research access paths
-box_paths <- research_access_paths()
+box_paths <- research_access_paths(mac_os = "mojave")
 res_path <- box_paths$res
 
 # Load polygons for mapping
 new_england  <- ne_states("united states of america") %>% st_as_sf(crs = 4326) 
 canada       <- ne_states("canada") %>% st_as_sf(crs = 4326)
 trawl_strata <- read_sf(str_c(res_path, "Shapefiles/BottomTrawlStrata/BTS_Strata.shp"))
-trawl_strata <- trawl_strata %>%  clean_names()
+trawl_strata <- trawl_strata %>%  janitor::clean_names()
 
 # Stratum Key for filtering specific areas
 strata_key <- list(
   "Georges Bank"          = as.character(13:23),
   "Gulf of Maine"         = as.character(24:40),
-  "Southern New England"  = str_pad(as.character(1:12), width = 2, pad = "0", side = "left"),
+  "Southern New England"  = stringr::str_pad(as.character(1:12),
+                                             width = 2, pad = "0", side = "left"),
   "Mid-Atlantic Bight"    = as.character(61:76))
 
 # Add labels to the data

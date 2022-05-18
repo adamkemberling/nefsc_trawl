@@ -1,15 +1,16 @@
 ---
-title: "NEFSC Trawl Bodymass Distribution"
+title: "NEFSC Trawl Size at Age Distribution"
+description: |
+  Looking at how size at age has changed across the New England groundfish community
 author: "Adam A. Kemberling"
 date: "`r Sys.Date()`"
-output: 
-  html_document:
-    toc: TRUE
-    toc_float:
-        collapsed: FALSE
+output:
+  distill::distill_article:
+    self_contained: false
     code_folding: hide
-editor_options: 
-  chunk_output_type: console
+    highlight: haddock
+    highlight_downlit: true
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -20,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       warning = F, 
                       comment = "", 
                       fig.height = 6, 
-                      fig.width = 8)
+                      fig.width = 6)
 
 
 ####  Packages  ####
@@ -35,51 +36,51 @@ library(targets)
 library(ggridges)
 library(patchwork)
 library(nlme)
-library(geomtextpath)
 library(directlabels)
 
-# set theme
-theme_set(theme_minimal() + 
-            theme(
-              # Titles
-              plot.title = element_text(hjust = 0.5),
-              # Axes
-              axis.line.y = element_line(),
-              axis.ticks.y = element_line(), 
-              axis.line.x = element_line(),
-              axis.ticks.x = element_line(), 
-              axis.text = element_text(size = 11),
-              # Facets
-              strip.text = element_text(color = "white", 
-                                        face = "bold",
-                                        size = 11),
-              strip.background = element_rect(
-                color = "white", 
-                fill = "#36454F", 
-                size = 1, 
-                linetype="solid"), 
-              # Legends
-              legend.position = "bottom", 
-              legend.background = element_rect(fill = "transparent", 
-                                               color = "black"))
-          )
+
+
+# Set theme
+theme_set(theme_gmri())
+
+# Load xaringanExtra
+library(xaringanExtra)
+
+# Acitvate panelset
+xaringanExtra::use_panelset()
+
+
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
 # Exploring Size-at-age Changes
 
-## Loading Bio Data
+This report digs into changes in size with age using biological data from the NMFS bottom trawl survey. This dataset is a subset of the groundfish trawl survey's total catch.
+
+The subset is saved while at sea to be brought back for additional workout for things like aging or histology. Because these fishes are worked up at an individual level they have additional data than is otherwise available from the general survey catch data.
+
+Because this is a subset of the full catch data, this information is better at size-at-age analysis and not suited for size-frequency information.
+
+
+## Load/Prep Bio Data
+
+The biological data has its own target, but is loaded from box using the `{gmRi}` package just like the catch data, pulling the data off our shared cloud storage.
 
 ```{r}
-
 # Access Biological Data with {gmRi}
 # nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(survdat_biological))
+```
 
-# Core cleanup:
-# Make 5 year increments
+### Year Groupings
+
+For some of the analyses below the data are grouped into 5-year increments to ensure that there is enough data at-age that might be sparse for any single given year. The function to apply these labels is below:
+
+
+```{r}
+# 1. Make 5 year increments
 bio_5yr_prep <- function(survdat_biological){
   
   # Drop NA age data, restirct to summer and fall
@@ -106,19 +107,21 @@ bio_5yr_prep <- function(survdat_biological){
         decade = floor_decade(est_year)) %>% 
     as.data.frame()
 }
+```
 
+Following this step the biological data is now ready for looking at individual years, cohorts, or five-year groups.
 
+```{r}
 # run cleanup
 nmfs_bio <- bio_5yr_prep(survdat_biological = survdat_biological)
 
 
 ```
 
-# Fitting Von-Bertalanffy Growth
-
-## Species Data Prep
+### Species Selection
 
 In the original proposal it was stated that 17 species would be used, species that are regularly measured and aged. Ordering all species by the number aged we can pull out the following top species:
+
 
 ```{r}
 ####  Data Prep  #### 
@@ -134,18 +137,20 @@ vonbert_species <- sort(species_abunds$comname[1:17])
 
 These will be the species that we assess length-at-age characteristics for: **`r pander::pander(vonbert_species)`**
 
-We also only care about data from the two main survey seasons, so we limit the data to just those seasons before splitting it out into lists for each species. The lists contain all data for a given species, broken into groups at a set interval of time. In this case it is five year increments.
+### Survey Seasons
+
+We care about data from the two main survey seasons, so we limit the data to just those seasons before splitting it out into lists for each species. The lists contain all data for a given species, broken into groups at a set interval of time. In this case it is five year increments.
 
 ```{r}
 # Name the list so it carries through
 names(vonbert_species) <- vonbert_species
 
+
 # Does not work for because of bad start points or no age data:
 # skates, dogfish, fourspot flounder, goosefish
 
 
-
-##### Pull species and make group id for later
+##### Pull species data into the list, and make group id for later
 species_data <- map(vonbert_species, function(species_name){
   
   # Drop NA ages, set increment labels
@@ -157,22 +162,23 @@ species_data <- map(vonbert_species, function(species_name){
 
 ```
 
+
+
+
 ## Age Data Availability
 
 The availability of data for fitting growth curves varies by species & sex for the different seasons and years of the survey. Some species are much longer lived and have a larger age range that may be difficult to accurately fit without good representation in the data.
 
 ```{r, fig.height = 12}
 
-# check crosstable
-#xtabs(~yearclass + age, bind_rows(species_data, .id = "common name"))
+# Check Age Data Availability
 all_vonbert <- bind_rows(species_data, .id = "common name") 
 
 # Make summary table
 all_vonbert %>% 
-  group_by(comname, catchsex, decade) %>% 
+  group_by(comname, decade) %>% 
   summarise(
     number_aged = n(),
-    ages_measured = n_distinct(age),
     min_age = min(age),
     max_age = max(age),
     age_range = max_age - min_age,
@@ -181,29 +187,65 @@ all_vonbert %>%
   mutate(across(where(is.numeric), round, 1),
          age_range = NULL) %>% 
   setNames(
-    c("Common Name", "Sex", "Decade", "# Aged", "# of Ages", "Age Min", "Age Max", "Avg. Fish / Age")) %>% DT::datatable()
+    c("Common Name", "Decade", "# Aged", 
+      "Age Min", "Age Max", "Avg. Fish / Age")) %>% 
+  DT::datatable()
 
-# bind_rows(species_data, .id = "common name") %>%
-#   count(comname, est_year, yearclass, age) %>%
-# ggplot(aes(est_year, age, size = n, color = yearclass)) +
-#   geom_point() +
-#   scale_color_gmri(discrete = FALSE) +
-#   labs(x = "Year", y = "Age", size = "Number Aged", color = "Cohort Year") +
-#   facet_wrap(~comname, ncol = 3) +
-#   guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5),
-#          size = guide_legend(title.position = "top", title.hjust = 0.5))
+
 ```
 
-## Changes in Size at Age - Raw Data
+#### Growth Increment Calculation
+
+One aspect of growth beyond size-at-age is the annual growth between years of a specific age, or the growth increment. 
+
+```{r}
+# Age-Size Increments Differences
+vb_incs <- all_vonbert %>% 
+  group_by(`common name`, est_year,  age) %>% 
+  summarise(avg_len = mean(length_cm, na.rm = T),
+            avg_wt = mean(biomass_kg, na.rm = T),
+            .groups = "drop") %>% 
+  arrange(`common name`,age) %>% 
+  group_split(`common name`, est_year) %>% 
+  map_dfr(function(x){
+    x %>% 
+      mutate(
+        lead_age   = lead(age, n = 1),
+        diff_name  = str_c(age, " - ", lead_age),
+        len_age_p1 = lead(avg_len, n = 1),
+        wt_age_p1  = lead(avg_wt, n = 1),
+        len_inc    = len_age_p1 - avg_len,
+        wt_inc     = wt_age_p1 - avg_wt) %>% 
+      filter((lead_age - age == 1))
+  })
+
+
+```
+
+# Raw Data Exploration
+
+Before fitting anything, let's first look at how the size at age and growth increments look visually. To avoid plot overload the focus will be on 5 main species that have a high ecological or commercial significance.
+
+```{r}
+# Species we want panels for:
+key_species <- sort(c(
+  "atlantic cod",
+  "haddock", 
+  "acadian redfish",
+  "silver hake",
+  "winter flounder"
+))
+```
+
+
+
+## Decadal Size at Age Changes
 
 From the raw data we have measurements of individuals sampled and the age that they were later given by otolith readers. Without needing to fir growth curves we can look at how these sizes change over the years:
 
 ```{r}
-# Pull a species and get average weight at age for each year
-
-
 # Plotting a species changing weight at age:
-plot_size_at_age <- function(comname_select, param = "weight"){
+saa_boxplot <- function(comname_select, age_cutoff = 8){
   
   #tester: comname <- "haddock"
   
@@ -212,64 +254,277 @@ plot_size_at_age <- function(comname_select, param = "weight"){
   filter(comname == comname_select) %>% 
     mutate(decade = str_c(decade, "'s")) %>% 
     filter(est_year >= 1990,
-           age <= 8) %>% 
+           age <= age_cutoff) %>% 
     mutate(age = fct_drop(factor(age)))
   
-  # Get yearly averages
-  yrly_avgs <- this_species %>% 
-  group_by(est_year, age, yearclass, decade) %>% 
-  summarise(avg_len = mean(length_cm, na.rm = T),
-            avg_weight = mean(indwt, na.rm = T),
-            .groups = "drop")
-  
-  # filter out last ten yrs
-  last_five <- filter(yrly_avgs, between(yearclass, 2014, 2018))
-  
-  # last yr
-  last_yr <- filter(yrly_avgs, yearclass == 2019)
+  # Set var and label
+ 
   
   
-  # Build Plots for decades
-  saa_plot <- ggplot(this_species) +
-    geom_boxplot(aes(age, indwt, fill = decade), position = "dodge",
+  # Build Plot for decades as box-whisker
+  len_plot <- ggplot(this_species) +
+    geom_boxplot(aes(age, length_cm, fill = decade), position = "dodge",
                  width = .5, alpha = 0.4,
                  outlier.colour = NA) +
-    scale_fill_gmri() +
-    labs(x = "Age", y = "Weight (kg)", 
+    scale_fill_gmri() + 
+    theme(legend.position = "none") +
+    labs(x = "Age", y = "Length (cm)", 
          fill = "Decadal Distribution",
          title = str_to_title(comname_select),
          subtitle = "Decadal Change to Size at Age")
   
-  # Put Last Five Years on Its Own plot
-  plot_5yr <-  ggplot(last_five) +
-    geom_line(aes(age, avg_weight, group = yearclass, color = fct_rev(factor(yearclass)))) +
-    geom_dl(aes(age, avg_weight, label = yearclass, color = fct_rev(factor(yearclass))),
-            method = list("last.points", directlabels::dl.trans(y = y + 0.75, x = x + 0))) +
-     scale_color_grey() +
-    scale_y_continuous(expand = expansion(mult = c(0, .2))) +
+  # Build Plot for decades as box-whisker
+  wt_plot <- ggplot(this_species) +
+    geom_boxplot(aes(age, indwt, fill = decade), position = "dodge",
+                 width = .5, alpha = 0.4,
+                 outlier.colour = NA) +
+    scale_fill_gmri() +
+    theme(legend.position = "bottom") +
     labs(x = "Age", y = "Weight (kg)", 
-         subtitle = "Averages for Last 5 Years",
-         color = "Cohort Average")
+         fill = "Decadal Distribution")
   
+  return(len_plot / wt_plot)
   
-  return((saa_plot / plot_5yr))
+ 
   
 }
 
+# Function to make panels for it:
+# Make the panels
+saa_panel <- function(spec) {
+  
+  # Open panel
+  cat("::: {.panel}\n")
 
-plot_size_at_age("atlantic cod", param = "weight")
-#plot_size_at_age("acadian redfish", param = "weight")
+  # Create header for panel name
+  cat("##", spec, "{.panel-name}\n")
 
+  # # Text as a plot description
+  # cat("Plot of", spec, "\n")
+
+  # Make plot
+  p <- saa_boxplot(comname_select = spec)
+  print(p)
+
+  # Add linebreak
+  cat("\n")
+
+  # Close panel
+  cat(":::\n")
+}
+```
+
+
+::::: {.panelset}
+
+```{r, results="asis", fig.height=8}
+# Loop through the key species:
+walk(key_species, saa_panel)
 
 ```
 
-## Fitting to 5-year periods
+:::::
+
+
+
+## Size at Age Trends
+
+
+```{r}
+
+# Plot individual Sizes and the trends with them:
+plot_raw_saa <- function(spec_choice, gam_knots = 15, var_choice, facet_prefix = "Age: ", facet_suffix){
+  
+  # Code to switch variables and their labels:
+  var_sym <- switch(var_choice,
+    "length" = sym("length_cm"),
+    "weight" = sym("indwt"))
+  var_label <- switch(var_choice,
+                      "length" = "Length (cm)",
+                      "weight" = "Weight (kg)")
+  
+  
+  # Add pre/suffix to facet labels
+  appender <- function(string, prefix = facet_prefix, suffix = facet_suffix) {
+    paste0(prefix, string)
+    }
+  
+  # Plot them
+  all_vonbert %>% 
+    filter(`common name` == spec_choice,
+           age <= 5) %>%
+    drop_na({{var_sym}}) %>% 
+    ggplot(aes(est_year, y = {{var_sym}} )) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "gam",
+                formula = y ~ s(x, bs = "cs", k = gam_knots),
+                size = 1,
+                color = gmri_cols("orange"),
+                se = FALSE) +
+    facet_wrap(~age, ncol = 1, scales = "free",
+               labeller = as_labeller(appender)) +
+    labs(
+      x = "Year",
+      y = var_label,
+      title = str_to_title(spec_choice),
+      subtitle = str_c("Changes in ", var_choice, " at age."))
+  
+}
+
+# Function to make panels for it:
+# Make the panels
+raw_saa_panel <- function(spec) {
+  
+  # Open panel
+  cat("::: {.panel}\n")
+
+  # Create header for panel name
+  cat("##", spec, "{.panel-name}\n")
+
+  # # Text as a plot description
+  # cat("Plot of", spec, "\n")
+
+  # Make plot
+  p <- plot_raw_saa(spec_choice = spec, var_choice = "length")
+  print(p)
+
+  # Add linebreak
+  cat("\n")
+
+  # Close panel
+  cat(":::\n")
+}
+```
+
+
+::::: {.panelset}
+
+```{r, results="asis", fig.height=8}
+# Loop through the key species:
+walk(key_species, raw_saa_panel)
+```
+
+:::::
+
+
+
+## Growth Increment Trends
+
+```{r}
+
+# Put together a timeseries of:
+# how big were the age 0's,
+# how big were the age 1's
+
+
+# Plotting Age Increments
+plot_age_increments <- function(spec_choice, var_choice = "length", gam_knots = 15, facet_prefix = "Age Increment: "){
+  
+
+
+
+# Code to switch variables and their labels:
+  var_sym <- switch(var_choice,
+    "length" = sym("len_inc"),
+    "weight" = sym("wt_inc"))
+  var_label <- switch(var_choice,
+                      "length" = "Annual Growth  (cm)",
+                      "weight" = "Annual Growth  (kg)")
+  
+  
+  # Add pre/suffix to facet labels
+  appender <- function(string, prefix = facet_prefix, suffix = facet_suffix) {
+    paste0(prefix, string)}
+
+  # Make the plot
+  vb_incs %>% 
+    filter(`common name` == spec_choice,
+           lead_age <= 4) %>% 
+    drop_na({{var_sym}}) %>% 
+    ggplot(aes(est_year, {{var_sym}})) +
+    geom_point() +
+    geom_smooth(method = "gam",
+                formula = y ~ s(x, bs = "cs", k = gam_knots),
+                se = FALSE,
+                size = 1,
+                color = gmri_cols("orange")) +
+    facet_wrap(~diff_name, ncol = 1, scales = "free",
+               labeller = as_labeller(appender))  +
+    theme(legend.position = "bottom") +
+    labs(x = "",
+         y = var_label,
+         color = "Age Increment",
+         title = str_to_title(spec_choice),
+         subtitle = str_c("Changes in annual ", var_choice, " growth increments."))
+
+}
+
+# Function to make panels for it:
+# Make the panels
+increments_panel <- function(spec) {
+  
+  # Open panel
+  cat("::: {.panel}\n")
+
+  # Create header for panel name
+  cat("##", spec, "{.panel-name}\n")
+
+  # # Text as a plot description
+  # cat("Plot of", spec, "\n")
+
+  # Make plot
+  p <- plot_age_increments(spec_choice = spec)
+  print(p)
+
+  # Add linebreak
+  cat("\n")
+
+  # Close panel
+  cat(":::\n")
+}
+```
+
+::::: {.panelset}
+
+```{r, results="asis", fig.height=8}
+
+# Loop through the key species:
+walk(key_species, increments_panel)
+
+```
+
+:::::
+
+
+
+
+## Growth Horizons
+
+This was just an idea and has not been fleshed out:
+
+```{r}
+# Idea:
+# Set each year or yearclass as weight anomalies from the all-year averages
+# then use horizon plots to show how much bigger/smaller the age classes are against that long-term average
+
+# W/ that idea will probably just want all that data in a table
+```
+
+
+
+
+
+
+
+---
+
+# 5-year Periods Von Berts
 
 The Von-Bertalanffy parameterization used is the "Typical" von Bertalanffy parameterization, also known as the Beverton-Holt parameterization, which is implemented using the {FSA} package.
 
 We can check that this is the case by displaying the equations:
 
-```{r, fig.height=1, eval = TRUE}
+```{r, fig.height=2, eval = TRUE}
 # "typical" von bert
 typical <- growthFunShow(param = "Typical", "vonBertalanffy")
 typical_plot <- ggplot() +
@@ -398,7 +653,7 @@ Using that function we can now take a look at the coefficients for any given spe
 ```{r}
 
 
-plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "Linf")
 
@@ -408,7 +663,7 @@ plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "acadian redfish"),
 ### K
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "K")
 
@@ -418,7 +673,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"),
 ### t0
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "t0")
 ```
@@ -426,7 +681,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"),
 ### Number Aged
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "n_aged")
 ```
@@ -434,7 +689,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"),
 ### Age 1 Size
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "len_age_1")
 ```
@@ -442,7 +697,7 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"),
 ### Age 2 Size
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "len_age_2")
 ```
@@ -450,12 +705,12 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"),
 ### Age 3 Size
 
 ```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "acadian redfish", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "len_age_3")
 ```
 
-## Tracking Cohorts
+## Tracking Cohorts in Time
 
 ### Bubble Plots {.tabset .tabset-pills}
 
@@ -469,54 +724,69 @@ plot_age_bubbleplot <- function(species){
       facet_wrap(~comname) +
       labs(x = "Year", y = "Age", size = "Number Measured") +
       guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
+  return(age_bubble)
   
-  size_bubble <- species_data[[species]] %>% 
-    count(comname, est_year, age, length_cm) %>% 
-    ggplot(aes(x = est_year, y = length_cm)) +
-      geom_jitter(aes(color = age), height = 0, width = 0.3, alpha = 0.75) +
-      scale_color_gmri(discrete = FALSE) +
-      facet_wrap(~comname) +
-      labs(x = "Year", y = "Length (cm)", color = "Age")   +
-      guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5))
+  # # Take this out:
+  # size_bubble <- species_data[[species]] %>% 
+  #   count(comname, est_year, age, length_cm) %>% 
+  #   ggplot(aes(x = est_year, y = length_cm)) +
+  #     geom_jitter(aes(color = age), height = 0, width = 0.3, alpha = 0.75) +
+  #     scale_color_gmri(discrete = FALSE) +
+  #     facet_wrap(~comname) +
+  #     labs(x = "Year", y = "Length (cm)", color = "Age")   +
+  #     guides(color = guide_colorbar(title.position = "top", title.hjust = 0.5))
+  #   
+  # figs <- age_bubble / size_bubble
+  # return(figs)
   
-  figs <- age_bubble / size_bubble
-  return(figs)
+  
+  # Instead,
+  # Get the average size for each age,
+  # Make the buble size reflect the fish size
+
   }
+# 
+# 
+# # Process Each species
+# bubble_plots <- map(.x = vonbert_species, .f = plot_age_bubbleplot)
 
+# Function to make panels for it:
+# Make the panels
+bubble_panel <- function(spec) {
+  
+  # Open panel
+  cat("::: {.panel}\n")
 
-# Process Each species
-bubble_plots <- map(.x = vonbert_species, .f = plot_age_bubbleplot)
+  # Create header for panel name
+  cat("##", spec, "{.panel-name}\n")
+
+  # # Text as a plot description
+  # cat("Plot of", spec, "\n")
+
+  # Make plot
+  p <- plot_age_bubbleplot(species = spec)
+  print(p)
+
+  # Add linebreak
+  cat("\n")
+
+  # Close panel
+  cat(":::\n")
+}
 ```
 
-#### Atlantic Cod
+::::: {.panelset}
 
-```{r}
-bubble_plots[["atlantic cod"]]
+```{r, results="asis", fig.height=6}
+
+# Loop through the key species:
+walk(key_species, bubble_panel)
+
 ```
 
-#### Haddock
+:::::
 
-```{r}
-bubble_plots[["haddock"]]
-```
 
-#### Acadian Redfish
-
-```{r}
-bubble_plots[["acadian redfish"]]
-```
-
-#### Winter Flounder
-
-```{r}
-bubble_plots[["winter flounder"]]
-```
-
-#### Haddock
-
-```{r}
-bubble_plots[["haddock"]]
-```
 
 ### Ridgeplots {.tabset .tabset-pills}
 
@@ -535,39 +805,44 @@ plot_age_ridgeplot <- function(species){
   
 }
 
-# Process Each species
-ridge_plots <- map(vonbert_species, plot_age_ridgeplot)
+# # Process Each species
+# ridge_plots <- map(vonbert_species, plot_age_ridgeplot)
+
+# Function to make panels for it:
+# Make the panels
+ridge_panel <- function(spec) {
+  
+  # Open panel
+  cat("::: {.panel}\n")
+
+  # Create header for panel name
+  cat("##", spec, "{.panel-name}\n")
+
+  # # Text as a plot description
+  # cat("Plot of", spec, "\n")
+
+  # Make plot
+  p <- plot_age_ridgeplot(species = spec)
+  print(p)
+
+  # Add linebreak
+  cat("\n")
+
+  # Close panel
+  cat(":::\n")
+}
 ```
 
-#### Atlantic Cod
+::::: {.panelset}
 
-```{r}
-ridge_plots[["atlantic cod"]]
+```{r, results="asis", fig.height=6}
+
+# Loop through the key species:
+walk(key_species, ridge_panel)
+
 ```
+:::::
 
-#### Haddock
-
-```{r}
-ridge_plots[["haddock"]]
-```
-
-#### Acadian Redfish
-
-```{r}
-ridge_plots[["acadian redfish"]]
-```
-
-#### Winter Flounder
-
-```{r}
-ridge_plots[["winter flounder"]]
-```
-
-#### Haddock
-
-```{r}
-ridge_plots[["haddock"]]
-```
 
 ## Cohort Based Von Bertalannffy
 

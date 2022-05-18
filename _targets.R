@@ -47,22 +47,22 @@ list(
   # Preparing Survdat Data
   tar_target(
     name = survdat_clean,
-    command = gmri_survdat_prep(survdat_source = "most recent") ),
+    command = gmri_survdat_prep(survdat_source = "most recent", mac_os = "mojave")),
   tar_target(
     name = survdat_lw,
-    command = add_lw_info(survdat_clean, cutoff = T) ),
+    command = add_lw_info(survdat_clean, cutoff = T, mac_os = "mojave") ),
   tar_target(
     name = nefsc_stratified,
-    command = add_area_stratification(survdat_lw, include_epu = F) ),
+    command = add_area_stratification(survdat_lw, include_epu = F, mac_os = "mojave") ),
   
   #####__ b. Biological Data  ####
   # survdat biological data - for actual length relationships
   tar_target(
     name = survdat_biological,
-    command = gmri_survdat_prep(survdat_source = "bio") ),
+    command = gmri_survdat_prep(survdat_source = "bio", mac_os = "mojave") ),
   tar_target(
     name = survdat_bio_lw,
-    command = add_lw_info(survdat_biological, cutoff = T) %>% 
+    command = add_lw_info(survdat_biological, cutoff = T, mac_os = "mojave") %>% 
       mutate(Year = est_year,
              season = str_to_title(season))),
   
@@ -89,6 +89,7 @@ list(
   ),
   
   
+
   
   
   ##### 4. log10 SS Slopes  ####
@@ -98,6 +99,7 @@ list(
              assign_log10_bins(nefsc_1g_labelled)),
   
   
+
   
   # Run the different groupings through the slope estimation
   tar_target(nmfs_log10_slopes,
@@ -117,6 +119,8 @@ list(
     command = ss_slopes_all_groups(nefsc_1g_labelled, 
                                    min_weight_g = 1, 
                                    abundance_vals = "stratified")),
+  
+  # Join the MLE and Binned Resukts into a table
   tar_target(size_spectrum_indices,
              full_join(strat_total_mle_results, nmfs_log10_slopes,
                        by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
@@ -126,7 +130,42 @@ list(
   
   
   
-  ##### 6. Temperature Data  ####
+  ##### 6. Spectra - Species Omission  ####
+  
+  # This section will repeat the estimation of log10 ss slopes,
+  # repeating the steps with an omitted species to see the influence each has on 
+  # the size spectrum estimate
+  
+  ####__####
+  #####  WORKING HERE  ####
+  ####   Species Sensitivity  ####
+  
+  
+  # # Create parallel groups that do not contain a species at each iteration
+  # get the l1- slope info
+  tar_target(species_ommission_dat,
+             species_omit_spectra(start_dat = nefsc_1g_binned)),
+
+  
+  
+  # Join the ommission data to the all species slopes to get the changes
+  # tar_load(nmfs_log10_slopes)
+  # l10_reg_year <- filter(nmfs_log10_slopes, `group ID` == "single years * region")
+  tar_target(year_region_only,
+             filter(nmfs_log10_slopes, `group ID` == "single years * region")),
+  
+  
+  # Code to run for this target
+  tar_target(species_sensitivity_shifts,
+             species_omit_changes(spec_omit_results = species_ommission_dat,
+                                  all_spec_results = year_region_only)),
+
+  
+  
+  ####_____####
+  
+  
+  ##### 1. Regional Temperature Data  ####
   tar_target(
     gom_oisst,
     oisst_access_timeseries(oisst_path = oisst_path, 
@@ -152,6 +191,8 @@ list(
     oisst_access_timeseries(oisst_path = oisst_path, 
                             region_family = "nmfs trawl regions", 
                             poly_name = "inuse strata") ),
+  
+  # Make every daily timeseries into a yearly one
   tar_target(
     gom_yrly,
     make_yearly(gom_oisst) ),
@@ -186,7 +227,10 @@ list(
   
   
   
-  ##### 7. Mean Size Change  ####
+  ####____####
+  #### Size Information  ####
+  
+  ##### 1. Mean Size Change  ####
   
   # "
   # Time series of mean length and weight will be constructed for the fish 
@@ -219,13 +263,13 @@ list(
   
   
   
-  #####  8. Size at Age Characteristics  ####
+  #####  2. Size at Age Characteristics  ####
   
   # starts with "survdat_biological"
   # ref code: size_at_age_exploration.Rmd
   
   tar_target(vonbert_species_bio,
-             select_vonbert_species(survdat_biological, rank_cutoff = 17))#,
+             select_vonbert_species(survdat_biological, rank_cutoff = 17))
   
   
   # tar_target(vonbert_growth_coef,
@@ -236,14 +280,18 @@ list(
   
   
   
-  # ##### 9. Assemble Table of indices  ####
+  
+  ####____####
+  ####  Summary Data Organization  ####
+  
+  # ##### 1. Table of indices  ####
   # tar_target(
   #   group_community_indicators,
   #   full_join(mean_sizes_ss_groups, strat_total_mle_results)
   
   
   
-  ##### 10. Chronological Clustering  ####
+  ##### 11. Chronological Clustering  ##
   # "
   # Based on these indicators, we will identify several multi-year “stanzas” 
   # with contrasting ecosystem conditions. These will be identified objectively
@@ -254,6 +302,16 @@ list(
   # based on the analysis.
   # "
   # 
+  
+  
+  
+  
+
+  
+  
+  
+  
+  
   
   
 ) 

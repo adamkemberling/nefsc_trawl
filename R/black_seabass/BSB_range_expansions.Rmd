@@ -28,6 +28,7 @@ library(gmRi)
 library(ggforce)
 library(sf)
 library(rnaturalearth)
+library(terra)
 
 
 ####  Mapping  ####
@@ -70,9 +71,24 @@ Obvious resources include both the federal and state trawl survey datasets. Thin
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(nefsc_stratified))
 
-# Load the black seabass data only
-bsb <- nefsc_stratified %>% filter(comname == "black sea bass")
+# Load the black seabass data only, and for Fall
+bsb <- nefsc_stratified %>% 
+  filter(
+    comname == "black sea bass"#,
+    #season == "Fall"
+    ) %>% 
+  drop_na(surftemp, bottemp, numlen_adj) 
+```
 
+
+```{r}
+plotrix::weighted.hist(x = bsb$surftemp, w = bsb$numlen_adj, main = "Black Sea Bass Catch in NE Groundfish", xlab = "Surface Temp")
+```
+
+
+```{r}
+plotrix::weighted.hist(x = bsb$bottemp, w = bsb$numlen_adj, main = "Black Sea Bass Catch in NE Groundfish", xlab = "Bottom Temp")
+hist(bsb$surftemp)
 ```
 
 ###  Federal Survey Abundances
