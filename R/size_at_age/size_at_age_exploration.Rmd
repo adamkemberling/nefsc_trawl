@@ -195,7 +195,7 @@ One aspect of growth beyond size-at-age is the annual growth between years of a 
 vb_incs <- all_vonbert %>% 
   group_by(`common name`, est_year,  age) %>% 
   summarise(avg_len = mean(length_cm, na.rm = T),
-            avg_wt = mean(biomass_kg, na.rm = T),
+            avg_wt = mean(indwt, na.rm = T),
             .groups = "drop") %>% 
   arrange(`common name`,age) %>% 
   group_split(`common name`, est_year) %>% 
@@ -505,7 +505,7 @@ walk(key_species, plot_panelset, plot_fun = plot_raw_saa, var_choice = "length")
 
 
 
-## Growth Increment Trends
+## Growth Increments
 
 Growth increments relate changes in growth to specific points in a species life. Decline in growth increments for young fish can relate to things like changes prey availability. Declines in growth at later ages can also sometimes indicate early/late sexual maturation.
 
@@ -545,7 +545,7 @@ plot_age_increments <- function(
     ggplot(aes(est_year, {{var_sym}})) +
       # geom_col(fill = gmri_cols("gmri blue")) +
       geom_point(color = gmri_cols("gmri blue")) +
-      geom_line(color = gmri_cols("gmri blue"), group = 1, alpha = 0.5, size = 1) +
+      geom_line(color = gmri_cols("gmri blue"), group = 1, alpha = 0.3, size = 0.8) +
       geom_smooth(method = "gam",
                   formula = y ~ s(x, bs = "cs", k = gam_knots),
                   se = FALSE,
