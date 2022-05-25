@@ -257,11 +257,11 @@ Before fitting anything, let's first look at how the size at age and growth incr
 # Species we want panels for:
 key_species <- sort(c(
   "atlantic cod",
+  "atlantic herring",
   "american plaice",
   "haddock", 
   "acadian redfish",
   "silver hake",
-  "white hake",
   "winter flounder"
 ))
 ```
@@ -269,37 +269,44 @@ key_species <- sort(c(
 
 ## Age Frequencies
 
-Just looking at the raw data available, it becomes obvious that there are differences in the number of fish at various ages through time. With cases of large cohorts passing through, or older individuals being caught less frequently. Particularly large cohorts of haddock are a good example.
+Just looking at the raw data available, it becomes obvious that there are differences in the number of fish at various ages through time. 
+
+With cases of large cohorts passing through, or older individuals being caught less frequently. Particularly large cohorts of haddock are a good example.
+
 
 ```{r}
-# Plotting age distribution
-plot_age_bubbleplot <- function(species){
-  age_bubble <- species_data[[species]] %>% 
-    count(comname, est_year, age) %>% 
-    ggplot(aes(x = est_year, y = age, size = n)) +
-      geom_point(shape = 21, color = "white", fill = gmri_cols("gmri blue")) +
+# Plotting age distribution as ggridges
+plot_age_ridgeplot <- function(species){
+  species_data[[species]] %>% 
+    filter(age <= 15) %>% 
+    mutate(yr = factor(est_year),
+           yr = fct_rev(yr)) %>% 
+    ggplot(aes(x = age, y = yr)) +
+      geom_density_ridges(fill = gmri_cols("gmri blue"), color = "white") +
       facet_wrap(~comname) +
-      theme(legend.position = "bottom") +
-      labs(x = "Year", y = "Age", size = "Number Measured") +
+      scale_x_continuous(limits = c(0,NA), expand = expansion(add = c(0, 0))) +
+      labs(x = "Age", y = "Year") +
       guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
-  return(age_bubble)
   
-  
+}
 
-  }
+# # Process Each species
+# ridge_plots <- map(vonbert_species, plot_age_ridgeplot)
+
 
 ```
 
 ::::: {.panelset}
 
-```{r, results="asis", fig.height=6}
+```{r, results="asis", fig.height=8}
 
 # Loop through the key species:
-walk(key_species, plot_panelset, plot_fun = plot_age_bubbleplot)
+walk(key_species, plot_panelset, plot_fun = plot_age_ridgeplot)
 
 ```
 
 :::::
+
 
 
 ## Average Length at Age
@@ -314,12 +321,15 @@ plot_length_bubbles <- function(spec_choice){
     group_by(comname, yearclass, age) %>% 
     summarise(avg_len = mean(length_cm, na.rm = T),
               .groups = "drop") %>% 
-    ggplot(aes(x = yearclass, y = age,  size = avg_len)) +
-      geom_point(shape = 21, color = "white", fill = gmri_cols("gmri blue")) +
+    ggplot(aes(x = yearclass, 
+               y = age, 
+               fill = avg_len)) +
+      geom_point(shape = 22, color = "white", size = 2.5) +
+      scale_fill_gmri(discrete = F) +
       facet_wrap(~comname) +
       theme(legend.position = "bottom") +
-      labs(x = "Cohort", y = "Age", size = "Average Length (cm)") +
-      guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
+      labs(x = "Cohort", y = "Age", fill = "Average Length (cm)") +
+      guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5))
 }
 
 ```
@@ -347,13 +357,14 @@ plot_wt_bubbles <- function(spec_choice){
     group_by(comname, yearclass, age) %>% 
     summarise(avg_wt = mean(indwt, na.rm = T),
               .groups = "drop") %>% 
-    ggplot(aes(x = yearclass, y = age,  size = avg_wt)) +
-      geom_point(shape = 21, color = "white", fill = gmri_cols("gmri blue")) +
+    ggplot(aes(x = yearclass, y = age, fill = avg_wt)) +
+      geom_point(shape = 22, color = "white", size = 3) +
+      scale_fill_gmri(discrete = F) +
       facet_wrap(~comname) +
       scale_x_continuous(limits = c(1989, 2020)) +
       theme(legend.position = "bottom") +
-      labs(x = "Cohort", y = "Age", size = "Average Weight (kg)") +
-      guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
+      labs(x = "Cohort", y = "Age", fill = "Average Weight (kg)") +
+      guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5))
 }
 
 ```
@@ -640,7 +651,13 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
     mutate(n_aged = num_aged,
            len_age_1 = Linf * (1  - exp(-1 * K * (1 - t0))),
            len_age_2 = Linf * (1  - exp(-1 * K * (2 - t0))),
-           len_age_3 = Linf * (1  - exp(-1 * K * (3 - t0))))
+           len_age_3 = Linf * (1  - exp(-1 * K * (3 - t0))),
+           len_age_4 = Linf * (1  - exp(-1 * K * (4 - t0))),
+           len_age_5 = Linf * (1  - exp(-1 * K * (5 - t0))),
+           len_age_6 = Linf * (1  - exp(-1 * K * (6 - t0))),
+           len_age_7 = Linf * (1  - exp(-1 * K * (7 - t0))),
+           len_age_8 = Linf * (1  - exp(-1 * K * (8 - t0)))
+           )
   return(vbert_coef)
   
   
@@ -671,7 +688,8 @@ Once everything is prepped we can then fun the von Bert parameter estimation for
 ```{r}
 
 # Running everything?
-species_coef <- vonbert_species[c(1:17)] %>% 
+#species_coef <- vonbert_species[c(1:17)] %>% 
+species_coef <- key_species %>% 
   map_dfr(species_vonbert, split_col =  "five_yr_group", min_obs = 30)
 ```
 
@@ -698,7 +716,13 @@ plot_vonbert_coef <- function(comnames, x_col, coef_name){
     n_aged = "Number Aged",
     len_age_1 = "Age 1 length (cm)",
     len_age_2 = "Age 2 length (cm)",
-    len_age_3 = "Age 3 length (cm)")
+    len_age_3 = "Age 3 length (cm)",
+    len_age_4 = "Age 4 length (cm)",
+    len_age_5 = "Age 5 length (cm)",
+    len_age_6 = "Age 6 length (cm)",
+    len_age_7 = "Age 7 length (cm)",
+    len_age_8 = "Age 8 length (cm)"
+    )
   
   
   species_coef %>% 
@@ -708,7 +732,7 @@ plot_vonbert_coef <- function(comnames, x_col, coef_name){
     geom_point(color = gmri_cols("gmri blue"),size = 0.8) +
     scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
     facet_wrap(~comname, ncol = 1, scales = "free") +
-    labs(x = "Date Period", y = coef_label)
+    labs(x = "Five-Year Period", y = coef_label)
   
 }
 
@@ -719,10 +743,10 @@ Using that function we can now take a look at the coefficients for any given spe
 
 ### L-infinity
 
-```{r}
+```{r, fig.height=8}
 
 
-plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "winter flounder", "silver hake"), 
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "Linf")
 
@@ -731,8 +755,8 @@ plot_vonbert_coef(comnames = c("atlantic cod",  "haddock", "winter flounder", "s
 
 ### K
 
-```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "silver hake"), 
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "K")
 
@@ -741,128 +765,89 @@ plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "si
 
 ### t0
 
-```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "silver hake"), 
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "t0")
 ```
 
 ### Number Aged
 
-```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "silver hake"), 
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "n_aged")
 ```
 
-### Age 1 Size
 
-```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "silver hake"), 
+## VB Predicted Size at Age {.panelset}
+
+
+### Age 1
+
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "len_age_1")
 ```
 
-### Age 2 Size
+### Age 2
 
-```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "silver hake"), 
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "len_age_2")
 ```
 
-### Age 3 Size
+### Age 3
 
-```{r}
-plot_vonbert_coef(comnames = c("atlantic cod", "haddock", "winter flounder", "silver hake"), 
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
                   x_col = "five_yr_group", 
                   coef_name = "len_age_3")
 ```
 
+### Age 4
 
-
-
-## Age Abundance Ridgeplots 
-
-I did these a while ago and am leaving it because they look cool. Deal.
-
-```{r}
-# Plotting age distribution as ggridges
-plot_age_ridgeplot <- function(species){
-  species_data[[species]] %>% 
-    filter(age <= 15) %>% 
-    mutate(yr = factor(est_year),
-           yr = fct_rev(yr)) %>% 
-    ggplot(aes(x = age, y = yr)) +
-      geom_density_ridges(fill = gmri_cols("gmri blue"), color = "white") +
-      facet_wrap(~comname) +
-      scale_x_continuous(limits = c(0,NA), expand = expansion(add = c(0, 0))) +
-      labs(x = "Age", y = "Year") +
-      guides(size = guide_legend(title.position = "top", title.hjust = 0.5))
-  
-}
-
-# # Process Each species
-# ridge_plots <- map(vonbert_species, plot_age_ridgeplot)
-
-
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_4")
 ```
 
-::::: {.panelset}
+### Age 5
 
-```{r, results="asis", fig.height=8}
-
-# Loop through the key species:
-walk(key_species, plot_panelset, plot_fun = plot_age_ridgeplot)
-
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_5")
 ```
 
-:::::
+### Age 6
 
-
-# Cohort Based Von Bertalannffy
-
-Fish born as part of the same cohort are likely to exhibit similar patterns in growth due to their exposure to similar environments at the same points in their development.
-
-For this reason and others it may be meaningful to capture that cohort effect when tracking changes in growth coefficients.
-
-One way to do this is with mixed effects models.
-
-```{r, eval = FALSE}
-
-# Grab one species to use as tester
-test_species <- species_data$`winter flounder` %>% 
-  mutate(
-    age = as.numeric(age),
-    year = factor(est_year),
-    yearclass = factor(yearclass))
-
-
-# Formula for nlme model
-vbert_form <- ~ Linf * (1 - exp(-K * (t - t0)))
-
-# Attempt to include random effect for cohort with "yearclass"
-#vbert_form <-  ~ Linf * (1 - exp(-K * (t - t0))) + (1 | yearclass)
-
-
-# use derive to construct function
-nfun <- deriv(expr = vbert_form,
-              namevec = c("Linf", "K", "t0"),
-              function.arg = c("Linf", "K", "t0"))
-
-# Set starting points vector
-test_starts <-  vbStarts(length_cm ~ as.numeric(age), data = test_species)
-
-# Play around until it runs
-nlmer(length_cm ~ nfun(age, Linf, K, t0)  ~ (1 | yearclass),
-      data = test_species, 
-      start = test_starts)
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_6")
 ```
 
-## Export Size at Age and Coefficients
+### Age 7
 
-# Catch Weighted Average Size and Age
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_7")
+```
 
-For average age and average size by species the stratified abundances are used. Length is freely available, whereas age must be estimated by length. The view this gives us is how big the "average" individual is in the community.
+### Age 8
+
+```{r, fig.height=8}
+plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "winter flounder", "silver hake"), 
+                  x_col = "five_yr_group", 
+                  coef_name = "len_age_8")
+```
+
+
+
 
 `r insert_gmri_footer()`
