@@ -690,7 +690,9 @@ Once everything is prepped we can then fun the von Bert parameter estimation for
 # Running everything?
 #species_coef <- vonbert_species[c(1:17)] %>% 
 species_coef <- key_species %>% 
-  map_dfr(species_vonbert, split_col =  "five_yr_group", min_obs = 30)
+  map_dfr(.f = species_vonbert, 
+          split_col =  "five_yr_group", 
+          min_obs = 30)
 ```
 
 
@@ -848,6 +850,68 @@ plot_vonbert_coef(comnames = c("atlantic cod", "atlantic herring",  "haddock", "
 ```
 
 
+# VB Fits to Data:
+
+```{r}
+
+# Make the plot for each species
+vb_fits_plot = function(spec_name){
+    
+  # The raw data:
+  t_dat <- species_data[[spec_name]]
+  
+  # The group coefficients, augmented with x values across a range
+  age_max <- max(t_dat$age)
+  x_range <- seq(from = 0, to = age_max, by = .1)
+  t_coef <- species_coef %>% filter(comname == spec_name) %>% 
+    right_join(
+      y = data.frame(
+        five_yr_group = rep(unique(t_dat$five_yr_group), length(x_range)),
+        age = rep(x_range, length(unique(t_dat$five_yr_group)))),
+      by = "five_yr_group"
+      ) %>% 
+    mutate(
+      # Calculate the length at age
+      pred_length = Linf * (1  - exp(-1 * K * (age - t0)))
+    )
+  
+  
+  # Make plot?
+  ggplot(t_dat, aes(x = age, y = length_cm)) +
+    geom_point(alpha = 0.25) +
+    #facet_wrap(~five_yr_group, ncol = 1) +
+    geom_line(data = t_coef,
+              aes(x = age, y = pred_length, group = five_yr_group), 
+              color = "orange", 
+              size = 1) +
+    scale_x_continuous(breaks = seq(0, age_max, by = 2),
+                       limits = c(0, age_max),
+                       expand = expansion(mult = c(0, .15))) +
+    geom_dl(data = t_coef, 
+            aes(x = age, y = pred_length, label = five_yr_group), 
+            method= list("last.qp", cex = 0.65, hjust = -.15),
+            size = 12) +
+    labs(x = "Age",
+         y = "Length (cm)",
+         title = spec_name,
+         subtitle = "Progression of Length at Age Characteristics")
+
+    
+  }
+```
+
+::::: {.panelset}
+
+```{r, results="asis", fig.height=5}
+
+# Loop through the key species:
+walk(key_species, 
+     plot_panelset, 
+     plot_fun = vb_fits_plot)
+
+```
+
+:::::
 
 
 `r insert_gmri_footer()`
