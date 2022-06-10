@@ -173,7 +173,7 @@ Through this lens we will assess changes to body size, size-at-age, and growth c
 
 ```{r}
 # Filter to just the data for the two regimes
-regime_dat <- filter(nmfs_bio, est_year >= 2000)
+regime_dat <- filter(nmfs_bio, est_year >= 2000, est_year <= 2019)
 
 ```
 
@@ -221,9 +221,12 @@ key_species <- sort(c(
   "american plaice",
   "atlantic cod",
   "atlantic herring",
+  "butterfish",
   "haddock", 
+  "pollock",
   "silver hake",
-  "winter flounder"
+  "winter flounder",
+  "yellowtail flounder"
 ))
 ```
 
@@ -416,7 +419,6 @@ plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = 
 ```
 
 
-
 ::::: {.panelset}
 
 ```{r, results="asis", fig.height = 8}
@@ -595,8 +597,8 @@ walk(key_species,
 Goal is to find some way to show all of them together in one form:
 
 
-
 ```{r}
+
 # Take the first part from the previous plot:
 # takes each species
 # for age 0 - max_age, solve what the size would be based on vb fit
@@ -640,15 +642,14 @@ regime_curve_prep <- function(spec_name){
 regime_comparison <- vonbert_species %>% 
   map_dfr(.f = regime_curve_prep, .id = "comname") 
 
-
+# Plot their growth curves
 regime_comparison %>% 
   filter(comname %in% key_species) %>% 
-  # ggplot(aes(x = age, y = growth_shift)) +
   ggplot(aes(x = age, y = growth_frac)) +
     geom_hline(yintercept = 0, size = 0.5, lty = 2, color = "black") +
     geom_line(aes(group = comname), show.legend = FALSE, size = 1, color = "orange")+
     scale_y_continuous(labels = percent_format()) +
-    facet_wrap(~comname, scales = "free_x") + 
+    facet_wrap(~comname, scales = "free_x", ncol = 3) + 
     labs(x = "Age", y = "Shift in Length Moving to Warm Regime", 
          title = "Thermal Regime Impacts on Growth",
          subtitle = "Changes in Size at Age (Warm Regime - Historic Regime)") 
@@ -656,6 +657,23 @@ regime_comparison %>%
 
 
 ```{r}
+#| eval = FALSE
+
+# Kathy requested the curve data.
+# Going to save both the coefficients and the fitted data for all species
+library(here)
+write_csv(regime_comparison, here("data/growth_results/growth_regime_fits.csv"))
+write_csv(species_coef, here("data/growth_results/growth_regime_coefs.csv"))
+
+```
+
+
+
+```{r}
+#| eval = FALSE
+
+
+
 # This looks crappy
 regime_comparison %>% 
   filter(age <= 5) %>% 
@@ -663,6 +681,117 @@ regime_comparison %>%
   geom_tile(aes(fill = growth_frac)) +
   scale_fill_distiller(palette = "PRGn", limits = c(-.4, .4), na.value = "transparent") +
   labs(x = "Age", y = "Species", fill = "Proportional Shift in Length at Age")
+```
+
+
+```{r}
+# Try horizons
+library(ggHoriPlot)
+
+
+# Filter outliers beyond 5th and 95th quantile
+cutpoints <- regime_comparison %>% 
+  mutate(
+    outlier = between(
+      growth_frac,
+      quantile(growth_frac, 0.05, na.rm = T)-
+        1.5 * IQR(growth_frac, na.rm = T),
+      quantile(growth_frac, 0.95, na.rm = T)+
+        1.5 * IQR(growth_frac, na.rm = T))) %>% 
+  filter(outlier)
+
+
+# Set origin
+ori <- 0
+
+
+# Manually pick cut points
+sca <- seq(-1, 1, length.out = 9)
+sca_bins <- str_c(sca[1:(length(sca)-1)], " to ", sca[2:length(sca)], "%")
+sca_labels <- rev(sca_bins)
+
+
+theme_set(theme_bw() + 
+            theme(
+              # Titles
+              plot.title = element_text(hjust = 0, face = "bold", size = 14),
+              plot.subtitle = element_text(size = 9),
+              plot.caption = element_text(size = 8, margin = margin(t = 20), color = "gray40"),
+              plot.margin = unit(c(1, 1, 2, 1), "lines"),
+              legend.title = element_text(size = 9),
+              legend.text = element_text(size = 9),
+              # Axes
+              axis.line.y = element_line(color = "black"),
+              axis.ticks.y = element_line(), 
+              axis.line.x = element_line(color = "black"),
+              axis.ticks.x = element_line(), 
+              axis.text = element_text(size = 11),
+              axis.title = element_text(size = 12),
+              rect = element_rect(fill = "transparent", color = "black"),
+              # Facets
+              strip.text = element_text(color = "white", 
+                                        face = "bold",
+                                        size = 11),
+              strip.background = element_rect(
+                color = "#00736D", 
+                fill = "#00736D", 
+                size = 1, 
+                linetype="solid")))
+
+
+# Plot it all
+ggplot(regime_comparison, aes(x = age, y = growth_frac)) +
+  geom_horizon(
+    aes(age, 
+        y = growth_frac,
+        fill = ..Cutpoints..), 
+    origin = ori, 
+    horizonscale = sca) +
+  scale_fill_hcl(palette = 'RdBu', reverse = T, labels = sca_labels) +
+  facet_grid(comname~.) +
+  theme_bw() + 
+  scale_x_continuous(limits = c(0,10), expand = expansion(add = c(0, 0))) +
+  theme(
+    # Titles
+    plot.title = element_text(hjust = 0, face = "bold", size = 14),
+    plot.subtitle = element_text(size = 9),
+    plot.caption = element_text(
+      size = 8, 
+      margin = margin(t = 20), 
+      color = "gray40"),
+    plot.margin = unit(c(1, 1, 2, 1), "lines"),
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 9),
+    # Axes
+    axis.line.y = element_line(color = "black"),
+    axis.line.x = element_line(color = "black"),
+    axis.ticks.x = element_line(), 
+    axis.text = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    rect = element_rect(fill = "transparent", color = "black"),
+    # Facets
+    strip.text = element_text(color = "white", 
+                              face = "bold",
+                              size = 11),
+    strip.background = element_rect(
+      color = "#00736D", 
+      fill = "#00736D", 
+      size = 1, 
+      linetype="solid"),
+    panel.grid = element_blank(),
+    panel.spacing.y=unit(0.05, "lines"),
+    strip.text.y = element_text(size = 7, angle = 0, hjust = 0, face = "bold"),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.border = element_blank(),
+    legend.position = "left")  +
+  labs(x = 'Age', 
+       fill = "Change in Body Size at Age") +
+  guides(fill = guide_legend(ncol = 1))
+
+
+
 ```
 
 ```{r}
