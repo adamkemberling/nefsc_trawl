@@ -33,7 +33,7 @@ source(here("R/support/temp_support.R"))
 
 ####_____________________________####
 
-####__  Targets Pipeline  __####
+####__  Groundfish Data Preparation  __####
 
 # Define target pipeline: Outlines high-level steps of the analysis
 # Format is just a list of all the targets
@@ -129,17 +129,11 @@ list(
   
   
   
-  
-  ##### 6. Spectra - Species Omission  ####
+  ##### 6. Spectra - Species Sensitivity  ####
   
   # This section will repeat the estimation of log10 ss slopes,
   # repeating the steps with an omitted species to see the influence each has on 
   # the size spectrum estimate
-  
-  ####__####
-  #####  WORKING HERE  ####
-  ####   Species Sensitivity  ####
-  
   
   # # Create parallel groups that do not contain a species at each iteration
   # get the l1- slope info
@@ -149,8 +143,6 @@ list(
   
   
   # Join the ommission data to the all species slopes to get the changes
-  # tar_load(nmfs_log10_slopes)
-  # l10_reg_year <- filter(nmfs_log10_slopes, `group ID` == "single years * region")
   tar_target(year_region_only,
              filter(nmfs_log10_slopes, `group ID` == "single years * region")),
   
@@ -162,10 +154,11 @@ list(
 
   
   
-  ####_____####
+  ####_____________________________####
   
+  ####__  Physical Drivers  ####
   
-  ##### 1. Regional Temperature Data  ####
+  #### 1. Temperature Data  ####
   tar_target(
     gom_oisst,
     oisst_access_timeseries(oisst_path = oisst_path, 
@@ -227,8 +220,8 @@ list(
   
   
   
-  ####____####
-  #### Size Information  ####
+  ####_____________________________####
+  ####__ Body Size Changes  __####
   
   ##### 1. Mean Size Change  ####
   
@@ -281,8 +274,8 @@ list(
   
   
   
-  ####____####
-  ####  Summary Data Organization  ####
+  ####_____________________________####
+  ####__  Summary Tables  __####
   
   # ##### 1. Table of indices  ####
   # tar_target(

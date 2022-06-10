@@ -103,16 +103,18 @@ For some of the analyses below the data are grouped into 5-year increments to en
 # 1. Make 5 year increments
 bio_5yr_prep <- function(survdat_biological){
   
-  # Drop NA age data, restirct to summer and fall
+  # Drop NA age data, restrict to summer and fall
   nmfs_bio <- survdat_biological %>% 
   filter(is.na(age) == FALSE,
          season %in% c("Summer", "Fall"))
   
+  #Identify the breaks
   yr5_breaks <- seq(1970, 2020, by = 5)
   yr5_ends <- seq(1974, 2024, by = 5)
+  
+  # Build labels
   yr5_labels <- str_c(yr5_breaks, "-", yr5_ends)
   yr5_labels <- yr5_labels[1:(length(yr5_labels)-1)]
-
 
   #Add 5-year groups, decade labels
   nmfs_bio <- nmfs_bio %>% 
@@ -520,7 +522,7 @@ walk(key_species, plot_panelset, plot_fun = plot_raw_saa, var_choice = "length")
 
 Growth increments relate changes in growth to specific points in a species life. Decline in growth increments for young fish can relate to things like changes prey availability. Declines in growth at later ages can also sometimes indicate early/late sexual maturation.
 
-```{r}
+```{r, fig.height=12}
 
 # Put together a timeseries of:
 # how big were the age 0's,
@@ -551,7 +553,7 @@ plot_age_increments <- function(
   # Make the plot
   vb_incs %>% 
     filter(`common name` == spec_choice,
-           lead_age <= 4) %>% 
+           lead_age <= 8) %>% 
     drop_na({{var_sym}}) %>% 
     ggplot(aes(est_year, {{var_sym}})) +
       # geom_col(fill = gmri_cols("gmri blue")) +
@@ -588,7 +590,7 @@ walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "w
 
 
 
-# Von-Bert Growth Parameters
+# Von-Bert Growth Curves
 
 Growth in fishes is commonly modeled using the "Von-Bertalanffy" growth function to capture how a fishes size (length or weight) changes with age. To give a coarse glimpse into how this relationship may have changed over time we can look at how the parameters have changed over consecutive 5-year periods.
 
@@ -697,7 +699,7 @@ species_coef <- key_species %>%
 
 
 
-## Plotting VB Coefficients {.panelset}
+## VB Coefficients {.panelset}
 
 Since the table of coefficients is somewhat simple here is a function to select a species, the x_column to use (corresponding to the time grouping), and the name of the coefficient to plot.
 
@@ -912,6 +914,45 @@ walk(key_species,
 ```
 
 :::::
+
+
+# Exploratory Stats:
+
+> For each species, I'm curious if Size At Age, Growth Increment, K, and Linf for pre-2010 differs from post-2010, and whether heatwave years (2012, 2016, 2018, 2020, 2021--did I miss any?) differ from non-heatwave years.  Could you set up some anovas to make these comparisons for each species (and where appropriate, species by age)?
+
+Things that have yearly values:   
+ * Size at age   
+ * Growth increments
+
+```{r}
+# Growth increments
+regime_dat <- vb_incs %>% mutate(regime = ifelse(est_year < 2010, "Normal Regime", "Warm Regime"))
+
+# Actual sizes
+regime_dat <- bind_rows(species_data) %>% mutate(regime = ifelse(est_year < 2010, "Normal Regime", "Warm Regime"))
+
+spec <- "haddock"
+regime_dat %>% 
+  filter(
+    comname  == spec,
+    #`common name`  == spec,
+    age <= 5) %>% 
+  ggplot(aes(x = indwt, group = regime, fill = regime)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~age, ncol = 1, scales = "free") +
+  scale_fill_gmri() + 
+  theme(legend.position = "bottom") +
+  labs(x = "Individual Weight (kg)",
+       y = "Count",
+       title = spec)
+```
+ 
+ 
+Things that were derived in 5-year groups:   
+ * K   
+ * t0   
+ * L infinity
+
 
 
 `r insert_gmri_footer()`

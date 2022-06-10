@@ -90,6 +90,8 @@ This report digs into what the outcomes of the size spectrum estimations look li
 
 [Von-Bert Size at Age relationships](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/size_at_age_exploration.html)
 
+[Size Differences of Thermal Regimes](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/size_at_age_regimes.html)
+
 
 ---
 
