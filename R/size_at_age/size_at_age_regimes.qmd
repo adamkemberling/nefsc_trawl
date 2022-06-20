@@ -17,22 +17,9 @@ execute:
   
 ---
 
-`r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
-
-## Comparing Growth Regimes in the NW Atlantic
-
-Recent changes in Gulf stream positioning have altered the relative influences of the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region as well as food-web dynamics, we seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
-
-```{r, echo = FALSE, message = FALSE, warning = FALSE}
-# Chunk Options
-knitr::opts_chunk$set(echo = TRUE, 
-                      message = F, 
-                      warning = F, 
-                      comment = "", 
-                      fig.height = 6, 
-                      fig.width = 6, 
-                      fig.align = "center")
-
+```{r packages and functions}
+#| include = FALSE,
+#| echo = FALSE
 
 ####  Packages  ####
 library(FSAdata)
@@ -46,6 +33,7 @@ library(patchwork)
 library(directlabels)
 library(xaringanExtra)
 library(ggridges)
+library(geomtextpath)
 
 # Set theme
 theme_set(theme_gmri())
@@ -75,15 +63,22 @@ plot_panelset <- function(spec, plot_fun, ...) {
   # Close panel
   cat(":::\n")
 }
-
-
 ```
+
+
+
+`r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+
+## Comparing Growth Regimes in the NW Atlantic
+
+Recent changes in Gulf stream positioning have altered the relative influences of the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region as well as food-web dynamics, we seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
+
 
 ## Temperature Regimes
 
 The change in thermal regimes occurred around 2010. Following this regime change, annual temperatures have been several degrees warmer than the previous 3+ decades.
 
-```{r, fig.height=6}
+```{r temp regimes}
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(regional_oisst))
@@ -97,7 +92,10 @@ temp_regimes <- regional_oisst %>%
   group_by(survey_area, regime) %>% 
   mutate(
     survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
-    survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB")),
+    survey_area = factor(survey_area, 
+                         levels = c("Full Region", "GoM", "GB", "SNE", "MAB")),
+    avg_temp_c = round(mean(sst), 2),
+    temp_label = str_c(avg_temp_c, "\u00b0C"),
     avg_anom_c = mean(sst_anom),
     avg_anom_c = ifelse(regime == "1982-2011 Regime", 0, avg_anom_c),
     x = ifelse(regime == "1982-2011 Regime", 1981.5, 2009.5),
@@ -106,18 +104,27 @@ temp_regimes <- regional_oisst %>%
   ungroup()
 
 
+
+
 # Plot how each one exhibits a break in the
 temp_regimes %>% 
   filter(survey_area == "Full Region") %>% 
   ggplot( aes(yr, sst_anom)) +
   geom_col(aes(fill = regime),  size = 0.75, alpha = 0.4) +
   scale_fill_gmri() +
+  # Line segments for the regime averages:
   geom_segment(
-    aes(x = x, xend = xend, 
-        y = avg_anom_c, yend = avg_anom_c, 
+    aes(x = x, xend = xend,
+        y = avg_anom_c, yend = avg_anom_c,
         color = regime),
-    size = 1, 
+    size = .8,
     linetype = 1) +
+  # Using geomtextpath for label
+  geom_textpath(aes(x = yr, y = avg_anom_c, 
+                    label = temp_label, 
+                    #linecolor = regime,
+                    colour = regime), 
+                size = 4, vjust = -1, fontface = "bold", show.legend = FALSE) +
   #facet_wrap(~survey_area, ncol = 1) +
   scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
   scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
@@ -132,7 +139,8 @@ temp_regimes %>%
     title = "Northwest-Atlantic Surface Temperature Regime Shift",
     x = "", 
     y = "Surface Temperature Anomaly",
-    caption = "Anomalies calculated using 1982-2011 reference period.")
+    caption = "Anomalies calculated using 1982-2011 reference period.") +
+  guides(label = "none")
    
 ```
 
@@ -140,7 +148,7 @@ temp_regimes %>%
 
 The data on groundfish size-at-age is obtained as part of the NEFSC's northeast trawl survey. The age data specifically is a subset of the overall catch data, the biological dataset, which contains additional information on individuals such as age/sex/histology.
 
-```{r}
+```{r bio data prep}
 # Access Biological Data with {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(survdat_biological))
@@ -171,7 +179,7 @@ To ensure enough age data is available for deriving growth characteristics, the 
 
 Through this lens we will assess changes to body size, size-at-age, and growth characteristics derived using the von-bertalanffy growth equation.
 
-```{r}
+```{r year filter}
 # Filter to just the data for the two regimes
 regime_dat <- filter(nmfs_bio, est_year >= 2000, est_year <= 2019)
 
@@ -183,7 +191,7 @@ The biological data is then separated into lists organized by species. The lists
 
 In the original proposal it was stated that 17 species would be used, species that are regularly measured and aged. Ordering all species by the number aged we can pull out the following top species:
 
-```{r}
+```{r vbert species selection}
 ####  Data Prep  #### 
 
 # Rank species by how many measurements there are
@@ -201,7 +209,7 @@ These will be the species that we assess length-at-age characteristics for our m
 
 Unfortunately; despite being major players in the regions ecology, age data is not available for spiny dogfish and other elasmobranch species.
 
-```{r}
+```{r panel species}
 
 # Name the list so it carries through
 names(vonbert_species) <- vonbert_species
@@ -277,7 +285,7 @@ Just looking at the raw data available, it becomes obvious that there are differ
 With cases of large cohorts passing through, or older individuals being caught less frequently. Particularly large cohorts of haddock are a good example.
 
 
-```{r}
+```{r ridgeplot fun}
 # Plotting age distribution as ggridges
 plot_age_ridgeplot <- function(species){
   all_vonbert %>% 
@@ -299,7 +307,7 @@ plot_age_ridgeplot <- function(species){
 
 ::::: {.panelset}
 
-```{r, results="asis", fig.height=6}
+```{r ridge panels, results="asis"}
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_age_ridgeplot)
@@ -383,7 +391,7 @@ walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "w
 
 
 
-```{r}
+```{r regime size plots}
 
 # Distribution of Length/Weight Across Regimes 
 plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = "Age - ", facet_suffix = ""){
@@ -513,6 +521,7 @@ species_coef <- vonbert_species %>%
 # Plotting Everything
 species_coef %>%
   pivot_longer(names_to = "vbcoef", values_to = "val", cols = c("K", "Linf", "t0")) %>% 
+  filter(vbcoef != "t0") %>% 
   ggplot(aes(x = val, y = fct_rev(comname), fill = fct_rev(regime))) +
     geom_col(position = "dodge") +
     facet_wrap(~vbcoef, scales = "free_x") +
@@ -598,6 +607,8 @@ Goal is to find some way to show all of them together in one form:
 
 
 ```{r}
+#| fig.height = 8,
+#| fig.width = 8
 
 # Take the first part from the previous plot:
 # takes each species
@@ -644,12 +655,12 @@ regime_comparison <- vonbert_species %>%
 
 # Plot their growth curves
 regime_comparison %>% 
-  filter(comname %in% key_species) %>% 
+  #filter(comname %in% key_species) %>% 
   ggplot(aes(x = age, y = growth_frac)) +
     geom_hline(yintercept = 0, size = 0.5, lty = 2, color = "black") +
     geom_line(aes(group = comname), show.legend = FALSE, size = 1, color = "orange")+
     scale_y_continuous(labels = percent_format()) +
-    facet_wrap(~comname, scales = "free_x", ncol = 3) + 
+    facet_wrap(~comname, scales = "free_x", ncol = 4) + 
     labs(x = "Age", y = "Shift in Length Moving to Warm Regime", 
          title = "Thermal Regime Impacts on Growth",
          subtitle = "Changes in Size at Age (Warm Regime - Historic Regime)") 
