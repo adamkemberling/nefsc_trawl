@@ -85,10 +85,11 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 
 
 
+
 # Get regional averages
 temp_regimes <- regional_oisst %>% 
   filter(yr > 1981) %>% 
-  mutate(regime = ifelse(yr < 2010, "1982-2011 Regime", "2010-2021 Regime")) %>% 
+  mutate(regime = ifelse(yr < 2010, "1982-2009 Average", "2010-2021 Average")) %>% 
   group_by(survey_area, regime) %>% 
   mutate(
     survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
@@ -97,9 +98,9 @@ temp_regimes <- regional_oisst %>%
     avg_temp_c = round(mean(sst), 2),
     temp_label = str_c(avg_temp_c, "\u00b0C"),
     avg_anom_c = mean(sst_anom),
-    avg_anom_c = ifelse(regime == "1982-2011 Regime", 0, avg_anom_c),
-    x = ifelse(regime == "1982-2011 Regime", 1981.5, 2009.5),
-    xend = ifelse(regime == "1982-2011 Regime", 2009.5, 2021.5),
+    #avg_anom_c = ifelse(regime == "1982-2009 Regime", 0, avg_anom_c),
+    x = ifelse(regime == "1982-2009 Average", 1981.5, 2009.5),
+    xend = ifelse(regime == "1982-2009 Average", 2009.5, 2021.5),
          ) %>% 
   ungroup()
 
@@ -112,20 +113,23 @@ temp_regimes %>%
   ggplot( aes(yr, sst_anom)) +
   geom_col(aes(fill = regime),  size = 0.75, alpha = 0.4) +
   scale_fill_gmri() +
+  # Using geomtextpath for label
+  geom_textpath(
+    aes(x = yr, 
+        y = avg_anom_c, 
+        label = temp_label, 
+        linecolor = regime,
+        colour = regime), 
+        size = 4, vjust = -1, fontface = "bold", show.legend = FALSE) +
   # Line segments for the regime averages:
   geom_segment(
-    aes(x = x, xend = xend,
-        y = avg_anom_c, yend = avg_anom_c,
+    aes(x = x, 
+        xend = xend,
+        y = avg_anom_c, 
+        yend = avg_anom_c,
         color = regime),
     size = .8,
     linetype = 1) +
-  # Using geomtextpath for label
-  geom_textpath(aes(x = yr, y = avg_anom_c, 
-                    label = temp_label, 
-                    #linecolor = regime,
-                    colour = regime), 
-                size = 4, vjust = -1, fontface = "bold", show.legend = FALSE) +
-  #facet_wrap(~survey_area, ncol = 1) +
   scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
   scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
   scale_color_gmri() +
@@ -136,7 +140,7 @@ temp_regimes %>%
     legend.background = element_rect(fill = "transparent"),
     legend.key = element_rect(fill = "transparent", color = "transparent")) + 
   labs(
-    title = "Northwest-Atlantic Surface Temperature Regime Shift",
+    title = "Northwest-Atlantic Temperature Regime Shift",
     x = "", 
     y = "Surface Temperature Anomaly",
     caption = "Anomalies calculated using 1982-2011 reference period.") +
@@ -232,7 +236,9 @@ key_species <- sort(c(
   "butterfish",
   "haddock", 
   "pollock",
+  "scup",
   "silver hake",
+  "summer flounder",
   "winter flounder",
   "yellowtail flounder"
 ))

@@ -14,9 +14,6 @@ suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(sf))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(tidyverse))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(gmRi))))
 
-####  Resource Paths  
-oisst_path <- gmRi::box_path(box_group = "res", 
-                             subfolder = "/OISST/oisst_mainstays")
 
 ####  Build code and stratification functions  ####
 
@@ -161,29 +158,34 @@ list(
   #### 1. Temperature Data  ####
   tar_target(
     gom_oisst,
-    oisst_access_timeseries(oisst_path = oisst_path, 
-                            region_family = "nmfs trawl regions", 
-                            poly_name = "gulf of maine") ),
+    oisst_access_timeseries(
+      region_family = "nmfs trawl regions", 
+      poly_name = "gulf of maine", 
+      mac_os = "mojave" )),
   tar_target(
     gb_oisst, 
-    oisst_access_timeseries(oisst_path = oisst_path, 
-                            region_family = "nmfs trawl regions", 
-                            poly_name = "georges bank") ),
+    oisst_access_timeseries(
+      region_family = "nmfs trawl regions", 
+      poly_name = "georges bank", 
+      mac_os = "mojave" )),
   tar_target(
     mab_oisst,
-    oisst_access_timeseries(oisst_path = oisst_path, 
-                            region_family = "nmfs trawl regions", 
-                            poly_name = "mid atlantic bight") ),
+    oisst_access_timeseries(
+      region_family = "nmfs trawl regions", 
+      poly_name = "mid atlantic bight", 
+      mac_os = "mojave" )),
   tar_target(
     sne_oisst,
-    oisst_access_timeseries(oisst_path = oisst_path, 
-                            region_family = "nmfs trawl regions", 
-                            poly_name = "southern new england") ),
+    oisst_access_timeseries(
+      region_family = "nmfs trawl regions", 
+      poly_name = "southern new england", 
+      mac_os = "mojave" )),
   tar_target(
     inuse_strata_oisst,
-    oisst_access_timeseries(oisst_path = oisst_path, 
-                            region_family = "nmfs trawl regions", 
-                            poly_name = "inuse strata") ),
+    oisst_access_timeseries(
+      region_family = "nmfs trawl regions", 
+      poly_name = "inuse strata", 
+      mac_os = "mojave" )),
   
   # Make every daily timeseries into a yearly one
   tar_target(
