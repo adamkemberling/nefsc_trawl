@@ -33,7 +33,10 @@ library(patchwork)
 library(directlabels)
 library(xaringanExtra)
 library(ggridges)
+library(ggdist)
+library(ggforce)
 library(geomtextpath)
+library(colorspace)
 
 # Set theme
 theme_set(theme_gmri())
@@ -401,6 +404,8 @@ walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "w
 
 # Distribution of Length/Weight Across Regimes 
 plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = "Age - ", facet_suffix = ""){
+  
+  # switches for length or width
   var_col <- switch (var,
     "length" = sym("length_cm"),
     "weight" = sym("indwt"))
@@ -412,24 +417,72 @@ plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = 
   appender <- function(string, prefix = facet_prefix, suffix = facet_suffix) {
     paste0(prefix, string)}
   
-  # Make plot
-  regime_dat %>% 
+  # Select Ages, Prep data
+  size_changes <- regime_dat %>% 
   filter(
-    comname  == spec,
+    comname == spec,
     age <= 6) %>% 
-  ggplot(aes(x = !!{{var_col}}, group = regime, fill = regime)) +
-  geom_density(alpha = 0.5) +
-  facet_wrap(~age, ncol = 1, scales = "free",
-             labeller = as_labeller(appender)) +
-  scale_fill_gmri() + 
-  theme(legend.position = "bottom") +
-  labs(x = var_lab,
-       y = "Proportion",
-       title = spec)
+  ## Calculate group averages
+  group_by(age, regime) %>% 
+  mutate(
+    avg_size = mean(!!{{var_col}})) %>% 
+    ungroup() 
+  
+  # Make median dataframe
+  median_df <- size_changes %>%
+    distinct(age, regime, avg_size) %>%
+    pivot_wider(names_from = "regime", values_from = "avg_size")
+  
+  # Make Plot
+  size_changes %>% 
+    ggplot(aes(x = !!{{var_col}})) +
+    
+    ## distribution
+    stat_halfeye(aes(color = regime, 
+                     fill = after_scale(color)),
+                 slab_alpha = .5, 
+                 .width = 0, 
+                 trim = T, 
+                 shape = 21, 
+                 point_colour = "gray25",
+                 stroke = 1.6,
+                 scale = .86) +
+    
+    # median line
+    geom_segment(
+      data = median_df,
+      aes(x = `Early Regime`,
+          xend = `Warm Regime`,
+          y = 0,
+          yend = 0),
+      size = .8,
+      color = "grey25", # , position = position_nudge(y = -.15)
+    ) +
+    
+    ## median points - not working
+    stat_halfeye(aes(color = regime), .width = c(0), slab_fill = NA) +
+    
+   
+    facet_wrap(~age, ncol = 1, 
+               labeller = as_labeller(appender)) +
+    scale_color_gmri() + 
+    scale_fill_gmri() +
+    scale_y_continuous(labels = percent_format()) +
+    theme(legend.position = "bottom") +
+    labs(x = var_lab,
+         y = "Proportion",
+         title = spec,
+         fill = "Temperature Regime",
+         color = "Temperature Regime",
+         shape = "Median"
+         )
   
   
 }
 
+
+# Tester: 
+plot_regime_sizes(key_species[[1]], var = "length")
 ```
 
 
