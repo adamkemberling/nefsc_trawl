@@ -316,7 +316,7 @@ plot_age_ridgeplot <- function(species){
 
 ::::: {.panelset}
 
-```{r ridge panels, results="asis"}
+```{r ridge panels, results="asis", fig.height=8}
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_age_ridgeplot)
@@ -425,13 +425,13 @@ plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = 
   ## Calculate group averages
   group_by(age, regime) %>% 
   mutate(
-    avg_size = mean(!!{{var_col}})) %>% 
+    median_size = median(!!{{var_col}})) %>% 
     ungroup() 
   
   # Make median dataframe
   median_df <- size_changes %>%
-    distinct(age, regime, avg_size) %>%
-    pivot_wider(names_from = "regime", values_from = "avg_size")
+    distinct(age, regime, median_size) %>%
+    pivot_wider(names_from = "regime", values_from = "median_size")
   
   # Make Plot
   size_changes %>% 
@@ -464,7 +464,7 @@ plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = 
     
    
     facet_wrap(~age, ncol = 1, 
-               labeller = as_labeller(appender)) +
+               labeller = as_labeller(appender), scales = "free") +
     scale_color_gmri() + 
     scale_fill_gmri() +
     scale_y_continuous(labels = percent_format()) +
@@ -482,7 +482,7 @@ plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = 
 
 
 # Tester: 
-plot_regime_sizes(key_species[[1]], var = "length")
+# plot_regime_sizes(key_species[[1]], var = "length")
 ```
 
 
@@ -700,7 +700,7 @@ regime_curve_prep <- function(spec_name){
     mutate(
       growth_shift = `Warm Regime` - `Early Regime`,
       growth_frac = (growth_shift / `Early Regime`),
-      size_change  = ifelse(growth_shift < 0, "Increase", "Decrease")
+      size_change  = ifelse(growth_shift > 0, "Increase", "Decrease")
     )
   
   return(t_coef)
@@ -737,21 +737,6 @@ write_csv(species_coef, here("data/growth_results/growth_regime_coefs.csv"))
 
 ```
 
-
-
-```{r}
-#| eval = FALSE
-
-
-
-# This looks crappy
-regime_comparison %>% 
-  filter(age <= 5) %>% 
-  ggplot(aes(x = age, y = fct_rev(comname))) +
-  geom_tile(aes(fill = growth_frac)) +
-  scale_fill_distiller(palette = "PRGn", limits = c(-.4, .4), na.value = "transparent") +
-  labs(x = "Age", y = "Species", fill = "Proportional Shift in Length at Age")
-```
 
 
 ```{r}
@@ -864,39 +849,6 @@ ggplot(regime_comparison, aes(x = age, y = growth_frac)) +
 
 ```
 
-```{r}
-#| eval = F
-# streamplot?
-library(ggstream)
-regime_comparison %>% 
-  filter(age <= 21) %>% 
-  group_by(age, comname) %>% 
-  count(size_change) %>% 
-  ggplot(aes(x = age, y = n, fill = fct_rev(size_change), group = comname)) +
-  geom_stream(
-    type = "mirror", 
-    color = "gray20", 
-    size = 0.2, 
-    extra_span = 0.2,
-    alpha = 0.8) +
-  # scale_fill_gmri() +
-  scale_fill_manual(
-    values = c(
-      "Increase" = "#00A36C",
-      "Decrease" = "#A7C7E7"
-    )
-  ) +
-  scale_x_continuous(expand = expansion(add = c(0,1))) +
-  labs(x = "Age", 
-       y = "",
-       title = "Size-at-Age Responses of 17 Groundfish Species\nChange in Growth During Warmer Temperature Regime", fill = "Change in Size at Age") +
-  theme(
-    panel.grid.major.y = element_blank(),
-    axis.text.y = element_blank(),
-    legend.position = c(0.75, 0.15))
-
-```
-
 # All Age Size Differences
 
 ```{r}
@@ -906,7 +858,7 @@ regime_comparison %>%
 # Try geom_waffle to just count each species as an individual and show that they are growing to smaller sizes in new regime:
 library(ggwaffle)
 ggplot(data = waffle_iron(
-  data = filter(regime_comparison, age == 3), 
+  data = filter(regime_comparison, age == 5), 
   aes_d(group = size_change), rows = 2), 
          aes(x, y, fill = fct_rev(group))) +
   geom_waffle() +
@@ -918,7 +870,7 @@ ggplot(data = waffle_iron(
         legend.title = element_text(face = "bold", size = 12),
         legend.position = "bottom",
         panel.grid.major.y = element_blank()) +
-  labs(x = "", y = "", fill = "Warm Regime Impact on Body Length:")
+  labs(x = "", y = "", fill = "Warm Regime Impact on Age 5 Body Length:")
 
 ```
 
