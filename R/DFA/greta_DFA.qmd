@@ -1,0 +1,612 @@
+---
+title: "Greta DFA Tutorial"
+author: "Mark Schueerell & Nick golding"
+format: 
+  html:
+    toc: true
+    toc_float: true
+editor: visual
+execute: 
+  echo: true
+  warning: false
+  message: false
+  fig.height: 6
+  fig.width: 6
+  fig.align: "center"
+  comment: ""
+---
+
+```{r}
+options(tensorflow.one_based_extract = TRUE)
+```
+
+<br/>
+
+[**Mark Scheuerell**](https://faculty.washington.edu/scheuerl/)\
+*Northwest Fisheries Science Center, National Oceanic and Atmospheric Administration, Seattle, WA, USA*
+
+[**Nick Golding**](https://qaeco.com/researchfellows/#ngolding)\
+*Quantitative and Applied Ecology Group, School of BioSciences, University of Melbourne, Melbourne, Victoria, AUS*
+
+------------------------------------------------------------------------
+
+**DISCLAIMER**
+
+This vignette is still in the testing and evaluating phase and should not be considered complete or error-free. Please visit the [development repo](https://github.com/mdscheuerell/gretaDFA) for detailed code and open issues.
+
+This is version `r paste0('0.',format(Sys.time(), '%y.%m.%d'))`.
+
+------------------------------------------------------------------------
+
+# Background
+
+Dynamic Factor Analysis (DFA) is a dimension reduction technique specific to time series analysis. The general idea is to model $N$ time series as a linear combination of $M$ "hidden", time-varying factors, where $M \ll N$. For an $N \times T$ matrix of data $\mathbf{y}$, where $\mathbf{y}_t$ is an $N \times 1$ column vector, the DFA model is
+
+$$
+\mathbf{y}_t \sim \text{MVN}(\mathbf{Z} \mathbf{x}_t + \mathbf{a},\mathbf{R})
+$$ $$
+\mathbf{x}_t \sim \text{MVN}(\mathbf{x}_{t-1},\mathbf{Q})
+$$ $$
+\mathbf{x}_0 \sim \text{MVN}(\mathbf{0},\mathbf{Q}_0)
+$$
+
+The $N \times M$ matrix $\mathbf{Z}$ maps the factors onto the observed data at time $t$. The $N \times 1$ vector $\mathbf{a}$ contains offsets for each of the observed time series. The covariance matrix $\mathbf{R}$ of the observation errors can be anything from simple IID errors (i.e., same variance parameter down the diagonal ans zeroes elsewhere), to something much more complex like an unconstrained block diagonal.
+
+The factors are modeled as random walks where the covariance matrix $\mathbf{Q}$ of the process errors governing their evolution is generally assumed to be an $M \times M$ identity matrix, $\mathbf{I}_M$. The covariance matrix $\mathbf{Q}_0$ of the initial states $\mathbf{x}_0$ is typically assumed to have large values along the diagonal and zeros elsewhere.
+
+# Why **greta**?
+
+Estimating the parameters in a DFA model is not trivial. There are several available methods for doing so, including an EM algorithm as implemented in the [**MARSS**](https://cran.r-project.org/web/packages/MARSS/index.html) package [@pkg_MARSS]. However, the fitting process can be extremely slow when working with really large data sets (e.g., 50+ time series).
+
+For example, a couple of years ago MDS helped a graduate student with a [DFA analysis](https://doi.org/10.1371/journal.pone.0162121) based on estimates of daily growth rates for juvenile Chinook salmon [@goertler2016]. She had 100+ time series from four different year/month combinations, each of which was about 40-180 days long. We fit our models with **MARSS** using a distributed cluster from [Domino](https://www.dominodatalab.com/), but the models still took days to converge.
+
+The [**greta**](https://greta-dev.github.io/greta/) package [@pkg_greta] is designed to do [Hamiltonian Monte Carlo](http://onlinelibrary.wiley.com/doi/10.1111/2041-210X.12681/full) via Google's [TensorFlow](https://www.tensorflow.org/) computational engine, which makes it really fast on big datasets. It's also nice because you write the models using normal **R** syntax.
+
+# Requirements
+
+## Packages
+
+For this vignette we're using version 0.3.0 of **greta**, which you can install from CRAN via
+
+```{r, eval=FALSE, message=FALSE}
+install.packages("greta")
+```
+
+You will also need to install [TensorFlow](https://www.tensorflow.org/install/) and the [tensorflow](https://cran.r-project.org/web/packages/tensorflow/) package for **R** before **greta** will work. See the output below for the versions used here.
+
+```{r load_pkgs_1, message=FALSE}
+library(MASS)
+library(viridis)
+library(corrplot)
+library(greta)
+
+
+## R pkgs
+installed.packages()[c("greta", "tensorflow"), "Version"]
+## tensorflow
+tensorflow::tf_version()
+## tensorflow probability
+pkg <- reticulate::import("pkg_resources")
+pkg$get_distribution("tensorflow_probability")$version
+
+# Set conda environment
+reticulate::use_condaenv(condaenv = "greta-env")
+```
+
+In addition, we also make use of the `mvrnorm()` function in the **MASS** package, color palettes in the **viridis** package, and the `corrplot()` function from the **corrplot** package.Functions
+
+We need to define a helper function to fill in the diagonal of the prior for the loadings matrix $\mathbf{Z}$ with the appropriate distribution (see below).
+
+```{r}
+zd <- function(M, sigma) {
+  zd <- zeros(M)
+  for(i in 1:M) {
+    zd[i] <- ld(i, M = M, sigma = sigma, dim = 1)
+  }
+  return(zd)
+}
+```
+
+We use a unique distribution for the diagonal of $\mathbf{Z}$, as defined by Leung & Drton [-@leung2016], that allows for parameter identification that is invariant to shifts in the rows of the data matrix $\mathbf{y}$. At present, this distribution is not defined internally in **greta**, so we define it explicitly here via an `R6` class.
+
+```{r define_ld_distrib}
+library (R6)
+distrib <- .internals$nodes$constructors$distrib
+distribution_node <- .internals$nodes$node_classes$distribution_node
+check_dims <- .internals$utils$checks$check_dims
+as.greta_array <- .internals$greta_arrays$as.greta_array
+is_scalar <- .internals$utils$misc$is_scalar
+fl <- .internals$utils$misc$fl
+# function to call 
+ld <- function (i, M, sigma, dim = 1) {
+  distrib("ld", i, M, sigma, dim)
+  }
+# Leung & Drton distn for prior of diag(Z)
+ld_distribution <- R6Class (
+  "ld_distribution",
+  inherit = distribution_node,
+  public = list(
+    
+    initialize = function (i, M, sigma, dim) {
+      
+      # check if (i, M, dim) are in counting set
+      # (i)
+      if (length(i) > 1 ||
+          i <= 0 ||
+          !is.finite(i) ||
+          i != floor(i)) {
+        
+        stop ("i must be a scalar positive integer, but was: ",
+              capture.output(dput(i)),
+              call. = FALSE)
+        
+      }
+      
+      # (M)
+      if (length(M) > 1 ||
+          M <= 0 ||
+          !is.finite(M) ||
+          M != floor(M)) {
+        
+        stop ("M must be a scalar positive integer, but was: ",
+              capture.output(dput(M)),
+              call. = FALSE)
+        
+      }
+      
+      # (dim)
+      if (length(dim) > 1 ||
+          dim <= 0 ||
+          !is.finite(dim) ||
+          dim != floor(dim)) {
+        
+        stop ("dim must be a scalar positive integer, but was: ",
+              capture.output(dput(dim)),
+              call. = FALSE)
+        
+      }
+      
+      # check if i > M
+      if (i > M) {
+        
+        stop ("i can be no larger than M",
+              call. = FALSE)
+        
+      }
+      # check if sigma is scalar
+      # (sigma)
+      if (length(sigma) > 1) {
+        
+        stop ("sigma must be a scalar positive integer, but was: ",
+              capture.output(dput(sigma)),
+              call. = FALSE)
+        
+      }
+      
+      i <- as.greta_array(i)
+      M <- as.greta_array(M)
+      sigma <- as.greta_array(sigma)
+      
+      self$bounds <- c(0, Inf)
+      super$initialize("ld", dim, truncation = c(0, Inf))
+      self$add_parameter(i, "i")
+      self$add_parameter(M, "M")
+      self$add_parameter(sigma, "sigma")
+    },
+    
+    tf_distrib = function (parameters, dag) {
+      i <- parameters$i
+      M <- parameters$M
+      sigma <- parameters$sigma
+      # log pdf(x | i, M, sigma)
+      log_prob = function (x) {
+        (M - i) * tf$log(x) - x ^ fl(2) / (fl(2) * sigma)
+      }
+      list(log_prob = log_prob, cdf = NULL, log_cdf = NULL)
+    },
+    
+    # no CDF for discrete distributions
+    tf_cdf_function = NULL,
+    tf_log_cdf_function = NULL
+    
+  )
+)
+```
+
+# Simulate data
+
+Our general approach is to create a large number of time series, each of which to a greater or lesser degree share some temporal patterns with one another. We'll use 30 time series that are 30 units long, each of which is a linear combination of 3 different latent trends.
+
+```{r data_inits}
+NN <- 30
+TT <- 30
+MM <- 3
+```
+
+## Latent factors
+
+In a DFA model, the rows in the matrix of latent factors $\mathbf{x}$ are generally assumed to be independent random walks, each of which is a cumulative sum of a sequence of independent process errors.
+
+```{r sim_factors, message=FALSE}
+set.seed(123)
+## MM x TT matrix of innovations
+ww <- matrix(rnorm(MM*TT, 0, 1), MM, TT)
+ww[,1] <- rnorm(MM, 0, sqrt(5))
+
+## MM x TT matrix of scaled latent trends
+xx <- t(scale(apply(ww,1,cumsum)))
+```
+
+```{r plot_factors, fig.height=4, fig.width=7, echo=FALSE}
+## plot the trends
+par(mai=c(0.8,0.8,0.2,0.2))
+matplot(t(xx), type="b", lty="solid", cex=0.7,
+        xlab="Time", ylab=expression(italic(x)[italic(t)]),
+        col=plasma(MM, end=0.8))
+```
+
+## Loadings matrix
+
+The matrix $\mathbf{Z}$ maps the factors $\mathbf{x}$ onto the observations $\mathbf{y}$. We draw each of the sub-diagonal elements from a Uniform(-1,1); the diagonal elements are drawn from a Uniform(0,1). We also sort the diagonal elements from largest to smallest.
+
+```{r create_Z}
+ZZ <- matrix(runif(NN*MM, -1, 1), NN, MM)
+diag(ZZ) <- rev(sort(abs(diag(ZZ))))
+ZZ[upper.tri(ZZ)] <- 0
+ZZ <- round(ZZ, 2)
+```
+
+## Observed time series
+
+Now we can use the loadings and some observation errors to create the observed time series. Here we assume that the errors are IID, and their standard deviation is 0.2. We can ignore the additive effect of the offset vector $\mathbf{a}$ because the expectations of $\mathbf{x}$ and $\mathbf{e}$ are both zero.
+
+```{r create_ts}
+## obs var
+obs_var <- 0.2^2
+
+## obs errors
+ee <- t(mvrnorm(TT, matrix(0,NN,1), diag(obs_var,NN,NN)))
+
+## NN x TT matrix of observed data
+yy <- ZZ %*% xx + ee
+```
+
+```{r plot_ts, fig.height=4, fig.width=7, echo=FALSE}
+par(mai=c(0.8,0.8,0.2,0.2))
+matplot(t(yy), type="l", lty="solid",
+        xlab="Time", ylab=expression(italic(y)[italic(i)]),
+        col=plasma(NN, alpha=0.7, end=0.8))
+```
+
+It's hard to tell from this plot how many of the `r NN` time series are correlated. Here is a plot of the correlation coefficients for all of the pairwise comparisons with them clustered by similarity.
+
+```{r hist_cor_coefs, fig.height=7, fig.width=7, echo=FALSE}
+rho <- cor(t(yy))
+par(mai=c(0.8,0.8,0.2,0.2))
+corrplot(rho, method="ellipse", type="lower", order = "hclust",
+         tl.col = "black", tl.srt = 0, tl.cex = 0.6, tl.offset = 0.7,
+         cl.cex = 0.8, cl.offset = 0.9, cl.ratio = 0.1)
+```
+
+# Specify priors
+
+Before we can estimate the model parameters we need to specify distributions for the priors and likelihoods.
+
+## Loadings matrix
+
+To make the model identifiable when $M$ \> 1, we need to impose several constraints on the model. First, the upper right triangle of $\mathbf{Z}$ must be set equal to zero (i.e., $z_{ij} = 0 ~ \forall ~ i < j$). For example, if $M$ = 3 then
+
+$$
+\mathbf{Z} = 
+\begin{bmatrix}
+    z_{11} & 0      & 0 \\
+    z_{21} & z_{22} & 0 \\
+    z_{31} & z_{32} & z_{33} \\
+    z_{41} & z_{42} & z_{43} \\
+    \vdots & \vdots & \vdots \\
+    z_{N1} & z_{N2} & z_{N3}  
+\end{bmatrix}.   
+$$
+
+Second, when estimating a DFA model in a Bayesian framework, as with **greta**, we need to constrain the diagonal of $\mathbf{Z}$ to be positive to ensure convergence (i.e., $z_{ij} > 0 ~ \forall ~ i = j$). In particular, we implement the prior derived by Leung & Drton [-@leung2016], wherein each of the diagonal elements $z_{ii}$ has density proportional to
+
+$$
+x^{M-i} \exp \left\{- \frac{1}{2\sigma} x^2  \right\} ~ \forall ~  x > 0.
+$$
+
+Thus, we need to tell **greta** which of the parameters in $\mathbf{Z}$ are to be estimated, and which should be fixed at 0. The order of operations is important here because **greta** does not allow you to reassign elements in an array to fixed values after they have been declared as random. (Note that we follow the **greta** convention of using the `=` assignment for stochastic nodes.)
+
+```{r priors_loadings}
+## empty loadings matrix
+ZZ_est <- zeros(NN,MM)
+
+## define sigma
+sigma_est = normal(0, 2, truncation = c(0, Inf))
+
+## diagonal
+idx_d <- row(ZZ_est) == col(ZZ_est)
+ZZ_est_raw_d = zd(MM, sigma_est)
+ZZ_est[idx_d] <- ZZ_est_raw_d
+
+## sub-diagonal
+idx_s <- lower.tri(ZZ_est)
+ZZ_est_raw_s = normal(0, sigma_est, dim = sum(idx_s), truncation = c(-1,1))
+ZZ_est[idx_s] <- ZZ_est_raw_s
+```
+
+The reason we defined `ZZ_est_raw_?` separately here, rather than directly assigning values to `ZZ_est` is so that we can use the `evaluate()` function to verify its contents. With `evaluate()`, we can calculate the value of a greta array by passing a fixed value for those it depends on.
+
+So, for example, if we specified $\mathbf{Z}$ correctly, the following should return the top portion of `ZZ_est` with the following values:
+
+-   0 for the upper right;
+-   1 for the diagonal elements;
+-   2 for all of the subdiagonal elements.
+
+```{r demo_evaluate, eval=TRUE, cache=TRUE}
+head(calculate(ZZ_est, list(ZZ_est_raw_d = rep(1, sum(idx_d)),
+                            ZZ_est_raw_s = rep(2, sum(idx_s)))))
+```
+
+It looks like everything worked as expected.
+
+## Covariance matrix
+
+Defining the priors for the covariance matrix $\mathbf{R}$ is straightforward. In this case, there is no covariance among the observation errors so model them as a set of univariate normals.
+
+We will scale the observations before fitting, so the maximum variance of the observation errors is 1. Thus, we'll use an inverse gamma prior on the observation variance and truncate the upper end of the distribution at 1.
+
+```{r priors_obs_cov}
+## diagonal of R
+RR_est = inverse_gamma(alpha = 1, beta = 3, 1, truncation=c(0, 1))
+```
+
+## Initial factors
+
+Because the factors are autoregressive processes, we need to define the initial values at time $t = 0$.
+
+```{r prior_on_X0}
+## inital factor
+X0 = normal(mean = 0, sd = sqrt(10), dim = c(MM, 1))
+```
+
+# Specify likelihoods
+
+## Factors
+
+The next step is to specify the likelihood functions.
+
+For the factor model, we need to specify a model for the temporal evolution of the random walks. This is where we take advantage of the `cumsum_mat()` function we defined above. (Recall that we defined the covariance matrix $\mathbf{Q}$ to be the identity matrix $\mathbf{I}$.)
+
+```{r like_factors}
+## factors for t = 2-TT
+XX = normal(mean = 0, sd = 1, dim = c(MM, TT))
+## cumsum over proc errs for the random walk
+xx_est <- t(apply(cbind(X0,XX), 1, "cumsum"))[,-1]
+```
+
+## Observed data
+
+Because we assumed IID errors for the observations, we can make use of the vectorized form for `normal()` in **greta** by passing in vectors of the observed data `yy_vec` and their expectation `Zx_vec`, and the scalar variance `RR_est`.
+
+Note that we will scale each of the $\mathbf{y}_i$ time series in $\mathbf{y}$ to have unit variance so we won't have to estimate $\mathbf{a}$.
+
+```{r like_obs, eval=TRUE, echo=TRUE}
+## scale data
+yy_z <- t(scale(t(yy), scale = FALSE))
+## vectorize data
+yy_vec <- as_data(matrix(yy_z, 1, NN*TT))
+## vectorize mean
+Zx_vec <- t(c(ZZ_est %*% xx_est))
+## define likelihood
+distribution(yy_vec) = normal(Zx_vec, RR_est)
+```
+
+# Fit the model
+
+Now we can define the complete model and do some MCMC sampling.
+
+```{r start_timer, include=FALSE}
+## start timer
+timer_start <- proc.time() 
+```
+
+```{r greta_model, cache=TRUE}
+mod_defn <- model(xx_est, ZZ_est, RR_est, sigma_est)
+mod_fit <- mcmc(mod_defn, verbose = FALSE,
+                sampler = hmc(Lmin = 1, Lmax = 30, epsilon = 0.001, diag_sd = 1),
+                warmup = 2000, n_samples = 5000, thin = 10, chains = 1,
+                initial_values = initials(RR_est = runif(1, 0.1, 1),
+                                          sigma_est = runif(1, 0.1, 1)
+                                          # XX = matrix(rnorm(MM*TT), MM, TT),
+                                          # ZZ_est_raw_s = matrix(rnorm(sum(idx_s),
+                                          #                             0,
+                                          #                             0.1),
+                                          #                       ncol = 1)
+                )
+)
+# mod_fit <- extra_samples(mod_fit, n_samples = 5000, thin = 50, verbose = FALSE)
+```
+
+```{r save_samples}
+saveRDS(mod_fit, "DFA_mod_fit.rds")
+```
+
+```{r stop_timer, include=FALSE}
+## stop timer
+run_time_in_min <- round(((proc.time()-timer_start)/60)["elapsed"], 1)
+cat(run_time_in_min, file="run_time_in_min.txt")
+```
+
+# Assessing convergence
+
+It is important to determine whether or not the model has converged before we can place any confidence in the results. Among the many diagnostic measures available, the options are somwhat limited when there is only one chain.
+
+## Traceplots
+
+One quick option is to visually inspect the MCMC traces with `traceplot()` from the **coda** package. Here is a matrix of traces for the elements in $\mathbf{Z}$.
+
+```{r traceplots_Z, fig.height=15, fig.width=7}
+par(mfcol=c(NN,MM), mai=rep(0,4), omi=rep(0,4))
+cnt <- 1
+for(j in 1:MM) {
+  for(i in 1:NN) {
+    coda::traceplot(mod_fit[[1]][,paste0("ZZ_est[",i,",",j,"]")],
+		ylab="", xlab="", yaxt="n", xaxt="n")
+	  cnt <- cnt + 1
+	}
+}
+```
+
+These chains show some evidence of nonconvergence and also some autocorrelation, suggesting we need to work on the MCMC control parameters in the `sampler = hmc(...)` argument to `mcmc()` and possiblly extend the warmup phase.
+
+## Formal test
+
+Another more formal (and faster) option is to use the Heidelberger and Welch's convergence diagnostic, which is also available in the **coda** package. In particular, we can ask what percent of the estimates pass the half-width test, which compares the means from beginning and ending sections of the chain.
+
+```{r converge_chk}
+## number of estimated params/states
+n_par <- dim(mod_fit[[1]])[2]
+## H&W diag: pass (1) or fail (NA)
+halfwidth_test <- coda::heidel.diag(mod_fit[[1]])[,4]
+## proportion passing
+round(sum(halfwidth_test, na.rm = TRUE) / n_par, 2)
+```
+
+Only about `r round(sum(halfwidth_test, na.rm = TRUE) / n_par, 2)*100`% of the estimates appear to have converged, but that isn't too surprising given the relatively short burnin period and subsequent chain length.
+
+# Examining the fits
+
+(*Note that from here we proceed as though the model had converged*.)
+
+We begin by summarizing the MCMC samples.
+
+```{r examine_fits}
+mod_smry <- summary(mod_fit)
+par_means <- mod_smry$statistics[,"Mean"]
+```
+
+## Loadings matrix
+
+Here are the tops of the estimated and true $\mathbf{Z}$.
+
+```{r ZZ_fit_corr}
+## fitted Z
+ZZ_fit <- par_means[grepl("ZZ",rownames(mod_smry$statistics))]
+ZZ_fit <- matrix(ZZ_fit, NN, MM, byrow=FALSE)
+## fitted Z
+head(round(ZZ_fit, 2))
+## true Z
+head(ZZ)
+```
+
+The correlation between the actual $\mathbf{Z}$ and the estimated $\hat{\mathbf{Z}}$ is:
+
+```{r comp_ZZ_fits}
+round(cor(as.vector(ZZ), as.vector(ZZ_fit)), 2)
+```
+
+Here are graphical representations of the correlation between the fitted and observed values for each of the `r MM` columns in the loadings matrix $\mathbf{Z}$. (*Note that cases where the correlation is negative occur when the sampler starts in a complimentary space.*)
+
+```{r ZZ_fit_corr_plot}
+par(mai=rep(0.1, 4), omi=rep(0.1, 4))
+corrplot(cor(ZZ, ZZ_fit), method="ellipse", type="lower",
+         tl.col = "black", tl.srt = 0, tl.cex = 0.8, tl.offset = 0.7,
+         cl.cex = 0.8, cl.offset = 0.9, cl.ratio = 0.2)
+```
+
+## Factors
+
+Here are the `r MM` factors in $\mathbf{x}$. The top panel has the estimated factors; the bottom panel shows the true factors. Note that there is no way to insure that the specific ordering of the estimated factors will match the true factors.
+
+```{r get_factors}
+## fitted factors
+xx_fit <- par_means[grepl("xx",rownames(mod_smry$statistics))]
+xx_fit <- matrix(xx_fit, MM, TT, byrow=FALSE)
+```
+
+```{r plot_xx_fits, fig.height=7, fig.width=7, echo=FALSE}
+par(mfrow=c(2,1), mai=c(0.8,0.8,0.2,0.2))
+matplot(t(xx_fit), type="b", lty="solid", cex=0.7,
+        xlab="Time", ylab=expression(italic(x)[italic(t)]),
+        col=viridis(MM, end=0.8))
+mtext("Fitted", 3, adj = 0)
+matplot(t(xx), type="b", lty="solid", cex=0.7,
+        xlab="", ylab=expression(italic(x)[italic(t)]),
+        col=plasma(MM, end=0.8))
+mtext("True", 3, adj = 0)
+```
+
+Here is a graphical representation of the pairwise correlation between the factors.
+
+```{r corrplot_xx, fig.height=6, fig.width=6}
+par(mai=rep(0.1, 4), omi=rep(0.1, 4))
+corrplot(cor(t(xx), t(xx_fit)), method="ellipse", type="lower",
+         tl.col = "black", tl.srt = 0, tl.cex = 0.8, tl.offset = 0.7,
+         cl.cex = 0.8, cl.offset = 0.9, cl.ratio = 0.2)
+```
+
+## Covariance matrix
+
+Here is an estimate of the SD of the observation errors (recall that the true value is `r sqrt(obs_var)`).
+
+```{r get_RR_fit}
+round(par_means[grepl("RR",rownames(mod_smry$statistics))], 3)
+```
+
+## Fitted vs observed
+
+Here is a graphical representation of the correlation between the observed and fitted data for the `r NN` time series. Note that their (row, col) ordering is arbitrary.
+
+```{r cor_yy}
+## fitted values
+yy_fit <- ZZ_fit %*% xx_fit
+## corrrelation
+cor_yy <- matrix(diag(cor(t(yy_z), t(yy_fit))), NN/5, 5)
+## plots
+par(mai=rep(0.1, 4), omi=rep(0.1, 4))
+corrplot(cor_yy, method="ellipse",
+         tl.pos = "n",
+         cl.cex = 0.8, cl.offset = 0.9,
+         cl.ratio = 0.2) #cl.lim = c(0, 1))
+```
+
+## Sigma
+
+Here is an estimate of the scale parameter for the diagonal of $\mathbf{Z}$.
+
+```{r get_Sigma_fit}
+sigma_fit <- par_means["sigma_est"]
+round(sigma_fit, 2)
+```
+
+# Factor rotation
+
+Recall that we constrained $\mathbf{Z}$ in such a way as to choose only one of many possible solutions, but fortunately they are equivalent and can be related to each other by a rotation matrix. Let $\mathbf{H}$ be any $m \times m$ non-singular matrix. The following are then equivalent DFA models:
+
+$$
+\begin{gathered}
+ \mathbf{y}_t \sim \text{MVN}(\mathbf{Z} \mathbf{x}_t, \mathbf{R}) \\
+ \mathbf{x}_t \sim \text{MVN}(\mathbf{x}_{t-1},\mathbf{Q})
+\end{gathered}   
+$$
+
+and
+
+$$
+\begin{gathered}
+ \mathbf{y}_t \sim \text{MVN}(\mathbf{Z} \mathbf{H}^{-1} \mathbf{x}_t, \mathbf{R}) \\
+ \mathbf{H}\mathbf{x}_t \sim \text{MVN}(\mathbf{H}\mathbf{x}_{t-1},\mathbf{Q})
+\end{gathered}   
+$$
+
+There are many ways of doing factor rotations, but a common method is the "varimax"" rotation, which seeks a rotation matrix $\mathbf{H}$ that creates the largest difference between the loadings in $\mathbf{Z}$.
+
+The varimax rotation is easy to compute because R has a built in function for this: `varimax()`. Interestingly, the function returns the inverse of $\mathbf{H}$, which we need anyway.
+
+```{r get_ZZ_rot}
+## rotation matrix
+HH_inv <- varimax(ZZ_fit)$rotmat
+## rotated Z
+ZZ_rot <- ZZ_fit %*% HH_inv
+round(ZZ_rot, 2)
+```

@@ -1,0 +1,62 @@
+---
+title: "MARSS DFA"
+author: "Adam Kemberling"
+format: 
+  html:
+    toc: true
+    toc_float: true
+editor: visual
+execute: 
+  echo: true
+  warning: false
+  message: false
+  fig.height: 6
+  fig.width: 6
+  fig.align: "center"
+  comment: ""
+---
+
+## Dynamic Factor Model using MARSS
+
+**Source:** https://nwfsc-timeseries.github.io/MARSS-Manual/dynamic-factor-model-with-3-trends.html
+
+**About:** Dynamic factor analysis is a dimension reduction method similar to PCA, but for time series.
+
+Create set up the model:
+
+```{r}
+
+# DFa with two trends
+Q <- diag(1, 2)
+R <- "diagonal and equal"
+Z <- matrix(list(0), 5, 2)
+Z[, ] <- paste0("z", 1:10)
+Z[1, 2] <- 0
+A <- "zero"
+U <- "zero"
+```
+
+Fit with `MARSS()`. We need to demean the data for a DFA. These models take a long time to converge. This one works better with the BFGS algorithm.
+
+```{r}
+library(MARSS)
+
+#Data
+data(harborSealWA, package = "MARSS")
+
+yt <- t(harborSealWA)[2:6, ]
+fit <- MARSS(y = zscore(yt, mean.only = TRUE), 
+             model = list(
+               R = R, 
+               Q = Q, 
+               Z = Z, 
+               A = A, 
+               U = U), 
+             method = "BFGS")
+```
+
+Check it out:
+
+```{r}
+plot(fit)
+```

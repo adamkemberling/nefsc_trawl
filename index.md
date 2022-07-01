@@ -92,6 +92,7 @@ This report digs into what the outcomes of the size spectrum estimations look li
 
 [Size Differences of Thermal Regimes](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/size_at_age_regimes.html)
 
+[Temperature Occupancy of Under Different Thermal Regimes](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/encounter_temperatures.html)
 
 ---
 
