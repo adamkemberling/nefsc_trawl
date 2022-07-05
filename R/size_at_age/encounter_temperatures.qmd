@@ -30,6 +30,9 @@ The general hypothesis follows that species that are better able to track favora
 ####  Packages  ####
 library(tidyverse)
 library(gmRi)
+library(sf)
+library(gt)
+library(rnaturalearth)
 library(targets)
 library(scales)
 library(patchwork)
@@ -38,11 +41,17 @@ library(ggdist)
 library(ggforce)
 library(geomtextpath)
 library(colorspace)
+library(broom)
+ 
+
 
 # Set theme
 theme_set(theme_gmri())
 
-# Acitvate panelset
+
+#### Functions  ####
+
+# Activate panelset
 xaringanExtra::use_panelset()
 
 # Function to generate panels using a key word and a plot function
@@ -68,52 +77,64 @@ plot_panelset <- function(spec, plot_fun, ...) {
   cat(":::\n")
 }
 
+
+
+# Weighted linear models 
+# To test for difference in variable across regimes
+test_signif <- function(filter_species, dependent_var){
+  
+  # formula for lm
+  mod_form <- formula(paste(dependent_var, "~ temp_regime"))
+  
+  # data for models
+  mod_dat <- trawldat %>% 
+    filter(comname == filter_species) 
+  
+  # abundance weighting
+  abund_lm <- lm(
+    formula = mod_form, 
+    data = mod_dat, 
+    weights = strat_abund_wt)
+  
+  # biomass weighted
+  biom_lm <- lm(
+    formula = mod_form, 
+    data = mod_dat, 
+    weights = strat_lwbio_wt)
+  
+  # Grab Significance for both in table
+  data.frame(
+    abund_mod_p = broom::glance(abund_lm)$p.value,
+    lwbio_mod_p = broom::glance(biom_lm)$p.value) %>% 
+    mutate(comname = filter_species,
+           abund_signif = ifelse(abund_mod_p < 0.05, T, F),
+           lwbio_signif = ifelse(lwbio_mod_p < 0.05, T, F))
+  
+}
+
 ```
 
 ### Species Used:
 
-The species used here will match the 17 species included as part of the size-at-age analysis. Those species are:
+The species used here will match the 16 species included as part of the size-at-age analysis. Those species are:
 
-1.  acadian redfish
+```{r}
+# Size at age species
+saa_species <- c("acadian redfish", "american plaice", "atlantic cod", "atlantic herring", "atlantic mackerel", "black sea bass", "butterfish", "haddock", "pollock", "red hake", 
+                 #"scup", 
+                 "silver hake", "summer flounder", "white hake", "winter flounder", "witch flounder", "yellowtail flounder")
 
-2.  american plaice
+# table for printing
+spec_df <- data.frame("Species" = saa_species)
+spec_df %>% knitr::kable()
+```
 
-3.  atlantic cod
-
-4.  atlantic herring
-
-5.  atlantic mackerel
-
-6.  black sea bass
-
-7.  butterfish
-
-8.  haddock
-
-9.  pollock
-
-10. red hake
-
-11. scup
-
-12. silver hake
-
-13. summer flounder
-
-14. white hake
-
-15. winter flounder
-
-16. witch flounder
-
-17. yellowtail flounder
+Data for these 16 species comes from fisheries independent trawl survey data collected by NOAA and the NEFSC.
 
 ```{r}
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(nefsc_stratified))
-# Size at age species
-saa_species <- c("acadian redfish", "american plaice", "atlantic cod", "atlantic herring", "atlantic mackerel", "black sea bass", "butterfish", "haddock", "pollock", "red hake", "scup", "silver hake", "summer flounder", "white hake", "winter flounder", "witch flounder", "yellowtail flounder")
 
 # Filter to just them, and the two time regimes
 trawldat <- nefsc_stratified %>% 
@@ -139,11 +160,11 @@ trawldat <- trawldat %>%
 
 ### Are Species Occupying the Same Spaces?
 
-Using the bottom temperatures sampled before each tow, and the stratified-abundances caught at each tow, the following weighted distributions can be generated.
+Using the bottom temperatures sampled before each tow, and the stratified-abundances caught at each tow, the following weighted distributions can be generated for what the conditions were at each location these species were caught.
 
 ```{r}
-# standardize the stratified abundances by what the average strat-catch is
-# To use as weighting
+# Standardize the stratified abundances by what the average strat-catch
+# These are then used as weights for mean/median estimates
 trawldat <-trawldat %>% 
   group_by(comname, temp_regime) %>% 
   mutate(
@@ -157,7 +178,7 @@ trawldat <-trawldat %>%
 )
 
 
-# Weighted Median Locations
+# Weighted Median Bottom Temperatures
 median_df <- trawldat %>% 
   group_by(comname, temp_regime) %>% 
   summarise(
@@ -166,8 +187,14 @@ median_df <- trawldat %>%
     .groups = "drop") 
 
 
+# get results on significance
+temp_results <- map_dfr(
+  .x = saa_species, 
+  .f = test_signif, 
+  dependent_var = "bottemp")
 
-
+# Merge them in
+median_df <- left_join(median_df, temp_results, by = "comname")
 ```
 
 #### Abundance Weighted
@@ -196,15 +223,15 @@ median_df <- median_df %>%
   mutate(comname = factor(comname, levels = levels(median_segment_df$comname)))
 
 # Make Density Plots for Each species
-
+# Match factor levelings to preserve facet order
 trawldat %>% 
   mutate(comname = factor(comname, levels = levels(median_segment_df$comname))) %>% 
   drop_na(bottemp) %>% 
   ggplot() +
   geom_density(
-    aes(x=bottemp, 
-        weight = strat_abund_wt, 
-        group = temp_regime, 
+    aes(x=bottemp,
+        weight = strat_abund_wt,
+        group = temp_regime,
         colour = temp_regime,
         fill = temp_regime),
     alpha = 0.5,
@@ -225,7 +252,7 @@ trawldat %>%
   scale_fill_gmri() +
   scale_color_gmri() +
   scale_y_continuous(breaks = seq(0, 1, by = 1)) +
-  scale_x_continuous(breaks = seq(0, 25, by = 5)) +
+  scale_x_continuous(breaks = seq(0, 30, by = 2)) +
   labs(
     title = "Shift in Bottom Temperatures of Catch Locations",
     subtitle = "Distributions weighted by stratified abundance, weighted medians shown as points.",
@@ -272,9 +299,9 @@ trawldat %>%
   mutate(comname = factor(comname, levels = levels(median_segment_df$comname))) %>% 
   ggplot() +
   geom_density(
-    aes(x=bottemp, 
-        weight = strat_lwbio_wt, 
-        group = temp_regime, 
+    aes(x=bottemp,
+        weight = strat_lwbio_wt,
+        group = temp_regime,
         colour = temp_regime,
         fill = temp_regime),
     alpha = 0.5,
@@ -295,7 +322,7 @@ trawldat %>%
   scale_fill_gmri() +
   scale_color_gmri() +
   scale_y_continuous(breaks = seq(0, 1, by = 1)) +
-  scale_x_continuous(breaks = seq(0, 25, by = 5)) +
+  scale_x_continuous(breaks = seq(0, 30, by = 2)) +
   labs(
     title = "Shift in Bottom Temperatures of Catch Locations",
     subtitle = "Distributions weighted by stratified biomass, weighted medians shown as points.",
@@ -308,7 +335,7 @@ trawldat %>%
         legend.position = "bottom")
 ```
 
-### Centers of Latitude
+### Center of Latitude
 
 The (weighted) centers of latitude give an indication of whether a species is shifting its location Northward or Southward.
 
@@ -320,6 +347,7 @@ lat_median_df <- trawldat %>%
     abund_median = matrixStats::weightedMedian(decdeg_beglat, strat_abund_wt, na.rm = T),
     lwbio_median = matrixStats::weightedMedian(decdeg_beglat, strat_lwbio_wt, na.rm = T),
     .groups = "drop") 
+
 ```
 
 #### Abundance Weighted
@@ -456,8 +484,228 @@ trawldat %>%
 
 ```
 
-### Leading Edges
+### Center of Biomass
 
-### Trailing Edges
+Using both Lat/Lon we can determine a center of biomass or abundance.
+
+```{r}
+
+# Map polygons
+us_poly <- ne_states("united states of america", returnclass = "sf")
+canada <- ne_states("canada", returnclass = "sf")
+
+# Weighted Median Locations
+center_coord_df <- trawldat %>% 
+  group_by(comname, temp_regime) %>% 
+  summarise(
+    abund_lat = matrixStats::weightedMedian(decdeg_beglat, strat_abund_wt, na.rm = T),
+    lwbio_lat = matrixStats::weightedMedian(decdeg_beglat, strat_lwbio_wt, na.rm = T),
+    abund_lon = matrixStats::weightedMedian(decdeg_beglon, strat_abund_wt, na.rm = T),
+    lwbio_lon = matrixStats::weightedMedian(decdeg_beglon, strat_lwbio_wt, na.rm = T),
+    .groups = "drop") 
+
+
+# Coord ranges to crop
+xlim <- range(c(center_coord_df$abund_lon, center_coord_df$lwbio_lon))
+ylim <- range(c(center_coord_df$abund_lat, center_coord_df$lwbio_lat))
+
+```
+
+#### Abundance Weighted
+
+```{r}
+
+# Make the map
+ggplot() +
+  geom_sf(data = us_poly) +
+  geom_sf(data = canada) +
+  ggforce::geom_link2(
+    data = center_coord_df,
+    aes(x = abund_lon, 
+        y = abund_lat, 
+        group = comname,
+        alpha = stat(index),
+        color = "Warm Regime"),
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(data = center_coord_df, aes(x = abund_lon, y = abund_lat, color = temp_regime), size = 3) +
+  scale_color_gmri() +
+  coord_sf(xlim = xlim, ylim = ylim) +
+  map_theme(legend.position = "bottom") +
+  labs(color = "Temperature Regime", title = "Weighted-Median Center of Abundances")
+
+```
+
+#### Biomass Weighted
+
+```{r}
+
+# Make the map
+ggplot() +
+  geom_sf(data = us_poly) +
+  geom_sf(data = canada) +
+  ggforce::geom_link2(
+    data = center_coord_df,
+    aes(x = lwbio_lon, 
+        y = lwbio_lat, 
+        group = comname,
+        alpha = stat(index),
+        color = "Warm Regime"),
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(data = center_coord_df, aes(x = lwbio_lon, y = lwbio_lat, color = temp_regime), size = 3) +
+  scale_color_gmri() +
+  coord_sf(xlim = xlim, ylim = ylim) +
+  map_theme(legend.position = "bottom") +
+  labs(color = "Temperature Regime", title = "Weighted-Median Center of Biomass")
+
+
+```
+
+### Capture Depth
+
+```{r}
+# Weighted Median Locations
+depth_df <- trawldat %>% 
+  group_by(comname, temp_regime) %>% 
+  summarise(
+    abund_depth = matrixStats::weightedMedian(avgdepth, strat_abund_wt, na.rm = T),
+    lwbio_depth = matrixStats::weightedMedian(avgdepth, strat_lwbio_wt, na.rm = T),
+    .groups = "drop") 
+```
+
+#### Abundance Weighted
+
+```{r}
+#| fig.height = 10
+
+# Plot 1. Weighted by Stratified Abundance:
+
+# And another df for connecting the points
+depth_segment_df <- depth_df %>% 
+  select(comname, temp_regime, abund_depth) %>% 
+  pivot_wider(names_from = "temp_regime", 
+              values_from = c(abund_depth)) %>% 
+    mutate(median_shift = `Warm Regime` - `Early Regime`)
+
+# Reorder the species factors by median temperature preference
+depth_segment_df <- depth_segment_df %>% 
+  mutate(comname = fct_reorder(comname, `Early Regime`, .fun = median, .desc = T))
+
+
+# Reorder factor by warm-tolerance in Early regime
+depth_df <- depth_df %>% 
+  mutate(comname = factor(comname, levels = levels(depth_segment_df$comname)))
+
+# Make Density Plots for Each species
+
+trawldat %>% 
+  mutate(comname = factor(comname, levels = levels(depth_segment_df$comname))) %>% 
+  drop_na(decdeg_beglat) %>% 
+  ggplot() +
+  geom_density(
+    aes(x = avgdepth, 
+        weight = strat_abund_wt, 
+        group = temp_regime, 
+        colour = temp_regime,
+        fill = temp_regime),
+    alpha = 0.5,
+    trim = TRUE) +
+  geom_segment(data = depth_segment_df,
+               aes(x = `Early Regime`,
+                   xend = `Warm Regime`,
+                   y = 0,
+                   yend = 0),
+               color = "black") +
+  geom_point(data = depth_df ,
+             aes(x = abund_depth, 
+                 y = 0, 
+                 color = temp_regime),
+             size = 3,
+             show.legend = FALSE) +
+  facet_grid(comname~.) +
+  scale_fill_gmri() +
+  scale_color_gmri() +
+  scale_y_continuous(breaks = seq(0, 1, by = 1)) +
+  scale_x_continuous(breaks = seq(0, 300, by = 50)) +
+  labs(
+    title = "Shift in Depth of Catch Locations",
+    subtitle = "Distributions weighted by stratified abundance, weighted medians shown as points.",
+    y = "Density",  
+    x = "Average Depth (m)", 
+    color = "Time Period", 
+    fill = "Time Period") +
+  theme(axis.text.y = element_blank(),
+        strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
+        legend.position = "bottom")
+```
+
+#### Biomass Weighted
+
+```{r}
+#| fig.height = 10
+# Plot 2: Weighted by length-weight biomass
+
+
+# And another df for connecting the points
+depth_segment_df <- depth_df %>% 
+  select(comname, temp_regime, lwbio_depth) %>% 
+  pivot_wider(names_from = "temp_regime", 
+              values_from = c(lwbio_depth)) %>% 
+    mutate(median_shift = `Warm Regime` - `Early Regime`)
+
+# Reorder the species factors by median temperature preference
+depth_segment_df <- depth_segment_df %>% 
+  mutate(comname = fct_reorder(comname, `Early Regime`, .fun = median),
+         comname = fct_rev(comname))
+
+
+# Reorder factor by warm-tolerance in Early regime
+depth_df <- depth_df %>% 
+  mutate(comname = factor(comname, levels = levels(depth_segment_df$comname)))
+
+# Make Density Plots for Each species
+
+trawldat %>% 
+  drop_na(decdeg_beglat) %>% 
+  mutate(comname = factor(comname, levels = levels(depth_segment_df$comname))) %>% 
+  ggplot() +
+  geom_density(
+    aes(x = avgdepth, 
+        weight = strat_lwbio_wt, 
+        group = temp_regime, 
+        colour = temp_regime,
+        fill = temp_regime),
+    alpha = 0.5,
+    trim = TRUE) +
+  geom_segment(data = depth_segment_df,
+               aes(x = `Early Regime`,
+                   xend = `Warm Regime`,
+                   y = 0,
+                   yend = 0),
+               color = "black") +
+  geom_point(data = depth_df ,
+             aes(x = lwbio_depth, 
+                 y = 0, 
+                 color = temp_regime),
+             size = 3,
+             show.legend = FALSE) +
+  facet_grid(comname~.) +
+  scale_fill_gmri() +
+  scale_color_gmri() +
+  scale_y_continuous(breaks = seq(0, 1, by = 1)) +
+  scale_x_continuous(breaks = seq(0, 300, by = 50)) +
+  labs(
+    title = "Shift in Depth of Catch Locations",
+    subtitle = "Distributions weighted by stratified biomass, weighted medians shown as points.",
+    y = "Density",  
+    x = "Average Depth (m)", 
+    color = "Time Period", 
+    fill = "Time Period") +
+  theme(axis.text.y = element_blank(),
+        strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
+        legend.position = "bottom") 
+
+```
 
 ### Move vs. Acclimate
