@@ -1,5 +1,12 @@
 ---
 title: "Size at Age Regimes"
+author: 
+    name: "Adam Kemberling"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+  Differential Growth Rates Under Different Temperature Regimes
+date: "Updated on: `r Sys.Date()`"
 format: 
   html:
     code-fold: true
@@ -14,7 +21,6 @@ execute:
   fig.width: 6
   fig.align: "center"
   comment: ""
-  
 ---
 
 ```{r packages and functions}
@@ -68,14 +74,11 @@ plot_panelset <- function(spec, plot_fun, ...) {
 }
 ```
 
-
-
 `r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
 ## Comparing Growth Regimes in the NW Atlantic
 
 Recent changes in Gulf stream positioning have altered the relative influences of the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region as well as food-web dynamics, we seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
-
 
 ## Temperature Regimes
 
@@ -165,7 +168,7 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 # Drop NA age data, restrict to summer and fall
 nmfs_bio <- survdat_biological %>%
   filter(is.na(age) == FALSE,
-         season %in% c("Summer", "Fall"))%>% 
+         season %in% c("Spring", "Fall"))%>% 
       as.data.frame()
   
 
@@ -178,7 +181,6 @@ nmfs_bio <- nmfs_bio %>%
 
 rm(survdat_biological)
 ```
-
 
 ### Studying Regimes
 
@@ -247,12 +249,9 @@ key_species <- sort(c(
 ))
 ```
 
-
-
 ### Growth Increment Estimation
 
-
-One aspect of growth beyond size-at-age is the annual growth between years of a specific age, or the growth increment. 
+One aspect of growth beyond size-at-age is the annual growth between years of a specific age, or the growth increment.
 
 ```{r}
 
@@ -286,13 +285,11 @@ vb_incs <- all_vonbert %>%
 
 ```
 
-
 ## Age Data Frequencies
 
-Just looking at the raw data available, it becomes obvious that there are differences in the number of fish at various ages through time. 
+Just looking at the raw data available, it becomes obvious that there are differences in the number of fish at various ages through time.
 
 With cases of large cohorts passing through, or older individuals being caught less frequently. Particularly large cohorts of haddock are a good example.
-
 
 ```{r ridgeplot fun}
 # Plotting age distribution as ggridges
@@ -314,18 +311,27 @@ plot_age_ridgeplot <- function(species){
 }
 ```
 
-::::: {.panelset}
-
+::: panelset
 ```{r ridge panels, results="asis", fig.height=8}
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_age_ridgeplot)
 
 ```
+:::
 
-:::::
+Strong age classes were particularly prominent in the following species, showing lasting numbers in subsequent years.
+
+| Species          | Strong Year Classes |
+|------------------|---------------------|
+| Atlantic Cod     | 2003, 2013          |
+| Haddock          | 2003, 2010, 2013    |
+| Atlantic Herring | 2008, 2011          |
+| Pollock          | 2000, 2012          |
 
 # Growth Increment Changes
+
+Age specific growth (annual growth increments) help detail where in a species life cycle it may be experiencing favorable or less-favorable conditions for growth. These can be a result of differences in habitat use or prey resources at different ages, and/or a change in exposure to temperature or other stressors that inflict a metabolic cost.
 
 ```{r}
 
@@ -381,24 +387,16 @@ plot_age_increments <- function(
 
 ```
 
-
-
-::::: {.panelset}
-
+::: panelset
 ```{r, results="asis", fig.height = 8}
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "weight", gam_knots = 5)
 
 ```
-
-:::::
-
-
+:::
 
 # Length at Age Changes
-
-
 
 ```{r regime size plots}
 
@@ -485,31 +483,25 @@ plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = 
 # plot_regime_sizes(key_species[[1]], var = "length")
 ```
 
-
-::::: {.panelset}
-
+::: panelset
 ```{r, results="asis", fig.height = 8}
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "length")
 
 ```
-
-:::::
+:::
 
 # Weight at Age Changes
 
-
-::::: {.panelset}
-
+::: panelset
 ```{r, results="asis", fig.height = 8}
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "weight")
 
 ```
-
-:::::
+:::
 
 # Changes in Growth
 
@@ -518,40 +510,79 @@ Growth in fishes is commonly modeled using the "Von-Bertalanffy" growth function
 ```{r}
 # Set the function for nls() to solve
 vb <- vbFuns(param="Typical") 
+```
+
+```{r}
 
 
-# Function to Pull Vonbert Coefficients
+# Debugging:
+# length_age_dat_test <- filter(all_vonbert, comname == "scup", regime == "Early Regime")
+# start_points_test <- vbStarts(length_cm ~ age, data = length_age_dat_test)
+
+# Function to Pull Vonbert Coefficients, and boot strapped intervals
 vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
   
   # Von Bert Fitting Using: {FSA}
+  
+  
   # Don't run on fewer than a minimum number of observations
   num_aged <- nrow(length_age_dat)
+  
+  
+  # If number aged less than the minimum observations, fill output with NA's
   if(num_aged < min_obs){
-    na_df <- data.frame("Linf" = NA, 
-                        "K" = NA, 
+    na_df <- data.frame("Linf" = NA,
+                        "K" = NA,
                         "t0" = NA)
-    return(na_df)
-  }
+
+    # What to return when it fails:
+    return(list("model" = NA, "coef" = na_df, "conf" = NA))}
   
   # Use nls to estimate VBGF parameters using starting points
-  vbert_fit <- nls(length_cm ~ vb(age, Linf, K, t0), 
-                   data = length_age_dat, 
+  vbert_fit <- nls(length_cm ~ vb(age, Linf, K, t0),
+                   data = length_age_dat,
                    start = start_points)
-  
+
   # Access parameters with coef()
-  # Estimate sizes at age
   vbert_coef <- as.data.frame(t(coef(vbert_fit)))
-  return(vbert_coef)
+
+  
+  # This section fails, can't find namespace/obhect "length_age_dat"
+  
+  
+  # # Use bootstrapping for confidence intervals:
+  # vbert_boot <- Boot(vbert_fit)  # Be patient! Be aware of some non-convergence
+  # vbert_conf <- confint(vbert_boot)
+  
+  # output list
+  out_l <- list(
+    "model" = vbert_fit,
+    "coef"  = vbert_coef#,
+    #"conf"  = vbert_conf
+  )
+
+  # Return the list
+  return(out_l)
   
 }
+
 ```
 
+The code in this next section is just a wrapper that controls which species is being fit
 
 ```{r}
 # Second Function for running that for a single Species, split by a factor column
-species_vonbert <- function(spec, split_col, min_obs){
+
+# Function does these things:
+# 1. grab data for one species
+# 2. Get starting points for VB using all data on that species
+# 3. Fit Vonbert to  both Regimes
+
+
+estimate_species_vbert <- function(spec_name, split_col, min_obs){
   
-  spec_dat <- filter(all_vonbert, comname == spec)
+  # Get the data using the species
+  spec_dat <- dplyr::filter(all_vonbert, comname == spec_name)
   
   # Get starting points from all data
   test_starts <-  vbStarts(length_cm ~ age, 
@@ -560,8 +591,11 @@ species_vonbert <- function(spec, split_col, min_obs){
   # Get coefficients for groups
   spec_dat %>% 
     split(.[split_col]) %>% 
-    map_dfr(vonbert_coef, test_starts, min_obs = min_obs, .id = split_col) %>% 
-    mutate(comname = spec)
+    map(.f = vonbert_coef,
+            start_points = test_starts, 
+            min_obs = min_obs) %>% 
+    map_dfr(pluck,"coef", .id = split_col) %>% 
+    mutate(comname = spec_name)
 }
 
 ```
@@ -573,9 +607,20 @@ Once everything is prepped we can then fun the von Bert parameter estimation for
 # Running everything?
 #species_coef <- key_species %>% 
 species_coef <- vonbert_species %>% 
-  map_dfr(.f = species_vonbert, 
-          split_col =  "regime", 
-          min_obs = 30)
+  map_dfr(function(x){
+    estimate_species_vbert(
+      spec_name = x, 
+      split_col =  "regime", 
+      min_obs = 30)
+    
+  })
+
+
+
+# Separate Coefficients from the bootstrapped confidence intervals
+
+
+
 
 # Plotting Everything
 species_coef %>%
@@ -591,7 +636,6 @@ species_coef %>%
         panel.spacing = unit(2, "lines"),
         panel.border = element_rect(color = "gray80", fill = "transparent", size = 1))
 ```
-
 
 # Growth Curves
 
@@ -646,8 +690,7 @@ vb_fits_plot = function(spec_name){
   }
 ```
 
-::::: {.panelset}
-
+::: panelset
 ```{r, results="asis", fig.height = 6}
 
 # Loop through the key species:
@@ -656,14 +699,11 @@ walk(key_species,
      plot_fun = vb_fits_plot)
 
 ```
-
-:::::
+:::
 
 # Shifts in Growth
 
-
 Goal is to find some way to show all of them together in one form:
-
 
 ```{r}
 #| fig.height = 8,
@@ -725,7 +765,6 @@ regime_comparison %>%
          subtitle = "Changes in Size at Age (Warm Regime - Historic Regime)") 
 ```
 
-
 ```{r}
 #| eval = FALSE
 
@@ -736,8 +775,6 @@ write_csv(regime_comparison, here("data/growth_results/growth_regime_fits.csv"))
 write_csv(species_coef, here("data/growth_results/growth_regime_coefs.csv"))
 
 ```
-
-
 
 ```{r}
 # Try horizons
@@ -874,9 +911,6 @@ ggplot(data = waffle_iron(
 
 ```
 
-
-
 # Average Body Sizes
- 
 
 `r insert_gmri_footer()`

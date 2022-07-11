@@ -3,16 +3,14 @@
 
 
 ####  Load Packages
-suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(targets))))
-suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(scales))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(readr))))
-suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(patchwork))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(tarchetypes))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(here))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(janitor))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(sf))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(tidyverse))))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(gmRi))))
+suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(targets))))
 
 
 ####  Build code and stratification functions  ####
@@ -42,24 +40,34 @@ list(
   
   #####__ a. Full Survdat  ####
   # Preparing Survdat Data
+  tar_target(targets_os, 
+             command = "mojave"),
   tar_target(
     name = survdat_clean,
-    command = gmri_survdat_prep(survdat_source = "most recent", mac_os = "mojave")),
+    command = gmri_survdat_prep(survdat = NULL, 
+                                survdat_source = "most recent", 
+                                mac_os = targets_os)),
   tar_target(
     name = survdat_lw,
-    command = add_lw_info(survdat_clean, cutoff = T, mac_os = "mojave") ),
+    command = add_lw_info(survdat_clean, 
+                          cutoff = T, 
+                          mac_os = targets_os) ),
   tar_target(
     name = nefsc_stratified,
-    command = add_area_stratification(survdat_lw, include_epu = F, mac_os = "mojave") ),
+    command = add_area_stratification(survdat_lw, 
+                                      include_epu = F, 
+                                      mac_os = targets_os) ),
   
   #####__ b. Biological Data  ####
   # survdat biological data - for actual length relationships
   tar_target(
     name = survdat_biological,
-    command = gmri_survdat_prep(survdat_source = "bio", mac_os = "mojave") ),
+    command = gmri_survdat_prep(survdat_source = "bio", 
+                                mac_os = targets_os) ),
   tar_target(
     name = survdat_bio_lw,
-    command = add_lw_info(survdat_biological, cutoff = T, mac_os = "mojave") %>% 
+    command = add_lw_info(survdat_biological, cutoff = T, 
+                          mac_os = targets_os) %>% 
       mutate(Year = est_year,
              season = str_to_title(season))),
   
@@ -161,31 +169,31 @@ list(
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "gulf of maine", 
-      mac_os = "mojave" )),
+      mac_os = targets_os )),
   tar_target(
     gb_oisst, 
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "georges bank", 
-      mac_os = "mojave" )),
+      mac_os = targets_os )),
   tar_target(
     mab_oisst,
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "mid atlantic bight", 
-      mac_os = "mojave" )),
+      mac_os = targets_os )),
   tar_target(
     sne_oisst,
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "southern new england", 
-      mac_os = "mojave" )),
+      mac_os = targets_os )),
   tar_target(
     inuse_strata_oisst,
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "inuse strata", 
-      mac_os = "mojave" )),
+      mac_os = targets_os )),
   
   # Make every daily timeseries into a yearly one
   tar_target(
