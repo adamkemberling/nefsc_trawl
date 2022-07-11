@@ -487,12 +487,12 @@ a {
 <span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>temp_avgs <span class="ot">&lt;-</span> median_df <span class="sc">%&gt;%</span> </span>
 <span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(temp_regime) <span class="sc">%&gt;%</span> </span>
 <span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">mean</span>(biom_mu),</span>
-<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">mean</span>(biom_median)</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_mu),<span class="dv">2</span>),</span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_median), <span class="dv">2</span>)</span>
 <span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>Across all species the average temperature (by biomass) has increased from 8.5694796 to 9.0716345 for a change in 0.5021548°C.</p>
+<p>Across all species the average temperature (by biomass) has increased from 8.57 to 9.07 for a change in 0.5°C.</p>
 <p>16 of the 17 showed a significant change in temperature among the different regimes indicating a change in habitat conditions regardless of avoidance strategy.</p>
 <p>In the following figure the abundance densities for the early and warm temperature regimes are shown for each species. The distributions are weighted by stratified abundances to account for the study design and differences in catch at each location. The weighed medians are also shown for each regime.</p>
 <div class="cell">
@@ -568,12 +568,12 @@ a {
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>lat_avgs <span class="ot">&lt;-</span> lat_median_df <span class="sc">%&gt;%</span> </span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(temp_regime) <span class="sc">%&gt;%</span> </span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">mean</span>(biom_mu),</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">mean</span>(biom_median)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_mu),<span class="dv">2</span>),</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_median), <span class="dv">2</span>)</span>
 <span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>Across all species the average temperature (by biomass) has increased from 41.3864122 to 41.5869492 for a change in 0.200537 ° Latitude.</p>
+<p>Across all species the average Latitude at capture has increased from 41.39 to 41.59 for a change in 0.2 ° Latitude.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
@@ -715,12 +715,13 @@ a {
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Avg Depths </span></span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>avg_depths <span class="ot">&lt;-</span> depth_df <span class="sc">%&gt;%</span> </span>
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(temp_regime) <span class="sc">%&gt;%</span> </span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">biom_avg =</span> <span class="fu">mean</span>(biom_mu),</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">biom_med =</span> <span class="fu">mean</span>(biom_median),</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">"drop"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_mu),<span class="dv">2</span>),</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_median), <span class="dv">2</span>)</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>Across all species the average depth (by biomass) has increased from 114.7514616 to 122.4887231 for a change in 7.7372615 meters.</p>
+<p>Across all species the average depth (by biomass) has increased from 114.75 to 122.49 for a change in 7.74 meters.</p>
 <section id="individual-changes-1" class="level3">
 <h3 class="anchored" data-anchor-id="individual-changes-1">Individual Changes</h3>
 <div class="cell">
@@ -1172,8 +1173,8 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb12-247"><a href="#cb12-247" aria-hidden="true" tabindex="-1"></a>temp_avgs <span class="ot">&lt;-</span> median_df <span class="sc">%&gt;%</span> </span>
 <span id="cb12-248"><a href="#cb12-248" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(temp_regime) <span class="sc">%&gt;%</span> </span>
 <span id="cb12-249"><a href="#cb12-249" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb12-250"><a href="#cb12-250" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">mean</span>(biom_mu),</span>
-<span id="cb12-251"><a href="#cb12-251" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">mean</span>(biom_median)</span>
+<span id="cb12-250"><a href="#cb12-250" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_mu),<span class="dv">2</span>),</span>
+<span id="cb12-251"><a href="#cb12-251" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_median), <span class="dv">2</span>)</span>
 <span id="cb12-252"><a href="#cb12-252" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb12-253"><a href="#cb12-253" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb12-254"><a href="#cb12-254" aria-hidden="true" tabindex="-1"></a></span>
@@ -1253,13 +1254,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb12-332"><a href="#cb12-332" aria-hidden="true" tabindex="-1"></a>lat_avgs <span class="ot">&lt;-</span> lat_median_df <span class="sc">%&gt;%</span> </span>
 <span id="cb12-333"><a href="#cb12-333" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(temp_regime) <span class="sc">%&gt;%</span> </span>
 <span id="cb12-334"><a href="#cb12-334" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb12-335"><a href="#cb12-335" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">mean</span>(biom_mu),</span>
-<span id="cb12-336"><a href="#cb12-336" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">mean</span>(biom_median)</span>
+<span id="cb12-335"><a href="#cb12-335" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_mu),<span class="dv">2</span>),</span>
+<span id="cb12-336"><a href="#cb12-336" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_median), <span class="dv">2</span>)</span>
 <span id="cb12-337"><a href="#cb12-337" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb12-338"><a href="#cb12-338" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb12-339"><a href="#cb12-339" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-340"><a href="#cb12-340" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-341"><a href="#cb12-341" aria-hidden="true" tabindex="-1"></a>Across all species the average temperature (by biomass) has increased from <span class="in">`r lat_avgs[lat_avgs$temp_regime == "Early Regime", 2][[1]]`</span> to <span class="in">`r lat_avgs[lat_avgs$temp_regime == "Warm Regime", 2][[1]]`</span> for a change in <span class="in">`r diff(lat_avgs$biom_avg)`</span> ° Latitude. </span>
+<span id="cb12-341"><a href="#cb12-341" aria-hidden="true" tabindex="-1"></a>Across all species the average Latitude at capture has increased from <span class="in">`r lat_avgs[lat_avgs$temp_regime == "Early Regime", 2][[1]]`</span> to <span class="in">`r lat_avgs[lat_avgs$temp_regime == "Warm Regime", 2][[1]]`</span> for a change in <span class="in">`r diff(lat_avgs$biom_avg)`</span> ° Latitude. </span>
 <span id="cb12-342"><a href="#cb12-342" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-343"><a href="#cb12-343" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-346"><a href="#cb12-346" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
@@ -1398,79 +1399,80 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb12-485"><a href="#cb12-485" aria-hidden="true" tabindex="-1"></a><span class="co"># Avg Depths </span></span>
 <span id="cb12-486"><a href="#cb12-486" aria-hidden="true" tabindex="-1"></a>avg_depths <span class="ot">&lt;-</span> depth_df <span class="sc">%&gt;%</span> </span>
 <span id="cb12-487"><a href="#cb12-487" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(temp_regime) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-488"><a href="#cb12-488" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">biom_avg =</span> <span class="fu">mean</span>(biom_mu),</span>
-<span id="cb12-489"><a href="#cb12-489" aria-hidden="true" tabindex="-1"></a>            <span class="at">biom_med =</span> <span class="fu">mean</span>(biom_median),</span>
-<span id="cb12-490"><a href="#cb12-490" aria-hidden="true" tabindex="-1"></a>            <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
-<span id="cb12-491"><a href="#cb12-491" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb12-492"><a href="#cb12-492" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-493"><a href="#cb12-493" aria-hidden="true" tabindex="-1"></a>Across all species the average depth (by biomass) has increased from <span class="in">`r avg_depths[avg_depths$temp_regime == "Early Regime", 2][[1]]`</span> to <span class="in">`r avg_depths[avg_depths$temp_regime == "Warm Regime", 2][[1]]`</span> for a change in <span class="in">`r diff(avg_depths$biom_avg)`</span> meters.</span>
-<span id="cb12-494"><a href="#cb12-494" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-495"><a href="#cb12-495" aria-hidden="true" tabindex="-1"></a><span class="fu">### Individual Changes</span></span>
-<span id="cb12-496"><a href="#cb12-496" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-499"><a href="#cb12-499" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb12-500"><a href="#cb12-500" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.height = 8</span></span>
-<span id="cb12-501"><a href="#cb12-501" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-502"><a href="#cb12-502" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot 1. Weighted by Stratified Abundance:</span></span>
-<span id="cb12-503"><a href="#cb12-503" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-504"><a href="#cb12-504" aria-hidden="true" tabindex="-1"></a><span class="co"># And another df for connecting the points</span></span>
-<span id="cb12-505"><a href="#cb12-505" aria-hidden="true" tabindex="-1"></a>depth_segment_df <span class="ot">&lt;-</span> depth_df <span class="sc">%&gt;%</span> </span>
-<span id="cb12-506"><a href="#cb12-506" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(comname, temp_regime, biom_median) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-507"><a href="#cb12-507" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">"temp_regime"</span>, </span>
-<span id="cb12-508"><a href="#cb12-508" aria-hidden="true" tabindex="-1"></a>              <span class="at">values_from =</span> <span class="fu">c</span>(biom_median)) <span class="sc">%&gt;%</span> </span>
-<span id="cb12-509"><a href="#cb12-509" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">median_shift =</span> <span class="st">`</span><span class="at">Warm Regime</span><span class="st">`</span> <span class="sc">-</span> <span class="st">`</span><span class="at">Early Regime</span><span class="st">`</span>)</span>
-<span id="cb12-510"><a href="#cb12-510" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-511"><a href="#cb12-511" aria-hidden="true" tabindex="-1"></a><span class="co"># Reorder the species factors by median temperature preference</span></span>
-<span id="cb12-512"><a href="#cb12-512" aria-hidden="true" tabindex="-1"></a>depth_segment_df <span class="ot">&lt;-</span> depth_segment_df <span class="sc">%&gt;%</span> </span>
-<span id="cb12-513"><a href="#cb12-513" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">comname =</span> <span class="fu">fct_reorder</span>(comname, <span class="st">`</span><span class="at">Early Regime</span><span class="st">`</span>, <span class="at">.fun =</span> median, <span class="at">.desc =</span> F))</span>
-<span id="cb12-514"><a href="#cb12-514" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-488"><a href="#cb12-488" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb12-489"><a href="#cb12-489" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_avg =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_mu),<span class="dv">2</span>),</span>
+<span id="cb12-490"><a href="#cb12-490" aria-hidden="true" tabindex="-1"></a>    <span class="at">biom_med =</span> <span class="fu">round</span>(<span class="fu">mean</span>(biom_median), <span class="dv">2</span>)</span>
+<span id="cb12-491"><a href="#cb12-491" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-492"><a href="#cb12-492" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb12-493"><a href="#cb12-493" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-494"><a href="#cb12-494" aria-hidden="true" tabindex="-1"></a>Across all species the average depth (by biomass) has increased from <span class="in">`r avg_depths[avg_depths$temp_regime == "Early Regime", 2][[1]]`</span> to <span class="in">`r avg_depths[avg_depths$temp_regime == "Warm Regime", 2][[1]]`</span> for a change in <span class="in">`r diff(avg_depths$biom_avg)`</span> meters.</span>
+<span id="cb12-495"><a href="#cb12-495" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-496"><a href="#cb12-496" aria-hidden="true" tabindex="-1"></a><span class="fu">### Individual Changes</span></span>
+<span id="cb12-497"><a href="#cb12-497" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-500"><a href="#cb12-500" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb12-501"><a href="#cb12-501" aria-hidden="true" tabindex="-1"></a><span class="co">#| fig.height = 8</span></span>
+<span id="cb12-502"><a href="#cb12-502" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-503"><a href="#cb12-503" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot 1. Weighted by Stratified Abundance:</span></span>
+<span id="cb12-504"><a href="#cb12-504" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-505"><a href="#cb12-505" aria-hidden="true" tabindex="-1"></a><span class="co"># And another df for connecting the points</span></span>
+<span id="cb12-506"><a href="#cb12-506" aria-hidden="true" tabindex="-1"></a>depth_segment_df <span class="ot">&lt;-</span> depth_df <span class="sc">%&gt;%</span> </span>
+<span id="cb12-507"><a href="#cb12-507" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(comname, temp_regime, biom_median) <span class="sc">%&gt;%</span> </span>
+<span id="cb12-508"><a href="#cb12-508" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> <span class="st">"temp_regime"</span>, </span>
+<span id="cb12-509"><a href="#cb12-509" aria-hidden="true" tabindex="-1"></a>              <span class="at">values_from =</span> <span class="fu">c</span>(biom_median)) <span class="sc">%&gt;%</span> </span>
+<span id="cb12-510"><a href="#cb12-510" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">median_shift =</span> <span class="st">`</span><span class="at">Warm Regime</span><span class="st">`</span> <span class="sc">-</span> <span class="st">`</span><span class="at">Early Regime</span><span class="st">`</span>)</span>
+<span id="cb12-511"><a href="#cb12-511" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-512"><a href="#cb12-512" aria-hidden="true" tabindex="-1"></a><span class="co"># Reorder the species factors by median temperature preference</span></span>
+<span id="cb12-513"><a href="#cb12-513" aria-hidden="true" tabindex="-1"></a>depth_segment_df <span class="ot">&lt;-</span> depth_segment_df <span class="sc">%&gt;%</span> </span>
+<span id="cb12-514"><a href="#cb12-514" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">comname =</span> <span class="fu">fct_reorder</span>(comname, <span class="st">`</span><span class="at">Early Regime</span><span class="st">`</span>, <span class="at">.fun =</span> median, <span class="at">.desc =</span> F))</span>
 <span id="cb12-515"><a href="#cb12-515" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-516"><a href="#cb12-516" aria-hidden="true" tabindex="-1"></a><span class="co"># Reorder factor by warm-tolerance in Early regime</span></span>
-<span id="cb12-517"><a href="#cb12-517" aria-hidden="true" tabindex="-1"></a>depth_df <span class="ot">&lt;-</span> depth_df <span class="sc">%&gt;%</span> </span>
-<span id="cb12-518"><a href="#cb12-518" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">comname =</span> <span class="fu">factor</span>(comname, <span class="at">levels =</span> <span class="fu">levels</span>(depth_segment_df<span class="sc">$</span>comname)))</span>
-<span id="cb12-519"><a href="#cb12-519" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-520"><a href="#cb12-520" aria-hidden="true" tabindex="-1"></a><span class="co"># Make Density Plots for Each species</span></span>
-<span id="cb12-521"><a href="#cb12-521" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span></span>
-<span id="cb12-522"><a href="#cb12-522" aria-hidden="true" tabindex="-1"></a>  ggforce<span class="sc">::</span><span class="fu">geom_link</span>(<span class="at">data =</span> depth_segment_df,</span>
-<span id="cb12-523"><a href="#cb12-523" aria-hidden="true" tabindex="-1"></a>               <span class="fu">aes</span>(<span class="at">y =</span> <span class="st">`</span><span class="at">Early Regime</span><span class="st">`</span>,</span>
-<span id="cb12-524"><a href="#cb12-524" aria-hidden="true" tabindex="-1"></a>                   <span class="at">yend =</span> <span class="st">`</span><span class="at">Warm Regime</span><span class="st">`</span>,</span>
-<span id="cb12-525"><a href="#cb12-525" aria-hidden="true" tabindex="-1"></a>                   <span class="at">x =</span> comname,</span>
-<span id="cb12-526"><a href="#cb12-526" aria-hidden="true" tabindex="-1"></a>                   <span class="at">xend =</span> comname,</span>
-<span id="cb12-527"><a href="#cb12-527" aria-hidden="true" tabindex="-1"></a>                   <span class="at">alpha =</span> <span class="fu">stat</span>(index),</span>
-<span id="cb12-528"><a href="#cb12-528" aria-hidden="true" tabindex="-1"></a>        <span class="at">color =</span> <span class="st">"Warm Regime"</span>),</span>
-<span id="cb12-529"><a href="#cb12-529" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">0.75</span>,</span>
-<span id="cb12-530"><a href="#cb12-530" aria-hidden="true" tabindex="-1"></a>    <span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
-<span id="cb12-531"><a href="#cb12-531" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> depth_df ,</span>
-<span id="cb12-532"><a href="#cb12-532" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">y =</span> biom_median, </span>
-<span id="cb12-533"><a href="#cb12-533" aria-hidden="true" tabindex="-1"></a>                 <span class="at">x =</span> comname, </span>
-<span id="cb12-534"><a href="#cb12-534" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color =</span> temp_regime),</span>
-<span id="cb12-535"><a href="#cb12-535" aria-hidden="true" tabindex="-1"></a>             <span class="at">size =</span> <span class="dv">3</span>,</span>
-<span id="cb12-536"><a href="#cb12-536" aria-hidden="true" tabindex="-1"></a>             <span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
-<span id="cb12-537"><a href="#cb12-537" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gmri</span>() <span class="sc">+</span></span>
-<span id="cb12-538"><a href="#cb12-538" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_gmri</span>() <span class="sc">+</span></span>
-<span id="cb12-539"><a href="#cb12-539" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_reverse</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">300</span>, <span class="at">by =</span> <span class="dv">50</span>), <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">200</span>,<span class="dv">0</span>)) <span class="sc">+</span></span>
-<span id="cb12-540"><a href="#cb12-540" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb12-541"><a href="#cb12-541" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Shift in Depth of Catch Locations"</span>,</span>
-<span id="cb12-542"><a href="#cb12-542" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Distributions weighted by stratified biomass, weighted medians shown as points."</span>,</span>
-<span id="cb12-543"><a href="#cb12-543" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">""</span>,  </span>
-<span id="cb12-544"><a href="#cb12-544" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Average Depth (m)"</span>, </span>
-<span id="cb12-545"><a href="#cb12-545" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Time Period"</span>, </span>
-<span id="cb12-546"><a href="#cb12-546" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">"Time Period"</span>) <span class="sc">+</span></span>
-<span id="cb12-547"><a href="#cb12-547" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">90</span>, <span class="at">vjust =</span> <span class="fl">0.5</span>),</span>
-<span id="cb12-548"><a href="#cb12-548" aria-hidden="true" tabindex="-1"></a>        <span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span>
-<span id="cb12-549"><a href="#cb12-549" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb12-550"><a href="#cb12-550" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-551"><a href="#cb12-551" aria-hidden="true" tabindex="-1"></a><span class="fu">## Move vs. Acclimate</span></span>
-<span id="cb12-552"><a href="#cb12-552" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-553"><a href="#cb12-553" aria-hidden="true" tabindex="-1"></a>Species can achieve similar outcomes through either moving deeper, or more Northward, or some combination of both.</span>
-<span id="cb12-554"><a href="#cb12-554" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-516"><a href="#cb12-516" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-517"><a href="#cb12-517" aria-hidden="true" tabindex="-1"></a><span class="co"># Reorder factor by warm-tolerance in Early regime</span></span>
+<span id="cb12-518"><a href="#cb12-518" aria-hidden="true" tabindex="-1"></a>depth_df <span class="ot">&lt;-</span> depth_df <span class="sc">%&gt;%</span> </span>
+<span id="cb12-519"><a href="#cb12-519" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">comname =</span> <span class="fu">factor</span>(comname, <span class="at">levels =</span> <span class="fu">levels</span>(depth_segment_df<span class="sc">$</span>comname)))</span>
+<span id="cb12-520"><a href="#cb12-520" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-521"><a href="#cb12-521" aria-hidden="true" tabindex="-1"></a><span class="co"># Make Density Plots for Each species</span></span>
+<span id="cb12-522"><a href="#cb12-522" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span></span>
+<span id="cb12-523"><a href="#cb12-523" aria-hidden="true" tabindex="-1"></a>  ggforce<span class="sc">::</span><span class="fu">geom_link</span>(<span class="at">data =</span> depth_segment_df,</span>
+<span id="cb12-524"><a href="#cb12-524" aria-hidden="true" tabindex="-1"></a>               <span class="fu">aes</span>(<span class="at">y =</span> <span class="st">`</span><span class="at">Early Regime</span><span class="st">`</span>,</span>
+<span id="cb12-525"><a href="#cb12-525" aria-hidden="true" tabindex="-1"></a>                   <span class="at">yend =</span> <span class="st">`</span><span class="at">Warm Regime</span><span class="st">`</span>,</span>
+<span id="cb12-526"><a href="#cb12-526" aria-hidden="true" tabindex="-1"></a>                   <span class="at">x =</span> comname,</span>
+<span id="cb12-527"><a href="#cb12-527" aria-hidden="true" tabindex="-1"></a>                   <span class="at">xend =</span> comname,</span>
+<span id="cb12-528"><a href="#cb12-528" aria-hidden="true" tabindex="-1"></a>                   <span class="at">alpha =</span> <span class="fu">stat</span>(index),</span>
+<span id="cb12-529"><a href="#cb12-529" aria-hidden="true" tabindex="-1"></a>        <span class="at">color =</span> <span class="st">"Warm Regime"</span>),</span>
+<span id="cb12-530"><a href="#cb12-530" aria-hidden="true" tabindex="-1"></a>    <span class="at">size =</span> <span class="fl">0.75</span>,</span>
+<span id="cb12-531"><a href="#cb12-531" aria-hidden="true" tabindex="-1"></a>    <span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb12-532"><a href="#cb12-532" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> depth_df ,</span>
+<span id="cb12-533"><a href="#cb12-533" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">y =</span> biom_median, </span>
+<span id="cb12-534"><a href="#cb12-534" aria-hidden="true" tabindex="-1"></a>                 <span class="at">x =</span> comname, </span>
+<span id="cb12-535"><a href="#cb12-535" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color =</span> temp_regime),</span>
+<span id="cb12-536"><a href="#cb12-536" aria-hidden="true" tabindex="-1"></a>             <span class="at">size =</span> <span class="dv">3</span>,</span>
+<span id="cb12-537"><a href="#cb12-537" aria-hidden="true" tabindex="-1"></a>             <span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb12-538"><a href="#cb12-538" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gmri</span>() <span class="sc">+</span></span>
+<span id="cb12-539"><a href="#cb12-539" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_gmri</span>() <span class="sc">+</span></span>
+<span id="cb12-540"><a href="#cb12-540" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_reverse</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">300</span>, <span class="at">by =</span> <span class="dv">50</span>), <span class="at">limits =</span> <span class="fu">c</span>(<span class="dv">200</span>,<span class="dv">0</span>)) <span class="sc">+</span></span>
+<span id="cb12-541"><a href="#cb12-541" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb12-542"><a href="#cb12-542" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Shift in Depth of Catch Locations"</span>,</span>
+<span id="cb12-543"><a href="#cb12-543" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Distributions weighted by stratified biomass, weighted medians shown as points."</span>,</span>
+<span id="cb12-544"><a href="#cb12-544" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">""</span>,  </span>
+<span id="cb12-545"><a href="#cb12-545" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Average Depth (m)"</span>, </span>
+<span id="cb12-546"><a href="#cb12-546" aria-hidden="true" tabindex="-1"></a>    <span class="at">color =</span> <span class="st">"Time Period"</span>, </span>
+<span id="cb12-547"><a href="#cb12-547" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill =</span> <span class="st">"Time Period"</span>) <span class="sc">+</span></span>
+<span id="cb12-548"><a href="#cb12-548" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">90</span>, <span class="at">vjust =</span> <span class="fl">0.5</span>),</span>
+<span id="cb12-549"><a href="#cb12-549" aria-hidden="true" tabindex="-1"></a>        <span class="at">legend.position =</span> <span class="st">"bottom"</span>)</span>
+<span id="cb12-550"><a href="#cb12-550" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb12-551"><a href="#cb12-551" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-552"><a href="#cb12-552" aria-hidden="true" tabindex="-1"></a><span class="fu">## Move vs. Acclimate</span></span>
+<span id="cb12-553"><a href="#cb12-553" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-554"><a href="#cb12-554" aria-hidden="true" tabindex="-1"></a>Species can achieve similar outcomes through either moving deeper, or more Northward, or some combination of both.</span>
 <span id="cb12-555"><a href="#cb12-555" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-558"><a href="#cb12-558" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
-<span id="cb12-559"><a href="#cb12-559" aria-hidden="true" tabindex="-1"></a><span class="co"># Put metrics of species movements into one table</span></span>
-<span id="cb12-560"><a href="#cb12-560" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-556"><a href="#cb12-556" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-559"><a href="#cb12-559" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb12-560"><a href="#cb12-560" aria-hidden="true" tabindex="-1"></a><span class="co"># Put metrics of species movements into one table</span></span>
 <span id="cb12-561"><a href="#cb12-561" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb12-562"><a href="#cb12-562" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-563"><a href="#cb12-563" aria-hidden="true" tabindex="-1"></a><span class="co"># Compare those features to the change in growth</span></span>
-<span id="cb12-564"><a href="#cb12-564" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb12-563"><a href="#cb12-563" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-564"><a href="#cb12-564" aria-hidden="true" tabindex="-1"></a><span class="co"># Compare those features to the change in growth</span></span>
+<span id="cb12-565"><a href="#cb12-565" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->

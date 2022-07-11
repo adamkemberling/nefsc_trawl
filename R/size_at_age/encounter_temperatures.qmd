@@ -241,8 +241,8 @@ median_df <- left_join(median_df, temp_results, by = "comname")
 temp_avgs <- median_df %>% 
   group_by(temp_regime) %>% 
   summarise(
-    biom_avg = mean(biom_mu),
-    biom_med = mean(biom_median)
+    biom_avg = round(mean(biom_mu),2),
+    biom_med = round(mean(biom_median), 2)
   )
 ```
 
@@ -322,13 +322,13 @@ lat_median_df <- weighted_df_fun(decdeg_beglat)
 lat_avgs <- lat_median_df %>% 
   group_by(temp_regime) %>% 
   summarise(
-    biom_avg = mean(biom_mu),
-    biom_med = mean(biom_median)
+    biom_avg = round(mean(biom_mu),2),
+    biom_med = round(mean(biom_median), 2)
   )
 ```
 
 
-Across all species the average temperature (by biomass) has increased from `r lat_avgs[lat_avgs$temp_regime == "Early Regime", 2][[1]]` to `r lat_avgs[lat_avgs$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(lat_avgs$biom_avg)` ° Latitude. 
+Across all species the average Latitude at capture has increased from `r lat_avgs[lat_avgs$temp_regime == "Early Regime", 2][[1]]` to `r lat_avgs[lat_avgs$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(lat_avgs$biom_avg)` ° Latitude. 
 
 
 ```{r}
@@ -469,9 +469,10 @@ depth_df <- weighted_df_fun(avgdepth)
 # Avg Depths 
 avg_depths <- depth_df %>% 
   group_by(temp_regime) %>% 
-  summarise(biom_avg = mean(biom_mu),
-            biom_med = mean(biom_median),
-            .groups = "drop")
+  summarise(
+    biom_avg = round(mean(biom_mu),2),
+    biom_med = round(mean(biom_median), 2)
+  )
 ```
 
 Across all species the average depth (by biomass) has increased from `r avg_depths[avg_depths$temp_regime == "Early Regime", 2][[1]]` to `r avg_depths[avg_depths$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(avg_depths$biom_avg)` meters.
