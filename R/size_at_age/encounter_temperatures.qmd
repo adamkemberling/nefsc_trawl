@@ -272,7 +272,9 @@ global_benchmarks <- station_totals %>%
 
 Using the bottom temperatures sampled before each tow, and the biomass caught at each tow, the following weighted distributions can be generated for what the conditions were at each location these species were caught.
 
-#### Yearly Movements
+::: {.panel-tabset}
+
+### Yearly Movements
 
 ```{r}
 # Yearly averages
@@ -302,7 +304,7 @@ temp_yrly %>%
 ```
 
 
-#### Regime Averages
+### Regime Averages
 
 ```{r}
 
@@ -324,18 +326,8 @@ temp_avgs <- temp_change %>%
     biom_avg = round(mean(biom_mu),2),
     biom_med = round(mean(biom_median), 2)
   )
-```
 
 
-
-Across all species the average temperature (by biomass) has increased from `r temp_avgs[temp_avgs$temp_regime == "Early Regime", 2][[1]]` to `r temp_avgs[temp_avgs$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(temp_avgs$biom_avg)`°C. 
-
-`r sum(temp_results$biom_signif)` of the `r length(saa_species)` showed a significant change in temperature among the different regimes indicating a change in habitat conditions regardless of avoidance strategy.
-
-In the following figure the biomass densities for the early and warm temperature regimes are shown for each species. The distributions are weighted by biomass of catch at each location. The weighed means are also shown for each regime.
-
-```{r}
-#| fig.height = 8
 
 # Plot 1. Weighted by Stratified Biomass
 
@@ -392,7 +384,7 @@ ggplot() +
 
 
 
-#### Relative Shifts
+### Relative Shifts
 
 For the following figure, the average of each temperature regime was scaled against the weighed average and standard deviation across all years.
 
@@ -450,12 +442,23 @@ ggplot() +
         legend.position = "bottom")
 ```
 
+:::
+
+### Temperature Summary
+
+Across all species the average temperature (by biomass) has increased from `r temp_avgs[temp_avgs$temp_regime == "Early Regime", 2][[1]]` to `r temp_avgs[temp_avgs$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(temp_avgs$biom_avg)`°C. 
+
+`r sum(temp_results$biom_signif)` of the `r length(saa_species)` showed a significant change in temperature among the different regimes indicating a change in habitat conditions regardless of avoidance strategy.
+
+In the following figure the biomass densities for the early and warm temperature regimes are shown for each species. The distributions are weighted by biomass of catch at each location. The weighed means are also shown for each regime.
 
 ## Center of Latitude
 
 The (weighted) centers of latitude give an indication of whether a species is shifting its location Northward or Southward.
 
-#### Yearly Movements
+::: {.panel-tabset}
+
+### Yearly Movements
 
 ```{r}
 # Weighted mean Locations
@@ -485,7 +488,7 @@ lat_yrly %>%
 
 
 
-#### Regime Averages
+### Regime Averages
 
 ```{r}
 # Weighted mean Locations
@@ -499,15 +502,8 @@ lat_avgs <- lat_change %>%
   summarise(
     biom_avg = round(mean(biom_mu),2),
     biom_med = round(mean(biom_median), 2))
-```
 
 
-Across all species the average Latitude at capture has increased from `r lat_avgs[lat_avgs$temp_regime == "Early Regime", 2][[1]]` to `r lat_avgs[lat_avgs$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(lat_avgs$biom_avg)` ° Latitude. 
-
-
-```{r}
-#| fig.width = 10,
-#| fig.height = 6
 
 # Plot 1. Weighted by Stratified Biomass
 
@@ -573,7 +569,7 @@ Species showing the largest latitudinal shifts include Atlantic mackerel, scup, 
 
 
 
-#### Relative Shifts
+### Relative Shifts
 
 For the following figure, the average of each temperature regime was scaled against the weighed average and standard deviation across all years.
 
@@ -629,11 +625,19 @@ ggplot()  +
         legend.position = "bottom")
 ```
 
+:::
+
+### Latitude Summary
+
+Across all species the average Latitude at capture has increased from `r lat_avgs[lat_avgs$temp_regime == "Early Regime", 2][[1]]` to `r lat_avgs[lat_avgs$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(lat_avgs$biom_avg)` ° Latitude. 
+
 ## Capture Depth
 
 Depth is highly correlated with temperature and may be an avenue for species to follow their thermal preferences without moving Northward. If species are moving deeper without changing their temperature habitats this may suggest a different driver is at play.
 
-#### Yearly Movements
+::: {.panel-tabset}
+
+### Yearly Movements
 
 ```{r}
 # Weighted mean Locations
@@ -661,7 +665,7 @@ depth_yrly %>%
         legend.position = "bottom")
 ```
 
-#### Regime Averages
+### Regime Averages
 
 ```{r}
 # Weighted mean Locations
@@ -676,13 +680,6 @@ avg_depths <- depth_change %>%
     biom_avg = round(mean(biom_mu),2),
     biom_med = round(mean(biom_median), 2))
 
-```
-
-Across all species the average depth (by biomass) has increased from `r avg_depths[avg_depths$temp_regime == "Early Regime", 2][[1]]` to `r avg_depths[avg_depths$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(avg_depths$biom_avg)` meters.
-
-
-```{r}
-#| fig.height = 8
 
 # Plot 1. Weighted by Stratified Biomass
 
@@ -733,7 +730,7 @@ ggplot() +
         legend.position = "bottom")
 ```
 
-#### Relative Shifts
+### Relative Shifts
 
 ```{r}
 # And another df for connecting the points
@@ -787,9 +784,14 @@ ggplot()  +
         legend.position = "bottom")
 ```
 
+:::
+
+Across all species the average depth (by biomass) has increased from `r avg_depths[avg_depths$temp_regime == "Early Regime", 2][[1]]` to `r avg_depths[avg_depths$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(avg_depths$biom_avg)` meters.
+
+
 ## Center of Biomass
 
-Using both Lat/Lon we can determine a center of biomass.
+Using both Lat/Lon we can determine a center of biomass, and how that has changed between regimes for each species.
 
 ```{r}
 
@@ -808,7 +810,9 @@ ylim <- range(center_coord_df$biom_lat)
 
 ```
 
-#### Individual Changes
+::: {.panel-tabset}
+
+#### COB Shifts
 
 ```{r}
 #| fig.height = 7,
@@ -839,6 +843,7 @@ ggplot() +
 
 ```
 
+:::
 
 ## Move vs. Acclimate
 
@@ -884,6 +889,8 @@ change_df <- left_join(change_datasets[[1]], change_datasets[[2]]) %>% left_join
 # Compare those features to the change in growth
 ```
 
+::: {.panel-tabset}
+
 ### Depth and Latitude
 
 ```{r}
@@ -912,3 +919,4 @@ ggplot(change_df, aes(bottemp_z, avgdepth_z)) +
        y = expression(Delta~"Depth (z)"))
 ```
 
+:::
