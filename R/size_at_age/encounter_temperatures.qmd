@@ -230,14 +230,14 @@ global_benchmarks <- station_totals %>%
   summarise(
     avg_biomass     = mean(biomass_kg),
     biomass_sd      = sd(biomass_kg),
-    avg_depth       = weightedMean(avgdepth, na.rm = T),
-    avg_temp        = weightedMean(bottemp, na.rm = T),
-    avg_lat         = weightedMean(decdeg_beglat, na.rm = T),
-    avg_lon         = weightedMean(decdeg_beglon, na.rm = T),
-    depth_sd        = weightedSd(avgdepth, na.rm = T),
-    temp_sd         = weightedSd(bottemp, na.rm = T),
-    lat_sd          = weightedSd(decdeg_beglat, na.rm = T),
-    lon_sd          = weightedSd(decdeg_beglon, na.rm = T),
+    avg_depth       = weightedMean(avgdepth, w = biomass_kg, na.rm = T),
+    avg_temp        = weightedMean(bottemp, w = biomass_kg, na.rm = T),
+    avg_lat         = weightedMean(decdeg_beglat, w = biomass_kg, na.rm = T),
+    avg_lon         = weightedMean(decdeg_beglon, w = biomass_kg, na.rm = T),
+    depth_sd        = weightedSd(avgdepth, w = biomass_kg, na.rm = T),
+    temp_sd         = weightedSd(bottemp, w = biomass_kg, na.rm = T),
+    lat_sd          = weightedSd(decdeg_beglat, w = biomass_kg, na.rm = T),
+    lon_sd          = weightedSd(decdeg_beglon, w = biomass_kg, na.rm = T),
     .groups = "drop"
   )
 ```
