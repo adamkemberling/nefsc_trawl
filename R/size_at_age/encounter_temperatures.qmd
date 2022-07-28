@@ -272,6 +272,30 @@ global_benchmarks <- station_totals %>%
 
 Using the bottom temperatures sampled before each tow, and the biomass caught at each tow, the following weighted distributions can be generated for what the conditions were at each location these species were caught.
 
+```{r}
+# What were temps doing over the whole region:
+oisst_all <- oisst_access_timeseries("nmfs_trawl_regions", poly_name = "inuse strata", mac_os = "mojave")
+
+# Make Yearly averages
+oisst_yrs <- oisst_all %>% 
+  mutate(time = as.Date(time)) %>% 
+  group_by(year = lubridate::year(time)) %>% 
+  summarise(
+    temp = mean(area_wtd_sst),
+    clim = mean(area_wtd_clim),
+    anom = mean(area_wtd_anom)) %>% 
+  filter(between(year, 2000, 2019))
+
+
+ggplot(oisst_yrs, aes(year, anom)) +
+  geom_line(linetype = 2, size = 0.75) +
+  geom_point(size = 2, color = gmri_cols("gmri blue")) +
+  labs(title = "Survey Area Temperature Anomalies",
+       x = "Year",
+       y = "Temperature Anomaly °C")
+```
+
+
 ::: {.panel-tabset}
 
 ### Yearly Movements
@@ -397,15 +421,10 @@ z_segment_df <- temp_change %>%
     mutate(
       # Track the Change in mean Locations
       avg_shift = `Warm Regime` - `Early Regime`,
-      # Reorder the species factors by mean temperature preference
-      comname = fct_reorder(comname, `Early Regime`, .fun = median))
+      # Reorder the species factors to match the previous plots
+      comname = factor(comname, levels = levels(temp_change$comname)))
 
 
-
-
-# Reorder factor by warm-tolerance in Early regime
-temp_change <- temp_change %>% 
-  mutate(comname = factor(comname, levels = levels(z_segment_df$comname)))
 
 # Make Density Plots for Each species
 ggplot() +
@@ -582,16 +601,9 @@ z_segment_df <- lat_change %>%
     mutate(
       # Track the Change in mean Locations
       avg_shift = `Warm Regime` - `Early Regime`,
-      # Reorder the species factors by mean temperature preference
-      comname = fct_reorder(comname, `Early Regime`, .fun = median),
-      comname = fct_rev(comname))
+      # Reorder the species factors to match the previous plots
+      comname = factor(comname, levels = levels(lat_change$comname)))
 
-
-
-
-# Reorder factor by warm-tolerance in Early regime
-lat_change <- lat_change %>% 
-  mutate(comname = factor(comname, levels = levels(z_segment_df$comname)))
 
 # Make Density Plots for Each species
 ggplot()  +
@@ -741,16 +753,9 @@ z_segment_df <- depth_change %>%
     mutate(
       # Track the Change in mean Locations
       avg_shift = `Warm Regime` - `Early Regime`,
-      # Reorder the species factors by mean temperature preference
-      comname = fct_reorder(comname, `Early Regime`, .fun = median),
-      comname = fct_rev(comname))
+      # Reorder the species factors to match the previous plots
+      comname = factor(comname, levels = levels(depth_change$comname)))
 
-
-
-
-# Reorder factor by warm-tolerance in Early regime
-depth_change <- depth_change %>% 
-  mutate(comname = factor(comname, levels = levels(z_segment_df$comname)))
 
 # Make Density Plots for Each species
 ggplot()  +
@@ -895,6 +900,7 @@ change_df <- left_join(change_datasets[[1]], change_datasets[[2]]) %>% left_join
 
 ```{r}
 ggplot(change_df, aes(avgdepth_z, decdeg_beglat_z)) +
+  geom_smooth(method = "lm", formula = y~x, color = gmri_cols("gmri blue")) +
   geom_point() +
   labs(x = expression(Delta~"Depth (z)"),
        y = expression(Delta~"Lat"~degree~N~~"(z)"))
@@ -906,6 +912,7 @@ ggplot(change_df, aes(avgdepth_z, decdeg_beglat_z)) +
 ```{r}
 ggplot(change_df, aes(bottemp_z, decdeg_beglat_z)) +
   geom_point() +
+  geom_smooth(method = "lm", formula = y~x, color = gmri_cols("gmri blue")) +
   labs(x = expression(Delta~"Bottom Temperature (z)"),
        y = expression(Delta~"Lat"~degree~N~~"(z)"))
 ```
@@ -914,6 +921,7 @@ ggplot(change_df, aes(bottemp_z, decdeg_beglat_z)) +
 
 ```{r}
 ggplot(change_df, aes(bottemp_z, avgdepth_z)) +
+  geom_smooth(method = "lm", formula = y~x, color = gmri_cols("gmri blue")) +
   geom_point() +
   labs(x = expression(Delta~"Bottom Temperature (z)"),
        y = expression(Delta~"Depth (z)"))
