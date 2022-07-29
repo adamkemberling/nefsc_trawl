@@ -157,6 +157,8 @@ global_benchmarks <- station_totals %>%
 Using OISST data for the region, and a 30-year climatology, we know that the region has experienced the following trend in sea surface temperature anomalies:
 
 ```{r}
+#| fig.height = 3
+
 # What were temps doing over the whole region:
 oisst_all <- oisst_access_timeseries("nmfs_trawl_regions", poly_name = "inuse strata", mac_os = "mojave")
 
@@ -167,8 +169,8 @@ oisst_yrs <- oisst_all %>%
   summarise(
     temp = mean(area_wtd_sst),
     clim = mean(area_wtd_clim),
-    anom = mean(area_wtd_anom)) %>% 
-  filter(between(year, 2000, 2019))
+    anom = mean(area_wtd_anom))# %>% 
+  #filter(between(year, 2000, 2019))
 
 
 ggplot(oisst_yrs, aes(year, anom)) +
@@ -183,9 +185,34 @@ ggplot(oisst_yrs, aes(year, anom)) +
 
 The following interactive plots display the biomass weighted averages for what temperatures, depths, and latitudes Each species was caught at as part of the groundfish survey.
 
+
+```{r}
+# Standardize all the actual measurements
+z_data <- map_dfr(saa_species, function(filter_spec){
+  
+  glob_metrics <- filter(global_benchmarks, comname == filter_spec)
+  year_avgs %>% 
+    filter(comname == filter_spec) %>% 
+    mutate(
+      depth_z = (avg_depth - glob_metrics$"avg_depth") / glob_metrics$"depth_sd",
+      temp_z  = (avg_temp - glob_metrics$"avg_temp") / glob_metrics$"temp_sd",
+      lat_z   = (avg_lat - glob_metrics$"avg_lat") / glob_metrics$"lat_sd",
+      lon_z   = (avg_lon - glob_metrics$"avg_lon") / glob_metrics$"lon_sd"
+    )
+  
+})
+
+
+```
+
+For anything that is standdardized, it is done so against the average value for that species using data from all years.
+
 ```{r observable export}
+# Reformat years as a date - messes with slider
+# year_avgs <- mutate(year_avgs, est_year = as.Date(str_c(est_year, "-06-01")))
+
 # Define data to use for js
-ojs_define(pref_data = year_avgs)
+ojs_define(pref_data = z_data)
 ```
 
 
@@ -203,14 +230,14 @@ filtered = transpose(pref_data).filter(function(trawldat) {
 To use our filter we’ll need some inputs, and we’ll want to be able to use the values of these inputs in our filtering function. To do this, we use the viewof keyword and with some standard Inputs:
 
 
-# Plot Filtering
+## Plot Filtering
 
 
 
 ```{ojs}
 viewof year_min = Inputs.range(
   [1970, 2019], 
-  {value: 1980, step: 1, label: "Year:"}
+  {value: 1980, step: 1, label: "Starting Year:"}
 )
 
 viewof comname = Inputs.checkbox(
@@ -221,7 +248,7 @@ viewof comname = Inputs.checkbox(
    "scup", "silver hake", "summer flounder", 
    "white hake", "winter flounder", 
    "witch flounder", "yellowtail flounder"], 
-  { value: ["atlantic cod", "haddock", "scup", "atlantic mackerel"], 
+  { value: ["atlantic herring", "black sea bass", "atlantic cod"], 
     label: "Species:"
   }
 )
@@ -230,12 +257,17 @@ viewof comname = Inputs.checkbox(
 
 Finally, we’ll plot the filtered data using Observable Plot (an open-source JavaScript library for quick visualization of tabular data):
 
-# Center of Biomass Depth
+## Center of Biomass Depth
 
 ```{ojs}
 Plot.plot({
   style: "overflow: visible;",
-  y:{grid : true, label: "↑ Depth (m)"},
+  y:{grid : true, 
+     reverse: true, 
+     label: "↓ Depth (m)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
         x: "est_year", 
@@ -255,12 +287,16 @@ Plot.plot({
 ```
 
 
-# Center of Biomass Temperature
+## Center of Biomass Temperature
 
 ```{ojs}
 Plot.plot({
   style: "overflow: visible;",
-  y:{grid : true, label: "↑ Temperature (C)"},
+  y:{grid : true, 
+     label: "↑ Temperature (C)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
       x: "est_year", 
@@ -279,12 +315,16 @@ Plot.plot({
 )
 ```
 
-# Center of Biomass Latitude
+## Center of Biomass Latitude
 
 ```{ojs}
 Plot.plot({
   style: "overflow: visible;",
-  y:{grid : true, label: "↑ Latitude (N)"},
+  y:{grid : true, 
+     label: "↑ Latitude (N)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
       x: "est_year", 
@@ -302,3 +342,95 @@ Plot.plot({
   }
 )
 ```
+
+
+# Standardized Shifts:
+
+
+
+## Standardized Depth
+
+```{ojs}
+Plot.plot({
+  style: "overflow: visible;",
+  y:{grid : true, 
+     reverse: true, 
+     label: "↓ Depth (z)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
+  marks: [
+      Plot.line(filtered, {
+        x: "est_year", 
+        y: "depth_z",
+        stroke: "comname"}),
+      Plot.text(filtered, Plot.selectLast({
+        x: "est_year",
+        y: "depth_z",
+        z: "comname",
+        text: "comname",
+        textAnchor: "start",
+        dx: 3
+    }))
+    ]
+  }
+)
+```
+
+
+## Standardized Temperature
+
+```{ojs}
+Plot.plot({
+  style: "overflow: visible;",
+  y:{grid : true, 
+     label: "↑ Temperature (z)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
+  marks: [
+      Plot.line(filtered, {
+      x: "est_year", 
+      y: "temp_z",
+      stroke: "comname"}),
+      Plot.text(filtered, Plot.selectLast({
+        x: "est_year",
+        y: "temp_z",
+        z: "comname",
+        text: "comname",
+        textAnchor: "start",
+        dx: 3
+    }))
+    ]
+  }
+)
+```
+
+## Standardized Latitude
+
+```{ojs}
+Plot.plot({
+  style: "overflow: visible;",
+  y:{grid : true, 
+     label: "↑ Latitude (z)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
+  marks: [
+      Plot.line(filtered, {
+      x: "est_year", 
+      y: "lat_z",
+      stroke: "comname"}),
+      Plot.text(filtered, Plot.selectLast({
+        x: "est_year",
+        y: "lat_z",
+        z: "comname",
+        text: "comname",
+        textAnchor: "start",
+        dx: 3
+    }))
+    ]
+  }
+)
+```
+
