@@ -94,6 +94,8 @@ This report digs into what the outcomes of the size spectrum estimations look li
 
 [Temperature Occupancy of Under Different Thermal Regimes](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/encounter_temperatures.html)
 
+[Temperature and Depth Preferences EDA using Observable.js](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/species_env_pref.html)
+
 ---
 
 ## Preliminary Exploration - Outdated
