@@ -136,6 +136,8 @@ spec_df %>% knitr::kable()
 
 Data for these `r nrow(spec_df)` species comes from fisheries independent trawl survey data collected by NOAA and the NEFSC.
 
+**Data Import and Tidying**
+
 ```{r data prep}
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
@@ -144,7 +146,7 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 # Filter to just them, and the two time regimes
 trawldat <- nefsc_stratified %>% 
   filter(comname %in% saa_species,
-         est_year >= 2000)
+         between(est_year, 2000, 2019))
 
 # Pull the main columns to speed things up
 trawldat <- trawldat %>% 
@@ -158,15 +160,14 @@ trawldat <- trawldat %>%
 
 # Set up the regimes
 trawldat <- trawldat %>% 
-  filter(between(est_year, 2000, 2019)) %>% 
   mutate(temp_regime = ifelse(est_year < 2010, "Early Regime", "Warm Regime"))
 ```
 
+**Summary Totals and Averages**
 
 ```{r summary totals}
 # Summarize to total biomass per tow:
 
-####  WORKING HERE  ####
 
 # 1. station_totals = biomass and abundance from each tow for all species
 # Totals up the abundance and biomass across sex*
@@ -216,14 +217,6 @@ regime_avgs <- station_totals  %>%
 )
 
 
-####  ROAD BLOCK  ####
-
-# What is the reference point to standardize against?
-# option 1: what is the variance in station measurements
-# option 2: weight that by the biomass there? no, right?
-# variance within a period, or overall
-# Variance specific for each species, ya?
-
 # Variance across all years within each species
 global_benchmarks <- station_totals %>% 
   group_by(comname) %>% 
@@ -242,35 +235,9 @@ global_benchmarks <- station_totals %>%
   )
 ```
 
+## Regional surface Temperatures
 
-```{r old weighting}
-#| eval = FALSE
-####  Old code
-
-# Standardize the biomass by what the total catch was that period
-# These are then used as weights for mean/median estimates
-
-# Un-Stratified abundance
-# Un-Stratified length-weight biomass
-# Un-stratified, all-size Biomass
-
-# trawldat <- trawldat %>%
-#   group_by(comname, temp_regime) %>%
-#   mutate(
-#     group_abund = sum(numlen_adj, na.rm = T),
-#     group_bio   = sum(biom_per_lclass,  na.rm = T)) %>%
-#   ungroup() %>%
-#   mutate(
-#     abund_wt    = numlen_adj / group_abund,
-#     biom_wt     = biom_per_lclass / group_bio,
-#     temp_regime = factor(temp_regime, levels = c("Early Regime", "Warm Regime")))
-
-
-```
-
-## Bottom Temperatures
-
-Using the bottom temperatures sampled before each tow, and the biomass caught at each tow, the following weighted distributions can be generated for what the conditions were at each location these species were caught.
+Using OISST data for the region, and a 30-year climatology, we know that the region has experienced the following trend in sea surface temperature anomalies:
 
 ```{r}
 # What were temps doing over the whole region:
@@ -294,6 +261,10 @@ ggplot(oisst_yrs, aes(year, anom)) +
        x = "Year",
        y = "Temperature Anomaly °C")
 ```
+
+## Bottom Temperatures
+
+Using the bottom temperatures sampled before each tow, and the biomass caught at each tow, the following weighted distributions can be generated for what the conditions were at each location these species were caught.
 
 
 ::: {.panel-tabset}
