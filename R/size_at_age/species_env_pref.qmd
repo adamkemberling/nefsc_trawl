@@ -239,7 +239,7 @@ The following controls will update the data for all plots simultaneously allowin
 ```{ojs}
 viewof year_min = Inputs.range(
   [1970, 2019], 
-  {value: 1980, step: 1, label: "Starting Year:"}
+  {value: 1970, step: 1, label: "Starting Year:"}
 )
 
 viewof comname = Inputs.checkbox(
@@ -258,6 +258,8 @@ viewof comname = Inputs.checkbox(
 
 
 Finally, we’ll plot the filtered data using Observable Plot (an open-source JavaScript library for quick visualization of tabular data):
+
+::: {.panel-tabset}
 
 ## Center of Biomass Depth
 
@@ -348,11 +350,13 @@ Plot.plot({
 )
 ```
 
+:::
 
 # Standardized Shifts:
 
 The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.
 
+::: {.panel-tabset}
 
 ## Depth Change
 
@@ -441,5 +445,71 @@ Plot.plot({
     ]
   }
 )
+```
+
+:::
+
+# Change Pathways
+
+Over the course of several years the mechanism by which a species may seek relief may change. This may be due to some sort of geographical restrictions that may limit the accessibility to deeper water, or some physical barriers that may prevent northward movements.
+
+### Controls
+
+By displaying how both these axes have shifted through time it may help disclose how a species is moving and during which periods.
+
+```{ojs}
+// Filtering Function
+path_filtered = transpose(pref_data).filter(function(trawldat) {
+  return species.includes(trawldat.comname);
+})
+
+
+viewof species = Inputs.checkbox(
+  ["acadian redfish", "american plaice", 
+   "atlantic cod", "atlantic herring", 
+   "atlantic mackerel", "black sea bass", 
+   "butterfish", "haddock", "pollock", "red hake", 
+   "scup", "silver hake", "summer flounder", 
+   "white hake", "winter flounder", 
+   "witch flounder", "yellowtail flounder"], 
+  { value: ["black sea bass"], 
+    label: "Species:"
+  }
+)
+
+
+```
+
+
+
+```{ojs}
+Plot.plot({
+  style: "overflow: visible;",
+  x:{grid : false, 
+     label: "↑ Latitude (z)"},
+  y:{grid : true, 
+     label: "↓ Depth (z)"},
+  marks: [
+      Plot.line(path_filtered, {
+        x: "lat_z", 
+        y: "depth_z",
+        curve: "catmull-rom",
+        stroke: "comname", 
+        marker: "circle"}),
+      Plot.text(path_filtered, {
+        filter: d => d.est_year % 5 == 0,
+        x: "lat_z",
+        y: "depth_z",
+        z: "est_year",
+        text: d => `${d.est_year}`,
+        dy: -8
+    })
+    ], 
+  
+  // Include a legend for the color channel 
+  color: {
+    legend: true
+  }
+})
 ```
 
