@@ -250,7 +250,7 @@ viewof comname = Inputs.checkbox(
    "scup", "silver hake", "summer flounder", 
    "white hake", "winter flounder", 
    "witch flounder", "yellowtail flounder"], 
-  { value: ["atlantic herring", "black sea bass", "atlantic cod"], 
+  { value: ["white hake", "black sea bass", "yellowtail flounder", "silver hake"], 
     label: "Species:"
   }
 )
@@ -261,7 +261,36 @@ Finally, we’ll plot the filtered data using Observable Plot (an open-source Ja
 
 ::: {.panel-tabset}
 
-## Center of Biomass Depth
+## Latitude
+
+```{ojs}
+Plot.plot({
+  style: "overflow: visible;",
+  y:{grid : true, 
+     label: "↑ Latitude (N)"},
+  x:{grid : false, 
+     label: "Year →", 
+     tickFormat: d3.format(".1d")},
+  marks: [
+      Plot.line(filtered, {
+        x: "est_year", 
+        y: "avg_lat",
+        stroke: "comname", 
+        marker: "circle"}),
+      Plot.text(filtered, Plot.selectLast({
+        x: "est_year",
+        y: "avg_lat",
+        z: "comname",
+        text: "comname",
+        textAnchor: "start",
+        dx: 3
+    }))
+    ]
+  }
+)
+```
+
+## Depth
 
 ```{ojs}
 Plot.plot({
@@ -292,7 +321,7 @@ Plot.plot({
 ```
 
 
-## Center of Biomass Temperature
+## Bottom Temperature
 
 ```{ojs}
 Plot.plot({
@@ -321,25 +350,35 @@ Plot.plot({
 )
 ```
 
-## Center of Biomass Latitude
+
+
+:::
+
+# Standardized Shifts:
+
+The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.
+
+::: {.panel-tabset}
+
+## Latitude Change
 
 ```{ojs}
 Plot.plot({
   style: "overflow: visible;",
   y:{grid : true, 
-     label: "↑ Latitude (N)"},
+     label: "↑ Latitude (z)"},
   x:{grid : false, 
      label: "Year →", 
      tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
         x: "est_year", 
-        y: "avg_lat",
+        y: "lat_z",
         stroke: "comname", 
         marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
-        y: "avg_lat",
+        y: "lat_z",
         z: "comname",
         text: "comname",
         textAnchor: "start",
@@ -349,14 +388,6 @@ Plot.plot({
   }
 )
 ```
-
-:::
-
-# Standardized Shifts:
-
-The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.
-
-::: {.panel-tabset}
 
 ## Depth Change
 
@@ -418,34 +449,7 @@ Plot.plot({
 )
 ```
 
-## Latitude Change
 
-```{ojs}
-Plot.plot({
-  style: "overflow: visible;",
-  y:{grid : true, 
-     label: "↑ Latitude (z)"},
-  x:{grid : false, 
-     label: "Year →", 
-     tickFormat: d3.format(".1d")},
-  marks: [
-      Plot.line(filtered, {
-        x: "est_year", 
-        y: "lat_z",
-        stroke: "comname", 
-        marker: "circle"}),
-      Plot.text(filtered, Plot.selectLast({
-        x: "est_year",
-        y: "lat_z",
-        z: "comname",
-        text: "comname",
-        textAnchor: "start",
-        dx: 3
-    }))
-    ]
-  }
-)
-```
 
 :::
 
@@ -453,15 +457,21 @@ Plot.plot({
 
 Over the course of several years the mechanism by which a species may seek relief may change. This may be due to some sort of geographical restrictions that may limit the accessibility to deeper water, or some physical barriers that may prevent northward movements.
 
-### Controls
 
 By displaying how both these axes have shifted through time it may help disclose how a species is moving and during which periods.
 
 ```{ojs}
 // Filtering Function
 path_filtered = transpose(pref_data).filter(function(trawldat) {
-  return species.includes(trawldat.comname);
+  return year_start < trawldat.est_year && species.includes(trawldat.comname);
 })
+
+// Species view controls
+viewof year_start = Inputs.range(
+  [1970, 2019], 
+  {value: 1990, step: 5, label: "Starting Year:"}
+)
+
 
 
 viewof species = Inputs.checkbox(
@@ -488,6 +498,7 @@ Plot.plot({
   x:{grid : false, 
      label: "↑ Latitude (z)"},
   y:{grid : true, 
+     reverse: true,
      label: "↓ Depth (z)"},
   marks: [
       Plot.line(path_filtered, {

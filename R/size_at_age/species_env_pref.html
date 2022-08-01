@@ -117,10 +117,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <li><a href="#yearly-averaged-preferences" id="toc-yearly-averaged-preferences" class="nav-link" data-scroll-target="#yearly-averaged-preferences">Yearly-Averaged Preferences</a></li>
   <li><a href="#plot-controls" id="toc-plot-controls" class="nav-link" data-scroll-target="#plot-controls">Plot Controls</a></li>
   <li><a href="#standardized-shifts" id="toc-standardized-shifts" class="nav-link" data-scroll-target="#standardized-shifts">Standardized Shifts:</a></li>
-  <li><a href="#change-pathways" id="toc-change-pathways" class="nav-link" data-scroll-target="#change-pathways">Change Pathways</a>
-  <ul class="collapse">
-  <li><a href="#controls" id="toc-controls" class="nav-link" data-scroll-target="#controls">Controls</a></li>
-  </ul></li>
+  <li><a href="#change-pathways" id="toc-change-pathways" class="nav-link" data-scroll-target="#change-pathways">Change Pathways</a></li>
   </ul>
 </nav>
 </div>
@@ -620,7 +617,7 @@ a {
 <span id="cb8-250"><a href="#cb8-250" aria-hidden="true" tabindex="-1"></a>   <span class="st">"scup"</span><span class="op">,</span> <span class="st">"silver hake"</span><span class="op">,</span> <span class="st">"summer flounder"</span><span class="op">,</span> </span>
 <span id="cb8-251"><a href="#cb8-251" aria-hidden="true" tabindex="-1"></a>   <span class="st">"white hake"</span><span class="op">,</span> <span class="st">"winter flounder"</span><span class="op">,</span> </span>
 <span id="cb8-252"><a href="#cb8-252" aria-hidden="true" tabindex="-1"></a>   <span class="st">"witch flounder"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span>]<span class="op">,</span> </span>
-<span id="cb8-253"><a href="#cb8-253" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"atlantic herring"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> <span class="st">"atlantic cod"</span>]<span class="op">,</span> </span>
+<span id="cb8-253"><a href="#cb8-253" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"atlantic cod"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span><span class="op">,</span> <span class="st">"silver hake"</span>]<span class="op">,</span> </span>
 <span id="cb8-254"><a href="#cb8-254" aria-hidden="true" tabindex="-1"></a>    <span class="dt">label</span><span class="op">:</span> <span class="st">"Species:"</span></span>
 <span id="cb8-255"><a href="#cb8-255" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb8-256"><a href="#cb8-256" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -642,7 +639,7 @@ a {
 </div>
 <p>Finally, we’ll plot the filtered data using Observable Plot (an open-source JavaScript library for quick visualization of tabular data):</p>
 <div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true">Center of Biomass Depth</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">Center of Biomass Temperature</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false">Center of Biomass Latitude</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true">Latitude</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">Depth</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false">Bottom Temperature</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
 <div class="cell">
@@ -651,28 +648,27 @@ a {
 <div class="sourceCode cell-code" id="cb9" data-startfrom="266" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 265;"><span id="cb9-266"><a href="#cb9-266" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
 <span id="cb9-267"><a href="#cb9-267" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
 <span id="cb9-268"><a href="#cb9-268" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb9-269"><a href="#cb9-269" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb9-270"><a href="#cb9-270" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (m)"</span>}<span class="op">,</span></span>
-<span id="cb9-271"><a href="#cb9-271" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb9-272"><a href="#cb9-272" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb9-273"><a href="#cb9-273" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb9-274"><a href="#cb9-274" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb9-275"><a href="#cb9-275" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb9-276"><a href="#cb9-276" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb9-277"><a href="#cb9-277" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
-<span id="cb9-278"><a href="#cb9-278" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb9-279"><a href="#cb9-279" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb9-280"><a href="#cb9-280" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb9-281"><a href="#cb9-281" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb9-282"><a href="#cb9-282" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
-<span id="cb9-283"><a href="#cb9-283" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb9-284"><a href="#cb9-284" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb9-285"><a href="#cb9-285" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb9-286"><a href="#cb9-286" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb9-287"><a href="#cb9-287" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb9-288"><a href="#cb9-288" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb9-289"><a href="#cb9-289" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb9-290"><a href="#cb9-290" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb9-269"><a href="#cb9-269" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (N)"</span>}<span class="op">,</span></span>
+<span id="cb9-270"><a href="#cb9-270" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb9-271"><a href="#cb9-271" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb9-272"><a href="#cb9-272" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb9-273"><a href="#cb9-273" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb9-274"><a href="#cb9-274" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb9-275"><a href="#cb9-275" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb9-276"><a href="#cb9-276" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb9-277"><a href="#cb9-277" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb9-278"><a href="#cb9-278" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb9-279"><a href="#cb9-279" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb9-280"><a href="#cb9-280" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb9-281"><a href="#cb9-281" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb9-282"><a href="#cb9-282" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb9-283"><a href="#cb9-283" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb9-284"><a href="#cb9-284" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb9-285"><a href="#cb9-285" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb9-286"><a href="#cb9-286" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb9-287"><a href="#cb9-287" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb9-288"><a href="#cb9-288" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb9-289"><a href="#cb9-289" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-3" data-nodetype="expression">
@@ -685,30 +681,31 @@ a {
 <div class="cell">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb10" data-startfrom="297" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 296;"><span id="cb10-297"><a href="#cb10-297" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb10-298"><a href="#cb10-298" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb10-299"><a href="#cb10-299" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb10-300"><a href="#cb10-300" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (C)"</span>}<span class="op">,</span></span>
-<span id="cb10-301"><a href="#cb10-301" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb10-302"><a href="#cb10-302" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb10-303"><a href="#cb10-303" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb10-304"><a href="#cb10-304" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb10-305"><a href="#cb10-305" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb10-306"><a href="#cb10-306" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb10-307"><a href="#cb10-307" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
-<span id="cb10-308"><a href="#cb10-308" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb10-309"><a href="#cb10-309" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb10-310"><a href="#cb10-310" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb10-311"><a href="#cb10-311" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb10-312"><a href="#cb10-312" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
-<span id="cb10-313"><a href="#cb10-313" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb10-314"><a href="#cb10-314" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb10-315"><a href="#cb10-315" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb10-316"><a href="#cb10-316" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb10-317"><a href="#cb10-317" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb10-318"><a href="#cb10-318" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb10-319"><a href="#cb10-319" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb10-320"><a href="#cb10-320" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb10" data-startfrom="295" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 294;"><span id="cb10-295"><a href="#cb10-295" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb10-296"><a href="#cb10-296" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb10-297"><a href="#cb10-297" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb10-298"><a href="#cb10-298" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb10-299"><a href="#cb10-299" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (m)"</span>}<span class="op">,</span></span>
+<span id="cb10-300"><a href="#cb10-300" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb10-301"><a href="#cb10-301" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb10-302"><a href="#cb10-302" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb10-303"><a href="#cb10-303" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb10-304"><a href="#cb10-304" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb10-305"><a href="#cb10-305" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb10-306"><a href="#cb10-306" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
+<span id="cb10-307"><a href="#cb10-307" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb10-308"><a href="#cb10-308" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb10-309"><a href="#cb10-309" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb10-310"><a href="#cb10-310" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb10-311"><a href="#cb10-311" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
+<span id="cb10-312"><a href="#cb10-312" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb10-313"><a href="#cb10-313" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb10-314"><a href="#cb10-314" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb10-315"><a href="#cb10-315" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb10-316"><a href="#cb10-316" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb10-317"><a href="#cb10-317" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb10-318"><a href="#cb10-318" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-319"><a href="#cb10-319" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-4" data-nodetype="expression">
@@ -724,19 +721,19 @@ a {
 <div class="sourceCode cell-code" id="cb11" data-startfrom="326" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 325;"><span id="cb11-326"><a href="#cb11-326" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
 <span id="cb11-327"><a href="#cb11-327" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
 <span id="cb11-328"><a href="#cb11-328" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb11-329"><a href="#cb11-329" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (N)"</span>}<span class="op">,</span></span>
+<span id="cb11-329"><a href="#cb11-329" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (C)"</span>}<span class="op">,</span></span>
 <span id="cb11-330"><a href="#cb11-330" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
 <span id="cb11-331"><a href="#cb11-331" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
 <span id="cb11-332"><a href="#cb11-332" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
 <span id="cb11-333"><a href="#cb11-333" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
 <span id="cb11-334"><a href="#cb11-334" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
 <span id="cb11-335"><a href="#cb11-335" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb11-336"><a href="#cb11-336" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb11-336"><a href="#cb11-336" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
 <span id="cb11-337"><a href="#cb11-337" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
 <span id="cb11-338"><a href="#cb11-338" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
 <span id="cb11-339"><a href="#cb11-339" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
 <span id="cb11-340"><a href="#cb11-340" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb11-341"><a href="#cb11-341" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb11-341"><a href="#cb11-341" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
 <span id="cb11-342"><a href="#cb11-342" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
 <span id="cb11-343"><a href="#cb11-343" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
 <span id="cb11-344"><a href="#cb11-344" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
@@ -760,37 +757,36 @@ a {
 <h1>Standardized Shifts:</h1>
 <p>The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.</p>
 <div class="panel-tabset">
-<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">Depth Change</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">Temperature Change</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false">Latitude Change</a></li></ul>
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">Latitude Change</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">Depth Change</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false">Temperature Change</a></li></ul>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
 <div class="cell">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb12" data-startfrom="363" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 362;"><span id="cb12-363"><a href="#cb12-363" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb12-364"><a href="#cb12-364" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb12-365"><a href="#cb12-365" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb12-366"><a href="#cb12-366" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb12-367"><a href="#cb12-367" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
-<span id="cb12-368"><a href="#cb12-368" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb12-369"><a href="#cb12-369" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb12-370"><a href="#cb12-370" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb12-371"><a href="#cb12-371" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb12-372"><a href="#cb12-372" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb12-373"><a href="#cb12-373" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb12-374"><a href="#cb12-374" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb12-375"><a href="#cb12-375" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb12-376"><a href="#cb12-376" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb12-377"><a href="#cb12-377" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb12-378"><a href="#cb12-378" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb12-379"><a href="#cb12-379" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb12-380"><a href="#cb12-380" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb12-381"><a href="#cb12-381" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb12-382"><a href="#cb12-382" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb12-383"><a href="#cb12-383" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb12-384"><a href="#cb12-384" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb12-385"><a href="#cb12-385" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb12-386"><a href="#cb12-386" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb12-387"><a href="#cb12-387" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb12" data-startfrom="365" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 364;"><span id="cb12-365"><a href="#cb12-365" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb12-366"><a href="#cb12-366" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb12-367"><a href="#cb12-367" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb12-368"><a href="#cb12-368" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
+<span id="cb12-369"><a href="#cb12-369" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb12-370"><a href="#cb12-370" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb12-371"><a href="#cb12-371" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb12-372"><a href="#cb12-372" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb12-373"><a href="#cb12-373" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb12-374"><a href="#cb12-374" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb12-375"><a href="#cb12-375" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
+<span id="cb12-376"><a href="#cb12-376" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb12-377"><a href="#cb12-377" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb12-378"><a href="#cb12-378" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb12-379"><a href="#cb12-379" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb12-380"><a href="#cb12-380" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
+<span id="cb12-381"><a href="#cb12-381" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb12-382"><a href="#cb12-382" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb12-383"><a href="#cb12-383" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb12-384"><a href="#cb12-384" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb12-385"><a href="#cb12-385" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb12-386"><a href="#cb12-386" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb12-387"><a href="#cb12-387" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb12-388"><a href="#cb12-388" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-6" data-nodetype="expression">
@@ -806,27 +802,28 @@ a {
 <div class="sourceCode cell-code" id="cb13" data-startfrom="394" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 393;"><span id="cb13-394"><a href="#cb13-394" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
 <span id="cb13-395"><a href="#cb13-395" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
 <span id="cb13-396"><a href="#cb13-396" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb13-397"><a href="#cb13-397" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (z)"</span>}<span class="op">,</span></span>
-<span id="cb13-398"><a href="#cb13-398" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb13-399"><a href="#cb13-399" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb13-400"><a href="#cb13-400" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb13-401"><a href="#cb13-401" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb13-402"><a href="#cb13-402" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb13-403"><a href="#cb13-403" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb13-404"><a href="#cb13-404" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
-<span id="cb13-405"><a href="#cb13-405" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb13-406"><a href="#cb13-406" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb13-407"><a href="#cb13-407" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb13-408"><a href="#cb13-408" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb13-409"><a href="#cb13-409" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
-<span id="cb13-410"><a href="#cb13-410" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb13-411"><a href="#cb13-411" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb13-412"><a href="#cb13-412" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb13-413"><a href="#cb13-413" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb13-414"><a href="#cb13-414" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb13-415"><a href="#cb13-415" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb13-416"><a href="#cb13-416" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb13-417"><a href="#cb13-417" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb13-397"><a href="#cb13-397" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb13-398"><a href="#cb13-398" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
+<span id="cb13-399"><a href="#cb13-399" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb13-400"><a href="#cb13-400" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb13-401"><a href="#cb13-401" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb13-402"><a href="#cb13-402" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb13-403"><a href="#cb13-403" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb13-404"><a href="#cb13-404" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb13-405"><a href="#cb13-405" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb13-406"><a href="#cb13-406" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb13-407"><a href="#cb13-407" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb13-408"><a href="#cb13-408" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb13-409"><a href="#cb13-409" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb13-410"><a href="#cb13-410" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb13-411"><a href="#cb13-411" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb13-412"><a href="#cb13-412" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb13-413"><a href="#cb13-413" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb13-414"><a href="#cb13-414" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb13-415"><a href="#cb13-415" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb13-416"><a href="#cb13-416" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb13-417"><a href="#cb13-417" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb13-418"><a href="#cb13-418" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-7" data-nodetype="expression">
@@ -839,30 +836,30 @@ a {
 <div class="cell">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb14" data-startfrom="423" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 422;"><span id="cb14-423"><a href="#cb14-423" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb14-424"><a href="#cb14-424" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb14-425"><a href="#cb14-425" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb14-426"><a href="#cb14-426" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
-<span id="cb14-427"><a href="#cb14-427" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb14-428"><a href="#cb14-428" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb14-429"><a href="#cb14-429" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb14-430"><a href="#cb14-430" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb14-431"><a href="#cb14-431" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb14-432"><a href="#cb14-432" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb14-433"><a href="#cb14-433" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
-<span id="cb14-434"><a href="#cb14-434" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb14-435"><a href="#cb14-435" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb14-436"><a href="#cb14-436" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb14-437"><a href="#cb14-437" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb14-438"><a href="#cb14-438" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
-<span id="cb14-439"><a href="#cb14-439" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb14-440"><a href="#cb14-440" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb14-441"><a href="#cb14-441" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb14-442"><a href="#cb14-442" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb14-443"><a href="#cb14-443" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb14-444"><a href="#cb14-444" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb14-445"><a href="#cb14-445" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb14-446"><a href="#cb14-446" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14" data-startfrom="425" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 424;"><span id="cb14-425"><a href="#cb14-425" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb14-426"><a href="#cb14-426" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb14-427"><a href="#cb14-427" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb14-428"><a href="#cb14-428" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (z)"</span>}<span class="op">,</span></span>
+<span id="cb14-429"><a href="#cb14-429" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb14-430"><a href="#cb14-430" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb14-431"><a href="#cb14-431" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb14-432"><a href="#cb14-432" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb14-433"><a href="#cb14-433" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb14-434"><a href="#cb14-434" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb14-435"><a href="#cb14-435" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
+<span id="cb14-436"><a href="#cb14-436" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb14-437"><a href="#cb14-437" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb14-438"><a href="#cb14-438" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb14-439"><a href="#cb14-439" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb14-440"><a href="#cb14-440" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
+<span id="cb14-441"><a href="#cb14-441" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb14-442"><a href="#cb14-442" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb14-443"><a href="#cb14-443" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb14-444"><a href="#cb14-444" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb14-445"><a href="#cb14-445" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb14-446"><a href="#cb14-446" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb14-447"><a href="#cb14-447" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb14-448"><a href="#cb14-448" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-8" data-nodetype="expression">
@@ -877,29 +874,34 @@ a {
 <section id="change-pathways" class="level1">
 <h1>Change Pathways</h1>
 <p>Over the course of several years the mechanism by which a species may seek relief may change. This may be due to some sort of geographical restrictions that may limit the accessibility to deeper water, or some physical barriers that may prevent northward movements.</p>
-<section id="controls" class="level3">
-<h3 class="anchored" data-anchor-id="controls">Controls</h3>
 <p>By displaying how both these axes have shifted through time it may help disclose how a species is moving and during which periods.</p>
 <div class="cell">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb15" data-startfrom="462" data-source-offset="-22"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 461;"><span id="cb15-462"><a href="#cb15-462" aria-hidden="true" tabindex="-1"></a>path_filtered <span class="op">=</span> <span class="fu">transpose</span>(pref_data)<span class="op">.</span><span class="fu">filter</span>(<span class="kw">function</span>(trawldat) {</span>
-<span id="cb15-463"><a href="#cb15-463" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> species<span class="op">.</span><span class="fu">includes</span>(trawldat<span class="op">.</span><span class="at">comname</span>)<span class="op">;</span></span>
-<span id="cb15-464"><a href="#cb15-464" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb15-465"><a href="#cb15-465" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-466"><a href="#cb15-466" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb15-467"><a href="#cb15-467" aria-hidden="true" tabindex="-1"></a>viewof species <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">checkbox</span>(</span>
-<span id="cb15-468"><a href="#cb15-468" aria-hidden="true" tabindex="-1"></a>  [<span class="st">"acadian redfish"</span><span class="op">,</span> <span class="st">"american plaice"</span><span class="op">,</span> </span>
-<span id="cb15-469"><a href="#cb15-469" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic cod"</span><span class="op">,</span> <span class="st">"atlantic herring"</span><span class="op">,</span> </span>
-<span id="cb15-470"><a href="#cb15-470" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic mackerel"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> </span>
-<span id="cb15-471"><a href="#cb15-471" aria-hidden="true" tabindex="-1"></a>   <span class="st">"butterfish"</span><span class="op">,</span> <span class="st">"haddock"</span><span class="op">,</span> <span class="st">"pollock"</span><span class="op">,</span> <span class="st">"red hake"</span><span class="op">,</span> </span>
-<span id="cb15-472"><a href="#cb15-472" aria-hidden="true" tabindex="-1"></a>   <span class="st">"scup"</span><span class="op">,</span> <span class="st">"silver hake"</span><span class="op">,</span> <span class="st">"summer flounder"</span><span class="op">,</span> </span>
-<span id="cb15-473"><a href="#cb15-473" aria-hidden="true" tabindex="-1"></a>   <span class="st">"white hake"</span><span class="op">,</span> <span class="st">"winter flounder"</span><span class="op">,</span> </span>
-<span id="cb15-474"><a href="#cb15-474" aria-hidden="true" tabindex="-1"></a>   <span class="st">"witch flounder"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span>]<span class="op">,</span> </span>
-<span id="cb15-475"><a href="#cb15-475" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"black sea bass"</span>]<span class="op">,</span> </span>
-<span id="cb15-476"><a href="#cb15-476" aria-hidden="true" tabindex="-1"></a>    <span class="dt">label</span><span class="op">:</span> <span class="st">"Species:"</span></span>
-<span id="cb15-477"><a href="#cb15-477" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb15-478"><a href="#cb15-478" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb15" data-startfrom="465" data-source-offset="-22"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 464;"><span id="cb15-465"><a href="#cb15-465" aria-hidden="true" tabindex="-1"></a>path_filtered <span class="op">=</span> <span class="fu">transpose</span>(pref_data)<span class="op">.</span><span class="fu">filter</span>(<span class="kw">function</span>(trawldat) {</span>
+<span id="cb15-466"><a href="#cb15-466" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> year_start <span class="op">&lt;</span> trawldat<span class="op">.</span><span class="at">est_year</span> <span class="op">&amp;&amp;</span> species<span class="op">.</span><span class="fu">includes</span>(trawldat<span class="op">.</span><span class="at">comname</span>)<span class="op">;</span></span>
+<span id="cb15-467"><a href="#cb15-467" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb15-468"><a href="#cb15-468" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-469"><a href="#cb15-469" aria-hidden="true" tabindex="-1"></a><span class="co">// Species view controls</span></span>
+<span id="cb15-470"><a href="#cb15-470" aria-hidden="true" tabindex="-1"></a>viewof year_start <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>(</span>
+<span id="cb15-471"><a href="#cb15-471" aria-hidden="true" tabindex="-1"></a>  [<span class="dv">1970</span><span class="op">,</span> <span class="dv">2019</span>]<span class="op">,</span> </span>
+<span id="cb15-472"><a href="#cb15-472" aria-hidden="true" tabindex="-1"></a>  {<span class="dt">value</span><span class="op">:</span> <span class="dv">1990</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="dv">5</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Starting Year:"</span>}</span>
+<span id="cb15-473"><a href="#cb15-473" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb15-474"><a href="#cb15-474" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-475"><a href="#cb15-475" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-476"><a href="#cb15-476" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-477"><a href="#cb15-477" aria-hidden="true" tabindex="-1"></a>viewof species <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">checkbox</span>(</span>
+<span id="cb15-478"><a href="#cb15-478" aria-hidden="true" tabindex="-1"></a>  [<span class="st">"acadian redfish"</span><span class="op">,</span> <span class="st">"american plaice"</span><span class="op">,</span> </span>
+<span id="cb15-479"><a href="#cb15-479" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic cod"</span><span class="op">,</span> <span class="st">"atlantic herring"</span><span class="op">,</span> </span>
+<span id="cb15-480"><a href="#cb15-480" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic mackerel"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> </span>
+<span id="cb15-481"><a href="#cb15-481" aria-hidden="true" tabindex="-1"></a>   <span class="st">"butterfish"</span><span class="op">,</span> <span class="st">"haddock"</span><span class="op">,</span> <span class="st">"pollock"</span><span class="op">,</span> <span class="st">"red hake"</span><span class="op">,</span> </span>
+<span id="cb15-482"><a href="#cb15-482" aria-hidden="true" tabindex="-1"></a>   <span class="st">"scup"</span><span class="op">,</span> <span class="st">"silver hake"</span><span class="op">,</span> <span class="st">"summer flounder"</span><span class="op">,</span> </span>
+<span id="cb15-483"><a href="#cb15-483" aria-hidden="true" tabindex="-1"></a>   <span class="st">"white hake"</span><span class="op">,</span> <span class="st">"winter flounder"</span><span class="op">,</span> </span>
+<span id="cb15-484"><a href="#cb15-484" aria-hidden="true" tabindex="-1"></a>   <span class="st">"witch flounder"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span>]<span class="op">,</span> </span>
+<span id="cb15-485"><a href="#cb15-485" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"black sea bass"</span>]<span class="op">,</span> </span>
+<span id="cb15-486"><a href="#cb15-486" aria-hidden="true" tabindex="-1"></a>    <span class="dt">label</span><span class="op">:</span> <span class="st">"Species:"</span></span>
+<span id="cb15-487"><a href="#cb15-487" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb15-488"><a href="#cb15-488" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div>
@@ -915,38 +917,46 @@ a {
 </div>
 </div>
 </div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-9-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
 </div>
 <div class="cell">
 <details>
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb16" data-startfrom="485" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 484;"><span id="cb16-485"><a href="#cb16-485" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb16-486"><a href="#cb16-486" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb16-487"><a href="#cb16-487" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb16-488"><a href="#cb16-488" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
-<span id="cb16-489"><a href="#cb16-489" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb16-490"><a href="#cb16-490" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
-<span id="cb16-491"><a href="#cb16-491" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb16-492"><a href="#cb16-492" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(path_filtered<span class="op">,</span> {</span>
-<span id="cb16-493"><a href="#cb16-493" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span> </span>
-<span id="cb16-494"><a href="#cb16-494" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb16-495"><a href="#cb16-495" aria-hidden="true" tabindex="-1"></a>        <span class="dt">curve</span><span class="op">:</span> <span class="st">"catmull-rom"</span><span class="op">,</span></span>
-<span id="cb16-496"><a href="#cb16-496" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb16-497"><a href="#cb16-497" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb16-498"><a href="#cb16-498" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(path_filtered<span class="op">,</span> {</span>
-<span id="cb16-499"><a href="#cb16-499" aria-hidden="true" tabindex="-1"></a>        <span class="dt">filter</span><span class="op">:</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">est_year</span> <span class="op">%</span> <span class="dv">5</span> <span class="op">==</span> <span class="dv">0</span><span class="op">,</span></span>
-<span id="cb16-500"><a href="#cb16-500" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
-<span id="cb16-501"><a href="#cb16-501" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb16-502"><a href="#cb16-502" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb16-503"><a href="#cb16-503" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> d <span class="kw">=&gt;</span> <span class="vs">`</span><span class="sc">${</span>d<span class="op">.</span><span class="at">est_year</span><span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
-<span id="cb16-504"><a href="#cb16-504" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dy</span><span class="op">:</span> <span class="op">-</span><span class="dv">8</span></span>
-<span id="cb16-505"><a href="#cb16-505" aria-hidden="true" tabindex="-1"></a>    })</span>
-<span id="cb16-506"><a href="#cb16-506" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span> </span>
-<span id="cb16-507"><a href="#cb16-507" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb16-508"><a href="#cb16-508" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Include a legend for the color channel </span></span>
-<span id="cb16-509"><a href="#cb16-509" aria-hidden="true" tabindex="-1"></a>  <span class="dt">color</span><span class="op">:</span> {</span>
-<span id="cb16-510"><a href="#cb16-510" aria-hidden="true" tabindex="-1"></a>    <span class="dt">legend</span><span class="op">:</span> <span class="kw">true</span></span>
-<span id="cb16-511"><a href="#cb16-511" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb16-512"><a href="#cb16-512" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb16" data-startfrom="495" data-source-offset="0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 494;"><span id="cb16-495"><a href="#cb16-495" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb16-496"><a href="#cb16-496" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb16-497"><a href="#cb16-497" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb16-498"><a href="#cb16-498" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
+<span id="cb16-499"><a href="#cb16-499" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb16-500"><a href="#cb16-500" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb16-501"><a href="#cb16-501" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
+<span id="cb16-502"><a href="#cb16-502" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb16-503"><a href="#cb16-503" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(path_filtered<span class="op">,</span> {</span>
+<span id="cb16-504"><a href="#cb16-504" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span> </span>
+<span id="cb16-505"><a href="#cb16-505" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb16-506"><a href="#cb16-506" aria-hidden="true" tabindex="-1"></a>        <span class="dt">curve</span><span class="op">:</span> <span class="st">"catmull-rom"</span><span class="op">,</span></span>
+<span id="cb16-507"><a href="#cb16-507" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb16-508"><a href="#cb16-508" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb16-509"><a href="#cb16-509" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(path_filtered<span class="op">,</span> {</span>
+<span id="cb16-510"><a href="#cb16-510" aria-hidden="true" tabindex="-1"></a>        <span class="dt">filter</span><span class="op">:</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">est_year</span> <span class="op">%</span> <span class="dv">5</span> <span class="op">==</span> <span class="dv">0</span><span class="op">,</span></span>
+<span id="cb16-511"><a href="#cb16-511" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
+<span id="cb16-512"><a href="#cb16-512" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb16-513"><a href="#cb16-513" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb16-514"><a href="#cb16-514" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> d <span class="kw">=&gt;</span> <span class="vs">`</span><span class="sc">${</span>d<span class="op">.</span><span class="at">est_year</span><span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
+<span id="cb16-515"><a href="#cb16-515" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dy</span><span class="op">:</span> <span class="op">-</span><span class="dv">8</span></span>
+<span id="cb16-516"><a href="#cb16-516" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb16-517"><a href="#cb16-517" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span> </span>
+<span id="cb16-518"><a href="#cb16-518" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb16-519"><a href="#cb16-519" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Include a legend for the color channel </span></span>
+<span id="cb16-520"><a href="#cb16-520" aria-hidden="true" tabindex="-1"></a>  <span class="dt">color</span><span class="op">:</span> {</span>
+<span id="cb16-521"><a href="#cb16-521" aria-hidden="true" tabindex="-1"></a>    <span class="dt">legend</span><span class="op">:</span> <span class="kw">true</span></span>
+<span id="cb16-522"><a href="#cb16-522" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb16-523"><a href="#cb16-523" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-display">
 <div id="ojs-cell-10" data-nodetype="expression">
@@ -957,12 +967,11 @@ a {
 <!-- -->
 
 </section>
-</section>
 
 </main>
 <!-- /main column -->
 <script type="ojs-module-contents">
-{"contents":[{"methodName":"interpret","cellName":"ojs-cell-1","inline":false,"source":"// Filtering Function\nfiltered = transpose(pref_data).filter(function(trawldat) {\n  return year_min < trawldat.est_year &&\n         comname.includes(trawldat.comname);\n})\n\n"},{"methodName":"interpret","cellName":"ojs-cell-2","inline":false,"source":"viewof year_min = Inputs.range(\n  [1970, 2019], \n  {value: 1970, step: 1, label: \"Starting Year:\"}\n)\n\nviewof comname = Inputs.checkbox(\n  [\"acadian redfish\", \"american plaice\", \n   \"atlantic cod\", \"atlantic herring\", \n   \"atlantic mackerel\", \"black sea bass\", \n   \"butterfish\", \"haddock\", \"pollock\", \"red hake\", \n   \"scup\", \"silver hake\", \"summer flounder\", \n   \"white hake\", \"winter flounder\", \n   \"witch flounder\", \"yellowtail flounder\"], \n  { value: [\"atlantic herring\", \"black sea bass\", \"atlantic cod\"], \n    label: \"Species:\"\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-3","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     reverse: true, \n     label: \"↓ Depth (m)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"avg_depth\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"avg_depth\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-4","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Temperature (C)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"avg_temp\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"avg_temp\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-5","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Latitude (N)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"avg_lat\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"avg_lat\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-6","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     reverse: true, \n     label: \"↓ Depth (z)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"depth_z\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"depth_z\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-7","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Temperature (z)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"temp_z\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"temp_z\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-8","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Latitude (z)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"lat_z\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"lat_z\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-9","inline":false,"source":"// Filtering Function\npath_filtered = transpose(pref_data).filter(function(trawldat) {\n  return species.includes(trawldat.comname);\n})\n\n\nviewof species = Inputs.checkbox(\n  [\"acadian redfish\", \"american plaice\", \n   \"atlantic cod\", \"atlantic herring\", \n   \"atlantic mackerel\", \"black sea bass\", \n   \"butterfish\", \"haddock\", \"pollock\", \"red hake\", \n   \"scup\", \"silver hake\", \"summer flounder\", \n   \"white hake\", \"winter flounder\", \n   \"witch flounder\", \"yellowtail flounder\"], \n  { value: [\"black sea bass\"], \n    label: \"Species:\"\n  }\n)\n\n"},{"methodName":"interpret","cellName":"ojs-cell-10","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  x:{grid : false, \n     label: \"↑ Latitude (z)\"},\n  y:{grid : true, \n     label: \"↓ Depth (z)\"},\n  marks: [\n      Plot.line(path_filtered, {\n        x: \"lat_z\", \n        y: \"depth_z\",\n        curve: \"catmull-rom\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(path_filtered, {\n        filter: d => d.est_year % 5 == 0,\n        x: \"lat_z\",\n        y: \"depth_z\",\n        z: \"est_year\",\n        text: d => `${d.est_year}`,\n        dy: -8\n    })\n    ], \n  \n  // Include a legend for the color channel \n  color: {\n    legend: true\n  }\n})\n"},{"methodName":"interpretQuiet","source":"shinyInput('year_min')"},{"methodName":"interpretQuiet","source":"shinyInput('comname')"},{"methodName":"interpretQuiet","source":"shinyInput('species')"}]}
+{"contents":[{"methodName":"interpret","cellName":"ojs-cell-1","inline":false,"source":"// Filtering Function\nfiltered = transpose(pref_data).filter(function(trawldat) {\n  return year_min < trawldat.est_year &&\n         comname.includes(trawldat.comname);\n})\n\n"},{"methodName":"interpret","cellName":"ojs-cell-2","inline":false,"source":"viewof year_min = Inputs.range(\n  [1970, 2019], \n  {value: 1970, step: 1, label: \"Starting Year:\"}\n)\n\nviewof comname = Inputs.checkbox(\n  [\"acadian redfish\", \"american plaice\", \n   \"atlantic cod\", \"atlantic herring\", \n   \"atlantic mackerel\", \"black sea bass\", \n   \"butterfish\", \"haddock\", \"pollock\", \"red hake\", \n   \"scup\", \"silver hake\", \"summer flounder\", \n   \"white hake\", \"winter flounder\", \n   \"witch flounder\", \"yellowtail flounder\"], \n  { value: [\"atlantic cod\", \"black sea bass\", \"yellowtail flounder\", \"silver hake\"], \n    label: \"Species:\"\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-3","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Latitude (N)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"avg_lat\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"avg_lat\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-4","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     reverse: true, \n     label: \"↓ Depth (m)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"avg_depth\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"avg_depth\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-5","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Temperature (C)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"avg_temp\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"avg_temp\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-6","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Latitude (z)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"lat_z\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"lat_z\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-7","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     reverse: true, \n     label: \"↓ Depth (z)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"depth_z\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"depth_z\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-8","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  y:{grid : true, \n     label: \"↑ Temperature (z)\"},\n  x:{grid : false, \n     label: \"Year →\", \n     tickFormat: d3.format(\".1d\")},\n  marks: [\n      Plot.line(filtered, {\n        x: \"est_year\", \n        y: \"temp_z\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(filtered, Plot.selectLast({\n        x: \"est_year\",\n        y: \"temp_z\",\n        z: \"comname\",\n        text: \"comname\",\n        textAnchor: \"start\",\n        dx: 3\n    }))\n    ]\n  }\n)\n"},{"methodName":"interpret","cellName":"ojs-cell-9","inline":false,"source":"// Filtering Function\npath_filtered = transpose(pref_data).filter(function(trawldat) {\n  return year_start < trawldat.est_year && species.includes(trawldat.comname);\n})\n\n// Species view controls\nviewof year_start = Inputs.range(\n  [1970, 2019], \n  {value: 1990, step: 5, label: \"Starting Year:\"}\n)\n\n\n\nviewof species = Inputs.checkbox(\n  [\"acadian redfish\", \"american plaice\", \n   \"atlantic cod\", \"atlantic herring\", \n   \"atlantic mackerel\", \"black sea bass\", \n   \"butterfish\", \"haddock\", \"pollock\", \"red hake\", \n   \"scup\", \"silver hake\", \"summer flounder\", \n   \"white hake\", \"winter flounder\", \n   \"witch flounder\", \"yellowtail flounder\"], \n  { value: [\"black sea bass\"], \n    label: \"Species:\"\n  }\n)\n\n"},{"methodName":"interpret","cellName":"ojs-cell-10","inline":false,"source":"Plot.plot({\n  style: \"overflow: visible;\",\n  x:{grid : false, \n     label: \"↑ Latitude (z)\"},\n  y:{grid : true, \n     reverse: true,\n     label: \"↓ Depth (z)\"},\n  marks: [\n      Plot.line(path_filtered, {\n        x: \"lat_z\", \n        y: \"depth_z\",\n        curve: \"catmull-rom\",\n        stroke: \"comname\", \n        marker: \"circle\"}),\n      Plot.text(path_filtered, {\n        filter: d => d.est_year % 5 == 0,\n        x: \"lat_z\",\n        y: \"depth_z\",\n        z: \"est_year\",\n        text: d => `${d.est_year}`,\n        dy: -8\n    })\n    ], \n  \n  // Include a legend for the color channel \n  color: {\n    legend: true\n  }\n})\n"},{"methodName":"interpretQuiet","source":"shinyInput('year_min')"},{"methodName":"interpretQuiet","source":"shinyInput('comname')"},{"methodName":"interpretQuiet","source":"shinyInput('year_start')"},{"methodName":"interpretQuiet","source":"shinyInput('species')"}]}
 </script>
 <script type="module">
 window._ojs.paths.runtimeToDoc = "../../..";
@@ -1353,7 +1362,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb17-260"><a href="#cb17-260" aria-hidden="true" tabindex="-1"></a>   <span class="st">"scup"</span><span class="op">,</span> <span class="st">"silver hake"</span><span class="op">,</span> <span class="st">"summer flounder"</span><span class="op">,</span> </span>
 <span id="cb17-261"><a href="#cb17-261" aria-hidden="true" tabindex="-1"></a>   <span class="st">"white hake"</span><span class="op">,</span> <span class="st">"winter flounder"</span><span class="op">,</span> </span>
 <span id="cb17-262"><a href="#cb17-262" aria-hidden="true" tabindex="-1"></a>   <span class="st">"witch flounder"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span>]<span class="op">,</span> </span>
-<span id="cb17-263"><a href="#cb17-263" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"atlantic herring"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> <span class="st">"atlantic cod"</span>]<span class="op">,</span> </span>
+<span id="cb17-263"><a href="#cb17-263" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"atlantic cod"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span><span class="op">,</span> <span class="st">"silver hake"</span>]<span class="op">,</span> </span>
 <span id="cb17-264"><a href="#cb17-264" aria-hidden="true" tabindex="-1"></a>    <span class="dt">label</span><span class="op">:</span> <span class="st">"Species:"</span></span>
 <span id="cb17-265"><a href="#cb17-265" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb17-266"><a href="#cb17-266" aria-hidden="true" tabindex="-1"></a>)</span>
@@ -1364,85 +1373,85 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb17-271"><a href="#cb17-271" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-272"><a href="#cb17-272" aria-hidden="true" tabindex="-1"></a><span class="vs">::: {.panel-tabset}</span></span>
 <span id="cb17-273"><a href="#cb17-273" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-274"><a href="#cb17-274" aria-hidden="true" tabindex="-1"></a><span class="vs">## Center of Biomass Depth</span></span>
+<span id="cb17-274"><a href="#cb17-274" aria-hidden="true" tabindex="-1"></a><span class="vs">## Latitude</span></span>
 <span id="cb17-275"><a href="#cb17-275" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-278"><a href="#cb17-278" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
 <span id="cb17-279"><a href="#cb17-279" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
 <span id="cb17-280"><a href="#cb17-280" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
 <span id="cb17-281"><a href="#cb17-281" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-282"><a href="#cb17-282" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-283"><a href="#cb17-283" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (m)"</span>}<span class="op">,</span></span>
-<span id="cb17-284"><a href="#cb17-284" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb17-285"><a href="#cb17-285" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb17-286"><a href="#cb17-286" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb17-287"><a href="#cb17-287" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb17-288"><a href="#cb17-288" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb17-289"><a href="#cb17-289" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb17-290"><a href="#cb17-290" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
-<span id="cb17-291"><a href="#cb17-291" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb17-292"><a href="#cb17-292" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb17-293"><a href="#cb17-293" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb17-294"><a href="#cb17-294" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-295"><a href="#cb17-295" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
-<span id="cb17-296"><a href="#cb17-296" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-297"><a href="#cb17-297" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-298"><a href="#cb17-298" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb17-299"><a href="#cb17-299" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb17-300"><a href="#cb17-300" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb17-301"><a href="#cb17-301" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb17-302"><a href="#cb17-302" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-303"><a href="#cb17-303" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-304"><a href="#cb17-304" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
-<span id="cb17-305"><a href="#cb17-305" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-282"><a href="#cb17-282" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (N)"</span>}<span class="op">,</span></span>
+<span id="cb17-283"><a href="#cb17-283" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb17-284"><a href="#cb17-284" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb17-285"><a href="#cb17-285" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb17-286"><a href="#cb17-286" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb17-287"><a href="#cb17-287" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb17-288"><a href="#cb17-288" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb17-289"><a href="#cb17-289" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb17-290"><a href="#cb17-290" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb17-291"><a href="#cb17-291" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb17-292"><a href="#cb17-292" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb17-293"><a href="#cb17-293" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb17-294"><a href="#cb17-294" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb17-295"><a href="#cb17-295" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-296"><a href="#cb17-296" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-297"><a href="#cb17-297" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb17-298"><a href="#cb17-298" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb17-299"><a href="#cb17-299" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb17-300"><a href="#cb17-300" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb17-301"><a href="#cb17-301" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-302"><a href="#cb17-302" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-303"><a href="#cb17-303" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
+<span id="cb17-304"><a href="#cb17-304" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-305"><a href="#cb17-305" aria-hidden="true" tabindex="-1"></a><span class="vs">## Depth</span></span>
 <span id="cb17-306"><a href="#cb17-306" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-307"><a href="#cb17-307" aria-hidden="true" tabindex="-1"></a><span class="vs">## Center of Biomass Temperature</span></span>
-<span id="cb17-308"><a href="#cb17-308" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-311"><a href="#cb17-311" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
-<span id="cb17-312"><a href="#cb17-312" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb17-313"><a href="#cb17-313" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb17-314"><a href="#cb17-314" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-315"><a href="#cb17-315" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (C)"</span>}<span class="op">,</span></span>
-<span id="cb17-316"><a href="#cb17-316" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb17-317"><a href="#cb17-317" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb17-318"><a href="#cb17-318" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb17-319"><a href="#cb17-319" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb17-320"><a href="#cb17-320" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb17-321"><a href="#cb17-321" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb17-322"><a href="#cb17-322" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
-<span id="cb17-323"><a href="#cb17-323" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb17-324"><a href="#cb17-324" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb17-325"><a href="#cb17-325" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb17-326"><a href="#cb17-326" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-327"><a href="#cb17-327" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
-<span id="cb17-328"><a href="#cb17-328" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-329"><a href="#cb17-329" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-330"><a href="#cb17-330" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb17-331"><a href="#cb17-331" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb17-332"><a href="#cb17-332" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb17-333"><a href="#cb17-333" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb17-334"><a href="#cb17-334" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-335"><a href="#cb17-335" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-336"><a href="#cb17-336" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
+<span id="cb17-309"><a href="#cb17-309" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
+<span id="cb17-310"><a href="#cb17-310" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb17-311"><a href="#cb17-311" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb17-312"><a href="#cb17-312" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb17-313"><a href="#cb17-313" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb17-314"><a href="#cb17-314" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (m)"</span>}<span class="op">,</span></span>
+<span id="cb17-315"><a href="#cb17-315" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb17-316"><a href="#cb17-316" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb17-317"><a href="#cb17-317" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb17-318"><a href="#cb17-318" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb17-319"><a href="#cb17-319" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb17-320"><a href="#cb17-320" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb17-321"><a href="#cb17-321" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
+<span id="cb17-322"><a href="#cb17-322" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb17-323"><a href="#cb17-323" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb17-324"><a href="#cb17-324" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb17-325"><a href="#cb17-325" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb17-326"><a href="#cb17-326" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_depth"</span><span class="op">,</span></span>
+<span id="cb17-327"><a href="#cb17-327" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-328"><a href="#cb17-328" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-329"><a href="#cb17-329" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb17-330"><a href="#cb17-330" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb17-331"><a href="#cb17-331" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb17-332"><a href="#cb17-332" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb17-333"><a href="#cb17-333" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-334"><a href="#cb17-334" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-335"><a href="#cb17-335" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
+<span id="cb17-336"><a href="#cb17-336" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-337"><a href="#cb17-337" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-338"><a href="#cb17-338" aria-hidden="true" tabindex="-1"></a><span class="vs">## Center of Biomass Latitude</span></span>
+<span id="cb17-338"><a href="#cb17-338" aria-hidden="true" tabindex="-1"></a><span class="vs">## Bottom Temperature</span></span>
 <span id="cb17-339"><a href="#cb17-339" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-342"><a href="#cb17-342" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
 <span id="cb17-343"><a href="#cb17-343" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
 <span id="cb17-344"><a href="#cb17-344" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
 <span id="cb17-345"><a href="#cb17-345" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-346"><a href="#cb17-346" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (N)"</span>}<span class="op">,</span></span>
+<span id="cb17-346"><a href="#cb17-346" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (C)"</span>}<span class="op">,</span></span>
 <span id="cb17-347"><a href="#cb17-347" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
 <span id="cb17-348"><a href="#cb17-348" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
 <span id="cb17-349"><a href="#cb17-349" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
 <span id="cb17-350"><a href="#cb17-350" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
 <span id="cb17-351"><a href="#cb17-351" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
 <span id="cb17-352"><a href="#cb17-352" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb17-353"><a href="#cb17-353" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb17-353"><a href="#cb17-353" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
 <span id="cb17-354"><a href="#cb17-354" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
 <span id="cb17-355"><a href="#cb17-355" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
 <span id="cb17-356"><a href="#cb17-356" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
 <span id="cb17-357"><a href="#cb17-357" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-358"><a href="#cb17-358" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_lat"</span><span class="op">,</span></span>
+<span id="cb17-358"><a href="#cb17-358" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"avg_temp"</span><span class="op">,</span></span>
 <span id="cb17-359"><a href="#cb17-359" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
 <span id="cb17-360"><a href="#cb17-360" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
 <span id="cb17-361"><a href="#cb17-361" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
@@ -1453,168 +1462,179 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 <span id="cb17-366"><a href="#cb17-366" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb17-367"><a href="#cb17-367" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
 <span id="cb17-368"><a href="#cb17-368" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-369"><a href="#cb17-369" aria-hidden="true" tabindex="-1"></a><span class="vs">:::</span></span>
+<span id="cb17-369"><a href="#cb17-369" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-370"><a href="#cb17-370" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-371"><a href="#cb17-371" aria-hidden="true" tabindex="-1"></a><span class="vs"># Standardized Shifts:</span></span>
+<span id="cb17-371"><a href="#cb17-371" aria-hidden="true" tabindex="-1"></a><span class="vs">:::</span></span>
 <span id="cb17-372"><a href="#cb17-372" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-373"><a href="#cb17-373" aria-hidden="true" tabindex="-1"></a><span class="vs">The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.</span></span>
+<span id="cb17-373"><a href="#cb17-373" aria-hidden="true" tabindex="-1"></a><span class="vs"># Standardized Shifts:</span></span>
 <span id="cb17-374"><a href="#cb17-374" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-375"><a href="#cb17-375" aria-hidden="true" tabindex="-1"></a><span class="vs">::: {.panel-tabset}</span></span>
+<span id="cb17-375"><a href="#cb17-375" aria-hidden="true" tabindex="-1"></a><span class="vs">The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.</span></span>
 <span id="cb17-376"><a href="#cb17-376" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-377"><a href="#cb17-377" aria-hidden="true" tabindex="-1"></a><span class="vs">## Depth Change</span></span>
+<span id="cb17-377"><a href="#cb17-377" aria-hidden="true" tabindex="-1"></a><span class="vs">::: {.panel-tabset}</span></span>
 <span id="cb17-378"><a href="#cb17-378" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-381"><a href="#cb17-381" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
-<span id="cb17-382"><a href="#cb17-382" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb17-383"><a href="#cb17-383" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb17-384"><a href="#cb17-384" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-385"><a href="#cb17-385" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-386"><a href="#cb17-386" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
-<span id="cb17-387"><a href="#cb17-387" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb17-388"><a href="#cb17-388" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb17-389"><a href="#cb17-389" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb17-390"><a href="#cb17-390" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb17-391"><a href="#cb17-391" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb17-392"><a href="#cb17-392" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb17-393"><a href="#cb17-393" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb17-394"><a href="#cb17-394" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb17-395"><a href="#cb17-395" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb17-396"><a href="#cb17-396" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb17-397"><a href="#cb17-397" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-398"><a href="#cb17-398" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb17-399"><a href="#cb17-399" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-400"><a href="#cb17-400" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-401"><a href="#cb17-401" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb17-402"><a href="#cb17-402" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb17-403"><a href="#cb17-403" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb17-404"><a href="#cb17-404" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb17-405"><a href="#cb17-405" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-406"><a href="#cb17-406" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-407"><a href="#cb17-407" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
-<span id="cb17-408"><a href="#cb17-408" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-379"><a href="#cb17-379" aria-hidden="true" tabindex="-1"></a><span class="vs">## Latitude Change</span></span>
+<span id="cb17-380"><a href="#cb17-380" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-383"><a href="#cb17-383" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
+<span id="cb17-384"><a href="#cb17-384" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb17-385"><a href="#cb17-385" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb17-386"><a href="#cb17-386" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb17-387"><a href="#cb17-387" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
+<span id="cb17-388"><a href="#cb17-388" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb17-389"><a href="#cb17-389" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb17-390"><a href="#cb17-390" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb17-391"><a href="#cb17-391" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb17-392"><a href="#cb17-392" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb17-393"><a href="#cb17-393" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb17-394"><a href="#cb17-394" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
+<span id="cb17-395"><a href="#cb17-395" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb17-396"><a href="#cb17-396" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb17-397"><a href="#cb17-397" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb17-398"><a href="#cb17-398" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb17-399"><a href="#cb17-399" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
+<span id="cb17-400"><a href="#cb17-400" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-401"><a href="#cb17-401" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-402"><a href="#cb17-402" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb17-403"><a href="#cb17-403" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb17-404"><a href="#cb17-404" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb17-405"><a href="#cb17-405" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb17-406"><a href="#cb17-406" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-407"><a href="#cb17-407" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-408"><a href="#cb17-408" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
 <span id="cb17-409"><a href="#cb17-409" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-410"><a href="#cb17-410" aria-hidden="true" tabindex="-1"></a><span class="vs">## Temperature Change</span></span>
+<span id="cb17-410"><a href="#cb17-410" aria-hidden="true" tabindex="-1"></a><span class="vs">## Depth Change</span></span>
 <span id="cb17-411"><a href="#cb17-411" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-414"><a href="#cb17-414" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
 <span id="cb17-415"><a href="#cb17-415" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
 <span id="cb17-416"><a href="#cb17-416" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
 <span id="cb17-417"><a href="#cb17-417" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-418"><a href="#cb17-418" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (z)"</span>}<span class="op">,</span></span>
-<span id="cb17-419"><a href="#cb17-419" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb17-420"><a href="#cb17-420" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb17-421"><a href="#cb17-421" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb17-422"><a href="#cb17-422" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb17-423"><a href="#cb17-423" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb17-424"><a href="#cb17-424" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb17-425"><a href="#cb17-425" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
-<span id="cb17-426"><a href="#cb17-426" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb17-427"><a href="#cb17-427" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb17-428"><a href="#cb17-428" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb17-429"><a href="#cb17-429" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-430"><a href="#cb17-430" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
-<span id="cb17-431"><a href="#cb17-431" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-432"><a href="#cb17-432" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-433"><a href="#cb17-433" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb17-434"><a href="#cb17-434" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb17-435"><a href="#cb17-435" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb17-436"><a href="#cb17-436" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb17-437"><a href="#cb17-437" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-438"><a href="#cb17-438" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-439"><a href="#cb17-439" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
-<span id="cb17-440"><a href="#cb17-440" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-441"><a href="#cb17-441" aria-hidden="true" tabindex="-1"></a><span class="vs">## Latitude Change</span></span>
+<span id="cb17-418"><a href="#cb17-418" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb17-419"><a href="#cb17-419" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
+<span id="cb17-420"><a href="#cb17-420" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb17-421"><a href="#cb17-421" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb17-422"><a href="#cb17-422" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb17-423"><a href="#cb17-423" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb17-424"><a href="#cb17-424" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb17-425"><a href="#cb17-425" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb17-426"><a href="#cb17-426" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb17-427"><a href="#cb17-427" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb17-428"><a href="#cb17-428" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb17-429"><a href="#cb17-429" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb17-430"><a href="#cb17-430" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb17-431"><a href="#cb17-431" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb17-432"><a href="#cb17-432" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-433"><a href="#cb17-433" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-434"><a href="#cb17-434" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb17-435"><a href="#cb17-435" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb17-436"><a href="#cb17-436" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb17-437"><a href="#cb17-437" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb17-438"><a href="#cb17-438" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-439"><a href="#cb17-439" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-440"><a href="#cb17-440" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
+<span id="cb17-441"><a href="#cb17-441" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-442"><a href="#cb17-442" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-445"><a href="#cb17-445" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
-<span id="cb17-446"><a href="#cb17-446" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb17-447"><a href="#cb17-447" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb17-448"><a href="#cb17-448" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-449"><a href="#cb17-449" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
-<span id="cb17-450"><a href="#cb17-450" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb17-451"><a href="#cb17-451" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
-<span id="cb17-452"><a href="#cb17-452" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
-<span id="cb17-453"><a href="#cb17-453" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb17-454"><a href="#cb17-454" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
-<span id="cb17-455"><a href="#cb17-455" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
-<span id="cb17-456"><a href="#cb17-456" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
-<span id="cb17-457"><a href="#cb17-457" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb17-458"><a href="#cb17-458" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb17-459"><a href="#cb17-459" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
-<span id="cb17-460"><a href="#cb17-460" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-461"><a href="#cb17-461" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
-<span id="cb17-462"><a href="#cb17-462" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-463"><a href="#cb17-463" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
-<span id="cb17-464"><a href="#cb17-464" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
-<span id="cb17-465"><a href="#cb17-465" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
-<span id="cb17-466"><a href="#cb17-466" aria-hidden="true" tabindex="-1"></a>    }))</span>
-<span id="cb17-467"><a href="#cb17-467" aria-hidden="true" tabindex="-1"></a>    ]</span>
-<span id="cb17-468"><a href="#cb17-468" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-469"><a href="#cb17-469" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-470"><a href="#cb17-470" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
-<span id="cb17-471"><a href="#cb17-471" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-472"><a href="#cb17-472" aria-hidden="true" tabindex="-1"></a><span class="vs">:::</span></span>
+<span id="cb17-443"><a href="#cb17-443" aria-hidden="true" tabindex="-1"></a><span class="vs">## Temperature Change</span></span>
+<span id="cb17-444"><a href="#cb17-444" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-447"><a href="#cb17-447" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
+<span id="cb17-448"><a href="#cb17-448" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb17-449"><a href="#cb17-449" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb17-450"><a href="#cb17-450" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb17-451"><a href="#cb17-451" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Temperature (z)"</span>}<span class="op">,</span></span>
+<span id="cb17-452"><a href="#cb17-452" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb17-453"><a href="#cb17-453" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"Year →"</span><span class="op">,</span> </span>
+<span id="cb17-454"><a href="#cb17-454" aria-hidden="true" tabindex="-1"></a>     <span class="dt">tickFormat</span><span class="op">:</span> d3<span class="op">.</span><span class="fu">format</span>(<span class="st">".1d"</span>)}<span class="op">,</span></span>
+<span id="cb17-455"><a href="#cb17-455" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb17-456"><a href="#cb17-456" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(filtered<span class="op">,</span> {</span>
+<span id="cb17-457"><a href="#cb17-457" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span> </span>
+<span id="cb17-458"><a href="#cb17-458" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
+<span id="cb17-459"><a href="#cb17-459" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb17-460"><a href="#cb17-460" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb17-461"><a href="#cb17-461" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(filtered<span class="op">,</span> Plot<span class="op">.</span><span class="fu">selectLast</span>({</span>
+<span id="cb17-462"><a href="#cb17-462" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb17-463"><a href="#cb17-463" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"temp_z"</span><span class="op">,</span></span>
+<span id="cb17-464"><a href="#cb17-464" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-465"><a href="#cb17-465" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span></span>
+<span id="cb17-466"><a href="#cb17-466" aria-hidden="true" tabindex="-1"></a>        <span class="dt">textAnchor</span><span class="op">:</span> <span class="st">"start"</span><span class="op">,</span></span>
+<span id="cb17-467"><a href="#cb17-467" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dx</span><span class="op">:</span> <span class="dv">3</span></span>
+<span id="cb17-468"><a href="#cb17-468" aria-hidden="true" tabindex="-1"></a>    }))</span>
+<span id="cb17-469"><a href="#cb17-469" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb17-470"><a href="#cb17-470" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-471"><a href="#cb17-471" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-472"><a href="#cb17-472" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
 <span id="cb17-473"><a href="#cb17-473" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-474"><a href="#cb17-474" aria-hidden="true" tabindex="-1"></a><span class="vs"># Change Pathways</span></span>
+<span id="cb17-474"><a href="#cb17-474" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-475"><a href="#cb17-475" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-476"><a href="#cb17-476" aria-hidden="true" tabindex="-1"></a><span class="vs">Over the course of several years the mechanism by which a species may seek relief may change. This may be due to some sort of geographical restrictions that may limit the accessibility to deeper water, or some physical barriers that may prevent northward movements.</span></span>
+<span id="cb17-476"><a href="#cb17-476" aria-hidden="true" tabindex="-1"></a><span class="vs">:::</span></span>
 <span id="cb17-477"><a href="#cb17-477" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-478"><a href="#cb17-478" aria-hidden="true" tabindex="-1"></a><span class="vs">### Controls</span></span>
+<span id="cb17-478"><a href="#cb17-478" aria-hidden="true" tabindex="-1"></a><span class="vs"># Change Pathways</span></span>
 <span id="cb17-479"><a href="#cb17-479" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-480"><a href="#cb17-480" aria-hidden="true" tabindex="-1"></a><span class="vs">By displaying how both these axes have shifted through time it may help disclose how a species is moving and during which periods.</span></span>
+<span id="cb17-480"><a href="#cb17-480" aria-hidden="true" tabindex="-1"></a><span class="vs">Over the course of several years the mechanism by which a species may seek relief may change. This may be due to some sort of geographical restrictions that may limit the accessibility to deeper water, or some physical barriers that may prevent northward movements.</span></span>
 <span id="cb17-481"><a href="#cb17-481" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-484"><a href="#cb17-484" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
-<span id="cb17-485"><a href="#cb17-485" aria-hidden="true" tabindex="-1"></a><span class="co">// Filtering Function</span></span>
-<span id="cb17-486"><a href="#cb17-486" aria-hidden="true" tabindex="-1"></a>path_filtered <span class="op">=</span> <span class="fu">transpose</span>(pref_data)<span class="op">.</span><span class="fu">filter</span>(<span class="kw">function</span>(trawldat) {</span>
-<span id="cb17-487"><a href="#cb17-487" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> species<span class="op">.</span><span class="fu">includes</span>(trawldat<span class="op">.</span><span class="at">comname</span>)<span class="op">;</span></span>
-<span id="cb17-488"><a href="#cb17-488" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb17-489"><a href="#cb17-489" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-490"><a href="#cb17-490" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-491"><a href="#cb17-491" aria-hidden="true" tabindex="-1"></a>viewof species <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">checkbox</span>(</span>
-<span id="cb17-492"><a href="#cb17-492" aria-hidden="true" tabindex="-1"></a>  [<span class="st">"acadian redfish"</span><span class="op">,</span> <span class="st">"american plaice"</span><span class="op">,</span> </span>
-<span id="cb17-493"><a href="#cb17-493" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic cod"</span><span class="op">,</span> <span class="st">"atlantic herring"</span><span class="op">,</span> </span>
-<span id="cb17-494"><a href="#cb17-494" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic mackerel"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> </span>
-<span id="cb17-495"><a href="#cb17-495" aria-hidden="true" tabindex="-1"></a>   <span class="st">"butterfish"</span><span class="op">,</span> <span class="st">"haddock"</span><span class="op">,</span> <span class="st">"pollock"</span><span class="op">,</span> <span class="st">"red hake"</span><span class="op">,</span> </span>
-<span id="cb17-496"><a href="#cb17-496" aria-hidden="true" tabindex="-1"></a>   <span class="st">"scup"</span><span class="op">,</span> <span class="st">"silver hake"</span><span class="op">,</span> <span class="st">"summer flounder"</span><span class="op">,</span> </span>
-<span id="cb17-497"><a href="#cb17-497" aria-hidden="true" tabindex="-1"></a>   <span class="st">"white hake"</span><span class="op">,</span> <span class="st">"winter flounder"</span><span class="op">,</span> </span>
-<span id="cb17-498"><a href="#cb17-498" aria-hidden="true" tabindex="-1"></a>   <span class="st">"witch flounder"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span>]<span class="op">,</span> </span>
-<span id="cb17-499"><a href="#cb17-499" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"black sea bass"</span>]<span class="op">,</span> </span>
-<span id="cb17-500"><a href="#cb17-500" aria-hidden="true" tabindex="-1"></a>    <span class="dt">label</span><span class="op">:</span> <span class="st">"Species:"</span></span>
-<span id="cb17-501"><a href="#cb17-501" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-502"><a href="#cb17-502" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb17-503"><a href="#cb17-503" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-504"><a href="#cb17-504" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-505"><a href="#cb17-505" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
-<span id="cb17-506"><a href="#cb17-506" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-507"><a href="#cb17-507" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-508"><a href="#cb17-508" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-511"><a href="#cb17-511" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
-<span id="cb17-512"><a href="#cb17-512" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
-<span id="cb17-513"><a href="#cb17-513" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
-<span id="cb17-514"><a href="#cb17-514" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
-<span id="cb17-515"><a href="#cb17-515" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
-<span id="cb17-516"><a href="#cb17-516" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
-<span id="cb17-517"><a href="#cb17-517" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
-<span id="cb17-518"><a href="#cb17-518" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
-<span id="cb17-519"><a href="#cb17-519" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(path_filtered<span class="op">,</span> {</span>
-<span id="cb17-520"><a href="#cb17-520" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span> </span>
-<span id="cb17-521"><a href="#cb17-521" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb17-522"><a href="#cb17-522" aria-hidden="true" tabindex="-1"></a>        <span class="dt">curve</span><span class="op">:</span> <span class="st">"catmull-rom"</span><span class="op">,</span></span>
-<span id="cb17-523"><a href="#cb17-523" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
-<span id="cb17-524"><a href="#cb17-524" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
-<span id="cb17-525"><a href="#cb17-525" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(path_filtered<span class="op">,</span> {</span>
-<span id="cb17-526"><a href="#cb17-526" aria-hidden="true" tabindex="-1"></a>        <span class="dt">filter</span><span class="op">:</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">est_year</span> <span class="op">%</span> <span class="dv">5</span> <span class="op">==</span> <span class="dv">0</span><span class="op">,</span></span>
-<span id="cb17-527"><a href="#cb17-527" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
-<span id="cb17-528"><a href="#cb17-528" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
-<span id="cb17-529"><a href="#cb17-529" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
-<span id="cb17-530"><a href="#cb17-530" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> d <span class="kw">=&gt;</span> <span class="vs">`</span><span class="sc">${</span>d<span class="op">.</span><span class="at">est_year</span><span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
-<span id="cb17-531"><a href="#cb17-531" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dy</span><span class="op">:</span> <span class="op">-</span><span class="dv">8</span></span>
-<span id="cb17-532"><a href="#cb17-532" aria-hidden="true" tabindex="-1"></a>    })</span>
-<span id="cb17-533"><a href="#cb17-533" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span> </span>
-<span id="cb17-534"><a href="#cb17-534" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb17-535"><a href="#cb17-535" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Include a legend for the color channel </span></span>
-<span id="cb17-536"><a href="#cb17-536" aria-hidden="true" tabindex="-1"></a>  <span class="dt">color</span><span class="op">:</span> {</span>
-<span id="cb17-537"><a href="#cb17-537" aria-hidden="true" tabindex="-1"></a>    <span class="dt">legend</span><span class="op">:</span> <span class="kw">true</span></span>
-<span id="cb17-538"><a href="#cb17-538" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb17-539"><a href="#cb17-539" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb17-540"><a href="#cb17-540" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
+<span id="cb17-482"><a href="#cb17-482" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-483"><a href="#cb17-483" aria-hidden="true" tabindex="-1"></a><span class="vs">By displaying how both these axes have shifted through time it may help disclose how a species is moving and during which periods.</span></span>
+<span id="cb17-484"><a href="#cb17-484" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-487"><a href="#cb17-487" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
+<span id="cb17-488"><a href="#cb17-488" aria-hidden="true" tabindex="-1"></a><span class="co">// Filtering Function</span></span>
+<span id="cb17-489"><a href="#cb17-489" aria-hidden="true" tabindex="-1"></a>path_filtered <span class="op">=</span> <span class="fu">transpose</span>(pref_data)<span class="op">.</span><span class="fu">filter</span>(<span class="kw">function</span>(trawldat) {</span>
+<span id="cb17-490"><a href="#cb17-490" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> year_start <span class="op">&lt;</span> trawldat<span class="op">.</span><span class="at">est_year</span> <span class="op">&amp;&amp;</span> species<span class="op">.</span><span class="fu">includes</span>(trawldat<span class="op">.</span><span class="at">comname</span>)<span class="op">;</span></span>
+<span id="cb17-491"><a href="#cb17-491" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb17-492"><a href="#cb17-492" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-493"><a href="#cb17-493" aria-hidden="true" tabindex="-1"></a><span class="co">// Species view controls</span></span>
+<span id="cb17-494"><a href="#cb17-494" aria-hidden="true" tabindex="-1"></a>viewof year_start <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>(</span>
+<span id="cb17-495"><a href="#cb17-495" aria-hidden="true" tabindex="-1"></a>  [<span class="dv">1970</span><span class="op">,</span> <span class="dv">2019</span>]<span class="op">,</span> </span>
+<span id="cb17-496"><a href="#cb17-496" aria-hidden="true" tabindex="-1"></a>  {<span class="dt">value</span><span class="op">:</span> <span class="dv">1990</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="dv">5</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Starting Year:"</span>}</span>
+<span id="cb17-497"><a href="#cb17-497" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-498"><a href="#cb17-498" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-499"><a href="#cb17-499" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-500"><a href="#cb17-500" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-501"><a href="#cb17-501" aria-hidden="true" tabindex="-1"></a>viewof species <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">checkbox</span>(</span>
+<span id="cb17-502"><a href="#cb17-502" aria-hidden="true" tabindex="-1"></a>  [<span class="st">"acadian redfish"</span><span class="op">,</span> <span class="st">"american plaice"</span><span class="op">,</span> </span>
+<span id="cb17-503"><a href="#cb17-503" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic cod"</span><span class="op">,</span> <span class="st">"atlantic herring"</span><span class="op">,</span> </span>
+<span id="cb17-504"><a href="#cb17-504" aria-hidden="true" tabindex="-1"></a>   <span class="st">"atlantic mackerel"</span><span class="op">,</span> <span class="st">"black sea bass"</span><span class="op">,</span> </span>
+<span id="cb17-505"><a href="#cb17-505" aria-hidden="true" tabindex="-1"></a>   <span class="st">"butterfish"</span><span class="op">,</span> <span class="st">"haddock"</span><span class="op">,</span> <span class="st">"pollock"</span><span class="op">,</span> <span class="st">"red hake"</span><span class="op">,</span> </span>
+<span id="cb17-506"><a href="#cb17-506" aria-hidden="true" tabindex="-1"></a>   <span class="st">"scup"</span><span class="op">,</span> <span class="st">"silver hake"</span><span class="op">,</span> <span class="st">"summer flounder"</span><span class="op">,</span> </span>
+<span id="cb17-507"><a href="#cb17-507" aria-hidden="true" tabindex="-1"></a>   <span class="st">"white hake"</span><span class="op">,</span> <span class="st">"winter flounder"</span><span class="op">,</span> </span>
+<span id="cb17-508"><a href="#cb17-508" aria-hidden="true" tabindex="-1"></a>   <span class="st">"witch flounder"</span><span class="op">,</span> <span class="st">"yellowtail flounder"</span>]<span class="op">,</span> </span>
+<span id="cb17-509"><a href="#cb17-509" aria-hidden="true" tabindex="-1"></a>  { <span class="dt">value</span><span class="op">:</span> [<span class="st">"black sea bass"</span>]<span class="op">,</span> </span>
+<span id="cb17-510"><a href="#cb17-510" aria-hidden="true" tabindex="-1"></a>    <span class="dt">label</span><span class="op">:</span> <span class="st">"Species:"</span></span>
+<span id="cb17-511"><a href="#cb17-511" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-512"><a href="#cb17-512" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-513"><a href="#cb17-513" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-514"><a href="#cb17-514" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-515"><a href="#cb17-515" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
+<span id="cb17-516"><a href="#cb17-516" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-517"><a href="#cb17-517" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-518"><a href="#cb17-518" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-521"><a href="#cb17-521" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span>ojs</span>
+<span id="cb17-522"><a href="#cb17-522" aria-hidden="true" tabindex="-1"></a>Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb17-523"><a href="#cb17-523" aria-hidden="true" tabindex="-1"></a>  <span class="dt">style</span><span class="op">:</span> <span class="st">"overflow: visible;"</span><span class="op">,</span></span>
+<span id="cb17-524"><a href="#cb17-524" aria-hidden="true" tabindex="-1"></a>  <span class="dt">x</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">false</span><span class="op">,</span> </span>
+<span id="cb17-525"><a href="#cb17-525" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↑ Latitude (z)"</span>}<span class="op">,</span></span>
+<span id="cb17-526"><a href="#cb17-526" aria-hidden="true" tabindex="-1"></a>  <span class="dt">y</span><span class="op">:</span>{<span class="dt">grid</span> <span class="op">:</span> <span class="kw">true</span><span class="op">,</span> </span>
+<span id="cb17-527"><a href="#cb17-527" aria-hidden="true" tabindex="-1"></a>     <span class="dt">reverse</span><span class="op">:</span> <span class="kw">true</span><span class="op">,</span></span>
+<span id="cb17-528"><a href="#cb17-528" aria-hidden="true" tabindex="-1"></a>     <span class="dt">label</span><span class="op">:</span> <span class="st">"↓ Depth (z)"</span>}<span class="op">,</span></span>
+<span id="cb17-529"><a href="#cb17-529" aria-hidden="true" tabindex="-1"></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb17-530"><a href="#cb17-530" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">line</span>(path_filtered<span class="op">,</span> {</span>
+<span id="cb17-531"><a href="#cb17-531" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span> </span>
+<span id="cb17-532"><a href="#cb17-532" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb17-533"><a href="#cb17-533" aria-hidden="true" tabindex="-1"></a>        <span class="dt">curve</span><span class="op">:</span> <span class="st">"catmull-rom"</span><span class="op">,</span></span>
+<span id="cb17-534"><a href="#cb17-534" aria-hidden="true" tabindex="-1"></a>        <span class="dt">stroke</span><span class="op">:</span> <span class="st">"comname"</span><span class="op">,</span> </span>
+<span id="cb17-535"><a href="#cb17-535" aria-hidden="true" tabindex="-1"></a>        <span class="dt">marker</span><span class="op">:</span> <span class="st">"circle"</span>})<span class="op">,</span></span>
+<span id="cb17-536"><a href="#cb17-536" aria-hidden="true" tabindex="-1"></a>      Plot<span class="op">.</span><span class="fu">text</span>(path_filtered<span class="op">,</span> {</span>
+<span id="cb17-537"><a href="#cb17-537" aria-hidden="true" tabindex="-1"></a>        <span class="dt">filter</span><span class="op">:</span> d <span class="kw">=&gt;</span> d<span class="op">.</span><span class="at">est_year</span> <span class="op">%</span> <span class="dv">5</span> <span class="op">==</span> <span class="dv">0</span><span class="op">,</span></span>
+<span id="cb17-538"><a href="#cb17-538" aria-hidden="true" tabindex="-1"></a>        <span class="dt">x</span><span class="op">:</span> <span class="st">"lat_z"</span><span class="op">,</span></span>
+<span id="cb17-539"><a href="#cb17-539" aria-hidden="true" tabindex="-1"></a>        <span class="dt">y</span><span class="op">:</span> <span class="st">"depth_z"</span><span class="op">,</span></span>
+<span id="cb17-540"><a href="#cb17-540" aria-hidden="true" tabindex="-1"></a>        <span class="dt">z</span><span class="op">:</span> <span class="st">"est_year"</span><span class="op">,</span></span>
+<span id="cb17-541"><a href="#cb17-541" aria-hidden="true" tabindex="-1"></a>        <span class="dt">text</span><span class="op">:</span> d <span class="kw">=&gt;</span> <span class="vs">`</span><span class="sc">${</span>d<span class="op">.</span><span class="at">est_year</span><span class="sc">}</span><span class="vs">`</span><span class="op">,</span></span>
+<span id="cb17-542"><a href="#cb17-542" aria-hidden="true" tabindex="-1"></a>        <span class="dt">dy</span><span class="op">:</span> <span class="op">-</span><span class="dv">8</span></span>
+<span id="cb17-543"><a href="#cb17-543" aria-hidden="true" tabindex="-1"></a>    })</span>
+<span id="cb17-544"><a href="#cb17-544" aria-hidden="true" tabindex="-1"></a>    ]<span class="op">,</span> </span>
+<span id="cb17-545"><a href="#cb17-545" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb17-546"><a href="#cb17-546" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Include a legend for the color channel </span></span>
+<span id="cb17-547"><a href="#cb17-547" aria-hidden="true" tabindex="-1"></a>  <span class="dt">color</span><span class="op">:</span> {</span>
+<span id="cb17-548"><a href="#cb17-548" aria-hidden="true" tabindex="-1"></a>    <span class="dt">legend</span><span class="op">:</span> <span class="kw">true</span></span>
+<span id="cb17-549"><a href="#cb17-549" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-550"><a href="#cb17-550" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb17-551"><a href="#cb17-551" aria-hidden="true" tabindex="-1"></a><span class="vs">```</span></span>
 </code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
