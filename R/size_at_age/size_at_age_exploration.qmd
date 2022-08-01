@@ -1,26 +1,30 @@
 ---
 title: "NEFSC Trawl Size at Age Distribution"
-date: "`r Sys.Date()`"
-output: 
-  html_document:
-    toc: TRUE
-    toc_float:
-        collapsed: TRUE
-    code_folding: hide
-editor_options: 
-  chunk_output_type: console
+author: 
+    name: "Adam Kemberling"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+  Change in Size-at-age Relationships for Groundfish Species
+date: "Updated on: `r Sys.Date()`"
+format: 
+  html:
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+editor: source
+execute: 
+  echo: true
+  warning: false
+  message: false
+  fig.height: 6
+  fig.width: 6
+  fig.align: "center"
+  comment: ""
 ---
 
 ```{r setup, include=FALSE}
-
-# Chunk Options
-knitr::opts_chunk$set(echo = TRUE, 
-                      message = F, 
-                      warning = F, 
-                      comment = "", 
-                      fig.height = 6, 
-                      fig.width = 6)
-
 
 ####  Packages  ####
 library(lme4)

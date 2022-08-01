@@ -12,7 +12,8 @@ format:
     code-fold: true
     code-tools: true
     df-print: kable
-editor: visual
+    toc: true
+editor: source
 execute: 
   echo: true
   warning: false
@@ -205,7 +206,7 @@ z_data <- map_dfr(saa_species, function(filter_spec){
 
 ```
 
-For anything that is standdardized, it is done so against the average value for that species using data from all years.
+For anything that is standardized, it is done so against the average value for that species using data from all years.
 
 ```{r observable export}
 # Reformat years as a date - messes with slider
@@ -216,7 +217,7 @@ ojs_define(pref_data = z_data)
 ```
 
 
-Now we write the filtering function that will transform the data read from the CSV using the values of bill_length_min and island.
+Now we write the filtering function that will transform the data passed to observable using the values of `est_year` and `comname`.
 
 ```{ojs}
 // Filtering Function
@@ -230,8 +231,9 @@ filtered = transpose(pref_data).filter(function(trawldat) {
 To use our filter we’ll need some inputs, and we’ll want to be able to use the values of these inputs in our filtering function. To do this, we use the viewof keyword and with some standard Inputs:
 
 
-## Plot Filtering
+## Plot Controls
 
+The following controls will update the data for all plots simultaneously allowing direct comparison across multiple variables and species simultaneously.
 
 
 ```{ojs}
@@ -272,7 +274,8 @@ Plot.plot({
       Plot.line(filtered, {
         x: "est_year", 
         y: "avg_depth",
-        stroke: "comname"}),
+        stroke: "comname", 
+        marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
         y: "avg_depth",
@@ -299,9 +302,10 @@ Plot.plot({
      tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
-      x: "est_year", 
-      y: "avg_temp",
-      stroke: "comname"}),
+        x: "est_year", 
+        y: "avg_temp",
+        stroke: "comname", 
+        marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
         y: "avg_temp",
@@ -327,9 +331,10 @@ Plot.plot({
      tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
-      x: "est_year", 
-      y: "avg_lat",
-      stroke: "comname"}),
+        x: "est_year", 
+        y: "avg_lat",
+        stroke: "comname", 
+        marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
         y: "avg_lat",
@@ -346,9 +351,10 @@ Plot.plot({
 
 # Standardized Shifts:
 
+The following figures all display how a given variable has shifted relative to the overall variance seen for that variable x species. This allows for easier comparison across species.
 
 
-## Standardized Depth
+## Depth Change
 
 ```{ojs}
 Plot.plot({
@@ -363,7 +369,8 @@ Plot.plot({
       Plot.line(filtered, {
         x: "est_year", 
         y: "depth_z",
-        stroke: "comname"}),
+        stroke: "comname", 
+        marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
         y: "depth_z",
@@ -378,7 +385,7 @@ Plot.plot({
 ```
 
 
-## Standardized Temperature
+## Temperature Change
 
 ```{ojs}
 Plot.plot({
@@ -390,9 +397,10 @@ Plot.plot({
      tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
-      x: "est_year", 
-      y: "temp_z",
-      stroke: "comname"}),
+        x: "est_year", 
+        y: "temp_z",
+        stroke: "comname", 
+        marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
         y: "temp_z",
@@ -406,7 +414,7 @@ Plot.plot({
 )
 ```
 
-## Standardized Latitude
+## Latitude Change
 
 ```{ojs}
 Plot.plot({
@@ -418,9 +426,10 @@ Plot.plot({
      tickFormat: d3.format(".1d")},
   marks: [
       Plot.line(filtered, {
-      x: "est_year", 
-      y: "lat_z",
-      stroke: "comname"}),
+        x: "est_year", 
+        y: "lat_z",
+        stroke: "comname", 
+        marker: "circle"}),
       Plot.text(filtered, Plot.selectLast({
         x: "est_year",
         y: "lat_z",
