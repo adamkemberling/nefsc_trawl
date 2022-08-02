@@ -35,7 +35,7 @@ The general hypothesis follows that species that are better able to track favora
 #| echo = FALSE
 
 ####  Packages  ####
-library(tidyverse)
+library(raster)
 library(gmRi)
 library(sf)
 library(gt)
@@ -50,10 +50,13 @@ library(geomtextpath)
 library(colorspace)
 library(broom)
 library(matrixStats)
-
+library(tidyverse)
 
 # Set theme
 theme_set(theme_gmri())
+
+# # Load some functions to help with mapping
+devtools::source_url("https://raw.githubusercontent.com/adamkemberling/oisst_mainstays/master/R/temp_report_support.R")
 
 # Map polygons
 us_poly <- ne_states("united states of america", returnclass = "sf")
@@ -235,6 +238,8 @@ global_benchmarks <- station_totals %>%
   )
 ```
 
+
+
 ## Regional surface Temperatures
 
 Using OISST data for the region, and a 30-year climatology, we know that the region has experienced the following trend in sea surface temperature anomalies:
@@ -261,6 +266,96 @@ ggplot(oisst_yrs, aes(year, anom)) +
        x = "Year",
        y = "Temperature Anomaly °C")
 ```
+
+## Center of Biomass
+
+Using both Lat/Lon we can determine a center of biomass, and how that has changed between regimes for each species.
+
+```{r}
+
+
+# Weighted mean Locations
+center_coord_df <- station_totals %>% 
+  group_by(comname, temp_regime) %>% 
+  summarise(
+    biom_lat  = weightedMean(decdeg_beglat, biomass_kg, na.rm = T),
+    biom_lon  = weightedMean(decdeg_beglon, biomass_kg, na.rm = T),
+    .groups = "drop") 
+
+
+# Coord ranges to crop
+xlim <- range(center_coord_df$biom_lon)
+ylim <- range(center_coord_df$biom_lat)
+
+```
+
+::: {.panel-tabset}
+
+#### COB Shifts
+
+```{r}
+#| fig.height = 7,
+#| fig.width = 7
+
+# Add the bottom contours:
+bathy <- raster("~/Documents/Repositories/Points_and_contours/NEShelf_Etopo1_bathy.tiff")
+    
+# Add the bottom contours as color
+# Reclassify to discrete
+bathy_reclass <- reclassify_bathy(bathy, depth_increments = -100, min_elev = -600, max_elev = 0)
+reclass_ras <- bathy_reclass$ras
+reclass_labs  <- bathy_reclass$labs
+    
+    
+# Convert to DF, add labels from reclassification ey
+bathy_rclass_df <- rasterdf(reclass_ras) %>% 
+  dplyr::select(x, y, bin_num = value) %>% 
+  left_join(reclass_labs, by = "bin_num")
+
+
+
+# Full map of GOM
+ggplot() +
+  geom_raster(data = bathy_rclass_df, aes(x,y, fill = bin_labs), alpha = 0.9, show.legend = FALSE) +
+  scale_fill_brewer(palette = "Blues", 
+                    na.value = "#08519C",
+                    labels = c(levels(bathy_rclass_df$bin_labs), "Greater than -600"),
+                    name = "Depth") + 
+  geom_sf(data = us_poly) +
+  geom_sf(data = canada) +
+  ggforce::geom_link2(
+    data = center_coord_df,
+    aes(x = biom_lon, 
+        y = biom_lat, 
+        group = comname,
+        alpha = stat(index),
+        color = "Warm Regime"),
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(data = center_coord_df, aes(x = biom_lon, y = biom_lat, color = temp_regime), size = 3) +
+  ggrepel::geom_text_repel(data = filter(center_coord_df, temp_regime == "Warm Regime"), 
+            aes(label = comname, x = biom_lon, y = biom_lat), size = 3) +
+  scale_color_gmri() +
+  coord_sf(xlim = c(-74.5, -66), ylim = c(38, 44)) +
+  map_theme(legend.position = "bottom") +
+  labs(color = "Temperature Regime", title = "Weighted-Mean Center of Biomass")
+
+
+```
+
+:::
+
+A major feature of the study area is the bathymetric and current features that make the Gulf of Maine special for species shifting their distributions Northward.
+
+Following the continental shelf northward along the east coast is a linear migratory pathway, up until Cape Cod. Species south of this point will likely be able to maintain their ideal depth and shift their distributions Northward to follow temperature preferences.
+
+Once within the Gulf of Maine, there are two key features that make it a location where species may either halt their shifts, or adjust their strategies:
+
+  1. The first is the availability of deeper "on-shelf" habitat. South of the GoM there is relatively few deeper habitats that are not associated with the shelf break. This creates an opportunity to move deeper while remaining on the shelf.
+  2. The second is the inflow of cold water from the Scotian shelf. This cold-water further buffers the Gulf of Maine from the warmer waters of the Gulf stream, particularly at increased depths.
+  
+
+
 
 ## Bottom Temperatures
 
@@ -765,61 +860,6 @@ ggplot()  +
 Across all species the average depth (by biomass) has increased from `r avg_depths[avg_depths$temp_regime == "Early Regime", 2][[1]]` to `r avg_depths[avg_depths$temp_regime == "Warm Regime", 2][[1]]` for a change in `r diff(avg_depths$biom_avg)` meters.
 
 
-## Center of Biomass
-
-Using both Lat/Lon we can determine a center of biomass, and how that has changed between regimes for each species.
-
-```{r}
-
-# Weighted mean Locations
-center_coord_df <- station_totals %>% 
-  group_by(comname, temp_regime) %>% 
-  summarise(
-    biom_lat  = weightedMean(decdeg_beglat, biomass_kg, na.rm = T),
-    biom_lon  = weightedMean(decdeg_beglon, biomass_kg, na.rm = T),
-    .groups = "drop") 
-
-
-# Coord ranges to crop
-xlim <- range(center_coord_df$biom_lon)
-ylim <- range(center_coord_df$biom_lat)
-
-```
-
-::: {.panel-tabset}
-
-#### COB Shifts
-
-```{r}
-#| fig.height = 7,
-#| fig.width = 7
-
-
-# Make the map
-ggplot() +
-  geom_sf(data = us_poly) +
-  geom_sf(data = canada) +
-  ggforce::geom_link2(
-    data = center_coord_df,
-    aes(x = biom_lon, 
-        y = biom_lat, 
-        group = comname,
-        alpha = stat(index),
-        color = "Warm Regime"),
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(data = center_coord_df, aes(x = biom_lon, y = biom_lat, color = temp_regime), size = 3) +
-  ggrepel::geom_text_repel(data = filter(center_coord_df, temp_regime == "Warm Regime"), 
-            aes(label = comname, x = biom_lon, y = biom_lat), size = 3) +
-  scale_color_gmri() +
-  coord_sf(xlim = xlim, ylim = ylim) +
-  map_theme(legend.position = "bottom") +
-  labs(color = "Temperature Regime", title = "Weighted-Mean Center of Biomass")
-
-
-```
-
-:::
 
 ## Move vs. Acclimate
 
