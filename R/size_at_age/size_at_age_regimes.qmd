@@ -390,8 +390,8 @@ key_species <- sort(c(
 To assess the impact of an elevated temperature regime, the size-at-age data was grouped into decadal periods relating to the shift in surface temperature regimes (2000-2009 & 2010-2019). Growth in fishes is commonly modeled using the "Von-Bertalanffy" growth function (VBGF) to capture how a fishes size (length or weight) changes with age. For each species the growth was modeled by fitting the VGBF to the length distribution-at-age.
 
 $$L_t~=~L_{\infty}(1-e^{-K(t-t_0)})$$
-
-
+Where $L_t$ is the length in cm of a species at age $t$. $L_\infty$ is the asymptotic maximum length, $K$
+ is _____, and $t_0$ is x intercept, or the hypothetical age at 0 cm length.
 
 
 ```{r}
@@ -399,11 +399,9 @@ $$L_t~=~L_{\infty}(1-e^{-K(t-t_0)})$$
 vb <- vbFuns(param="Typical") 
 ```
 
-**Single Species Example**
 ```{r vonbert test example}
-#| eval = FALSE,
-#| echo = FALSE
-
+#| eval: false
+#| echo: false
 
 ####  What a single model fitting looks like  ####
 
@@ -435,11 +433,7 @@ t_sum$convInfo$isConv
 ```
 
 
-
-
-**Model Output Collector**
-
-```{r}
+```{r vonbert model fitter}
 
 # Function to Pull Vonbert Coefficients, 
 # In development: boot strapped intervals
@@ -523,9 +517,8 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
 
 ```
 
-**Wrapper for estimation function**
 
-```{r}
+```{r vonbert group wrapper function} 
 # Second Function for running that for a single Species, split by a factor column
 
 # Function does these things:
@@ -554,9 +547,9 @@ process_group_vbert <- function(spec_name, split_col, min_obs){
 
 ```
 
-**Processing Coeficients**
 
-```{r}
+
+```{r vonbert coefficient processing}
 # Running Each Species * Regime
 species_coef <- vonbert_species %>% 
   map_dfr(function(x){

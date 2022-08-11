@@ -9,6 +9,7 @@ description: |
 date: "`r Sys.Date()`"
 format: 
   html:
+    self-contained: true
     code-fold: true
     code-tools: true
     df-print: kable
