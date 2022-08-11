@@ -5,14 +5,16 @@ author:
     url: https://github.com/adamkemberling
     affiliation: Gulf of Maine Research Institute
 description: | 
-  Differential Growth Rates Under Different Temperature Regimes
-date: "Updated on: `r Sys.Date()`"
+  Differential Growth Rates of Northeast US Fishes Following Temperature Regime Shift
+date: "`r Sys.Date()`"
 format: 
   html:
     code-fold: true
     code-tools: true
     df-print: kable
-editor: visual
+    toc: true
+    toc-depth: 2
+editor: source
 execute: 
   echo: true
   warning: false
@@ -31,9 +33,7 @@ execute:
 library(FSAdata)
 library(FSA)
 library(car)
-library(tidyverse)
-library(gmRi)
-library(targets)
+library(matrixStats)
 library(scales)
 library(patchwork)
 library(directlabels)
@@ -43,6 +43,10 @@ library(ggdist)
 library(ggforce)
 library(geomtextpath)
 library(colorspace)
+library(gt)
+library(tidyverse)
+library(gmRi)
+library(targets)
 
 # Set theme
 theme_set(theme_gmri())
@@ -76,31 +80,45 @@ plot_panelset <- function(spec, plot_fun, ...) {
 
 `r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
-## Comparing Growth Regimes in the NW Atlantic
+# Growth Regimes in the NW Atlantic Following Temperature Regime Shift
 
-Recent changes in Gulf stream positioning have altered the relative influences of the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region as well as food-web dynamics, we seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
+# Introduction
 
-## Temperature Regimes
 
-The change in thermal regimes occurred around 2010. Following this regime change, annual temperatures have been several degrees warmer than the previous 3+ decades.
+### Literature on TSR and Growth Expectations
 
-```{r temp regimes}
+
+
+### Introduce Study Area and Existing Research
+
+Recent changes in Gulf stream positioning have altered the relative influences of the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region, as well as food-web dynamics. We seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
+
+Despite many of these species living at or near the bottom, research suggests that the forces driving these thermal regimes should have far-reaching impacts biological impacts. These impacts may directly change the near-bottom environment through mixing patterns, and/or indirectly through food-web impacts.
+
+Through the lens of an environmental regime change we will assess changes to body size, size-at-age, and growth characteristics derived using the von-bertalanffy growth equation.
+
+# Methods
+
+
+## Sea Surface Temperature
+
+Global Sea surface temperature data was obtained via NOAA’s optimally interpolated SST analysis, providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at https://psl.noaa.gov.
+
+```{r}
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(regional_oisst))
 
 
-
-
 # Get regional averages
 temp_regimes <- regional_oisst %>% 
   filter(yr > 1981) %>% 
-  mutate(regime = ifelse(yr < 2010, "1982-2009 Average", "2010-2021 Average")) %>% 
+  mutate(
+    regime = ifelse(yr < 2010, "1982-2009 Average", "2010-2021 Average"),
+    survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
+    survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB"))) %>% 
   group_by(survey_area, regime) %>% 
   mutate(
-    survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
-    survey_area = factor(survey_area, 
-                         levels = c("Full Region", "GoM", "GB", "SNE", "MAB")),
     avg_temp_c = round(mean(sst), 2),
     temp_label = str_c(avg_temp_c, "\u00b0C"),
     avg_anom_c = mean(sst_anom),
@@ -110,53 +128,180 @@ temp_regimes <- regional_oisst %>%
          ) %>% 
   ungroup()
 
-
-
-
-# Plot how each one exhibits a break in the
-temp_regimes %>% 
-  filter(survey_area == "Full Region") %>% 
-  ggplot( aes(yr, sst_anom)) +
-  geom_col(aes(fill = regime),  size = 0.75, alpha = 0.4) +
-  scale_fill_gmri() +
-  # Using geomtextpath for label
-  geom_textpath(
-    aes(x = yr, 
-        y = avg_anom_c, 
-        label = temp_label, 
-        linecolor = regime,
-        colour = regime), 
-        size = 4, vjust = -1, fontface = "bold", show.legend = FALSE) +
-  # Line segments for the regime averages:
-  geom_segment(
-    aes(x = x, 
-        xend = xend,
-        y = avg_anom_c, 
-        yend = avg_anom_c,
-        color = regime),
-    size = .8,
-    linetype = 1) +
-  scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
-  scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
-  scale_color_gmri() +
-  guides(fill = "none") +
-  theme(
-    legend.title = element_blank(),
-    legend.position = "bottom",
-    legend.background = element_rect(fill = "transparent"),
-    legend.key = element_rect(fill = "transparent", color = "transparent")) + 
-  labs(
-    title = "Northwest-Atlantic Temperature Regime Shift",
-    x = "", 
-    y = "Surface Temperature Anomaly",
-    caption = "Anomalies calculated using 1982-2011 reference period.") +
-  guides(label = "none")
-   
 ```
 
-## Groundfish Biological Data
 
-The data on groundfish size-at-age is obtained as part of the NEFSC's northeast trawl survey. The age data specifically is a subset of the overall catch data, the biological dataset, which contains additional information on individuals such as age/sex/histology.
+
+### Temperature Study Region
+
+Temperature data was regionally averaged to match the sampling area for the fisheries independent survey program providing the age-at-length data. SST anomalies were averaged over the entire sampling region, consisting of continental shelf habitats from Cape Hatteras to Nova Scotia, to produce a daily time series. This time series was then processed into an annual timeseries of surface temperatures and anomalies. All area-averaging was done with area-weighting to account for differences in the relative areas of the latitude/longitude grid of the OISSTv2 data.
+
+
+### Temperature Regime Shift
+
+**Text about identifying the regime shift**
+
+### Warming Trends
+
+We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the full time period (1982-2009) and the last decade
+(2010-2019), estimating warming rates and long-term averages independently for each period.
+
+```{r}
+# warming trends
+list(
+  "1982-2019" = filter(temp_regimes, between(yr, 1982, 2009)),
+  "2010-2019" = filter(temp_regimes, between(yr, 2010, 2019))
+) %>% 
+  map_dfr(function(.x){
+    mod_x <- lm(sst ~ yr, data = .x)
+    rate <- coef(mod_x)[["yr"]] * 10
+    rate_df <- tibble("Decadal Rate" = round(rate, 2))
+    return(rate_df)}, .id = "Period")
+```
+
+Temperatures prior to the 2010 regime shift rose at a rate of 0.7 $°C/Decade$. Regional temperatures then peaked in 2012 and have remained high while decreasing slowly at a rate of 0.02 $°C/Decade$.
+
+## Distribution Shift Analyses
+
+Fishery Independent data on groundfish size-at-age was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the Spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. **Add an Explanation of the Strata we Exclude**. Correction factors were applied for changes in vessels, gear, and doors when appropriate. Prior to sampling, a CTD cast is performed to collect environmental conditions for the water column at/near the start of the trawl sample providing information on bottom habitat conditions like bottom temperatures. Distribution shift analyses were limited to data from the Spring survey season. Previous work has shown no significant changes in timing of sampling, or the mean annual latitude and longitude of the Spring survey sampling (Nye et al. 2009).
+
+
+**What do we calculate and for how many species?**
+
+Our analyses followed the continued movements of 30 species consistent with Nye et al. 2009. These species were originally selected for being consistently sampled across all years, and as representatives of a wide range of taxonomic groups.
+
+```{r}
+# Access the tidy survdat Data with {targets}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(survdat_clean))
+
+
+# Filter to Just spring?
+dist_dat <- survdat_clean %>% 
+  filter(season == "Spring")
+
+# Just the Species, or as Stocks?
+nye_species <- c(
+  "spiny dogfish",
+  "little skate",
+  "thorny skate",
+  "winter skate",
+  "alewife",
+  "american shad",
+  "atlantic herring",
+  "atlantic cod",
+  "haddock",
+  "pollock",
+  "silver hake",
+  "red hake",
+  "spotted hake",
+  "white hake",
+  "cusk",
+  "goosefish",
+  "american plaice",
+  "atlantic halibut",
+  "yellowtail flounder",
+  "winter flounder",
+  "fourspot flounder",
+  "summer flounder",
+  "windowpane",
+  "atlantic mackerel",
+  "ocean pout",
+  "atlantic wolffish",
+  "blackbelly rosefish",
+  "longhorn sculpin",
+  "sea raven",
+  "acadian redfish"
+)
+
+
+# Filter to those species
+dist_dat <- dist_dat %>% filter(comname %in% nye_species)
+
+# Get the total biomass at each station
+# Totals up the abundance and biomass across sex*
+station_totals <- dist_dat %>% 
+  group_by(est_year, survey_area, stratum, tow, est_towdate, avgdepth, bottemp, decdeg_beglat, decdeg_beglon, comname) %>% 
+  summarise(
+    biomass_kg = sum(biomass_kg, na.rm = T),
+    .groups = "drop")
+
+
+```
+
+### Calculating Spatial Metrics
+
+Movements through time were characterized for each species using the following metrics: center of biomass, area-occupied, mean depth of occurrence, and the mean temperature of occurrence. Each metric was weighted by the biomass of a species sampled at each station such that.
+
+$$X_j = \frac{ \sum_{}^{}  w_iX_{ij}  }{  \sum~w_i  }$$
+Where $X$ is the spatial metric, $j$ is the year, & $w$ is the biomass (in kg) for each station $i$. 
+
+```{r}
+# Function to run the group weighted means on different groups using ...
+# Does all variables: depth, temp, lat, lon & their variance (sd)
+group_spat_metrics <- function(station_totals, ...){
+  station_totals %>% 
+    group_by(comname, ...) %>% 
+    summarise(
+      total_biomass   = sum(biomass_kg),
+      avg_biomass     = mean(biomass_kg),
+      biomass_sd      = sd(biomass_kg),
+      avg_depth       = weightedMean(avgdepth, w = biomass_kg, na.rm = T),
+      avg_temp        = weightedMean(bottemp, w = biomass_kg, na.rm = T),
+      avg_lat         = weightedMean(decdeg_beglat, w = biomass_kg, na.rm = T),
+      avg_lon         = weightedMean(decdeg_beglon, w = biomass_kg, na.rm = T),
+      depth_sd        = weightedSd(avgdepth, w = biomass_kg, na.rm = T),
+      temp_sd         = weightedSd(bottemp, w = biomass_kg, na.rm = T),
+      lat_sd          = weightedSd(decdeg_beglat, w = biomass_kg, na.rm = T),
+      lon_sd          = weightedSd(decdeg_beglon, w = biomass_kg, na.rm = T),
+      .groups = "drop")
+}
+
+
+# Function to calculate weighted mean & median across biomass variables
+# returns a common format that can join easily to global benchmarks
+biomass_weighted_var <- function(station_totals, var_col, ...){
+  var_lab <- deparse(substitute(var_col))
+  mean_df <- station_totals %>% 
+  group_by(comname, ...) %>% 
+  summarise(
+    biom_median  = weightedMedian({{var_col}}, biomass_kg, na.rm = T),
+    biom_mu      = weightedMean({{var_col}},   biomass_kg, na.rm = T),
+    biom_sd      = weightedSd({{var_col}}, biomass_kg, na.rm = T), 
+    .groups = "drop") %>% 
+    mutate(var = var_lab)
+  
+  return(mean_df)
+  
+}
+
+
+
+# 1. Yearly Spatial Metrics
+year_avgs <- group_spat_metrics(station_totals, est_year) 
+
+
+# 2. Average Metrics Across Temperature Regimes
+regime_avgs <- station_totals %>% 
+  filter(est_year >= 2000) %>% 
+  mutate(temp_regime = ifelse(est_year < 2010, "Early Regime", "Warm Regime")) %>% 
+  group_spat_metrics(., temp_regime) 
+
+
+# Variance across all years within each species
+global_benchmarks <- group_spat_metrics(station_totals) 
+
+```
+
+
+
+### Analysis of Spatial Metrics
+
+
+
+## Size at Age Analyses
+
+The available age data is a subset of the overall catch data, which contains additional information on individual fishes such as otolith-derived aging that require additional workup to ascertain. Not all fish species have age available for the full time period, with special attention being given to aid in the management of commercially valuable species.
 
 ```{r bio data prep}
 # Access Biological Data with {targets}
@@ -180,58 +325,48 @@ nmfs_bio <- nmfs_bio %>%
     decade = floor_decade(est_year)) 
 
 rm(survdat_biological)
-```
 
-### Studying Regimes
 
-To ensure enough age data is available for deriving growth characteristics, the data is grouped into regimes that match the regional temperature regimes. Despite these species living at or near the bottom, research suggests that the forces driving these thermal regimes would have far-reaching impacts biological impacts. These impacts may directly change the near-bottom environment through mixing patterns, and/or indirectly through food-web impacts.
 
-Through this lens we will assess changes to body size, size-at-age, and growth characteristics derived using the von-bertalanffy growth equation.
+####  Growth Data Prep  #### 
 
-```{r year filter}
 # Filter to just the data for the two regimes
 regime_dat <- filter(nmfs_bio, est_year >= 2000, est_year <= 2019)
 
-```
-
-### Species Selected
-
-The biological data is then separated into lists organized by species. The lists contain all data for a given species, broken into groups at a set interval of time. In this case it is ten-year thermal regimes we seek to compare.
-
-In the original proposal it was stated that 17 species would be used, species that are regularly measured and aged. Ordering all species by the number aged we can pull out the following top species:
-
-```{r vbert species selection}
-####  Data Prep  #### 
 
 # Rank species by how many measurements there are
 species_abunds <- regime_dat %>% 
   count(comname) %>% 
   arrange(desc(n)) # ordered by number measured
 
-# Reorder alphabetically
-vonbert_species <- sort(species_abunds$comname[1:17])
+# # Reorder alphabetically And take
+# vonbert_species <- sort(species_abunds$comname[1:17])
+
+
+# Drop the ones that don't work
+vonbert_species <- species_abunds %>% 
+  filter(comname %not in% c("goosefish", "fourspot flounder", "cusk", "ocean pout", "bluefish")) %>% 
+  arrange(comname) %>% 
+  pull(comname)
+
 ```
 
-These will be the species that we assess length-at-age characteristics for our meta-analysis:
 
-**`r pander::pander(vonbert_species)`.**
+Size at age analyses were performed on `r length(vonbert_species)` species. Species were omitted from analyses if age data was not available across both temperature regimes (bluefish & ocean pout) or if their physiology prevented accurate aging (elasmobranch species). The following 18 species had sufficient age data across both temperature regimes to be included in the analysis: **`r pander::pander(vonbert_species)`**.
 
-Unfortunately; despite being major players in the regions ecology, age data is not available for spiny dogfish and other elasmobranch species.
 
 ```{r panel species}
 
 # Name the list so it carries through
 names(vonbert_species) <- vonbert_species
 
-
-##### Pull species data into the list, and make group id for later
-all_vonbert <-  map_dfr(vonbert_species, function(species_name){
+##### Reorganize species data into the list, and make group id for later
+vonbert_species_agedat <-  map_dfr(vonbert_species, function(species_name){
   # Filter to the vonbert species
   regime_dat %>%
     filter(comname == species_name) %>% 
     mutate(group_id = str_c(regime, comname, sep = "-")) 
 }, .id = "common name") 
-
 
 # Species we want panels for:
 key_species <- sort(c(
@@ -249,52 +384,790 @@ key_species <- sort(c(
 ))
 ```
 
-### Growth Increment Estimation
 
-One aspect of growth beyond size-at-age is the annual growth between years of a specific age, or the growth increment.
+### Growth by Temperature Regime
+
+To assess the impact of an elevated temperature regime, the size-at-age data was grouped into decadal periods relating to the shift in surface temperature regimes (2000-2009 & 2010-2019). Growth in fishes is commonly modeled using the "Von-Bertalanffy" growth function (VBGF) to capture how a fishes size (length or weight) changes with age. For each species the growth was modeled by fitting the VGBF to the length distribution-at-age.
+
+$$L_t~=~L_{\infty}(1-e^{-K(t-t_0)})$$
+
+
+
+
+```{r}
+# Set the function for nls() to solve
+vb <- vbFuns(param="Typical") 
+```
+
+**Single Species Example**
+```{r vonbert test example}
+#| eval = FALSE,
+#| echo = FALSE
+
+
+####  What a single model fitting looks like  ####
+
+# Data
+test_dat <- filter(vonbert_species_agedat, comname == "haddock")
+
+# Get starting points from all data
+test_starts <-  vbStarts(length_cm ~ age, 
+                         data = test_dat)
+
+# Fit the von bert
+test_vbert_fit <- nls(
+  length_cm ~ vb(age, Linf, K, t0),
+  data = test_dat,
+  start = test_starts)
+
+# Access parameters with coef()
+test_vbert_coef <- as.data.frame(t(coef(test_vbert_fit)))
+
+# Get Summary Info (For convergence and std. error)
+t_sum <- summary(test_vbert_fit)
+
+# Parameters w/ Standard Error
+t_params <- rownames_to_column(as.data.frame(t_sum$parameters), var = "parameter")
+
+# Convergence Info
+t_sum$convInfo$isConv
+
+```
+
+
+
+
+**Model Output Collector**
 
 ```{r}
 
-# Age-Size Increments Differences
-vb_incs <- all_vonbert %>% 
-  group_by(`common name`, est_year,  age, regime) %>% 
-  summarise(avg_len = mean(length_cm, na.rm = T),
-            avg_wt  = mean(indwt, na.rm = T),
-            .groups = "drop") %>% 
-  arrange(`common name`, age) %>% 
-  group_split(`common name`, est_year) %>% 
+# Function to Pull Vonbert Coefficients, 
+# In development: boot strapped intervals
+vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
+  
+  ####  Von Bert Fitting Using: {FSA}  ####
+  # Don't run on fewer than a minimum number of observations
+  num_aged <- nrow(length_age_dat)
+  
+  # If number aged less than the minimum observations:
+  # fill output with NA's, but preserve structure to build table
+  if(num_aged < min_obs){
+    
+    # dataframe structure for coefficients
+    na_coef_df <- data.frame(
+      "Linf" = NA,
+      "K" = NA,
+      "t0" = NA)
+    
+    # dataframe structure for parameters
+    na_param_df <- data.frame(
+      "parameter" = NA,
+      "estimate" = NA,
+      "std_error" = NA,
+      "t_value" = NA,
+      "pr_t" = NA,
+      "converged" = NA)
+    
+    # What to return when it fails/aborts:
+    return(list("model"  = NA, 
+                "coef"   = na_df, 
+                "params" = na_param_df))
+    
+  } # Close conditional for sample size
+  
+  
+  ####  Fitting Model When Sample Size is Sufficient  ####
+  
+  # Use nls to estimate VBGF parameters using starting points
+  vbert_fit <- nls(length_cm ~ vb(age, Linf, K, t0),
+                   data = length_age_dat,
+                   start = start_points)
+
+  # Access parameters with coef()
+  vbert_coef <- as.data.frame(t(coef(vbert_fit)))
+  
+  
+  # Get Summary Info (For convergence and std. error)
+  vbert_summ <- summary(vbert_fit)
+  
+  # Convergence Info
+  vbert_conv <- vbert_summ$convInfo$isConv
+  
+  # Parameters w/ Standard Error
+  vbert_params <- as.data.frame(vbert_summ$parameters) %>% 
+    rownames_to_column(var = "parameter") %>% 
+    janitor::clean_names()
+  
+  # add convergence information in
+  vbert_params$converged <- vbert_conv
+  
+
+  ####  Work in Progress / Debugging  ####
+  # This section fails, can't find namespace/object "length_age_dat"
+  # # Use bootstrapping for confidence intervals:
+  # vbert_boot <- Boot(vbert_fit)  # Be patient! Be aware of some non-convergence
+  # vbert_conf <- confint(vbert_boot)
+  
+  # output list
+  out_l <- list(
+    "model" = vbert_fit,
+    "coef"  = vbert_coef,
+    "params" = vbert_params#,
+    #"conf"  = vbert_conf
+  )
+
+  # Return the list
+  return(out_l)
+  
+}
+
+```
+
+**Wrapper for estimation function**
+
+```{r}
+# Second Function for running that for a single Species, split by a factor column
+
+# Function does these things:
+# 1. grab data for one species
+# 2. Get starting points for VB using all data on that species
+# 3. Fit Vonbert to  both Regimes
+process_group_vbert <- function(spec_name, split_col, min_obs){
+  
+  # Get the data using the species
+  spec_dat <- dplyr::filter(vonbert_species_agedat, comname == spec_name)
+  
+  # Get starting points from all data
+  test_starts <-  vbStarts(length_cm ~ age, 
+                           data = spec_dat)
+  
+  # Get coefficients for groups
+  spec_dat %>% 
+    split(.[split_col]) %>% 
+    map(.f = vonbert_coef,
+            start_points = test_starts, 
+            min_obs = min_obs) %>% 
+    # map_dfr(pluck, "coef", .id = split_col) %>%  # Pull  out just the coefficients
+    map_dfr(pluck, "params", .id = split_col) %>%  # Pull out the parameters and stderr
+    mutate(comname = spec_name)
+}
+
+```
+
+**Processing Coeficients**
+
+```{r}
+# Running Each Species * Regime
+species_coef <- vonbert_species %>% 
   map_dfr(function(x){
-    x %>% 
-      mutate(
-        # What age is being subtracted from
-        lead_age   = lead(age, n = 1),
-        # String built from the value to confirm
-        diff_name  = str_c(age, " - ", lead_age),
-        # Length/Weight at age + 1
-        len_age_p1 = lead(avg_len, n = 1),
-        wt_age_p1  = lead(avg_wt, n = 1),
-        # Length/Weight Growth Increments
-        len_inc    = len_age_p1 - avg_len,
-        wt_inc     = wt_age_p1 - avg_wt,
-        # Percent change in bodymass for going from age to age+1
-        len_perc_change = (len_inc / avg_len) * 100,
-        wt_perc_change = (wt_inc / avg_wt) * 100) %>% 
-      filter((lead_age - age == 1))
+    process_group_vbert(
+      spec_name = x, 
+      split_col =  "regime", 
+      min_obs = 30)
+    
   })
+```
+
+
+
+### Growth Impacts on Productivity
+
+Yield-per-recruit analysis similar to Baudron et al. 2014?
+
+
+
+# Results
+
+## Temperature Regime Shift
+
+```{r}
+
+# Pull the whole area's temps
+survey_temps <- filter(temp_regimes, survey_area == "Full Region")
+
+# Pull the regime averages out
+regime_avgs <- survey_temps %>% 
+  distinct(regime, avg_temp_c, avg_anom_c, temp_label) 
+
+# Get the regime averages separately for in text values
+regime_1 <- regime_avgs %>% filter(regime == "1982-2009 Average")
+regime_2 <- regime_avgs %>% filter(regime == "2010-2021 Average")
+
+
+# Functions developed in 10_change_points.R
+library(bcp)
+
+# run bcp and flag changepoints using threshold
+flag_bcp <- function(response_var,  
+                     predictor_var = NULL, 
+                     id_var, 
+                     burnin = 10000,
+                     mcmc = 10000, 
+                     return.mcmc = T, 
+                     threshold_prob = 0.3){
+ 
+  # Use bcp to find support for change points
+  bcp_x <- bcp(y = response_var, 
+               x = predictor_var, 
+               burnin = burnin, 
+               mcmc = mcmc, 
+               return.mcmc = return.mcmc)
+  
+  sink("/dev/null")
+  # Convert summary to a dataframe
+  bcp_sum <- as.data.frame(summary(bcp_x))
+  sink()
+  
+  # Label the id variable
+  bcp_sum$id <- id_var
+  
+  #Only pull records with support above desired threshold
+  flag_dat <- bcp_sum[which(bcp_x$posterior.prob > threshold_prob), ]
+  flag_dat <- as.data.frame(flag_dat)
+  return(flag_dat)
+  
+}
+
+
+# Set seed
+set.seed(3905)
+
+
+# Perform BCP regions temp breakpoints
+anom_bcp <- flag_bcp(response_var = survey_temps$sst_anom, 
+                     id_var = survey_temps$yr, 
+                     threshold_prob = 0.3)
+
+# in-text values
+prob_text <- paste(round(anom_bcp$Probability *100, 2), collapse = ", ")
+```
+
+
+SST anomaly time series of the region indicate a jump in annual temperature anomalies indicative of a regime shift centered around 2010. A bayesian change point analysis showed highest support for a regime shift among `r nrow(anom_bcp)` the years: 2009-2011. Change point probabilities for these years were `r prob_text`% respectively.
+
+```{r}
+# Function to plot bcp breaks, highlighting their support
+plot_bcp_breaks <- function(bcp_data, 
+                            bcp_breaks, 
+                            region_label, 
+                            y_label = "sizeSpectra Exponent (b)",
+                            y_col = "b"){
+  
+  # Set label elevation
+  label_y <- mean(as.data.frame(bcp_data)[, y_col], na.rm = T) - 1
+  
+  # plot with breakpoint
+  ggplot(bcp_data, aes_string("yr", y_col)) + 
+    geom_line() + 
+    geom_point() + 
+    geom_vline(data = bcp_breaks, aes(xintercept = id), linetype = 2, color = "gray50") +
+    ggrepel::geom_label_repel(data = bcp_breaks, 
+                              aes(x = id, y = label_y, label = str_c(round(Probability, 2), "%"))) +
+    labs(x = "Year", 
+         y = y_label, 
+         title = str_c(region_label, " - Bayesian Change Points"))
+}
+
+
+
+
+
+# Plot the bcp breaks for the Sea surface temperature anomalies
+plot_bcp_breaks(bcp_data = survey_temps, 
+                bcp_breaks = anom_bcp, 
+                y_label = "Temperature Anomalies", 
+                region_label = "Northeastern US Continental Shelf", 
+                y_col = "sst_anom")
 
 
 ```
 
-## Age Data Frequencies
 
-Just looking at the raw data available, it becomes obvious that there are differences in the number of fish at various ages through time.
+Average temperatures following a break in 2010, during the period of 2010-2021, were on average 1.09°C warmer than the than the average over the previous 28 years from 1982-2009. Temperatures within each regime were relatively stable, indicative of a jump in mean temperatures rather than rate change between them.
 
-With cases of large cohorts passing through, or older individuals being caught less frequently. Particularly large cohorts of haddock are a good example.
+
+```{r temp regimes}
+
+# Plot how each one exhibits a break in the temperature across the region
+temp_regimes %>% 
+  filter(survey_area == "Full Region") %>% 
+  ggplot( aes(yr, sst_anom)) +
+  geom_col(aes(fill = regime),  size = 0.75, alpha = 0.4) +
+  scale_fill_gmri() +
+  # Using geomtextpath for label
+  geom_textpath(
+    aes(x = yr, 
+        y = avg_anom_c, 
+        label = temp_label, 
+        linecolor = regime,
+        colour = regime), 
+        size = 4, vjust = -1, fontface = "bold", show.legend = FALSE) +
+  # Line segments for the regime averages:
+  geom_segment(
+    aes(x = x, 
+        xend = xend,
+        y = avg_anom_c, 
+        yend = avg_anom_c,
+        color = regime),
+    #key_glyph = "rect",
+    size = .8,
+    linetype = 1) +
+  scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
+  scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
+  scale_color_gmri() +
+  guides(fill = "none") +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom",
+    legend.background = element_rect(fill = "transparent"),
+    legend.key = element_rect(fill = "transparent", color = "transparent")) + 
+  labs(
+    title = "Northwest-Atlantic Temperature Regime Shift",
+    x = "", 
+    y = "Surface Temperature Anomaly",
+    caption = "Anomalies calculated using 1982-2011 reference period.") +
+  guides(label = "none",
+         color = guide_legend(keyheight = unit(0.5, "cm"), ))
+   
+```
+
+
+## Distribution Shifts
+
+
+```{r}
+#| fig.height: 8
+#| fig-width: 8
+
+# Get the values for each of them in a standardized format
+# Standardize to global benchmarks
+
+# Latitude
+lat_yrly <- biomass_weighted_var(station_totals, decdeg_beglat, est_year) %>% 
+  left_join(select(global_benchmarks, c("comname", "avg_lat", "lat_sd")), by = "comname") %>% 
+  mutate(biom_z = (biom_mu - avg_lat) / lat_sd) 
+
+# Longitude
+lon_yrly <- biomass_weighted_var(station_totals, decdeg_beglon, est_year) %>% 
+  left_join(select(global_benchmarks, c("comname", "avg_lon", "lon_sd")), by = "comname") %>% 
+  mutate(biom_z = (biom_mu - avg_lon) / lon_sd) 
+
+# Bottom Temperature
+t_yrly <- biomass_weighted_var(station_totals, bottemp, est_year) %>% 
+  left_join(select(global_benchmarks, c("comname", "avg_temp", "temp_sd")), by = "comname") %>% 
+  mutate(biom_z = (biom_mu - avg_temp) / temp_sd) 
+
+# Depth
+d_yrly <- biomass_weighted_var(station_totals, avgdepth, est_year) %>% 
+  left_join(select(global_benchmarks, c("comname", "avg_depth", "depth_sd")), by = "comname") %>% 
+  mutate(biom_z = (biom_mu - avg_depth) / depth_sd) 
+
+
+
+# Put them together in one table for heatmap
+standardized_changes <- list(
+  "Latitude" = lat_yrly,
+  "Longitude" = lon_yrly,
+  "Bottom Temperature" = t_yrly,
+  "Depth" = d_yrly) %>% 
+  map_dfr(function(x){select(x, comname, est_year, var, biom_z)}, .id = "var_neat")
+
+
+
+# Organize them by their global average latitude
+global_benchmarks <- global_benchmarks %>% mutate(comname = fct_reorder(.f = comname, .x = avg_lat, .fun = median))
+
+# Relevel the standardized changes
+standardized_changes <- standardized_changes %>% 
+  mutate(comname = factor(comname, 
+                          levels = levels(global_benchmarks$comname)))
+
+
+# Heatmap
+standardized_changes %>% 
+  ggplot(aes(est_year, comname, fill = biom_z)) +
+  geom_tile() +
+  scale_x_continuous(expand = expansion(add = c(0, 0))) +
+  facet_wrap(~var_neat, ncol = 2, scales = "fixed") +
+  scale_fill_distiller(palette = "RdBu",
+                       oob = scales::oob_squish,
+                       limits = c(-1.5, 1.5), 
+                       breaks = c(-1.5, -.75, 0, .75, 1.5),
+                       labels =c("<-1.5", "-.75", "0", ".75", ">1.5")) +
+  labs(x = "Year", y = "",
+       title = "Center of Biomass Movements Through Time",
+       fill = "Center of Biomass Metric Change (z)",
+       caption = "Species ordered based on center of biomass latitude across all years.") +
+  theme(legend.position = "bottom",
+        axis.text.y = element_text(size = 7)) +
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, barwidth = unit(6, "cm")))
+
+```
+
+
+
+
+### Center of Biomass Trends
+
+::: {panel-tabset}
+
+### Latitude
+
+```{r}
+# Standardized Plots
+lat_yrly %>% 
+  ggplot(aes(est_year, biom_z, group = comname)) +
+  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
+  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
+  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  scale_color_gmri(reverse = T) +
+  labs(
+    title = "Shift in Center of Biomass Latitudes",
+    subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
+    y = "Center of Biomass Latitude (z)",  
+    x = "", 
+    color = "Time Period", 
+    fill = "Time Period") +
+  theme(legend.position = "bottom")
+```
+
+
+
+### Longitude
+
+```{r}
+# Longitude
+lon_yrly %>% 
+  ggplot(aes(est_year, biom_z, group = comname)) +
+  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
+  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
+  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  scale_color_gmri(reverse = T) +
+  #coord_flip() +
+  labs(
+    title = "Shift in Center of Biomass Longtitudes",
+    subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
+    y = "Center of Biomass Longitude (z)",  
+    x = "", 
+    color = "Time Period", 
+    fill = "Time Period") +
+  theme(strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
+        legend.position = "bottom")
+
+
+```
+
+
+
+### Mean Temperature
+
+
+```{r}
+# Temperature
+t_yrly %>% 
+  ggplot(aes(est_year, biom_z, group = comname)) +
+  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
+  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
+  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  scale_color_gmri(reverse = T) +
+  #coord_flip() +
+  labs(
+    title = "Shift in Center of Biomass Temperature",
+    subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
+    y = "Center of Biomass Bottom Temperature (z)",  
+    x = "", 
+    color = "Time Period", 
+    fill = "Time Period") +
+  theme(legend.position = "bottom")
+```
+
+
+### Mean Depth
+
+
+```{r}
+# Depth
+d_yrly %>% 
+  ggplot(aes(est_year, biom_z, group = comname)) +
+  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
+  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
+  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  scale_color_gmri(reverse = T) +
+  #coord_flip() +
+  labs(
+    title = "Shift in Center of Biomass Depth",
+    subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
+    y = "Center of Biomass Depth (z)",  
+    x = "", 
+    color = "Time Period", 
+    fill = "Time Period") +
+  theme(strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
+        legend.position = "bottom")
+```
+
+
+:::
+
+## Changes to Growth
+
+
+```{r regime comparison data}
+
+# Take the first part from the previous plot:
+# takes each species
+# for age 0 - max_age, solve what the size would be based on vb fit
+regime_curve_prep <- function(spec_name){
+  
+  # The raw size/age data:
+  t_dat <- vonbert_species_agedat %>% 
+    filter(comname == spec_name)  
+  
+  # The group coefficients, augmented with x values across a range
+  age_max <- max(t_dat$age)
+  x_range <- seq(from = 0, to = age_max, by = .1)
+  t_coef <- species_coef %>% 
+    distinct(comname, regime, parameter, estimate) %>% 
+    pivot_wider(values_from = "estimate", names_from = "parameter") %>% 
+    filter(comname == spec_name) %>% 
+    right_join(
+      # Make a dataframe that covers the size range for the species
+      y = data.frame(
+        regime = rep(unique(t_dat$regime), length(x_range)),
+        age = rep(x_range, length(unique(t_dat$regime)))),
+      by = "regime") %>% 
+    mutate(
+      # Calculate the length at age
+      pred_length = Linf * (1  - exp(-1 * K * (age - t0)))
+    )
+  
+  # Pivot wider?
+  # Take the size at age from each regime and get the difference
+  t_coef <- t_coef %>%
+    select(-c(Linf, K, t0)) %>% 
+    pivot_wider(names_from = "regime", values_from = "pred_length") %>%
+    mutate(
+      growth_shift = `Warm Regime` - `Early Regime`,
+      growth_frac = (growth_shift / `Early Regime`),
+      size_change  = ifelse(growth_shift > 0, "Increase", "Decrease")
+    )
+  
+  return(t_coef)
+  
+}
+
+
+# Do it for all the species
+regime_comparison <- vonbert_species %>% 
+  map_dfr(.f = regime_curve_prep, .id = "comname")
+  
+```
+
+
+Changes in the size-at-age growth relationship varied across species, with the majority (14/18) of the species exhibiting smaller L-infinity during the warmer temperature regime. 
+
+
+```{r}
+#| eval = TRUE,
+#| fig.height = 2
+
+
+# Try geom_waffle to just count each species as an individual and show that they are growing to smaller sizes in new regime:
+library(ggwaffle)
+age_set <- 4
+ggplot(data = waffle_iron(
+  data = filter(regime_comparison, age == age_set), 
+  aes_d(group = size_change), rows = 2), 
+         aes(x, y, fill = fct_rev(group))) +
+  geom_waffle() +
+  theme_waffle() +
+  scale_fill_gmri() +
+  theme(axis.text = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_text(face = "bold", size = 12),
+        legend.position = "bottom",
+        panel.grid.major.y = element_blank()) +
+  labs(x = "", y = "", fill = str_c("Warm Regime Growth Impacts on ", age_set," Body Length:"))
+
+```
+
+
+
+
+The species that showed larger asymptotic lengths include the three hake species: **red hake, silver hake, & white hake** as well as **Atlantic herring.** These species are all among the majority group of species that is found primarily in the Northern part of the survey area, in and around the Gulf of Maine.
+
+```{r, fig.height = 6}
+#| eval = TRUE
+
+# Reshape things so you can show confidence intervals here
+plot_dat <- species_coef %>% 
+  filter(parameter != "t0") %>% 
+  mutate(llim = estimate - 2 * std_error,
+         rlim = estimate + 2 * std_error,
+         residence = ifelse(
+           comname %in% c("atlantic mackerel", "scup", "black sea bass", "butterfish"),
+           "Southern\nResident", 
+           "Gulf of Maine\nResident"),
+         regime = fct_rev(regime),
+         comname = fct_rev(comname))
+
+
+# Plot it
+ggplot(plot_dat, aes(x = estimate, y = comname, group = regime, color = regime)) + 
+    # need to nudge groups separately
+  # Early Regime
+    geom_segment(data = filter(plot_dat, regime == "Early Regime"), 
+                 aes(x = llim, xend = rlim, yend = comname), 
+                 position = position_nudge(x = 0, y = 0.25)) +
+  geom_segment(data= filter(plot_dat, regime == "Warm Regime"), 
+               aes(x = llim, xend = rlim, yend = comname), 
+               position = position_nudge(x = 0, y = -0.25)) +
+    geom_point(aes(color = regime), position = position_dodge(width = 1), size = 2) +
+    #facet_grid(. ~ parameter, scales = "free", space = "free_y") +
+    facet_grid(residence ~ parameter, scales = "free", space = "free_y") +
+    scale_color_gmri(reverse = F) +
+    labs(x = "Coefficient Estimate", y = "", fill = "Temperature Regime:") +
+    theme(legend.position = "bottom", 
+          panel.background = element_rect(color = "gray80", fill = "transparent", size = 1),
+          panel.spacing = unit(2, "lines"),
+          panel.border = element_rect(color = "gray80", fill = "transparent", size = 1))
+  
+  
+```
+
+
+
+```{r, fig.height = 6}
+#| eval = FALSE
+# Plotting Everything
+species_coef %>%
+  distinct(comname, regime, parameter, estimate) %>% 
+  pivot_wider(values_from = c("estimate"), names_from = "parameter") %>% 
+  pivot_longer(names_to = "vbcoef", 
+               values_to = "val", 
+               cols = c("K", "Linf", "t0")) %>% 
+  filter(vbcoef != "t0") %>% 
+  mutate(residence = ifelse(comname %in% c("atlantic mackerel", "scup", "black sea bass", "butterfish"), "Southern\nResident", "Gulf of Maine\nResident")) %>% 
+  ggplot(aes(x = val, y = fct_rev(comname), fill = fct_rev(regime))) +
+    geom_col(position = "dodge") +
+    # facet_grid(. ~ vbcoef, scales = "free", space = "free_y") +
+    facet_grid(residence ~ vbcoef, scales = "free", space = "free_y") +
+    scale_fill_gmri(reverse = T) +
+    labs(x = "Coefficient Estimate", y = "", fill = "Temperature Regime:") +
+  theme(legend.position = "bottom", 
+        panel.background = element_rect(color = "gray80", fill = "transparent", size = 1),
+        panel.spacing = unit(2, "lines"),
+        panel.border = element_rect(color = "gray80", fill = "transparent", size = 1))
+```
+
+## Changes in $L_\infty$
+
+
+```{r}
+species_coef %>% 
+  distinct(comname, regime, parameter, estimate) %>% 
+  pivot_wider(values_from = "estimate", names_from = "parameter") %>% 
+  mutate(regime_2 = ifelse(regime == "Early Regime", "early", "warm")) %>% 
+  select(comname, regime_2, Linf) %>% 
+  pivot_wider(values_from = Linf, names_from = regime_2) %>% 
+  mutate(linf_diff = warm - early,
+         diff_perc = (linf_diff / early) * 100) %>% 
+  mutate(across(where(is.numeric), round, 2)) %>% 
+  arrange(desc(diff_perc)) %>% 
+  setNames(c("Common Name", "Early Regime Linf", "Warm Regime Linf", "Change in Linf", "Percent Change")) %>% 
+  gt()
+```
+
+
+
+## VB Fits to Data:
+
+```{r}
+
+# Make the plot for each species
+vb_fits_plot = function(spec_name){
+    
+  # The raw size/age data:
+  t_dat <- vonbert_species_agedat %>% filter(comname == spec_name)  
+  
+  # The group coefficients, augmented with x values across a range
+  age_max <- max(t_dat$age)
+  x_range <- seq(from = 0, to = age_max, by = .1)
+  t_coef <- species_coef %>% 
+    distinct(comname, regime, parameter, estimate) %>% 
+    pivot_wider(values_from = "estimate", names_from = "parameter") %>% 
+    filter(comname == spec_name) %>% 
+    right_join(
+      y = data.frame(
+        regime = rep(unique(t_dat$regime), length(x_range)),
+        age = rep(x_range, length(unique(t_dat$regime)))),
+      by = "regime") %>% 
+    mutate(
+      # Calculate the length at age
+      pred_length = Linf * (1  - exp(-1 * K * (age - t0)))
+    )
+  
+  
+  # Make plot?
+  ggplot(t_dat, aes(x = age, y = length_cm)) +
+    geom_point(alpha = 0.25) +
+    #facet_wrap(~regime, ncol = 1) +
+    geom_line(data = t_coef,
+              aes(x = age, y = pred_length, group = regime, color = regime), 
+              size = 1) +
+    scale_x_continuous(breaks = seq(0, age_max, by = 2),
+                       limits = c(0, age_max),
+                       expand = expansion(mult = c(0.1, .2))) +
+    scale_color_gmri() +
+    geom_dl(data = t_coef, 
+            aes(x = age, y = pred_length, label = regime, color = regime), 
+            method= list("last.qp", cex = 0.65, hjust = -.15),
+            size = 12) +
+    labs(x = "Age",
+         y = "Length (cm)",
+         title = spec_name,
+         color = "Temperature Regime:",
+         subtitle = "Length at Age Regimes")
+
+    
+  }
+```
+
+::: panelset
+```{r, results="asis", fig.height = 6}
+
+# Loop through the key species:
+walk(key_species, 
+     plot_panelset, 
+     plot_fun = vb_fits_plot)
+
+```
+:::
+
+
+
+# Discussion
+
+
+
+
+
+--- 
+
+# Bonus: Data Explorations
+
+## Age Data Availability
+
+The availability of age data varied by species and through time, with older ages becoming less frequently sampled in recent years across many species.
 
 ```{r ridgeplot fun}
 # Plotting age distribution as ggridges
 plot_age_ridgeplot <- function(species){
-  all_vonbert %>% 
+  vonbert_species_agedat %>% 
     filter(comname == species,
            age <= 15) %>% 
     mutate(yr = factor(est_year),
@@ -329,7 +1202,45 @@ Strong age classes were particularly prominent in the following species, showing
 | Atlantic Herring | 2008, 2011          |
 | Pollock          | 2000, 2012          |
 
-# Growth Increment Changes
+
+
+## Growth Increment Changes
+
+Annual Growth increments for each species were computed to track the change in growth of specific age-groups through time.
+
+```{r}
+
+# Age-Size Increments Differences
+vb_incs <- vonbert_species_agedat %>% 
+  group_by(`common name`, est_year,  age, regime) %>% 
+  summarise(avg_len = mean(length_cm, na.rm = T),
+            avg_wt  = mean(indwt, na.rm = T),
+            .groups = "drop") %>% 
+  arrange(`common name`, age) %>% 
+  group_split(`common name`, est_year) %>% 
+  map_dfr(function(x){
+    x %>% 
+      mutate(
+        # What age is being subtracted from
+        lead_age   = lead(age, n = 1),
+        # String built from the value to confirm
+        diff_name  = str_c(age, " - ", lead_age),
+        # Length/Weight at age + 1
+        len_age_p1 = lead(avg_len, n = 1),
+        wt_age_p1  = lead(avg_wt, n = 1),
+        # Length/Weight Growth Increments
+        len_inc    = len_age_p1 - avg_len,
+        wt_inc     = wt_age_p1 - avg_wt,
+        # Percent change in bodymass for going from age to age+1
+        len_perc_change = (len_inc / avg_len) * 100,
+        wt_perc_change = (wt_inc / avg_wt) * 100) %>% 
+      filter((lead_age - age == 1))
+  })
+
+
+```
+
+
 
 Age specific growth (annual growth increments) help detail where in a species life cycle it may be experiencing favorable or less-favorable conditions for growth. These can be a result of differences in habitat use or prey resources at different ages, and/or a change in exposure to temperature or other stressors that inflict a metabolic cost.
 
@@ -396,12 +1307,16 @@ walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "w
 ```
 :::
 
-# Length at Age Changes
+## Length at Age Changes
 
 ```{r regime size plots}
 
 # Distribution of Length/Weight Across Regimes 
-plot_regime_sizes <- function(spec, var = "length", age_lim = 5, facet_prefix = "Age - ", facet_suffix = ""){
+plot_regime_sizes <- function(spec, 
+                              var = "length", 
+                              age_lim = 5, 
+                              facet_prefix = "Age - ", 
+                              facet_suffix = ""){
   
   # switches for length or width
   var_col <- switch (var,
@@ -492,7 +1407,7 @@ walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "length")
 ```
 :::
 
-# Weight at Age Changes
+## Weight at Age Changes
 
 ::: panelset
 ```{r, results="asis", fig.height = 8}
@@ -503,254 +1418,13 @@ walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "weight")
 ```
 :::
 
-# Changes in Growth
 
-Growth in fishes is commonly modeled using the "Von-Bertalanffy" growth function to capture how a fishes size (length or weight) changes with age. To give a coarse glimpse into how this relationship may have changed over time we can look at how the parameters have changed between regimes.
-
-```{r}
-# Set the function for nls() to solve
-vb <- vbFuns(param="Typical") 
-```
-
-```{r}
+## Shifts in Growth
 
 
-# Debugging:
-# length_age_dat_test <- filter(all_vonbert, comname == "scup", regime == "Early Regime")
-# start_points_test <- vbStarts(length_cm ~ age, data = length_age_dat_test)
-
-# Function to Pull Vonbert Coefficients, and boot strapped intervals
-vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
-  
-  # Von Bert Fitting Using: {FSA}
-  
-  
-  # Don't run on fewer than a minimum number of observations
-  num_aged <- nrow(length_age_dat)
-  
-  
-  # If number aged less than the minimum observations, fill output with NA's
-  if(num_aged < min_obs){
-    na_df <- data.frame("Linf" = NA,
-                        "K" = NA,
-                        "t0" = NA)
-
-    # What to return when it fails:
-    return(list("model" = NA, "coef" = na_df, "conf" = NA))}
-  
-  # Use nls to estimate VBGF parameters using starting points
-  vbert_fit <- nls(length_cm ~ vb(age, Linf, K, t0),
-                   data = length_age_dat,
-                   start = start_points)
-
-  # Access parameters with coef()
-  vbert_coef <- as.data.frame(t(coef(vbert_fit)))
-
-  
-  # This section fails, can't find namespace/obhect "length_age_dat"
-  
-  
-  # # Use bootstrapping for confidence intervals:
-  # vbert_boot <- Boot(vbert_fit)  # Be patient! Be aware of some non-convergence
-  # vbert_conf <- confint(vbert_boot)
-  
-  # output list
-  out_l <- list(
-    "model" = vbert_fit,
-    "coef"  = vbert_coef#,
-    #"conf"  = vbert_conf
-  )
-
-  # Return the list
-  return(out_l)
-  
-}
-
-```
-
-The code in this next section is just a wrapper that controls which species is being fit
-
-```{r}
-# Second Function for running that for a single Species, split by a factor column
-
-# Function does these things:
-# 1. grab data for one species
-# 2. Get starting points for VB using all data on that species
-# 3. Fit Vonbert to  both Regimes
-
-
-estimate_species_vbert <- function(spec_name, split_col, min_obs){
-  
-  # Get the data using the species
-  spec_dat <- dplyr::filter(all_vonbert, comname == spec_name)
-  
-  # Get starting points from all data
-  test_starts <-  vbStarts(length_cm ~ age, 
-                           data = spec_dat)
-  
-  # Get coefficients for groups
-  spec_dat %>% 
-    split(.[split_col]) %>% 
-    map(.f = vonbert_coef,
-            start_points = test_starts, 
-            min_obs = min_obs) %>% 
-    map_dfr(pluck,"coef", .id = split_col) %>% 
-    mutate(comname = spec_name)
-}
-
-```
-
-Once everything is prepped we can then fun the von Bert parameter estimation for all the species we are interested using the desired groups.
-
-```{r, fig.height = 6}
-
-# Running everything?
-#species_coef <- key_species %>% 
-species_coef <- vonbert_species %>% 
-  map_dfr(function(x){
-    estimate_species_vbert(
-      spec_name = x, 
-      split_col =  "regime", 
-      min_obs = 30)
-    
-  })
-
-
-
-# Separate Coefficients from the bootstrapped confidence intervals
-
-
-
-
-# Plotting Everything
-species_coef %>%
-  pivot_longer(names_to = "vbcoef", values_to = "val", cols = c("K", "Linf", "t0")) %>% 
-  filter(vbcoef != "t0") %>% 
-  ggplot(aes(x = val, y = fct_rev(comname), fill = fct_rev(regime))) +
-    geom_col(position = "dodge") +
-    facet_wrap(~vbcoef, scales = "free_x") +
-    scale_fill_gmri(reverse = T) +
-    labs(x = "Coefficient Estimate", y = "", fill = "Temperature Regime:") +
-  theme(legend.position = "bottom", 
-        panel.background = element_rect(color = "gray80", fill = "transparent", size = 1),
-        panel.spacing = unit(2, "lines"),
-        panel.border = element_rect(color = "gray80", fill = "transparent", size = 1))
-```
-
-# Growth Curves
-
-# VB Fits to Data:
-
-```{r}
-
-# Make the plot for each species
-vb_fits_plot = function(spec_name){
-    
-  # The raw size/age data:
-  t_dat <- all_vonbert %>% filter(comname == spec_name)  
-  
-  # The group coefficients, augmented with x values across a range
-  age_max <- max(t_dat$age)
-  x_range <- seq(from = 0, to = age_max, by = .1)
-  t_coef <- species_coef %>% 
-    filter(comname == spec_name) %>% 
-    right_join(
-      y = data.frame(
-        regime = rep(unique(t_dat$regime), length(x_range)),
-        age = rep(x_range, length(unique(t_dat$regime)))),
-      by = "regime") %>% 
-    mutate(
-      # Calculate the length at age
-      pred_length = Linf * (1  - exp(-1 * K * (age - t0)))
-    )
-  
-  
-  # Make plot?
-  ggplot(t_dat, aes(x = age, y = length_cm)) +
-    geom_point(alpha = 0.25) +
-    #facet_wrap(~regime, ncol = 1) +
-    geom_line(data = t_coef,
-              aes(x = age, y = pred_length, group = regime, color = regime), 
-              size = 1) +
-    scale_x_continuous(breaks = seq(0, age_max, by = 2),
-                       limits = c(0, age_max),
-                       expand = expansion(mult = c(0.1, .2))) +
-    scale_color_gmri() +
-    geom_dl(data = t_coef, 
-            aes(x = age, y = pred_length, label = regime, color = regime), 
-            method= list("last.qp", cex = 0.65, hjust = -.15),
-            size = 12) +
-    labs(x = "Age",
-         y = "Length (cm)",
-         title = spec_name,
-         color = "Temperature Regime:",
-         subtitle = "Length at Age Regimes")
-
-    
-  }
-```
-
-::: panelset
-```{r, results="asis", fig.height = 6}
-
-# Loop through the key species:
-walk(key_species, 
-     plot_panelset, 
-     plot_fun = vb_fits_plot)
-
-```
-:::
-
-# Shifts in Growth
-
-Goal is to find some way to show all of them together in one form:
-
-```{r}
+```{r regime impact plot}
 #| fig.height = 8,
 #| fig.width = 8
-
-# Take the first part from the previous plot:
-# takes each species
-# for age 0 - max_age, solve what the size would be based on vb fit
-regime_curve_prep <- function(spec_name){
-  
-  # The raw size/age data:
-  t_dat <- all_vonbert %>% filter(comname == spec_name)  
-  
-  # The group coefficients, augmented with x values across a range
-  age_max <- max(t_dat$age)
-  x_range <- seq(from = 0, to = age_max, by = .1)
-  t_coef <- species_coef %>% 
-    filter(comname == spec_name) %>% 
-    right_join(
-      y = data.frame(
-        regime = rep(unique(t_dat$regime), length(x_range)),
-        age = rep(x_range, length(unique(t_dat$regime)))),
-      by = "regime") %>% 
-    mutate(
-      # Calculate the length at age
-      pred_length = Linf * (1  - exp(-1 * K * (age - t0)))
-    )
-  
-  # Pivot wider?
-  # Take the size at age from each regime and get the difference
-  t_coef <- t_coef %>%
-    select(-c(Linf, K, t0)) %>% 
-    pivot_wider(names_from = "regime", values_from = "pred_length") %>%
-    mutate(
-      growth_shift = `Warm Regime` - `Early Regime`,
-      growth_frac = (growth_shift / `Early Regime`),
-      size_change  = ifelse(growth_shift > 0, "Increase", "Decrease")
-    )
-  
-  return(t_coef)
-  
-}
-
-
-# Do it for all the species
-regime_comparison <- vonbert_species %>% 
-  map_dfr(.f = regime_curve_prep, .id = "comname") 
 
 # Plot their growth curves
 regime_comparison %>% 
@@ -764,6 +1438,8 @@ regime_comparison %>%
          title = "Thermal Regime Impacts on Growth",
          subtitle = "Changes in Size at Age (Warm Regime - Historic Regime)") 
 ```
+
+
 
 ```{r}
 #| eval = FALSE
@@ -885,32 +1561,5 @@ ggplot(regime_comparison, aes(x = age, y = growth_frac)) +
 
 
 ```
-
-# All Age Size Differences
-
-```{r}
-#| eval = TRUE,
-#| fig.height = 2
-
-# Try geom_waffle to just count each species as an individual and show that they are growing to smaller sizes in new regime:
-library(ggwaffle)
-ggplot(data = waffle_iron(
-  data = filter(regime_comparison, age == 5), 
-  aes_d(group = size_change), rows = 2), 
-         aes(x, y, fill = fct_rev(group))) +
-  geom_waffle() +
-  theme_waffle() +
-  scale_fill_gmri() +
-  theme(axis.text = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        legend.title = element_text(face = "bold", size = 12),
-        legend.position = "bottom",
-        panel.grid.major.y = element_blank()) +
-  labs(x = "", y = "", fill = "Warm Regime Impact on Age 5 Body Length:")
-
-```
-
-# Average Body Sizes
 
 `r insert_gmri_footer()`

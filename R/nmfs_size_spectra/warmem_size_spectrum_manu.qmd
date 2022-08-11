@@ -1,0 +1,89 @@
+---
+title: "WARMEM - Groundfish Size Spectrum"
+author: 
+    name: "Adam Kemberling"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+  Size Spectrum Analysis of the Northeast US Groundfish Community
+date: "`r Sys.Date()`"
+format: 
+  html:
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+    toc-depth: 2
+editor: source
+execute: 
+  echo: true
+  warning: false
+  message: false
+  fig.height: 6
+  fig.width: 6
+  fig.align: "center"
+  comment: ""
+---
+
+# Size Spectrum of the Northeast US Groundfish Community
+
+
+
+# Introduction
+
+
+### Size Spectrum Theory
+
+
+### Temperature Impacts on Growth
+
+
+### Temperature of NE Shelf
+
+
+# Methods
+
+
+### Temperature Data
+
+
+### Groundfish Data
+
+
+### Area Stratification
+
+
+### Size Spectrum Analysis
+
+
+# Results
+
+
+### Temperature Data
+
+
+### Groundfish Data
+
+
+### Area Stratification
+
+
+### Size Spectrum Analysis
+
+
+
+# Discussion
+
+
+
+
+# References
+
+
+
+
+
+
+
+
+

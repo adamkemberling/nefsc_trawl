@@ -65,7 +65,7 @@ canada <- ne_states("canada", returnclass = "sf")
 #### Functions  ####
 
 # Function to calculate weighted mean & median across biomass measures
-weighted_df_fun <- function(var_col, ...){
+biomass_weighted_var <- function(var_col, ...){
   var_lab <- deparse(substitute(var_col))
   mean_df <- station_totals %>% 
   group_by(comname, ...) %>% 
@@ -369,7 +369,7 @@ Using the bottom temperatures sampled before each tow, and the biomass caught at
 ```{r}
 # Yearly averages
 # Join and Scale by Global Averages
-temp_yrly <- weighted_df_fun(bottemp, est_year, temp_regime) %>% 
+temp_yrly <- biomass_weighted_var(bottemp, est_year, temp_regime) %>% 
   left_join(select(global_benchmarks, c("comname", "avg_temp", "temp_sd"))) %>% 
   mutate(biom_z = (biom_mu - avg_temp) / temp_sd) 
 
@@ -399,7 +399,7 @@ temp_yrly %>%
 ```{r}
 
 # Run weighting function for bottom temp
-temp_change <- weighted_df_fun(bottemp, temp_regime) %>% 
+temp_change <- biomass_weighted_var(bottemp, temp_regime) %>% 
   left_join(select(global_benchmarks, c("comname", "avg_temp", "temp_sd")), by = "comname") %>% 
   mutate(biom_z = (biom_mu - avg_temp) / temp_sd) 
 
@@ -547,7 +547,7 @@ The (weighted) centers of latitude give an indication of whether a species is sh
 
 ```{r}
 # Weighted mean Locations
-lat_yrly <- weighted_df_fun(decdeg_beglat, est_year, temp_regime) %>% 
+lat_yrly <- biomass_weighted_var(decdeg_beglat, est_year, temp_regime) %>% 
   left_join(select(global_benchmarks, c("comname", "avg_lat", "lat_sd")), by = "comname") %>% 
   mutate(biom_z = (biom_mu - avg_lat) / lat_sd) 
 
@@ -577,7 +577,7 @@ lat_yrly %>%
 
 ```{r}
 # Weighted mean Locations
-lat_change <- weighted_df_fun(decdeg_beglat, temp_regime) %>% 
+lat_change <- biomass_weighted_var(decdeg_beglat, temp_regime) %>% 
   left_join(select(global_benchmarks, c("comname", "avg_lat", "lat_sd")), by = "comname") %>% 
   mutate(biom_z = (biom_mu - avg_lat) / lat_sd) 
 
@@ -719,7 +719,7 @@ Depth is highly correlated with temperature and may be an avenue for species to 
 
 ```{r}
 # Weighted mean Locations
-depth_yrly <- weighted_df_fun(avgdepth, est_year, temp_regime) %>% 
+depth_yrly <- biomass_weighted_var(avgdepth, est_year, temp_regime) %>% 
   left_join(select(global_benchmarks, c("comname", "avg_depth", "depth_sd")), by = "comname") %>% 
   mutate(biom_z = (biom_mu - avg_depth) / depth_sd) 
 
@@ -747,7 +747,7 @@ depth_yrly %>%
 
 ```{r}
 # Weighted mean Locations
-depth_change <- weighted_df_fun(avgdepth, temp_regime) %>% 
+depth_change <- biomass_weighted_var(avgdepth, temp_regime) %>% 
   left_join(select(global_benchmarks, c("comname", "avg_depth", "depth_sd")), by = "comname") %>% 
   mutate(biom_z = (biom_mu - avg_depth) / depth_sd) 
 
