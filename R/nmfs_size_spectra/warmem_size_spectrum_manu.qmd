@@ -24,67 +24,344 @@ execute:
   fig.width: 6
   fig.align: "center"
   comment: ""
+bibliography: references.bib
 ---
+
+```{r}
+####  Packages  ####
+library(targets)
+library(rnaturalearth)
+library(here)
+library(sf)
+library(gmRi)
+library(patchwork)
+library(gt)
+library(knitr)
+library(tidyverse)
+library(ggstream)
+library(ggforce)
+library(bcp)
+library(scales)
+library(geomtextpath)
+
+# Support functions
+source(here("R/support/sizeSpectra_support.R"))
+
+# Set theme
+theme_set(theme_gmri())
+
+# Map polygons
+us_poly <- ne_states("united states of america", returnclass = "sf")
+canada <- ne_states("canada", returnclass = "sf")
+
+
+# Function to process summaries for various factor combinations
+get_group_summaries <- function(...){
+  
+  # Do some grouping to get totals
+  group_totals <- nefsc_size_bins %>% 
+    group_by(...) %>% 
+    summarise(total_survey_catch = sum(numlen, na.rm = T),
+              total_lw_bio = sum(sum_weight_kg, na.rm = T),
+              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+  
+  # length bins
+  group_lengths <- nefsc_size_bins %>% 
+    group_by(..., length_bin) %>% 
+    summarise(lenbin_survey_catch = sum(numlen),
+              lenbin_lw_bio       = sum(sum_weight_kg),
+              lenbin_strat_abund  = sum(strat_total_abund_s),
+              lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
+      perc_lw_bio       = (lenbin_lw_bio - total_lw_bio) * 100,
+      perc_strat_abund  = (lenbin_strat_abund - total_strat_abund) * 100,
+      perc_strat_lw_bio = (lenbin_strat_lw_bio - total_strat_lw_bio) * 100)
+  
+  # weight bins
+  group_weights <- nefsc_size_bins %>% 
+    group_by(..., weight_bin) %>% 
+    summarise(wtbin_survey_catch = sum(numlen),
+              wtbin_lw_bio       = sum(sum_weight_kg),
+              wtbin_strat_abund  = sum(strat_total_abund_s),
+              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+
+return(list("length_bins" = drop_na(group_lengths),
+            "weight_bins" = drop_na(group_weights)))
+}
+
+
+# 1. Abundance by length
+abundance_by_length <- function(length_summary, facet_var){
+
+  ggplot(length_summary,
+       aes(Year, lenbin_strat_abund, fill = length_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Abundance",
+       title = "Abundance Allocation by Length",
+       x = "",
+       fill = "Individual Length (cm)")
+}
+
+
+# 2. Biomass by length
+biomass_by_length <- function(length_summary, facet_var){
+
+ggplot(length_summary,
+       aes(Year, lenbin_strat_lw_bio, fill = length_bin)) +
+  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = comma_format()) +
+  labs(y = "Stratified Total Biomass (kg)",
+       title = "Biomass Allocation by Length",
+       x = "",
+       fill = "Individual Length (cm)")
+}
+
+
+# 3. Abundance by bodymass
+abundance_by_bodymass <- function(bodymass_summary, facet_var){
+
+  ggplot(bodymass_summary,
+         aes(Year, wtbin_strat_abund, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Total Abundance",
+         title = "Abundance Allocation by Bodymass",
+         x = "",
+         fill = "Individual Weight (kg)")
+}
+
+
+# 4. Biomass across bodymass
+biomass_by_bodymass <- function(bodymass_summary, facet_var){
+
+  ggplot(bodymass_summary,
+         aes(Year, wtbin_strat_lw_bio, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_wrap(as.formula(paste("~", facet_var)), scales = "free") +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Total Biomass (kg)",
+         title = "Biomass Allocation by Bodymass",
+         x = "",
+         fill = "Individual Weight (kg)")
+}
+```
 
 # Size Spectrum of the Northeast US Groundfish Community
 
-
-
 # Introduction
 
+This is a direct quote:
 
-### Size Spectrum Theory
+> Temperature is the most important physical factor affecting processes at multiple scales of organization from cellular chemical reaction rates, organismal physiological processes, population productivity and distribution, and interactions among species in complex communities (Fry 1971, Magnuson et al. 1979, Claireaux and Lefrançois 2007).
 
+Temperature related effects on marine organism physiology impacts:
+
+1.  The acquisition of biomass through feeding
+
+2.  The loss of biomass through metabolism
+
+3.  The rates of development
+
+**Intuition behind size spectrum:**
+
+Physical environments set the potential for bottom-up productivity. Lower productivity communities (with exceptions) support less complex food webs. Community interactions (ex. growth & predation) transfer energy through the ecosystem. Inefficient transfer of energy produces steeper slopes and/or fewer trophic levels. Disturbances to the community impact the flow of energy from smaller to larger organisms. Physical removal of specific size classes directly impacts slope by impacting the energy transfer from prey to predator.
+
+### Global Ocean Temperatures
+
+-   Osman et al. 2011 (climate change hockey stick)
 
 ### Temperature Impacts on Growth
 
+#### Experimental Evidence & TSR
 
-### Temperature of NE Shelf
+-   Atkinson (2003)
+-   Forster (2012)
 
+#### In-Situ Evidence
+
+-   North sea groundfish
+-   
+
+### Size Spectrum Theory
+
+A "size spectrum" describes the relationship between size (length or body mass) and abundances within a community.
+
+### Temperature of the Gulf of Maine & NE Shelf
+
+Sea surface temperatures in the Gulf of Maine since 1982 have been warming at rates faster than 96% of the world's oceans, with similar warming rates along the northwest Atlantic shelf [@pershing2018]. A punctuated elevation in temperatures over the last decade are believed to be the result of a shift in Gulf Stream positioning. A Northward shift in the Gulf stream has increased the regional temperatures via an increased direct transport of warm gulf stream water into areas like the Gulf of Maine . The Gulf stream has also been producing a higher frequency of warm core rings, and has obstructed some of the cold-water Scotian Shelf current flow that would otherwise counter the influence of the Gulf Stream on the region's temperatures [@gangopadhyay2019; @meyer-gutbrod2021]. The combination of these oceanographic changes has led to a warmer continental shelf habitat.
+
+### Species Trends in NE Shelf
+
+The observed warming in the northwest Atlantic has been shown to be a major factor in the redistribution of marine species along the US east coast. Species have responded to these warming trends by adjusting the timing and locations of their seasonal migrations and shifting their geographic ranges [@nye2009; @staudinger2019]. There is also evidence that warming has hampered fisheries recoveries through its physiological impacts on growth and metabolism. Species like Black Sea Bass, Atlantic shortfin squid, and Blue crab have been high-profile examples of species expanding their ranges to follow their thermal preferences. While species like the American lobster have shown declines at their southern range near Long Island Sound, with much doubt whether they will recover under the present temperature trends. The recent regime shift in the physical oceanography has also shown to be a catalyst for biological shifts as well [@meyer-gutbrod2021; @perretti2017].
+
+While these examples show that species can respond to changes in the physical environment around them through movement & behavior, research elsewhere suggests that physiological responses integrated across species will manifest as changes in community size structure.
+
+### Purpose
+
+We estimated size spectrum relationships for the groundfish populations for each sub-region of the Northeast US continental shelf.
 
 # Methods
 
+## Groundfish Data
 
-### Temperature Data
+```{r survdat_data}
+# 1. Biological data used as input
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_1g_labelled))   
 
+# rename and format
+nefsc_size_bins <- nefsc_1g_labelled
 
-### Groundfish Data
+n_species <- length(unique(nefsc_size_bins$comname))
+```
 
+Fishery Independent data on was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. Analyses using the trawl survey data took used data from both the Spring and Fall survey seasons covering all years from 1970 to 2019. Correction factors were applied to total species abundance and biomass to account for changes in vessels, gear, and doors when appropriate as part of the survey program. However, abundance and biomass by length is not corrected. To account for this, abundance at length for each species were adjusted to match the correction factors applied to total species abundance at each station, with allocation following the distributions of length caught at that station. Such that for each species: the sum of adjusted abundances for each length class is equal to the gross abundance as corrected for changes in vessels, gear, etc. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data was area-stratified.
 
-### Area Stratification
+Data from the survey was grouped by strata to form geographically meaningful sub-regions: Gulf of Maine, Georges Bank, Southern New England, Mid-Atlantic Bight.
 
+```{r}
+#| column: margin
+
+# Get region polygons
+# Get the paths to the shapefiles used to mask
+trawl_paths <- gmRi::get_timeseries_paths(region_group = "nmfs_trawl_regions", mac_os = "mojave")
+
+# Polygons for each region
+all_poly <- read_sf(trawl_paths[["inuse_strata"]][["shape_path"]]) 
+
+  
+ggplot() +
+  geom_sf(data = us_poly) +
+  geom_sf(data = canada) +
+  geom_sf(data = all_poly, aes(fill = survey_area), alpha = 0.8) +
+  coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
+  scale_fill_gmri() +
+  theme_bw() +
+  map_theme(legend.position = "bottom", 
+            legend.background = element_rect(fill = "white", color = "gray")) +
+  guides(fill = guide_legend(title = "", nrow = 2))
+```
 
 ### Size Spectrum Analysis
 
+Community size spectra were estimated using abundance-at-length data from `r n_species` species. These species were selected based on the availability of published weight-at-length relationships (Wigley et al. 2003) and represented 98.98% of the total biomass caught in the survey. Published length-weight relationships were then used to convert abundance at length data into an estimated biomass at length (kg) to complement the corrected abundances-at-length data which had been area stratified. The area-stratified biomass at length information was then used for fitting each regional size spectra.
+
+Stratified biomass at length data was then binned into equally spaced intervals or 0.5 on a $log_{10}$ scale, summing bodymass across all species within each body size bin. Stratified abundance within each bin was then divided by the bin-width to account for the increasing bin-widths, a consequence of the log scale. Normalized size spectra were then fit for each year and for each region independently, and for each year across all strata, using ordinary least squares (ols) regressions for stratified abundance (normalized) by body-size bins.
+
+```{r spectrum_results}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))   
+
+# Format Columns
+yearly_indices <- size_spectrum_indices  %>% 
+  filter(`group ID` == "single years") %>% 
+  mutate(yr = as.numeric(as.character(Year)),
+         sig_fit = ifelse(l10_sig_strat < 0.05, "Significant", "Non-Significant"))
+
+
+# Plot 3 panels:
+# ISD exponent
+isd_timeline <- ggplot(yearly_indices, aes(yr, b)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "ISD Exponent\n(b)") +
+  theme(axis.text.x = element_blank())
+
+# Normalized Size Spectrum Slope
+slope_timeline <- ggplot(yearly_indices, aes(yr, l10_slope_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  scale_color_gmri() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "Spectrum\nSlope") +
+  theme(axis.text.x = element_blank())
+
+# Size Spectrum Intercept
+int_timeline <- ggplot(yearly_indices, aes(yr, l10_int_strat)) +
+  geom_line(linetype = 2) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x) +
+  labs(x = "", y = "Spectrum\nIntercept") +
+  theme(axis.text.x = element_blank())
+
+
+# Assemble
+isd_timeline / slope_timeline / int_timeline + plot_annotation(title = "All Regions Size Spectra")
+```
+
+### Abundance and Size Trends
+
+This is exploratory stuff, but I feel like it is impactful
+
+```{r all_year_bin_summaries}
+
+# make a column that contains all data
+nefsc_size_bins <- nefsc_size_bins %>% 
+  mutate(group_col = "All Data") 
+
+# run summary
+all_data_summs <- get_group_summaries(Year, group_col)
+```
+
+### Body Size Trends
+
+Similar thing here, the change in average size goes simultaneously with increased abundances
+
+```{r}
+
+```
+
+## Temperature Data
+
+Global Sea surface temperature data was obtained via NOAA's optimally interpolated SST analysis (OISSTv2), providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at https://psl.noaa.gov.
+
+Temperature data was regionally averaged to match the sampling area for the fisheries independent survey program providing the age-at-length data. SST anomalies were averaged by year for each sub-region and over the entire sampling region to produce a daily time series. This time series was then processed into an annual timeseries of surface temperatures and anomalies. All area-averaging was done with area-weighting to account for differences in the relative areas of the latitude/longitude grid of the OISSTv2 data.
+
+```{r}
+
+# Load the regional temperatures from {targets}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(regional_oisst))
+
+```
+
+## Spectra Drivers
+
+The impact of external factors on the changes in size spectra was done using\_\_\_\_. External factors proposed as potential drivers included sea surface temperature anomalies, fishing pressure, \_\_\_\_\_\_.
 
 # Results
 
+### Abundance Trends
 
-### Temperature Data
+### Biomass Trends
 
+### Regional Size Spectra
 
-### Groundfish Data
+### Temperature Trends
 
-
-### Area Stratification
-
-
-### Size Spectrum Analysis
-
-
+### Size Spectra Drivers
 
 # Discussion
 
-
-
-
 # References
-
-
-
-
-
-
-
-
-

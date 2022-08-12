@@ -1,5 +1,5 @@
 ---
-title: "Size at Age Regimes"
+title: "Decadal Changes in Size at Age Following SST Regime Shift"
 author: 
     name: "Adam Kemberling"
     url: https://github.com/adamkemberling
@@ -24,6 +24,7 @@ execute:
   fig.width: 6
   fig.align: "center"
   comment: ""
+bibliography: references.bib
 ---
 
 ```{r packages and functions}
@@ -85,10 +86,7 @@ plot_panelset <- function(spec, plot_fun, ...) {
 
 # Introduction
 
-
 ### Literature on TSR and Growth Expectations
-
-
 
 ### Introduce Study Area and Existing Research
 
@@ -100,10 +98,9 @@ Through the lens of an environmental regime change we will assess changes to bod
 
 # Methods
 
-
 ## Sea Surface Temperature
 
-Global Sea surface temperature data was obtained via NOAA’s optimally interpolated SST analysis, providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at https://psl.noaa.gov.
+Global Sea surface temperature data was obtained via NOAA's optimally interpolated SST analysis (OISSTv2), providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution [@reynolds2007]. A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at https://psl.noaa.gov.
 
 ```{r}
 # Load the regional temperatures from {targets}
@@ -131,12 +128,9 @@ temp_regimes <- regional_oisst %>%
 
 ```
 
-
-
 ### Temperature Study Region
 
 Temperature data was regionally averaged to match the sampling area for the fisheries independent survey program providing the age-at-length data. SST anomalies were averaged over the entire sampling region, consisting of continental shelf habitats from Cape Hatteras to Nova Scotia, to produce a daily time series. This time series was then processed into an annual timeseries of surface temperatures and anomalies. All area-averaging was done with area-weighting to account for differences in the relative areas of the latitude/longitude grid of the OISSTv2 data.
-
 
 ### Temperature Regime Shift
 
@@ -144,8 +138,7 @@ Temperature data was regionally averaged to match the sampling area for the fish
 
 ### Warming Trends
 
-We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the full time period (1982-2009) and the last decade
-(2010-2019), estimating warming rates and long-term averages independently for each period.
+We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the full time period (1982-2009) and the last decade (2010-2019), estimating warming rates and long-term averages independently for each period.
 
 ```{r}
 # warming trends
@@ -162,14 +155,13 @@ list(
 
 Temperatures prior to the 2010 regime shift rose at a rate of 0.7 $°C/Decade$. Regional temperatures then peaked in 2012 and have remained high while decreasing slowly at a rate of 0.02 $°C/Decade$.
 
+## Species Data
+
+Fishery Independent data on groundfish size-at-age was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the Spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. **Add an Explanation of the Strata we Exclude**. Correction factors were applied for changes in vessels, gear, and doors when appropriate. Prior to sampling, a CTD cast is performed to collect environmental conditions for the water column at/near the start of the trawl sample providing information on bottom habitat conditions like bottom temperatures.
+
 ## Distribution Shift Analyses
 
-Fishery Independent data on groundfish size-at-age was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the Spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. **Add an Explanation of the Strata we Exclude**. Correction factors were applied for changes in vessels, gear, and doors when appropriate. Prior to sampling, a CTD cast is performed to collect environmental conditions for the water column at/near the start of the trawl sample providing information on bottom habitat conditions like bottom temperatures. Distribution shift analyses were limited to data from the Spring survey season. Previous work has shown no significant changes in timing of sampling, or the mean annual latitude and longitude of the Spring survey sampling (Nye et al. 2009).
-
-
-**What do we calculate and for how many species?**
-
-Our analyses followed the continued movements of 30 species consistent with Nye et al. 2009. These species were originally selected for being consistently sampled across all years, and as representatives of a wide range of taxonomic groups.
+Analyses focusing on the shifts in distribution among species were limited to data from the Spring survey season. Previous work has shown no significant changes in timing of sampling, or the mean annual latitude and longitude of the Spring survey sampling [@nye2009]. Our analyses followed the continued movements of 30 species consistent with Nye et al. 2009. These species were originally selected for being consistently sampled across all years, and as representatives of a wide range of taxonomic groups.
 
 ```{r}
 # Access the tidy survdat Data with {targets}
@@ -234,8 +226,7 @@ station_totals <- dist_dat %>%
 
 Movements through time were characterized for each species using the following metrics: center of biomass, area-occupied, mean depth of occurrence, and the mean temperature of occurrence. Each metric was weighted by the biomass of a species sampled at each station such that.
 
-$$X_j = \frac{ \sum_{}^{}  w_iX_{ij}  }{  \sum~w_i  }$$
-Where $X$ is the spatial metric, $j$ is the year, & $w$ is the biomass (in kg) for each station $i$. 
+$$X_j = \frac{ \sum_{}^{}  w_iX_{ij}  }{  \sum~w_i  }$$ Where $X$ is the spatial metric, $j$ is the year, & $w$ is the biomass (in kg) for each station $i$.
 
 ```{r}
 # Function to run the group weighted means on different groups using ...
@@ -294,15 +285,11 @@ global_benchmarks <- group_spat_metrics(station_totals)
 
 ```
 
-
-
 ### Analysis of Spatial Metrics
-
-
 
 ## Size at Age Analyses
 
-The available age data is a subset of the overall catch data, which contains additional information on individual fishes such as otolith-derived aging that require additional workup to ascertain. Not all fish species have age available for the full time period, with special attention being given to aid in the management of commercially valuable species.
+The available age data is a subset of the overall catch data from the NMFS trawl survey. This biological data subset contains additional information on individual fishes such as otolith-derived aging that require additional workup to ascertain. Not all fish species have age available for the full time period, with special attention being given to aid in the management of commercially valuable species. The data used for size-at-age analyses comes from both the Spring and Fall surveys.
 
 ```{r bio data prep}
 # Access Biological Data with {targets}
@@ -352,9 +339,7 @@ vonbert_species <- species_abunds %>%
 
 ```
 
-
 Size at age analyses were performed on `r length(vonbert_species)` species. Species were omitted from analyses if age data was not available across both temperature regimes (bluefish & ocean pout) or if their physiology prevented accurate aging (elasmobranch species). The following 18 species had sufficient age data across both temperature regimes to be included in the analysis: **`r pander::pander(vonbert_species)`**.
-
 
 ```{r panel species}
 
@@ -385,15 +370,11 @@ key_species <- sort(c(
 ))
 ```
 
-
 ### Growth by Temperature Regime
 
 To assess the impact of an elevated temperature regime, the size-at-age data was grouped into decadal periods relating to the shift in surface temperature regimes (2000-2009 & 2010-2019). Growth in fishes is commonly modeled using the "Von-Bertalanffy" growth function (VBGF) to capture how a fishes size (length or weight) changes with age. For each species the growth was modeled by fitting the VGBF to the length distribution-at-age.
 
-$$L_t~=~L_{\infty}(1-e^{-K(t-t_0)})$$
-Where $L_t$ is the length in cm of a species at age $t$. $L_\infty$ is the asymptotic maximum length, $K$
- is _____, and $t_0$ is x intercept, or the hypothetical age at 0 cm length.
-
+$$L_t~=~L_{\infty}(1-e^{-K(t-t_0)})$$ Where $L_t$ is the length in cm of a species at age $t$. $L_\infty$ is the asymptotic maximum length, $K$ is \_\_\_\_\_, and $t_0$ is x intercept, or the hypothetical age at 0 cm length.
 
 ```{r}
 # Set the function for nls() to solve
@@ -432,7 +413,6 @@ t_params <- rownames_to_column(as.data.frame(t_sum$parameters), var = "parameter
 t_sum$convInfo$isConv
 
 ```
-
 
 ```{r vonbert model fitter}
 
@@ -518,8 +498,7 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
 
 ```
 
-
-```{r vonbert group wrapper function} 
+```{r vonbert group wrapper function}
 # Second Function for running that for a single Species, split by a factor column
 
 # Function does these things:
@@ -548,8 +527,6 @@ process_group_vbert <- function(spec_name, split_col, min_obs){
 
 ```
 
-
-
 ```{r vonbert coefficient processing}
 # Running Each Species * Regime
 species_coef <- vonbert_species %>% 
@@ -562,13 +539,9 @@ species_coef <- vonbert_species %>%
   })
 ```
 
-
-
 ### Growth Impacts on Productivity
 
 Yield-per-recruit analysis similar to Baudron et al. 2014?
-
-
 
 # Results
 
@@ -636,7 +609,6 @@ anom_bcp <- flag_bcp(response_var = survey_temps$sst_anom,
 prob_text <- paste(round(anom_bcp$Probability *100, 2), collapse = ", ")
 ```
 
-
 SST anomaly time series of the region indicate a jump in annual temperature anomalies indicative of a regime shift centered around 2010. A bayesian change point analysis showed highest support for a regime shift among `r nrow(anom_bcp)` the years: 2009-2011. Change point probabilities for these years were `r prob_text`% respectively.
 
 ```{r}
@@ -676,9 +648,7 @@ plot_bcp_breaks(bcp_data = survey_temps,
 
 ```
 
-
-Average temperatures following a break in 2010, during the period of 2010-2021, were on average 1.09°C warmer than the than the average over the previous 28 years from 1982-2009. Temperatures within each regime were relatively stable, indicative of a jump in mean temperatures rather than rate change between them.
-
+Average temperatures following the regime shift (2011-2021), were on average 1.09°C warmer than the than the average over the previous 28 years (1982-2009). Temperatures within each regime were relatively stable, indicative of a jump in mean temperatures rather than a rate change between them. While temperatures in the current regime are falling, the rate is such that
 
 ```{r temp regimes}
 
@@ -725,9 +695,7 @@ temp_regimes %>%
    
 ```
 
-
 ## Distribution Shifts
-
 
 ```{r}
 #| fig.height: 8
@@ -798,13 +766,9 @@ standardized_changes %>%
 
 ```
 
-
-
-
 ### Center of Biomass Trends
 
 ::: {panel-tabset}
-
 ### Latitude
 
 ```{r}
@@ -825,8 +789,6 @@ lat_yrly %>%
     fill = "Time Period") +
   theme(legend.position = "bottom")
 ```
-
-
 
 ### Longitude
 
@@ -853,10 +815,7 @@ lon_yrly %>%
 
 ```
 
-
-
 ### Mean Temperature
-
 
 ```{r}
 # Temperature
@@ -878,9 +837,7 @@ t_yrly %>%
   theme(legend.position = "bottom")
 ```
 
-
 ### Mean Depth
-
 
 ```{r}
 # Depth
@@ -902,12 +859,9 @@ d_yrly %>%
   theme(strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
         legend.position = "bottom")
 ```
-
-
 :::
 
 ## Changes to Growth
-
 
 ```{r regime comparison data}
 
@@ -960,9 +914,7 @@ regime_comparison <- vonbert_species %>%
   
 ```
 
-
-Changes in the size-at-age growth relationship varied across species, with the majority (14/18) of the species exhibiting smaller L-infinity during the warmer temperature regime. 
-
+Changes in the size-at-age growth relationship varied across species, with the majority (14/18) of the species exhibiting smaller L-infinity during the warmer temperature regime.
 
 ```{r}
 #| eval = TRUE,
@@ -988,9 +940,6 @@ ggplot(data = waffle_iron(
   labs(x = "", y = "", fill = str_c("Warm Regime Growth Impacts on ", age_set," Body Length:"))
 
 ```
-
-
-
 
 The species that showed larger asymptotic lengths include the three hake species: **red hake, silver hake, & white hake** as well as **Atlantic herring.** These species are all among the majority group of species that is found primarily in the Northern part of the survey area, in and around the Gulf of Maine.
 
@@ -1033,8 +982,6 @@ ggplot(plot_dat, aes(x = estimate, y = comname, group = regime, color = regime))
   
 ```
 
-
-
 ```{r, fig.height = 6}
 #| eval = FALSE
 # Plotting Everything
@@ -1060,7 +1007,6 @@ species_coef %>%
 
 ## Changes in $L_\infty$
 
-
 ```{r}
 species_coef %>% 
   distinct(comname, regime, parameter, estimate) %>% 
@@ -1075,8 +1021,6 @@ species_coef %>%
   setNames(c("Common Name", "Early Regime Linf", "Warm Regime Linf", "Change in Linf", "Percent Change")) %>% 
   gt()
 ```
-
-
 
 ## VB Fits to Data:
 
@@ -1142,15 +1086,9 @@ walk(key_species,
 ```
 :::
 
-
-
 # Discussion
 
-
-
-
-
---- 
+------------------------------------------------------------------------
 
 # Bonus: Data Explorations
 
@@ -1196,8 +1134,6 @@ Strong age classes were particularly prominent in the following species, showing
 | Atlantic Herring | 2008, 2011          |
 | Pollock          | 2000, 2012          |
 
-
-
 ## Growth Increment Changes
 
 Annual Growth increments for each species were computed to track the change in growth of specific age-groups through time.
@@ -1233,8 +1169,6 @@ vb_incs <- vonbert_species_agedat %>%
 
 
 ```
-
-
 
 Age specific growth (annual growth increments) help detail where in a species life cycle it may be experiencing favorable or less-favorable conditions for growth. These can be a result of differences in habitat use or prey resources at different ages, and/or a change in exposure to temperature or other stressors that inflict a metabolic cost.
 
@@ -1412,9 +1346,7 @@ walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "weight")
 ```
 :::
 
-
 ## Shifts in Growth
-
 
 ```{r regime impact plot}
 #| fig.height = 8,
@@ -1432,8 +1364,6 @@ regime_comparison %>%
          title = "Thermal Regime Impacts on Growth",
          subtitle = "Changes in Size at Age (Warm Regime - Historic Regime)") 
 ```
-
-
 
 ```{r}
 #| eval = FALSE
