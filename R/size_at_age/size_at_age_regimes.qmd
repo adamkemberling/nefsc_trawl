@@ -1,5 +1,5 @@
 ---
-title: "Decadal Changes in Size at Age Following SST Regime Shift"
+title: "Growth Regimes in the NW Atlantic Following Temperature Regime Shift"
 author: 
     name: "Adam Kemberling"
     url: https://github.com/adamkemberling
@@ -82,7 +82,7 @@ plot_panelset <- function(spec, plot_fun, ...) {
 
 `r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
-# Growth Regimes in the NW Atlantic Following Temperature Regime Shift
+# Abstract
 
 # Introduction
 
@@ -90,7 +90,7 @@ plot_panelset <- function(spec, plot_fun, ...) {
 
 ### Introduce Study Area and Existing Research
 
-Recent changes in Gulf stream positioning have altered the relative influences of the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region, as well as food-web dynamics. We seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
+Recent changes in Gulf stream positioning have altered the relative influences of both the Gulf stream and Labrador current on temperature and salinity regimes for the region. Understanding that this new temperature and salinity regime should alter both the energetics of the region, as well as food-web dynamics. We seek to identify whether these changes have had a measurable impact on the growth of several groundfish species.
 
 Despite many of these species living at or near the bottom, research suggests that the forces driving these thermal regimes should have far-reaching impacts biological impacts. These impacts may directly change the near-bottom environment through mixing patterns, and/or indirectly through food-web impacts.
 
@@ -766,9 +766,9 @@ standardized_changes %>%
 
 ```
 
-### Center of Biomass Trends
+## Center of Biomass Trends
 
-::: {panel-tabset}
+::: panel-tabset
 ### Latitude
 
 ```{r}
@@ -1018,7 +1018,9 @@ species_coef %>%
          diff_perc = (linf_diff / early) * 100) %>% 
   mutate(across(where(is.numeric), round, 2)) %>% 
   arrange(desc(diff_perc)) %>% 
-  setNames(c("Common Name", "Early Regime Linf", "Warm Regime Linf", "Change in Linf", "Percent Change")) %>% 
+  select(c(1, 4, 5)) %>% 
+  setNames(c("Common Name", #"Early Regime Linf", "Warm Regime Linf", 
+             "Change in Linf (cm)", "Percent Change")) %>% 
   gt()
 ```
 
