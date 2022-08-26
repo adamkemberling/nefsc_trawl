@@ -84,6 +84,8 @@ plot_panelset <- function(spec, plot_fun, ...) {
 
 # Abstract
 
+Physical observations of the region indicate that the NW Atlantic has experienced a regime shift that has accelerated warming in the area. Temperature has a profound impact on the growth, behavior, production, and mortality in ectotherms. For these reasons species are expected to follow their thermal preferences, otherwise risking consequences in the forms of metabolic costs and/or other forms of stress. Using trawl survey data we monitored we tracked the individual responses of 17 species during the ten years prior, and ten years following the regime shift in 2010. Species response to warming was studied in terms of their behavioral shifts via shifting geographic center of biomass,and their biologic response via their size-at-age relationships through time. The majority of species in the southern half of the study area shifted their center of biomass Northward, with no northern species shifting anywhere south of Cape Cod. A concurrent pattern emerged in growth patterns, with the majority of species experiencing faster early-stage growth and smaller adult size. These patterns suggest that even among species that are able to follow thermal preferences, there are additional metabolic costs associated with the shifting environment. Changes in growth rates across such a wide range of species have implications for ecologists and fisheries managers seeking to understand climate impacts on fisheries.
+
 # Introduction
 
 ### Literature on TSR and Growth Expectations
@@ -94,7 +96,7 @@ Recent changes in Gulf stream positioning have altered the relative influences o
 
 Despite many of these species living at or near the bottom, research suggests that the forces driving these thermal regimes should have far-reaching impacts biological impacts. These impacts may directly change the near-bottom environment through mixing patterns, and/or indirectly through food-web impacts.
 
-Through the lens of an environmental regime change we will assess changes to body size, size-at-age, and growth characteristics derived using the von-bertalanffy growth equation.
+Through the lens of an environmental regime change we will assess changes to body size, size-at-age, and growth characteristics derived using the Von-Bertalanffy growth equation.
 
 # Methods
 
@@ -134,26 +136,11 @@ Temperature data was regionally averaged to match the sampling area for the fish
 
 ### Temperature Regime Shift
 
-**Text about identifying the regime shift**
+Annual temperature anomalies were checked for a regime shift using the bayesian change points package [@erdman2007] following the approach of [@Barry2012] implemented in the R statistical programming language.
 
 ### Warming Trends
 
-We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the full time period (1982-2009) and the last decade (2010-2019), estimating warming rates and long-term averages independently for each period.
-
-```{r}
-# warming trends
-list(
-  "1982-2019" = filter(temp_regimes, between(yr, 1982, 2009)),
-  "2010-2019" = filter(temp_regimes, between(yr, 2010, 2019))
-) %>% 
-  map_dfr(function(.x){
-    mod_x <- lm(sst ~ yr, data = .x)
-    rate <- coef(mod_x)[["yr"]] * 10
-    rate_df <- tibble("Decadal Rate" = round(rate, 2))
-    return(rate_df)}, .id = "Period")
-```
-
-Temperatures prior to the 2010 regime shift rose at a rate of 0.7 $°C/Decade$. Regional temperatures then peaked in 2012 and have remained high while decreasing slowly at a rate of 0.02 $°C/Decade$.
+We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the two time periods: all years before, and all years following the regime shift. Warming rates and long-term averages were estimated independently for each period.
 
 ## Species Data
 
@@ -548,6 +535,7 @@ Yield-per-recruit analysis similar to Baudron et al. 2014?
 ## Temperature Regime Shift
 
 ```{r}
+#| label: Temperature regime shift test
 
 # Pull the whole area's temps
 survey_temps <- filter(temp_regimes, survey_area == "Full Region")
@@ -612,6 +600,8 @@ prob_text <- paste(round(anom_bcp$Probability *100, 2), collapse = ", ")
 SST anomaly time series of the region indicate a jump in annual temperature anomalies indicative of a regime shift centered around 2010. A bayesian change point analysis showed highest support for a regime shift among `r nrow(anom_bcp)` the years: 2009-2011. Change point probabilities for these years were `r prob_text`% respectively.
 
 ```{r}
+#| label: bcp plotting function
+
 # Function to plot bcp breaks, highlighting their support
 plot_bcp_breaks <- function(bcp_data, 
                             bcp_breaks, 
@@ -648,9 +638,27 @@ plot_bcp_breaks(bcp_data = survey_temps,
 
 ```
 
-Average temperatures following the regime shift (2011-2021), were on average 1.09°C warmer than the than the average over the previous 28 years (1982-2009). Temperatures within each regime were relatively stable, indicative of a jump in mean temperatures rather than a rate change between them. While temperatures in the current regime are falling, the rate is such that
+### Warming Trends
+
+```{r}
+#| label: temperature warming trends
+
+# warming trends
+list(
+  "1982-2019" = filter(temp_regimes, between(yr, 1982, 2009)),
+  "2010-2019" = filter(temp_regimes, between(yr, 2010, 2019))
+) %>% 
+  map_dfr(function(.x){
+    mod_x <- lm(sst ~ yr, data = .x)
+    rate <- coef(mod_x)[["yr"]] * 10
+    rate_df <- tibble("Decadal Rate" = round(rate, 2))
+    return(rate_df)}, .id = "Period")
+```
+
+Temperatures prior to the 2010 regime shift rose at a rate of 0.7 $°C/Decade$. Regional temperatures then peaked in 2012 and have remained high while decreasing slowly at a rate of 0.02 $°C/Decade$. Average temperatures following the regime shift (2011-2021), were on average 1.09°C warmer than the than the average over the previous 28 years (1982-2009). Temperatures within each regime were relatively stable, indicative of a jump in mean temperatures rather than a rate change between them. While temperatures in the current regime are falling, the rate is such that
 
 ```{r temp regimes}
+#| label: temperature regime figure
 
 # Plot how each one exhibits a break in the temperature across the region
 temp_regimes %>% 
@@ -753,9 +761,9 @@ standardized_changes %>%
   facet_wrap(~var_neat, ncol = 2, scales = "fixed") +
   scale_fill_distiller(palette = "RdBu",
                        oob = scales::oob_squish,
-                       limits = c(-1.5, 1.5), 
-                       breaks = c(-1.5, -.75, 0, .75, 1.5),
-                       labels =c("<-1.5", "-.75", "0", ".75", ">1.5")) +
+                       limits = c(-1, 1), 
+                       breaks = c(-1, -.5, 0, .5, 1),
+                       labels =c("<-1", "-.5", "0", ".5", ">1")) +
   labs(x = "Year", y = "",
        title = "Center of Biomass Movements Through Time",
        fill = "Center of Biomass Metric Change (z)",

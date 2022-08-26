@@ -111,7 +111,7 @@ The Northwest Atlantic ocean bordering the United states and Scotian Shelf is on
 
 # Introduction
 
-## Temperature  & Ecology 
+## Temperature & Ecology
 
 It is well understood that temperature plays a critical role on physiology through its impact on the chemical reactions that underpin biological life. A consequence of this, is that most life has evolved a thermal preference, around which the chemical reactions that support things like growth and means for self-preservation. Species that are unable to maintain their optimal thermal preferences internally (ectotherms), must be able to follow their thermal preferences through locomotion or adapt through changes in behavior. Otherwise; there will be physiological and/or metabolic costs in failing to do so.
 
@@ -119,22 +119,15 @@ In an era of anthropogenic climate change, there is an expectation that many spe
 
 ## Size Spectrum Theory
 
-Size is a defining characteristic of a species. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. Size structured environments are a fundamental organizational pattern that has been heavily researched. Ecological theory is rich with models with respect to how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards reproduction at the expense of growth. One such ecological model that avoids the need for explicit articulation of each predator-prey interaction is the size spectrum model.
+Size is a defining characteristic of species that mediates many ecological interactions. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment. Size structured environments are a fundamental organizational pattern that has been heavily researched. Ecological theory is rich with models relating how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards reproduction at the expense of growth. One such ecological model that avoids the need for explicit articulation of each predator-prey interaction is the size spectrum model.
 
-A "size spectrum" describes the distribution of biomass or abundance as a function of individuals\' mass or size on a log--log scale [@guiet2016]. Size spectrum are described by two terms, the size spectrum slope & intercept, which contain the following ecological relationships: The size spectrum slope captures the rate at which abundance declines with increasing body size. The slope reflects the efficiency of energy transfer moving from smaller to larger individuals via processes like growth and predation. Variation in the slope has been associated with **fishing pressure** [@bianchi2000; @shin2005] and to **environmental conditions** seen through numerical experiments [@guiet2016]. The spectrum intercept value captures the richness or the productivity at the base of the community, and is strongly connected to the prevailing environmental conditions @boudreau1992. Consequently, the spectrum shape is sometimes defined by their environmental conditions, and whether they are eutrophic or oligotrophic systems [@rossberg2012]. Biomass spectrum present predictable intercepts between ecosystems of similar productivity levels, but also of distinct temperatures [@guiet2016].
+A "size spectrum" describes the distribution of biomass or abundance as a function of individuals' mass or size on a log--log scale \[@guiet2016\]. Size spectrum are described by two terms, the size spectrum slope & intercept. These two terms convey the baseline productivity, and how energy flows through an ecosystem in the form of biomass. The spectrum intercept value captures the richness or the productivity at the base of the community and is strongly connected to the prevailing environmental conditions \[@boudreau1992\]. So much so, that spectrum shape is sometimes defined by its eutrophic or oligotrophic environmental conditions \[@rossberg2012\].
 
-> Because it controls chemical reactions, temperature controls metabolic rates
-> which underpin maintenance, growth or reproduction (Clarke and
-> Johnston, 1999;Kooijman, 2010) as well as the functional responses
-> to food density (Rall et al., 2012). Guiet et al. (2016)... In addition to the impact
-> of temperature on communities\' intercepts (heights), the impact of
-> temperature on the speed of the energy flow within communities
-> may affect other properties, such as their resilience to perturbations or the intensity of trophic cascades (Andersen and Pedersen,
-> 2009).
+Size spectra condense the complexities of predator prey networks and their interactions into a handful of size-based indices (SBI). In doing so a community size spectrum captures the emergent properties of a system, while needing only size and abundance information that is commonly available. For this reason it has become increasingly relied upon as an indicator of ecosystem health in the push for ecosystem based fisheries management. Changes in slope have been associated with fishing exploitation, primarily through the targeted removal of larger individuals \[@bianchi2000; @shin2005\]. Numerical experiments have also tried to link changes in slope to environmental disturbances \[@guiet2016\]. Biomass spectrum present predictable intercepts between ecosystems of similar productivity levels, but also of distinct temperatures [@guiet2016].
 
-**Size spectrum applications**
+This is a direct quote from [@guiet2016], but nails the connection back to temp expectations:
 
-The size spectrum relationship is the community-wide integration of individual-level processes like growth, maintenance, and size-selective predation \[@guiet2016\]. Spectra condense the complexities of predator prey networks and their interactions into a handful of size-based metrics. In doing so a community size spectrum captures the emergent properties of a system, while needing size and abundance information that is commonly available. For this reason it has become increasingly relied upon as an indicator of ecosystem health in the push for ecosystem based fisheries management. As an index, size spectra capture changes in energy flow within a community. Looking at changes to the efficieny of energy flow in a system is a way that ecologists and natural resource manages can track the health of an ecosystem. Inefficient transfer of energy, a symptom of poor prey availability or size mismatches, produces steeper slopes and/or fewer trophic levels. Disturbances like the physical removal of specific size classes through fishing directly impacts spectrum slopes through removal of larger individuals. Differences in intercept are more commonly attributed to environmental differences. Lower productivity communities (with exceptions) supporting less complex food webs (less biomass available to transfer).
+> Because it controls chemical reactions, temperature controls metabolic rates which underpin maintenance, growth or reproduction (Clarke and Johnston, 1999; Kooijman, 2010) as well as the functional responses to food density (Rall et al., 2012). Guiet et al. (2016)... In addition to the impact of temperature on communities' intercepts (heights), the impact of temperature on the speed of the energy flow within communities may affect other properties, such as their resilience to perturbations or the intensity of trophic cascades (Andersen and Pedersen, 2009).
 
 ### Temperature of the Gulf of Maine & NE Shelf
 
@@ -150,11 +143,7 @@ While these examples show that species can respond to changes in the physical en
 
 ### Purpose
 
-We estimated size spectrum relationships for the groundfish populations for each sub-region of the Northeast US continental shelf.
-
-In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment.
-
-**In the case of the NW Atlantic:** sustained increases in temperature should have a physiological impact on the community.
+We estimated size spectrum relationships for the groundfish populations for each sub-region of the Northeast US continental shelf. In the case of the NW Atlantic: sustained increases in temperature should have a physiological impact on the community size structure.
 
 This leads to our second hypothesis:
 
@@ -464,5 +453,7 @@ temp_regimes %>%
 ### 
 
 # Discussion
+
+The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoid[@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggests that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had just begun to reflect a regime shift, and could have been considered at that time an acute stressor. Since then the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining.
 
 # References
