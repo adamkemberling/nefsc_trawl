@@ -111,52 +111,34 @@ The Northwest Atlantic ocean bordering the United states and Scotian Shelf is on
 
 # Introduction
 
-This is a direct quote, needs a citation:
+## Temperature  & Ecology 
 
-> Temperature is the most important physical factor affecting processes at multiple scales of organization from cellular chemical reaction rates, organismal physiological processes, population productivity and distribution, and interactions among species in complex communities (Fry 1971, Magnuson et al. 1979, Claireaux and Lefrançois 2007).
+It is well understood that temperature plays a critical role on physiology through its impact on the chemical reactions that underpin biological life. A consequence of this, is that most life has evolved a thermal preference, around which the chemical reactions that support things like growth and means for self-preservation. Species that are unable to maintain their optimal thermal preferences internally (ectotherms), must be able to follow their thermal preferences through locomotion or adapt through changes in behavior. Otherwise; there will be physiological and/or metabolic costs in failing to do so.
 
-Temperature related effects on marine organism physiology impacts:
-
-1.  The acquisition of biomass through feeding
-
-2.  The loss of biomass through metabolism
-
-3.  The rates of development
-
-## Global/Regional Ocean Temperatures
-
--   Osman et al. 2011 (climate change hockey stick)
--   Marine species distribution shifts in NE Atlantic shelf [@kleisner2017]
-
-## Temperature Impacts on Growth
-
-In most species differences in the temperature-dependence of these rates causes early life stages to grow more quickly in warmer water. This rapid early growth is then usually followed by an earlier maturation and a smaller size at maturity. **Citations needed TSR & Berggman Rule.** Multiple competing explanations have been suggested to test how general the mechanisms are behind this relationship. **More citations about how contested this is**.
-
-#### Experimental Evidence & TSR
-
--   Atkinson (2003)
--   Forster (2012)
-
-#### In-Situ Evidence 
-
--   North sea groundfish
--   Range shifts NW Atlantic Kleisman
+In an era of anthropogenic climate change, there is an expectation that many species will be displaced from historic habitats. Research in marine environments has shown examples of species shifting to higher latitudes and deeper depths in the pursuit of more favorable conditions [@kleisner2017; @pinsky2013]. Other research has suggested that the impacts of elevated temperatures may be manifesting not through geographic distribution change, but through physiological changes, changes in seasonal phenology, or hampered recovery efforts [@daan2005; @miller2018; @pershing2018; @meyer-gutbrod2021]. Temperature has direct and indirect impacts on critical biological functions including the acquisition of biomass through feeding, the rates of biomass loss through metabolism, and the rates at which individuals mature and develop. This potential for temperature to impact the size structure of an ecosystem has implications for blue economy & natural resource systems we rely upon.
 
 ## Size Spectrum Theory
 
-**Importance of size in ecology:**
+Size is a defining characteristic of a species. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. Size structured environments are a fundamental organizational pattern that has been heavily researched. Ecological theory is rich with models with respect to how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards reproduction at the expense of growth. One such ecological model that avoids the need for explicit articulation of each predator-prey interaction is the size spectrum model.
 
-Size is a defining characteristic of a species, and of individuals. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. Size structured environments are...
+A "size spectrum" describes the distribution of biomass or abundance as a function of individuals\' mass or size on a log--log scale [@guiet2016]. Size spectrum are described by two terms, the size spectrum slope & intercept, which contain the following ecological relationships: The size spectrum slope captures the rate at which abundance declines with increasing body size. The slope reflects the efficiency of energy transfer moving from smaller to larger individuals via processes like growth and predation. Variation in the slope has been associated with **fishing pressure** [@bianchi2000; @shin2005] and to **environmental conditions** seen through numerical experiments [@guiet2016]. The spectrum intercept value captures the richness or the productivity at the base of the community, and is strongly connected to the prevailing environmental conditions @boudreau1992. Consequently, the spectrum shape is sometimes defined by their environmental conditions, and whether they are eutrophic or oligotrophic systems [@rossberg2012]. Biomass spectrum present predictable intercepts between ecosystems of similar productivity levels, but also of distinct temperatures [@guiet2016].
 
-**What is a size spectrum**
-
-A "size spectrum" describes the distribution of biomass or abundance as a function of individuals\' mass or size on a log--log scale [@guiet2016]. Size spectrum are described by two terms, the size spectrum slope & intercept, which contain the following ecological relationships: The size spectrum slope captures the rate at which abundance declines with increasing body size. The slope reflects the efficiency of energy transfer moving from smaller to larger individuals via processes like growth and predation. Variation in the slope has been associated with **fishing pressure** [@bianchi2000; @shin2005] and to **environmental conditions** through numerical experiments [@guiet2016]. The intercept on the other hand captures the richness or the productivity of the community. This term is thought to be related to, or even defined, by the environmental conditions [@boudreau1992; @guiet2016, @rossberg2012].
+> Because it controls chemical reactions, temperature controls metabolic rates
+> which underpin maintenance, growth or reproduction (Clarke and
+> Johnston, 1999;Kooijman, 2010) as well as the functional responses
+> to food density (Rall et al., 2012). Guiet et al. (2016)... In addition to the impact
+> of temperature on communities\' intercepts (heights), the impact of
+> temperature on the speed of the energy flow within communities
+> may affect other properties, such as their resilience to perturbations or the intensity of trophic cascades (Andersen and Pedersen,
+> 2009).
 
 **Size spectrum applications**
 
 The size spectrum relationship is the community-wide integration of individual-level processes like growth, maintenance, and size-selective predation \[@guiet2016\]. Spectra condense the complexities of predator prey networks and their interactions into a handful of size-based metrics. In doing so a community size spectrum captures the emergent properties of a system, while needing size and abundance information that is commonly available. For this reason it has become increasingly relied upon as an indicator of ecosystem health in the push for ecosystem based fisheries management. As an index, size spectra capture changes in energy flow within a community. Looking at changes to the efficieny of energy flow in a system is a way that ecologists and natural resource manages can track the health of an ecosystem. Inefficient transfer of energy, a symptom of poor prey availability or size mismatches, produces steeper slopes and/or fewer trophic levels. Disturbances like the physical removal of specific size classes through fishing directly impacts spectrum slopes through removal of larger individuals. Differences in intercept are more commonly attributed to environmental differences. Lower productivity communities (with exceptions) supporting less complex food webs (less biomass available to transfer).
 
 ### Temperature of the Gulf of Maine & NE Shelf
+
+-   Marine species distribution shifts in NE Atlantic shelf [@kleisner2017]
 
 Sea surface temperatures in the Gulf of Maine since 1982 have been warming at rates faster than 96% of the world's oceans, with similar warming rates along the northwest Atlantic shelf [@pershing2018]. A punctuated elevation in temperatures over the last decade are believed to be the result of a shift in Gulf Stream positioning. A Northward shift in the Gulf stream has increased the regional temperatures via an increased direct transport of warm gulf stream water into areas like the Gulf of Maine . The Gulf stream has also been producing a higher frequency of warm core rings, and has obstructed some of the cold-water Scotian Shelf current flow that would otherwise counter the influence of the Gulf Stream on the region's temperatures [@gangopadhyay2019; @meyer-gutbrod2021]. The combination of these oceanographic changes has led to a warmer continental shelf habitat.
 
