@@ -44,6 +44,9 @@ library(ggstream)
 library(ggforce)
 library(bcp)
 library(scales)
+library(corrplot)
+library(readxl)
+
 
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
@@ -121,9 +124,9 @@ In an era of anthropogenic climate change, there is an expectation that many spe
 
 Size is a defining characteristic of species that mediates many ecological interactions. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment. Size structured environments are a fundamental organizational pattern that has been heavily researched. Ecological theory is rich with models relating how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards reproduction at the expense of growth. One such ecological model that avoids the need for explicit articulation of each predator-prey interaction is the size spectrum model.
 
-A "size spectrum" describes the distribution of biomass or abundance as a function of individuals' mass or size on a log--log scale \[@guiet2016\]. Size spectrum are described by two terms, the size spectrum slope & intercept. These two terms convey the baseline productivity, and how energy flows through an ecosystem in the form of biomass. The spectrum intercept value captures the richness or the productivity at the base of the community and is strongly connected to the prevailing environmental conditions \[@boudreau1992\]. So much so, that spectrum shape is sometimes defined by its eutrophic or oligotrophic environmental conditions \[@rossberg2012\].
+A "size spectrum" describes the distribution of biomass or abundance as a function of individuals' mass or size on a log--log scale [@guiet2016]. Size spectrum are described by two terms, the size spectrum slope & intercept. These two terms convey the baseline productivity, and how energy flows through an ecosystem in the form of biomass. The spectrum intercept value captures the richness or the productivity at the base of the community and is strongly connected to the prevailing environmental conditions [@boudreau1992]. So much so, that spectrum shape is sometimes defined by its eutrophic or oligotrophic environmental conditions [@rossberg2012].
 
-Size spectra condense the complexities of predator prey networks and their interactions into a handful of size-based indices (SBI). In doing so a community size spectrum captures the emergent properties of a system, while needing only size and abundance information that is commonly available. For this reason it has become increasingly relied upon as an indicator of ecosystem health in the push for ecosystem based fisheries management. Changes in slope have been associated with fishing exploitation, primarily through the targeted removal of larger individuals \[@bianchi2000; @shin2005\]. Numerical experiments have also tried to link changes in slope to environmental disturbances \[@guiet2016\]. Biomass spectrum present predictable intercepts between ecosystems of similar productivity levels, but also of distinct temperatures [@guiet2016].
+Size spectra condense the complexities of predator prey networks and their interactions into a handful of size-based indices (SBI). In doing so a community size spectrum captures the emergent properties of a system, while needing only size and abundance information that is commonly available. For this reason it has become increasingly relied upon as an indicator of ecosystem health in the push for ecosystem based fisheries management. Changes in slope have been associated with fishing exploitation, primarily through the targeted removal of larger individuals [@bianchi2000; @shin2005]. Numerical experiments have also tried to link changes in slope to environmental disturbances [@guiet2016]. Biomass spectrum present predictable intercepts between ecosystems of similar productivity levels, but also of distinct temperatures [@guiet2016].
 
 This is a direct quote from [@guiet2016], but nails the connection back to temp expectations:
 
@@ -275,7 +278,137 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 
 ## Spectra Drivers
 
-The impact of external factors on the changes in size spectra was compared against several hypothesized driving forces. External factors proposed as potential drivers included sea surface temperature anomalies, fishing pressure (Fogarty overfishing index), North Atlantic Oscillation (NAO), and zooplankton community indices.
+The impact of external factors on the changes in size spectra was compared against several hypothesized driving forces. External factors proposed as potential drivers included sea surface temperature anomalies, state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), the North Atlantic Oscillation (NAO), and zooplankton community indices from the continuous plankton recorder (CPR) dataset.
+
+```{r}
+#| label: fishing-effort
+#| eval: true
+#| echo: true
+
+#### 1. GARFO Landings  ####
+
+# Load the GARFO landings data:
+res_path <- gmRi::cs_path("res")
+
+# Landings of finfish* sheet 5
+landings <- read_xlsx(
+  path = str_c(res_path, "GARFO_landings/KMills_landings by area 1964-2021_JUN 2022.xlsx"), sheet = 5) %>% 
+  rename_all(tolower)
+
+
+# Shapefiles for the fisheries stat zones
+stat_zones <- read_sf(str_c(res_path, "Shapefiles/Statistical_Areas/Statistical_Areas_2010_withNames.shp"))
+
+
+# Make a list of zones to roughly match the survey areas:
+fish_zones <- list(
+  "Gulf of Maine" = c(511:515, 464, 465),
+  "Georges Bank" = c(521, 522, 525, 561, 562),
+  "Southern New England" = c(611, 612, 613, 616, 526, 537, 538, 539),
+  "Mid-Atlantic Bight" = c(614:615, 621, 622, 625, 626, 631, 632))
+
+
+# Trim out what we don't need and label them
+stat_zones <- stat_zones %>% 
+  mutate(
+    survey_area = case_when(
+      Id %in% fish_zones$"Gulf of Maine" ~ "Gulf of Maine",
+      Id %in% fish_zones$"Georges Bank" ~ "Georges Bank",
+      Id %in% fish_zones$"Southern New England" ~ "Southern New England",
+      Id %in% fish_zones$"Mid-Atlantic Bight" ~ "Mid-Atlantic Bight")) %>% 
+  filter(survey_area %in% c(
+    "Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight"))
+  
+
+# # Map it out? - takes forever from Chesapeake bay
+
+# ggplot(st_simplify(stat_zones)) +
+#   geom_sf(aes(fill = survey_area)) +
+#   scale_fill_gmri() +
+#   map_theme()
+
+
+# Add the labels into the landings data and remove what we don't need there:
+landings <- landings %>% 
+  mutate(
+    survey_area = case_when(
+      `stat area` %in% fish_zones$"Gulf of Maine" ~ "Gulf of Maine",
+      `stat area` %in% fish_zones$"Georges Bank" ~ "Georges Bank",
+      `stat area` %in% fish_zones$"Southern New England" ~ "Southern New England",
+      `stat area` %in% fish_zones$"Mid-Atlantic Bight" ~ "Mid-Atlantic Bight")) %>% 
+  filter(survey_area %in% c("Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight")) %>% 
+  mutate(survey_area = factor(survey_area, levels = c(
+    "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"
+  )))
+
+
+
+# Get Summaries
+landings_summ <- landings %>% 
+  drop_na() %>% 
+  rename(
+    "weight_lb" = `landed lbs`,
+    "live_lb" = `live lbs`) %>% 
+  drop_na() %>% 
+  group_by(year, survey_area) %>% 
+  summarise( 
+    across(
+      .cols = c(value, weight_lb, live_lb), 
+      .fns = list(mean = mean, 
+                  total = sum), 
+      .names = "{.fn}_{.col}"), 
+    .groups = "drop")  
+
+
+# Scale the landings to create an index by area
+landings_summ <- landings_summ %>% 
+  group_by(survey_area) %>% 
+  mutate(total_wt_z = base::scale(total_weight_lb)) %>% 
+  ungroup()
+
+
+
+####  2. Climate Drivers  ####
+
+# From ecodata:
+
+####  NAO   & GSI
+nao <- ecodata::nao %>% 
+    mutate(year = Time,
+           Time = as.Date(str_c(Time, "-01-01")))
+
+gsi <- ecodata::gsi %>% 
+  mutate(
+    Time = str_pad(as.character(Time), width = 7, side = "right", pad = "0"),
+    year = as.numeric(str_sub(Time, 1, 4)),
+    month = str_sub(Time, -2, -1),
+    Time = as.Date(str_c(year, month, "01", sep = "-")))
+
+
+# Join them up
+clim_drivers <- bind_rows(list(nao, gsi)) %>% 
+  filter(EPU == "All")
+  
+
+
+
+
+####  3. CPR Indices  ####
+
+# From CPR Analysis:
+# Uses 7 focal taxa, 2 calanus stages
+cpr_indices <- read_csv("~/Documents/Repositories/continuous_plankton_recorder/results_data/cpr_focal_pca_timeseries_period_1961-2017.csv")
+
+
+# Do some Reshaping for the Plot
+cpr_indices <- cpr_indices %>% 
+  select(c(year, 2:3)) %>% 
+  rename(
+    `Principal Component 1` = "First Mode",
+    `Principal Component 2` = "Second Mode") %>% 
+  pivot_longer(names_to = "pca_mode", values_to = "pca_loading", cols = c(2:3)) 
+
+```
 
 # Results
 
@@ -455,5 +588,199 @@ temp_regimes %>%
 # Discussion
 
 The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoid[@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggests that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had just begun to reflect a regime shift, and could have been considered at that time an acute stressor. Since then the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining.
+
+### Potential Drivers:
+
+```{r}
+#| label: landings-index
+
+
+####  Landings  ####
+landings_summ %>% 
+  ggplot(aes(year, total_wt_z, group = survey_area)) +
+  geom_line() +
+  facet_wrap(~survey_area, ncol = 1) +
+  #scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
+  labs(x = "Year", y = "Finfish Landings Index (z)",
+       title = "GARFO Finfish Landings")
+```
+
+
+
+
+```{r}
+#| label: climate-modes
+
+####  Climate Drivers  ####
+
+ggplot(clim_drivers, aes(Time, Value, group = Var)) +
+    geom_line() +
+  facet_wrap(~Var, ncol = 1) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_date(limits = as.Date(c("1965-01-01", "2020-12-31")),
+               breaks = scales::breaks_pretty(n = 6)) +
+  labs(x = "Year", y = "Total Finfish Landings (lb.)",
+       title = "Environmental Drivers")
+```
+
+
+```{r}
+#| label: cpr-modes
+
+
+#### CPR Community  ####
+
+# CPR Plot
+cpr_indices %>% 
+  ggplot(aes(year, pca_loading, group = pca_mode)) +
+  geom_line() +
+  facet_wrap(~pca_mode, ncol = 1) +
+  scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
+  labs(x = "Year", y = "PCA Loading", title = "Gulf of Maine CPR PCA")
+
+```
+
+
+```{r}
+#| label: drivers-and-spectra
+#| eval: true
+#| fig-height: 7
+#| fig-width: 7
+
+
+# Common form for all:
+# year, area, var, value
+
+# Put climate drivers on annual schedule
+clim_idx <- clim_drivers %>% 
+  group_by(year, area = EPU, var = Var) %>% 
+  summarise(value = mean(Value, na.rm = T),
+            .groups = "drop")
+
+
+# landings
+landings_idx <- landings_summ %>% 
+  group_by(year, area = survey_area) %>% 
+  summarise(value = mean(total_wt_z, na.rm = T),
+            .groups = "drop") %>% 
+  mutate(var = "landings")
+
+
+# Zooplankton
+cpr_idx <- cpr_indices %>% 
+  mutate(area = "Gulf of Maine",
+         var = str_c("cpr_pca_", str_sub(pca_mode, -1, -1))) %>% 
+  group_by(year, area, var) %>% 
+  summarise(value = mean(pca_loading),
+            .groups = "drop")
+
+
+
+# Size Spectrum Slopes & Intercepts
+
+# table to join for swapping shorthand for long-hand names
+area_df <- data.frame(area = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"),
+                      survey_area = c("GoM", "GB", "SNE", "MAB"))
+
+# Reshape to match the others
+ss_idx <- region_indices %>% 
+  select(year = Year, survey_area, spectra_slope = l10_slope_strat, spectra_int = l10_int_strat) %>% 
+  pivot_longer(cols = c(spectra_slope, spectra_int), names_to = "var", values_to = "value") %>% 
+  mutate(year = as.numeric(year)) %>% 
+  left_join(area_df) %>% 
+  select(-survey_area)
+
+
+
+# All drivers
+all_drivers <- bind_rows(
+  list(
+    clim_idx,
+    landings_idx,
+    cpr_idx,
+    ss_idx
+  )
+)
+
+
+
+
+# Do some reshaping:
+driver_matrix <- all_drivers %>% 
+  mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
+  select(-c(area, var)) %>% 
+  pivot_wider(names_from = id, values_from = value) %>% 
+  drop_na() %>% 
+  column_to_rownames(var = "year")
+  
+
+# Can we correlate them with the area mismatch?
+ 
+
+# Correlation Plot
+rho <- cor(driver_matrix)
+
+par(mai=c(0.8,0.8,0.2,0.2))
+corrplot(rho, 
+         method="ellipse", 
+         type="lower", 
+         order = "hclust",
+         tl.col = "black", 
+         tl.srt = 0, 
+         tl.cex = 0.6, 
+         tl.offset = 0.7,
+         cl.cex = 0.8, 
+         cl.offset = 0.9, 
+         cl.ratio = 0.1, 
+         title = "All Year Correlation Matrix")
+```
+
+
+```{r}
+#| label: ggcorr-drivers
+
+# GGplot correlation Matrix
+gg_rho <- as.data.frame(rho) %>% 
+  rownames_to_column(var = "xvar") %>% 
+  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2") 
+
+
+# Tidy it up, enhance the labels
+gg_rho_tidy <- gg_rho %>% 
+  mutate(
+    response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
+    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index"), T, F),
+    area = case_when(
+      str_detect(xvar, "Georges") ~ "Georges Bank",
+      str_detect(xvar, "Gulf") ~ "Gulf of Maine",
+      str_detect(xvar, "Southern") ~ "Southern New England",
+      str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    area = factor(area, levels = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    driver_type = ifelse(str_detect(yvar, "landings"), 
+                         "Fishing", "Environmental"),
+    x_short = case_when(
+      str_detect(xvar, "slope") ~ "Spectra Slope",
+      str_detect(xvar, "int") ~ "Spectra Intercept"))
+
+
+# Plot the convoluted thing:
+gg_rho_tidy %>% 
+  filter( 
+    response_var,
+    driver_var) %>% 
+  ggplot(aes(yvar, x_short, fill = r2)) +
+  geom_tile() +
+  facet_grid(area~driver_type, scales = "free_x") +
+  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.y = element_text(angle = 0),
+        legend.position = "bottom") +
+  labs(x = "Driver", y = "Response Variable",
+       fill = "Correlation Coefficient",
+       title = "Correlation Between Size Spectra Response and Drivers",
+       subtitle = "Correlation for Concurrent Years")
+```
+
 
 # References
