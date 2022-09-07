@@ -583,13 +583,18 @@ temp_regimes %>%
 
 ### Overfishing Trends
 
-### 
+
 
 # Discussion
 
 The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoid[@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggests that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had just begun to reflect a regime shift, and could have been considered at that time an acute stressor. Since then the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining.
 
 ### Potential Drivers:
+
+
+:::{.panel-tabset}
+
+#### GARFO Landings
 
 ```{r}
 #| label: landings-index
@@ -606,7 +611,7 @@ landings_summ %>%
        title = "GARFO Finfish Landings")
 ```
 
-
+#### Climate Modes
 
 
 ```{r}
@@ -624,6 +629,7 @@ ggplot(clim_drivers, aes(Time, Value, group = Var)) +
        title = "Environmental Drivers")
 ```
 
+#### CPR PCA
 
 ```{r}
 #| label: cpr-modes
@@ -641,6 +647,10 @@ cpr_indices %>%
 
 ```
 
+
+:::
+
+### Correlation Matrices
 
 ```{r}
 #| label: drivers-and-spectra
@@ -721,7 +731,6 @@ driver_matrix <- all_drivers %>%
 # Correlation Plot
 rho <- cor(driver_matrix)
 
-par(mai=c(0.8,0.8,0.2,0.2))
 corrplot(rho, 
          method="ellipse", 
          type="lower", 
@@ -739,6 +748,7 @@ corrplot(rho,
 
 ```{r}
 #| label: ggcorr-drivers
+#| fig-height: 5
 
 # GGplot correlation Matrix
 gg_rho <- as.data.frame(rho) %>% 
