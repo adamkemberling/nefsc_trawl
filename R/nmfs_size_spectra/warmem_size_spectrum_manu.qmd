@@ -555,29 +555,6 @@ temp_regimes <- regional_oisst %>%
 
 
 
-# Plot the timelines
-temp_regimes %>% 
-  #filter(survey_area == "Full Region") %>% 
-  ggplot( aes(yr, sst_anom)) +
-  geom_col(aes(fill = regime),  size = 0.75, alpha = 0.8) +
-  scale_fill_gmri() +
-  scale_color_gmri() +
-  scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
-  scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
-  facet_wrap(~survey_area, ncol = 1) +
-  guides(fill = "none") +
-  theme(
-    legend.title = element_blank(),
-    legend.position = "bottom",
-    legend.background = element_rect(fill = "transparent"),
-    legend.key = element_rect(fill = "transparent", color = "transparent")) + 
-  labs(
-    title = "NW-Atlantic Regional SST Anomalies",
-    x = "", 
-    y = "Surface Temperature Anomaly",
-    caption = "Anomalies calculated using 1982-2011 reference period.") +
-  guides(label = "none",
-         color = guide_legend(keyheight = unit(0.5, "cm")))
 
 ```
 
@@ -594,6 +571,40 @@ The data we rely on in this analysis was collected as part of a survey program w
 
 :::{.panel-tabset}
 
+#### Surface Temperature Anomalies  
+
+```{r}
+#| label: temperature-index
+#| fig.height: 6
+
+
+# Plot the timelines
+temp_regimes %>% 
+  #filter(survey_area == "Full Region") %>% 
+  ggplot( aes(yr, sst_anom)) +
+  #geom_col(aes(fill = regime),  size = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
+  geom_line(size = 0.75, alpha = 0.8) +
+  scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
+  scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
+  facet_wrap(~survey_area, ncol = 1) +
+  guides(fill = "none") +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom",
+    legend.background = element_rect(fill = "transparent"),
+    legend.key = element_rect(fill = "transparent", color = "transparent")) + 
+  labs(
+    title = "NW-Atlantic Regional SST Anomalies",
+    x = "", 
+    y = "Surface Temperature Anomaly",
+    caption = "Anomalies calculated using 1982-2011 reference period.") +
+  guides(label = "none",
+         color = guide_legend(keyheight = unit(0.5, "cm")))
+```
+
+
+
 #### GARFO Landings
 
 ```{r}
@@ -603,6 +614,7 @@ The data we rely on in this analysis was collected as part of a survey program w
 ####  Landings  ####
 landings_summ %>% 
   ggplot(aes(year, total_wt_z, group = survey_area)) +
+  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
   geom_line() +
   facet_wrap(~survey_area, ncol = 1) +
   #scale_y_continuous(labels = scales::comma_format()) +
@@ -620,7 +632,8 @@ landings_summ %>%
 ####  Climate Drivers  ####
 
 ggplot(clim_drivers, aes(Time, Value, group = Var)) +
-    geom_line() +
+  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
+  geom_line() +
   facet_wrap(~Var, ncol = 1) +
   scale_y_continuous(labels = scales::comma_format()) +
   scale_x_date(limits = as.Date(c("1965-01-01", "2020-12-31")),
@@ -640,6 +653,7 @@ ggplot(clim_drivers, aes(Time, Value, group = Var)) +
 # CPR Plot
 cpr_indices %>% 
   ggplot(aes(year, pca_loading, group = pca_mode)) +
+  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
   geom_line() +
   facet_wrap(~pca_mode, ncol = 1) +
   scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
@@ -650,13 +664,18 @@ cpr_indices %>%
 
 :::
 
-### Correlation Matrices
+### All Correlations Matrix
 
 ```{r}
 #| label: drivers-and-spectra
 #| eval: true
 #| fig-height: 7
 #| fig-width: 7
+
+
+# table to join for swapping shorthand for long-hand names
+area_df <- data.frame(area = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
+                      survey_area = c("GoM", "GB", "SNE", "MAB", "Full Region"))
 
 
 # Common form for all:
@@ -686,14 +705,14 @@ cpr_idx <- cpr_indices %>%
             .groups = "drop")
 
 
+# Temperaature
+sst_idx <- temp_regimes %>% 
+  left_join(area_df) %>% 
+  select(year = yr, area, value = sst_anom) %>% 
+  mutate(var = "sst_anom")
+
 
 # Size Spectrum Slopes & Intercepts
-
-# table to join for swapping shorthand for long-hand names
-area_df <- data.frame(area = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"),
-                      survey_area = c("GoM", "GB", "SNE", "MAB"))
-
-# Reshape to match the others
 ss_idx <- region_indices %>% 
   select(year = Year, survey_area, spectra_slope = l10_slope_strat, spectra_int = l10_int_strat) %>% 
   pivot_longer(cols = c(spectra_slope, spectra_int), names_to = "var", values_to = "value") %>% 
@@ -709,6 +728,7 @@ all_drivers <- bind_rows(
     clim_idx,
     landings_idx,
     cpr_idx,
+    sst_idx,
     ss_idx
   )
 )
@@ -725,42 +745,65 @@ driver_matrix <- all_drivers %>%
   column_to_rownames(var = "year")
   
 
-# Can we correlate them with the area mismatch?
- 
 
 # Correlation Plot
 rho <- cor(driver_matrix)
-
-corrplot(rho, 
-         method="ellipse", 
-         type="lower", 
+corrplot(rho,
+         method="ellipse",
+         type="lower",
          order = "hclust",
-         tl.col = "black", 
-         tl.srt = 0, 
-         tl.cex = 0.6, 
+         tl.col = "black",
+         tl.srt = 0,
+         tl.cex = 0.6,
          tl.offset = 0.7,
-         cl.cex = 0.8, 
-         cl.offset = 0.9, 
-         cl.ratio = 0.1, 
+         cl.cex = 0.8,
+         cl.offset = 0.9,
+         cl.ratio = 0.1,
          title = "All Year Correlation Matrix")
+
+# GGplot correlation Matrix data
+gg_rho <- as.data.frame(rho) %>% 
+  rownames_to_column(var = "xvar") %>% 
+  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
+
+```
+
+
+```{r}
+#| label: ggcorr-all
+#| fig-height: 6
+#| fig-width: 6
+#| eval: false
+
+
+gg_rho %>% 
+  mutate(
+    xvar = str_replace(xvar, "_", " "),
+    yvar = str_replace(yvar, "_", " ")) %>% 
+  ggplot(aes(yvar, xvar, fill = r2)) +
+    geom_tile() +
+    scale_fill_distiller(palette = "RdBu", 
+                         limits = c(-1, 1), 
+                         breaks = c(-1,0,1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.y = element_text(angle = 0),
+        legend.position = "bottom") +
+  labs(x = "With these Other Indices (y)", y = "Correlation of These Indices (x)",
+       fill = "Correlation Coefficient",
+       title = "Correlation Matrix of All Drivers & Response")
 ```
 
 
 ```{r}
 #| label: ggcorr-drivers
-#| fig-height: 5
-
-# GGplot correlation Matrix
-gg_rho <- as.data.frame(rho) %>% 
-  rownames_to_column(var = "xvar") %>% 
-  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2") 
-
+#| fig-height: 6
+#| fig-width: 8
 
 # Tidy it up, enhance the labels
 gg_rho_tidy <- gg_rho %>% 
   mutate(
     response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
-    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index"), T, F),
+    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index|anom"), T, F),
     area = case_when(
       str_detect(xvar, "Georges") ~ "Georges Bank",
       str_detect(xvar, "Gulf") ~ "Gulf of Maine",
@@ -774,19 +817,40 @@ gg_rho_tidy <- gg_rho %>%
       str_detect(xvar, "int") ~ "Spectra Intercept"))
 
 
-# Plot the convoluted thing:
-gg_rho_tidy %>% 
+# Do some filtering and string formatting:
+only_driver_response <- gg_rho_tidy %>% 
   filter( 
     response_var,
     driver_var) %>% 
+  mutate(
+    yvar = str_replace_all(yvar, "_", " "),
+    yvar = factor(yvar, levels = c(
+      "Gulf of Maine cpr pca 1",
+      "Gulf of Maine cpr pca 2","All gulf stream index",
+      "All north atlantic oscillation",
+      "All sst anom",
+      "Gulf of Maine sst anom",
+      "Georges Bank sst anom", 
+      "Southern New England sst anom",
+      "Mid-Atlantic Bight sst anom",
+      "Gulf of Maine landings",
+      "Georges Bank landings",
+      "Southern New England landings",
+      "Mid-Atlantic Bight landings"
+    ))) 
+
+
+# Plot the convoluted thing:
+only_driver_response %>% 
   ggplot(aes(yvar, x_short, fill = r2)) +
   geom_tile() +
-  facet_grid(area~driver_type, scales = "free_x") +
+  facet_grid(area~driver_type, scales = "free_x", space = "free") +
   scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         strip.text.y = element_text(angle = 0),
-        legend.position = "bottom") +
-  labs(x = "Driver", y = "Response Variable",
+        legend.position = "bottom",
+        legend.title = element_text(vjust = 0.75)) +
+  labs(x = "Driver", y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
        title = "Correlation Between Size Spectra Response and Drivers",
        subtitle = "Correlation for Concurrent Years")
