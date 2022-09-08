@@ -273,6 +273,15 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
                 tar_load(regional_oisst))
 
 
+# Get regional averages
+temp_regimes <- regional_oisst %>% 
+  filter(yr > 1981) %>% 
+  mutate(
+    regime = ifelse(sst_anom > 0, "hot", "cold"),
+    survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
+    survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB"))) 
+
+
 
 ```
 
@@ -392,7 +401,6 @@ clim_drivers <- bind_rows(list(nao, gsi)) %>%
 
 
 
-
 ####  3. CPR Indices  ####
 
 # From CPR Analysis:
@@ -406,7 +414,98 @@ cpr_indices <- cpr_indices %>%
   rename(
     `Principal Component 1` = "First Mode",
     `Principal Component 2` = "Second Mode") %>% 
-  pivot_longer(names_to = "pca_mode", values_to = "pca_loading", cols = c(2:3)) 
+  pivot_longer(names_to = "pca_mode", values_to = "pca_loading", cols = c(2:3))
+```
+
+
+```{r}
+#| label: all-drivers-table
+
+
+# Common form for all:
+# year, area, var, value
+
+
+# table to join for swapping shorthand for long-hand names
+area_df <- data.frame(
+  area = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
+  survey_area = c("GoM", "GB", "SNE", "MAB", "Full Region"))
+
+
+
+
+# Put climate drivers on annual schedule
+clim_idx <- clim_drivers %>% 
+  group_by(year, area = EPU, var = Var) %>% 
+  summarise(value = mean(Value, na.rm = T),
+            .groups = "drop")
+
+
+# landings
+landings_idx <- landings_summ %>% 
+  group_by(year, area = survey_area) %>% 
+  summarise(value = mean(total_wt_z, na.rm = T),
+            .groups = "drop") %>% 
+  mutate(var = "landings")
+
+
+# Zooplankton
+cpr_idx <- cpr_indices %>% 
+  mutate(area = "Gulf of Maine",
+         var = str_c("cpr_pca_", str_sub(pca_mode, -1, -1))) %>% 
+  group_by(year, area, var) %>% 
+  summarise(value = mean(pca_loading),
+            .groups = "drop")
+
+
+# Temperaature
+sst_idx <- temp_regimes %>% 
+  left_join(area_df) %>% 
+  select(year = yr, area, value = sst_anom) %>% 
+  mutate(var = "sst_anom")
+
+
+# Size Spectrum Slopes & Intercepts
+ss_idx <- region_indices %>% 
+  select(year = Year, survey_area, spectra_slope = l10_slope_strat, spectra_int = l10_int_strat) %>% 
+  pivot_longer(cols = c(spectra_slope, spectra_int), names_to = "var", values_to = "value") %>% 
+  mutate(year = as.numeric(year)) %>% 
+  left_join(area_df) %>% 
+  select(-survey_area)
+
+
+
+# All drivers
+all_drivers <- bind_rows(
+  list(
+    clim_idx,
+    landings_idx,
+    cpr_idx,
+    sst_idx,
+    ss_idx
+  )
+)
+
+
+
+
+# Do some reshaping:
+driver_matrix <- all_drivers %>% 
+  mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
+  select(-c(area, var)) %>% 
+  pivot_wider(names_from = id, values_from = value) %>% 
+  drop_na() %>% 
+  column_to_rownames(var = "year")
+  
+
+# Get correlation matrix:
+rho <- cor(driver_matrix)
+
+
+# # GGplot correlation Matrix data
+gg_rho <- as.data.frame(rho) %>%
+  rownames_to_column(var = "xvar") %>%
+  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
 
 ```
 
@@ -538,20 +637,76 @@ slope_timeline | int_timeline
 
 ## Size Spectra Drivers
 
+
+```{r}
+#| label: ggcorr-drivers
+#| fig-height: 6
+#| fig-width: 8
+
+# Tidy it up, enhance the labels
+gg_rho_tidy <- gg_rho %>% 
+  mutate(
+    response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
+    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index|anom"), T, F),
+    area = case_when(
+      str_detect(xvar, "Georges") ~ "Georges Bank",
+      str_detect(xvar, "Gulf") ~ "Gulf of Maine",
+      str_detect(xvar, "Southern") ~ "Southern New England",
+      str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    area = factor(area, levels = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    driver_type = ifelse(str_detect(yvar, "landings"), 
+                         "Fishing", "Environmental"),
+    x_short = case_when(
+      str_detect(xvar, "slope") ~ "Spectra Slope",
+      str_detect(xvar, "int") ~ "Spectra Intercept"))
+
+
+# Do some filtering and string formatting:
+only_driver_response <- gg_rho_tidy %>% 
+  filter( 
+    response_var,
+    driver_var) %>% 
+  mutate(
+    yvar = str_replace_all(yvar, "_", " "),
+    yvar = factor(yvar, levels = c(
+      "Gulf of Maine cpr pca 1",
+      "Gulf of Maine cpr pca 2","All gulf stream index",
+      "All north atlantic oscillation",
+      "All sst anom",
+      "Gulf of Maine sst anom",
+      "Georges Bank sst anom", 
+      "Southern New England sst anom",
+      "Mid-Atlantic Bight sst anom",
+      "Gulf of Maine landings",
+      "Georges Bank landings",
+      "Southern New England landings",
+      "Mid-Atlantic Bight landings"
+    ))) 
+
+
+# Plot the convoluted thing:
+only_driver_response %>% 
+  ggplot(aes(yvar, x_short, fill = r2)) +
+  geom_tile() +
+  facet_grid(area~driver_type, scales = "free_x", space = "free") +
+  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.y = element_text(angle = 0),
+        legend.position = "bottom",
+        legend.title = element_text(vjust = 0.75)) +
+  labs(x = "Driver", y = "Bodymass Spectra Coefficient",
+       fill = "Correlation Coefficient",
+       title = "Correlation Between Size Spectra Response and Drivers",
+       subtitle = "Correlation for Concurrent Years")
+```
+
+
 ### Temperature Trends
 
 ```{r}
 #| label: Temperature regime shift
 #| fig.height: 8
 
-# Plot how each one exhibits a break in the temperature across the region
-# Get regional averages
-temp_regimes <- regional_oisst %>% 
-  filter(yr > 1981) %>% 
-  mutate(
-    regime = ifelse(sst_anom > 0, "hot", "cold"),
-    survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
-    survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB"))) 
 
 
 
@@ -672,99 +827,21 @@ cpr_indices %>%
 #| fig-height: 7
 #| fig-width: 7
 
+# # Correlation Plot
+# corrplot(rho,
+#          method="ellipse",
+#          type="lower",
+#          order = "hclust",
+#          tl.col = "black",
+#          tl.srt = 0,
+#          tl.cex = 0.6,
+#          tl.offset = 0.7,
+#          cl.cex = 0.8,
+#          cl.offset = 0.9,
+#          cl.ratio = 0.1,
+#          title = "All Year Correlation Matrix")
+# 
 
-# table to join for swapping shorthand for long-hand names
-area_df <- data.frame(area = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
-                      survey_area = c("GoM", "GB", "SNE", "MAB", "Full Region"))
-
-
-# Common form for all:
-# year, area, var, value
-
-# Put climate drivers on annual schedule
-clim_idx <- clim_drivers %>% 
-  group_by(year, area = EPU, var = Var) %>% 
-  summarise(value = mean(Value, na.rm = T),
-            .groups = "drop")
-
-
-# landings
-landings_idx <- landings_summ %>% 
-  group_by(year, area = survey_area) %>% 
-  summarise(value = mean(total_wt_z, na.rm = T),
-            .groups = "drop") %>% 
-  mutate(var = "landings")
-
-
-# Zooplankton
-cpr_idx <- cpr_indices %>% 
-  mutate(area = "Gulf of Maine",
-         var = str_c("cpr_pca_", str_sub(pca_mode, -1, -1))) %>% 
-  group_by(year, area, var) %>% 
-  summarise(value = mean(pca_loading),
-            .groups = "drop")
-
-
-# Temperaature
-sst_idx <- temp_regimes %>% 
-  left_join(area_df) %>% 
-  select(year = yr, area, value = sst_anom) %>% 
-  mutate(var = "sst_anom")
-
-
-# Size Spectrum Slopes & Intercepts
-ss_idx <- region_indices %>% 
-  select(year = Year, survey_area, spectra_slope = l10_slope_strat, spectra_int = l10_int_strat) %>% 
-  pivot_longer(cols = c(spectra_slope, spectra_int), names_to = "var", values_to = "value") %>% 
-  mutate(year = as.numeric(year)) %>% 
-  left_join(area_df) %>% 
-  select(-survey_area)
-
-
-
-# All drivers
-all_drivers <- bind_rows(
-  list(
-    clim_idx,
-    landings_idx,
-    cpr_idx,
-    sst_idx,
-    ss_idx
-  )
-)
-
-
-
-
-# Do some reshaping:
-driver_matrix <- all_drivers %>% 
-  mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
-  select(-c(area, var)) %>% 
-  pivot_wider(names_from = id, values_from = value) %>% 
-  drop_na() %>% 
-  column_to_rownames(var = "year")
-  
-
-
-# Correlation Plot
-rho <- cor(driver_matrix)
-corrplot(rho,
-         method="ellipse",
-         type="lower",
-         order = "hclust",
-         tl.col = "black",
-         tl.srt = 0,
-         tl.cex = 0.6,
-         tl.offset = 0.7,
-         cl.cex = 0.8,
-         cl.offset = 0.9,
-         cl.ratio = 0.1,
-         title = "All Year Correlation Matrix")
-
-# GGplot correlation Matrix data
-gg_rho <- as.data.frame(rho) %>% 
-  rownames_to_column(var = "xvar") %>% 
-  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
 
 ```
 
@@ -774,7 +851,6 @@ gg_rho <- as.data.frame(rho) %>%
 #| fig-height: 6
 #| fig-width: 6
 #| eval: false
-
 
 gg_rho %>% 
   mutate(
@@ -793,68 +869,6 @@ gg_rho %>%
        title = "Correlation Matrix of All Drivers & Response")
 ```
 
-
-```{r}
-#| label: ggcorr-drivers
-#| fig-height: 6
-#| fig-width: 8
-
-# Tidy it up, enhance the labels
-gg_rho_tidy <- gg_rho %>% 
-  mutate(
-    response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
-    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index|anom"), T, F),
-    area = case_when(
-      str_detect(xvar, "Georges") ~ "Georges Bank",
-      str_detect(xvar, "Gulf") ~ "Gulf of Maine",
-      str_detect(xvar, "Southern") ~ "Southern New England",
-      str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    area = factor(area, levels = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-    driver_type = ifelse(str_detect(yvar, "landings"), 
-                         "Fishing", "Environmental"),
-    x_short = case_when(
-      str_detect(xvar, "slope") ~ "Spectra Slope",
-      str_detect(xvar, "int") ~ "Spectra Intercept"))
-
-
-# Do some filtering and string formatting:
-only_driver_response <- gg_rho_tidy %>% 
-  filter( 
-    response_var,
-    driver_var) %>% 
-  mutate(
-    yvar = str_replace_all(yvar, "_", " "),
-    yvar = factor(yvar, levels = c(
-      "Gulf of Maine cpr pca 1",
-      "Gulf of Maine cpr pca 2","All gulf stream index",
-      "All north atlantic oscillation",
-      "All sst anom",
-      "Gulf of Maine sst anom",
-      "Georges Bank sst anom", 
-      "Southern New England sst anom",
-      "Mid-Atlantic Bight sst anom",
-      "Gulf of Maine landings",
-      "Georges Bank landings",
-      "Southern New England landings",
-      "Mid-Atlantic Bight landings"
-    ))) 
-
-
-# Plot the convoluted thing:
-only_driver_response %>% 
-  ggplot(aes(yvar, x_short, fill = r2)) +
-  geom_tile() +
-  facet_grid(area~driver_type, scales = "free_x", space = "free") +
-  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-        strip.text.y = element_text(angle = 0),
-        legend.position = "bottom",
-        legend.title = element_text(vjust = 0.75)) +
-  labs(x = "Driver", y = "Bodymass Spectra Coefficient",
-       fill = "Correlation Coefficient",
-       title = "Correlation Between Size Spectra Response and Drivers",
-       subtitle = "Correlation for Concurrent Years")
-```
 
 
 # References
