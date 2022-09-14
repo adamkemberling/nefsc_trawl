@@ -1,5 +1,5 @@
 ---
-title: "Temperature Impacts on Size Structure of Northeast US Groundfish Community Extend Issues from Fisheries Over-Exploitation"
+title: "Raising Temperatures Extend Fisheries-Exploitation Harm to the Community Size Structure of Northeast US Groundfishes"
 author: 
     name: "Adam Kemberling"
     url: https://github.com/adamkemberling
@@ -122,7 +122,7 @@ In an era of anthropogenic climate change, there is an expectation that many spe
 
 ## Size Spectrum Theory
 
-Size is a defining characteristic of species that mediates many ecological interactions. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment. Size structured environments are a fundamental organizational pattern that has been heavily researched. Ecological theory is rich with models relating how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards reproduction at the expense of growth. One such ecological model that avoids the need for explicit articulation of each predator-prey interaction is the size spectrum model.
+Size is a defining characteristic of species that mediates many ecological interactions [@brown2000]. Size impacts the mobility of an organism, its ability to evade predation, its ability to successfully prey on other organisms, and the metabolic costs associated with each of these behaviors. In the context of a strongly size-structured ecosystem, growth and maturity changes alter fitness and ultimately determine whether a species is successful in the given environment. Size structured environments are a fundamental organizational pattern that has been heavily researched. Ecological theory is rich with models relating how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards reproduction at the expense of growth. One such ecological model that avoids the need for explicit articulation of each predator-prey interaction is the size spectrum model.
 
 A "size spectrum" describes the distribution of biomass or abundance as a function of individuals' mass or size on a log--log scale [@guiet2016]. Size spectrum are described by two terms, the size spectrum slope & intercept. These two terms convey the baseline productivity, and how energy flows through an ecosystem in the form of biomass. The spectrum intercept value captures the richness or the productivity at the base of the community and is strongly connected to the prevailing environmental conditions [@boudreau1992]. So much so, that spectrum shape is sometimes defined by its eutrophic or oligotrophic environmental conditions [@rossberg2012].
 
@@ -140,13 +140,15 @@ Sea surface temperatures in the Gulf of Maine since 1982 have been warming at ra
 
 ### Species Trends in NE Shelf
 
-The observed warming in the northwest Atlantic has been shown to be a major factor in the redistribution of marine species along the US east coast. Species have responded to these warming trends by adjusting the timing and locations of their seasonal migrations and shifting their geographic ranges [@nye2009; @staudinger2019]. There is also evidence that warming has hampered fisheries recoveries through its physiological impacts on growth and metabolism. Species like Black Sea Bass, Atlantic shortfin squid, and Blue crab have been high-profile examples of species expanding their ranges to follow their thermal preferences. While species like the American lobster have shown declines at their southern range near Long Island Sound, with much doubt whether they will recover under the present temperature trends. The recent regime shift in the physical oceanography has also shown to be a catalyst for biological shifts as well [@meyer-gutbrod2021; @perretti2017].
+The continental shelf groundfish community in Northwest Atlantic has changed dramatically over the last century. Stocks that supported international fishing effort collapsed, and recovery efforts fell short of their objectives. Research on Georges Bank estimated that biomass more than halved in the 1960's (pre-dating federal monitoring efforts), and noted a species replacement of commercial groundfish target species by skate and dogfish [@fogarty1998]. Fishing is inherently size-selective, with larger individuals selectively removed from the population. This has an immediate impact on the community size-distribution with additional impacts on the future population as well. Larger individuals have a greater impact on population recovery, capable of holding more (and often of higher quality) eggs. Size-based harvest in fisheries has been shown to create selective pressures that promote characteristics of early maturation at smaller sizes.
+
+In addition to the ecological disturbance of fisheries removals, this region is also one of the fastest warming locations in the global oceans. The rapid warming in the northwest Atlantic is a major factor in the redistribution of marine species along the US east coast. Species have responded by adjusting the timing and locations of their seasonal migrations and shifting their geographic ranges [@nye2009; @staudinger2019]. There is evidence that warming has hampered fisheries recoveries as well. Adding a metabolic tax to physiological pathways like growth and metabolism. Species like Black Sea Bass, Atlantic shortfin squid, and Blue crab have been high-profile examples of species expanding their ranges to follow their thermal preferences. While species like the American lobster have shown declines at their southern range near Long Island Sound, with much doubt whether they will recover under the present temperature trends. The recent regime shift in the physical oceanography has also shown to be a catalyst for biological shifts as well [@meyer-gutbrod2021; @perretti2017].
 
 While these examples show that species can respond to changes in the physical environment around them through movement & behavior, research elsewhere suggests that physiological responses integrated across species will manifest as changes in community size structure.
 
 ### Purpose
 
-We estimated size spectrum relationships for the groundfish populations for each sub-region of the Northeast US continental shelf. In the case of the NW Atlantic: sustained increases in temperature should have a physiological impact on the community size structure.
+With the understanding that populations depend on the health of their ecosystems, there is a need to have community-wide metrics to effectively understand and manage marine resources. Size based indices are metrics that can be estimated from the information that has historically been available from long-term survey efforts. These indices have been shown to be sensitive to the impacts of fishing, but should also capture environmentally driven stress as well. We estimated size spectrum relationships as SBI's for the groundfish populations for each sub-region of the Northeast US continental shelf. In the case of the NW Atlantic sustained increases in temperature should have a physiological impact on the community size structure.
 
 This leads to our second hypothesis:
 
@@ -417,7 +419,6 @@ cpr_indices <- cpr_indices %>%
   pivot_longer(names_to = "pca_mode", values_to = "pca_loading", cols = c(2:3))
 ```
 
-
 ```{r}
 #| label: all-drivers-table
 
@@ -513,32 +514,61 @@ gg_rho <- as.data.frame(rho) %>%
 
 ### Abundance Distribution
 
+Estimated total abundance across all body sizes remained relatively stable from the 1970's until abundance began to rise beginning in the northern regions around 1990 in the Gulf of Maine. Beginning at this time a slow but steady increase in abundance began in the area which continued through the mid 2010's. Further south in the adjacent Georges Bank region abundances remained flat until the 2010's when they more than tripled before falling to previous levels by the end of the century. Southern New England saw a less dramatic rise and fall that began just before 2010, and like Georges Bank fell to prior levels by the end of the century. The Mid Atlantic Bight region was uniquely consistent throughout, with no major periods of abundance growth or decline.
+
 ```{r}
 #| label: abundance distributions
 #| fig.width: 8
 #| fig-height: 8
 
 # panel plot the biomass by body size
-fgroup_area$weight_bins %>% 
-  mutate(strat_abund_mill = wtbin_strat_abund / 1e6) %>% 
-ggplot(aes(Year, strat_abund_mill, fill = weight_bin)) +
-  geom_col(position = "stack", color = "gray80", size = 0.1) +
-  facet_grid(survey_area~spec_class) +
-  scale_fill_gmri() +
-  scale_y_continuous(labels = comma_format()) +
-  labs(y = "Stratified Total Abundance (millions)",  
-       title = "Abundance Allocation by Weight",
-       x = "", 
-       fill = "Individual Weight (kg)") +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, hjust = 1))
+fgroup_area$weight_bins <- fgroup_area$weight_bins %>% 
+  mutate(strat_abund_mill = wtbin_strat_abund / 1e6) 
 
+
+
+# Just abundance, not by groups
+fgroup_area$weight_bins %>% 
+  group_by(Year, survey_area) %>% 
+  summarise(abund_millions = sum(strat_abund_mill, na.rm = T)) %>% 
+  ggplot(aes(Year, abund_millions)) +
+  geom_line() +
+  facet_wrap(~survey_area, ncol = 1) + 
+  labs(y = "Abundance (millions)",  
+         title = "Estimated Total Abundance from\nArea-Stratified Catch Rates",
+         x = "")
+
+
+```
+
+Gains in abundance observed in Georges Bank and Gulf of Maine were almost entirely attributable to groundfish species, with some additional growth from demersal species in the Gulf of Maine only. All increases in abundance during this period was among individuals weighing less than .5kg, with some years driven in large-part by exceptional yearclasses in haddock in Georges Bank. The observed abundance volatility in Southern New England and the Mid-Atlantic Bight conversely was largely the result of changes in abundance in pelagic species, whose abundance varied by several times the magnitude that of the other functional groups.
+
+```{r}
+#| label: abundance-by-group
+#| fig.height: 8
+#| fig.width: 8
+#| eval: false
+
+
+# Plot abundance by region and Group
+fgroup_area$weight_bins %>% 
+  ggplot(aes(Year, strat_abund_mill, fill = weight_bin)) +
+    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    facet_grid(survey_area~spec_class) +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = comma_format()) +
+    labs(y = "Stratified Abundance (millions)",  
+         title = "Abundance Allocation by Weight",
+         x = "", 
+         fill = "Individual Weight (kg)") +
+    theme(legend.position = "bottom",
+          axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
 
 ### Biomass Distribution
 
-Overall biomass was highest in the two northern regions, the Gulf of Maine and Georges Bank. Roughly half of the biomass sampled in these regions can be attributed to groundfish/demersal species, with the second largest contributions coming from elasmobranchs. Groundfish biomass, larger individuals \>2kg in particular, declined during the 70's and 80's in these regions, never truly recovering. Beginning in the 2000's there were signs that groundfish abundances were increasing as evidenced by increasing numbers of smaller individuals, however in both regions this trend appears to have reversed by the mid 2010's. Elasmobranch populations increased steadily throughout the survey time period across all regions, but for southern New England where they were more flat but with high/low periods. Larger elasmobranch were rare in all regions except for a period spanning the late 70's through the early 90's isolated to Georges Bank. Demersal species biomass was highest in the Gulf of Maine, dwarfing their contributions in other regions. Their biomass declined in the 70's, was flat until the late 90's, remaining relatively high until declining in the late 2010's. Pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
+Overall biomass was highest in the two northern regions, the Gulf of Maine and Georges Bank. Roughly half of the biomass sampled in these regions can be attributed to groundfish/demersal species, with the second largest contributions coming from elasmobranchs. Groundfish biomass, larger individuals \>2kg in particular, declined during the 70's and 80's in these regions, never truly recovering. Beginning in the 2000's there were signs that groundfish abundances were increasing as evidenced by increasing numbers of smaller individuals, however in both regions this trend appears to have reversed by the mid 2010's. Elasmobranch biomass increased steadily throughout the survey time period across all regions, with the exception of southern New England. This area showed large 5-10 year swings in biomass, but no clear long-term trend. Larger elasmobranch were rare in all regions except for a period spanning the late 70's through the early 90's isolated to Georges Bank. Demersal species biomass was highest in the Gulf of Maine, dwarfing their contributions in other regions. Their biomass declined in the 70's, was flat until the late 90's, remaining relatively high until declining in the late 2010's. Pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
 
 ```{r}
 #| label: bodymass distributions
@@ -565,13 +595,21 @@ ggplot(aes(Year, strat_lwbio_mill, fill = weight_bin)) +
 
 ### Regional Variation in Species Composition
 
-There was a distinct difference between Northern and Southern regions in the way biomass was distributed among the different functional groups. The primary contributors to overall biomass in the southern regions (southern New England & mid-Atlantic bight) was the elasmobranch community. While the northern regions (Gulf of Maine & Georges Bank) each had similar quantities of elasmobranch biomasses, there was also a comparable contribution of groundfish and demersal species as well.
+There was a distinct difference between Northern and Southern regions in the way biomass was distributed among the different functional groups. The primary contributors to overall biomass in the southern regions (southern New England & mid-Atlantic bight) was the elasmobranch community. While the northern regions (Gulf of Maine & Georges Bank) each had similar quantities of elasmobranch biomasses, there was also a comparable contribution of groundfish and in the Gulf of Maine there was a major component of demersal species as well.
 
 ### Body Size Trends
+
+The average fish size in the Gulf of Maine (length and weight) declined the greatest of all regions over our study period. The average individual length was greatest in the 1970's in the 35-40cm range, falling to 28-33cm over the last decade. Body-weight fell dramatically in the 1980's, from around .75kg in the 1970's to .25-.30kg, roughly a third of what it had been. Georges Bank body sizes also declined during the study period, but less dramatically. Both of these Northern regions had brief period in the late 2000's where average length and weight rose, before falling again in the 2010's. The MAB region was the only region to see a long-term increase in both length and weight during the study period. SNE saw no long-term change in length, and a minor decline in average body-weight.
 
 ```{r}
 #| label: average body size trends
 #| fig.height: 8
+#| fig.weight: 8
+
+# Re-factor
+regional_size <- mutate(regional_size, 
+                        survey_area = factor(survey_area, levels = c("GoM", "GB", "MAB", "SNE")))
+
 
 # Length plot
 avg_len_p <- ggplot(regional_size, 
@@ -610,6 +648,7 @@ Size spectrum slopes were least steep in the two Northern regions.
 ```{r}
 #| label: size spectra results
 #| fig.height: 8
+#| fig.weight: 8
 
 
 # Plot the Regional Slopes
@@ -636,7 +675,6 @@ slope_timeline | int_timeline
 ```
 
 ## Size Spectra Drivers
-
 
 ```{r}
 #| label: ggcorr-drivers
@@ -690,32 +728,17 @@ only_driver_response %>%
   geom_tile() +
   facet_grid(area~driver_type, scales = "free_x", space = "free") +
   scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
+  coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         strip.text.y = element_text(angle = 0),
-        legend.position = "bottom",
+        legend.position = c(1.225, -.25),
         legend.title = element_text(vjust = 0.75)) +
-  labs(x = "Driver", y = "Bodymass Spectra Coefficient",
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
+  labs(x = "Hypopthesized Driver", y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
-       title = "Correlation Between Size Spectra Response and Drivers",
-       subtitle = "Correlation for Concurrent Years")
+       title = "Correlation of Size Spectra to Hypothesized Drivers",
+       subtitle = "Correlation coefficients shown display same-year correlations.")
 ```
-
-
-### Temperature Trends
-
-```{r}
-#| label: Temperature regime shift
-#| fig.height: 8
-
-
-
-
-
-```
-
-### Overfishing Trends
-
-
 
 # Discussion
 
@@ -723,10 +746,8 @@ The data we rely on in this analysis was collected as part of a survey program w
 
 ### Potential Drivers:
 
-
-:::{.panel-tabset}
-
-#### Surface Temperature Anomalies  
+::: panel-tabset
+#### Surface Temperature Anomalies
 
 ```{r}
 #| label: temperature-index
@@ -758,8 +779,6 @@ temp_regimes %>%
          color = guide_legend(keyheight = unit(0.5, "cm")))
 ```
 
-
-
 #### GARFO Landings
 
 ```{r}
@@ -779,7 +798,6 @@ landings_summ %>%
 ```
 
 #### Climate Modes
-
 
 ```{r}
 #| label: climate-modes
@@ -815,8 +833,6 @@ cpr_indices %>%
   labs(x = "Year", y = "PCA Loading", title = "Gulf of Maine CPR PCA")
 
 ```
-
-
 :::
 
 ### All Correlations Matrix
@@ -845,7 +861,6 @@ cpr_indices %>%
 
 ```
 
-
 ```{r}
 #| label: ggcorr-all
 #| fig-height: 6
@@ -868,7 +883,5 @@ gg_rho %>%
        fill = "Correlation Coefficient",
        title = "Correlation Matrix of All Drivers & Response")
 ```
-
-
 
 # References
