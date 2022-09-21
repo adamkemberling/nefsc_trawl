@@ -7,7 +7,8 @@ author:
 description: | 
   Size Spectrum Analysis of the Northeast US Groundfish Community
 date: "`r Sys.Date()`"
-format: 
+# format: docx
+format:
   html:
     self-contained: true
     code-fold: true
@@ -17,7 +18,7 @@ format:
     toc-depth: 2
 editor: source
 execute: 
-  echo: true
+  echo: false
   warning: false
   message: false
   fig.height: 6
@@ -203,7 +204,7 @@ Data from the survey was grouped by strata to form geographically meaningful sub
 
 2.  Mean size of the aggregate community and key functional groups
 
-3.  Slope and intercept of the size spectrum\
+3.  Slope and intercept of the size spectrum
 
 ### Community Composition
 
@@ -289,12 +290,13 @@ temp_regimes <- regional_oisst %>%
 
 ## Spectra Drivers
 
-The impact of external factors on the changes in size spectra was compared against several hypothesized driving forces. External factors proposed as potential drivers included sea surface temperature anomalies, state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), the North Atlantic Oscillation (NAO), and zooplankton community indices from the continuous plankton recorder (CPR) dataset.
+The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential environmental drivers include sea surface temperature anomalies, the North Atlantic Oscillation (NAO), Gulf Stream Warm Core Rings, and zooplankton community indices from the continuous plankton recorder (CPR) dataset. Anthropogenic drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
+
+![](images/garfo_regions.png){fig-align="center" width="390"}
 
 ```{r}
 #| label: fishing-effort
 #| eval: true
-#| echo: true
 
 #### 1. GARFO Landings  ####
 
@@ -333,10 +335,18 @@ stat_zones <- stat_zones %>%
 
 # # Map it out? - takes forever from Chesapeake bay
 
-# ggplot(st_simplify(stat_zones)) +
-#   geom_sf(aes(fill = survey_area)) +
+# garfo_map <- ggplot(stat_zones) +
+#   geom_sf(aes(fill = survey_area), alpha = 0.8) +
+#   geom_sf(data = us_poly) +
+#   geom_sf(data = canada) +
+#   coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
 #   scale_fill_gmri() +
-#   map_theme()
+#   theme_bw() +
+#   map_theme(legend.position = "bottom",
+#             legend.background = element_rect(fill = "white")) +
+#   guides(fill = guide_legend(title = "", nrow = 2)) +
+#   labs(title = "GARFO Region Assignments")
+# ggsave(garfo_map, filename = here::here("R/nmfs_size_spectra/images/garfo_regions.png"))
 
 
 # Add the labels into the landings data and remove what we don't need there:
@@ -383,11 +393,16 @@ landings_summ <- landings_summ %>%
 
 # From ecodata:
 
-####  NAO   & GSI
+####  NAO & GSI & WCR
+
+
+# North Atlantic Oscillation
 nao <- ecodata::nao %>% 
     mutate(year = Time,
            Time = as.Date(str_c(Time, "-01-01")))
 
+
+# Gulf Stream Index
 gsi <- ecodata::gsi %>% 
   mutate(
     Time = str_pad(as.character(Time), width = 7, side = "right", pad = "0"),
@@ -395,9 +410,15 @@ gsi <- ecodata::gsi %>%
     month = str_sub(Time, -2, -1),
     Time = as.Date(str_c(year, month, "01", sep = "-")))
 
+# Warm Core Rings
+wcr<- ecodata::wcr %>% 
+  mutate(
+    year = Time,
+    Time = as.Date(str_c(Time, "-01-01")))
+
 
 # Join them up
-clim_drivers <- bind_rows(list(nao, gsi)) %>% 
+clim_drivers <- bind_rows(list(nao, gsi, wcr)) %>% 
   filter(EPU == "All")
   
 
@@ -417,7 +438,14 @@ cpr_indices <- cpr_indices %>%
     `Principal Component 1` = "First Mode",
     `Principal Component 2` = "Second Mode") %>% 
   pivot_longer(names_to = "pca_mode", values_to = "pca_loading", cols = c(2:3))
+
+
+#ecodata::calanus_stage
 ```
+
+
+
+
 
 ```{r}
 #| label: all-drivers-table
@@ -529,14 +557,18 @@ fgroup_area$weight_bins <- fgroup_area$weight_bins %>%
 
 # Just abundance, not by groups
 fgroup_area$weight_bins %>% 
-  group_by(Year, survey_area) %>% 
-  summarise(abund_millions = sum(strat_abund_mill, na.rm = T)) %>% 
-  ggplot(aes(Year, abund_millions)) +
-  geom_line() +
+  group_by(Year, survey_area, spec_class) %>% 
+  summarise(abund_millions = sum(strat_abund_mill, na.rm = T),
+            .groups = "drop") %>% 
+  ggplot(aes(Year, abund_millions, fill = spec_class)) +
+  geom_area() +
+  scale_fill_gmri() +
   facet_wrap(~survey_area, ncol = 1) + 
   labs(y = "Abundance (millions)",  
          title = "Estimated Total Abundance from\nArea-Stratified Catch Rates",
-         x = "")
+         x = "",
+       fill = "Functional Group") +
+  theme(legend.position = "bottom")
 
 
 ```
@@ -553,7 +585,7 @@ Gains in abundance observed in Georges Bank and Gulf of Maine were almost entire
 # Plot abundance by region and Group
 fgroup_area$weight_bins %>% 
   ggplot(aes(Year, strat_abund_mill, fill = weight_bin)) +
-    geom_col(position = "stack", color = "gray80", size = 0.1) +
+    geom_area() +
     facet_grid(survey_area~spec_class) +
     scale_fill_gmri() +
     scale_y_continuous(labels = comma_format()) +
@@ -579,7 +611,7 @@ Overall biomass was highest in the two northern regions, the Gulf of Maine and G
 fgroup_area$weight_bins %>% 
   mutate(strat_lwbio_mill = wtbin_strat_lw_bio / 1e6) %>% 
 ggplot(aes(Year, strat_lwbio_mill, fill = weight_bin)) +
-  geom_col(position = "stack", color = "gray80", size = 0.1) +
+  geom_area() +
   facet_grid(survey_area~spec_class) +
   scale_fill_gmri() +
   scale_y_continuous(labels = comma_format()) +
@@ -685,7 +717,7 @@ slope_timeline | int_timeline
 gg_rho_tidy <- gg_rho %>% 
   mutate(
     response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
-    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index|anom"), T, F),
+    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index|anom|Rings"), T, F),
     area = case_when(
       str_detect(xvar, "Georges") ~ "Georges Bank",
       str_detect(xvar, "Gulf") ~ "Gulf of Maine",
@@ -708,7 +740,9 @@ only_driver_response <- gg_rho_tidy %>%
     yvar = str_replace_all(yvar, "_", " "),
     yvar = factor(yvar, levels = c(
       "Gulf of Maine cpr pca 1",
-      "Gulf of Maine cpr pca 2","All gulf stream index",
+      "Gulf of Maine cpr pca 2",
+      "All gulf stream index",
+      "All Warm Core Rings",
       "All north atlantic oscillation",
       "All sst anom",
       "Gulf of Maine sst anom",
