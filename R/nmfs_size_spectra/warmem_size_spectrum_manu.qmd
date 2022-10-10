@@ -111,7 +111,7 @@ return(list("length_bins" = drop_na(group_lengths),
 
 # Abstract
 
-The Northwest Atlantic ocean bordering the United states and Scotian Shelf is one of the fastest warming locations on Earth. Research on the impacts of this rapid-warming has primarily focused on high-profile and/or upper trophic level species. Here we investigate an the ecosystem wide impacts by integrating community size structure changes using size spectrum analysis. While laboratory studies and ecological theory suggest that ectotherms raised at higher temperatures will reach smaller body-sizes at comparable development stages, it is unclear whether that relationship can be mitigated against across a diverse community through collective individual behaviors. In cases where communities fails to mitigate/adapt to elevated temperatures, we anticipate a steepening of the body-size spectrum slope relating to a reduction in larger sized individuals and an increase in smaller sized individuals within that community. Using groundfish abundance data from fisheries independent surveys we estimated size spectrum indices for four regions along the US NE continental shelf. At the regional scale we found that declines in the size spectrum slopes occurred the strongest in the Gulf of Maine and Georges Bank regions. Regions possessing the coldest temperatures and the largest populations of commercially targeted groundfish species. The largest declines in size spectrum slope occurred earlier in these areas than the more-recent temperature trends, suggesting other external forces may have driven the decline in larger-sized individuals within the communities. While the primary pressure of fisheries exploitation has declined over time, recovery in terms of larger-bodied individuals remains threatened by elevated temperatures.
+The Northwest Atlantic ocean bordering the United states and Nova Scotia is one of the fastest warming locations on Earth. Research on the impacts of this rapid-warming has primarily focused on high-profile and/or upper trophic level species. Here we investigate an the ecosystem wide impacts by integrating community size structure changes using size spectrum analysis. While laboratory studies and ecological theory suggest that ectotherms raised at higher temperatures will reach smaller body-sizes at comparable development stages, it is unclear whether that relationship can be mitigated against through the adaptive behaviors of diverse communities. In cases where community responses fail at adapting to elevated temperatures, we anticipate a steepening of the body-size spectrum slope relating to a reduction in larger sized individuals and an increase in smaller sized individuals within that community. Using data from fisheries independent surveys we estimated size spectrum indices for four regions along the US NE continental shelf. At this regional scale, we found that declines in the size spectrum slopes occurred the strongest in the Northernmost regions of the Gulf of Maine and Georges Bank. These areas were historically home to the coldest temperatures and the largest populations of commercially targeted groundfish species. Size spectrum slope declines were more pronounced in the 80's and 90's, before to the more-recent elevated temperatures. This suggests that other external forces likely drove the initial declines of larger-sized individuals within the communities. While the primary pressure of fisheries exploitation has declined over time, the recovery of larger-sized individuals has not been seen and remains threatened by elevated temperatures.
 
 # Introduction
 
@@ -180,7 +180,7 @@ Fishery Independent data on was collected as part of the NEFSC's northeast trawl
 # Get region polygons:
 
 # Get the paths to the shapefiles used to mask
-trawl_paths <- gmRi::get_timeseries_paths(region_group = "nmfs_trawl_regions", mac_os = "mojave")
+trawl_paths <- gmRi::get_timeseries_paths(region_group = "nmfs_trawl_regions", box_location = "cloudstorage")
 
 # Polygons for each region
 all_poly <- read_sf(trawl_paths[["inuse_strata"]][["shape_path"]]) 
@@ -290,12 +290,12 @@ temp_regimes <- regional_oisst %>%
 
 ## Spectra Drivers
 
-The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential environmental drivers include sea surface temperature anomalies, the North Atlantic Oscillation (NAO), Gulf Stream Warm Core Rings, and zooplankton community indices from the continuous plankton recorder (CPR) dataset. Anthropogenic drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
+The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential environmental drivers include sea surface temperature anomalies, Gulf Stream Index (GSI), and zooplankton community indices from the continuous plankton recorder (CPR) dataset. Anthropogenic drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
 
-![](images/garfo_regions.png){fig-align="center" width="390"}
+![](images/garfo_regions.png){fig-align="center",width = "420"}
 
 ```{r}
-#| label: fishing-effort
+#| label: spectra-driver-data
 #| eval: true
 
 #### 1. GARFO Landings  ####
@@ -334,7 +334,6 @@ stat_zones <- stat_zones %>%
   
 
 # # Map it out? - takes forever from Chesapeake bay
-
 # garfo_map <- ggplot(stat_zones) +
 #   geom_sf(aes(fill = survey_area), alpha = 0.8) +
 #   geom_sf(data = us_poly) +
@@ -346,7 +345,7 @@ stat_zones <- stat_zones %>%
 #             legend.background = element_rect(fill = "white")) +
 #   guides(fill = guide_legend(title = "", nrow = 2)) +
 #   labs(title = "GARFO Region Assignments")
-# ggsave(garfo_map, filename = here::here("R/nmfs_size_spectra/images/garfo_regions.png"))
+# ggsave(garfo_map, filename = here::here("R/nmfs_size_spectra/images/garfo_regions.png"), bg = "white")
 
 
 # Add the labels into the landings data and remove what we don't need there:
@@ -410,17 +409,12 @@ gsi <- ecodata::gsi %>%
     month = str_sub(Time, -2, -1),
     Time = as.Date(str_c(year, month, "01", sep = "-")))
 
-# Warm Core Rings
-wcr<- ecodata::wcr %>% 
-  mutate(
-    year = Time,
-    Time = as.Date(str_c(Time, "-01-01")))
+# # Warm Core Rings
+# wcr<- ecodata::wcr %>%
+#   mutate(
+#     year = Time,
+#     Time = as.Date(str_c(Time, "-01-01")))
 
-
-# Join them up
-clim_drivers <- bind_rows(list(nao, gsi, wcr)) %>% 
-  filter(EPU == "All")
-  
 
 
 
@@ -437,10 +431,24 @@ cpr_indices <- cpr_indices %>%
   rename(
     `Principal Component 1` = "First Mode",
     `Principal Component 2` = "Second Mode") %>% 
-  pivot_longer(names_to = "pca_mode", values_to = "pca_loading", cols = c(2:3))
+  pivot_longer(names_to = "pca_mode", 
+               values_to = "pca_loading", 
+               cols = c(2:3))
 
 
-#ecodata::calanus_stage
+
+# # Zooplankton densities from ECOMON?
+# # tidy the calanus stage abundance data
+# cal <- ecodata::calanus_stage %>% 
+#   rename(year = Time,
+#          var = Var,
+#          area = EPU) %>% 
+#   group_by(var, area) %>% 
+#   mutate(value = scale(Value)) %>% 
+#   ungroup() %>% 
+#   select(-Value)
+
+
 ```
 
 
@@ -451,17 +459,29 @@ cpr_indices <- cpr_indices %>%
 #| label: all-drivers-table
 
 
-# Common form for all:
-# year, area, var, value
+####  Build a Common form for all Drivers:   ####
+# Format: year, area, var, value
 
 
 # table to join for swapping shorthand for long-hand names
 area_df <- data.frame(
-  area = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
-  survey_area = c("GoM", "GB", "SNE", "MAB", "Full Region"))
+  area = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
+  survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Full Region"))
 
 
 
+#--------------------
+# 1.Climate Features
+
+
+# Join the climate modes together
+clim_drivers <- bind_rows(
+  list(
+    #nao, # Only Goes to 2018, also not strongly correlated
+    gsi#, 
+    #wcr  # Too related to GSI
+  )) %>% filter(EPU == "All")
+  
 
 # Put climate drivers on annual schedule
 clim_idx <- clim_drivers %>% 
@@ -469,8 +489,8 @@ clim_idx <- clim_drivers %>%
   summarise(value = mean(Value, na.rm = T),
             .groups = "drop")
 
-
-# landings
+#--------------------
+# 2. GARFO landings
 landings_idx <- landings_summ %>% 
   group_by(year, area = survey_area) %>% 
   summarise(value = mean(total_wt_z, na.rm = T),
@@ -478,7 +498,9 @@ landings_idx <- landings_summ %>%
   mutate(var = "landings")
 
 
-# Zooplankton
+
+#--------------------
+# 3. CPR Zooplankton
 cpr_idx <- cpr_indices %>% 
   mutate(area = "Gulf of Maine",
          var = str_c("cpr_pca_", str_sub(pca_mode, -1, -1))) %>% 
@@ -487,29 +509,62 @@ cpr_idx <- cpr_indices %>%
             .groups = "drop")
 
 
-# Temperaature
+
+
+
+#--------------------
+# 4. Temperature
 sst_idx <- temp_regimes %>% 
-  left_join(area_df) %>% 
+  left_join(area_df, by = "survey_area") %>% 
   select(year = yr, area, value = sst_anom) %>% 
   mutate(var = "sst_anom")
 
 
-# Size Spectrum Slopes & Intercepts
+
+
+
+#--------------------
+#  5. Size Spectrum Slopes & Intercepts
 ss_idx <- region_indices %>% 
   select(year = Year, survey_area, spectra_slope = l10_slope_strat, spectra_int = l10_int_strat) %>% 
   pivot_longer(cols = c(spectra_slope, spectra_int), names_to = "var", values_to = "value") %>% 
   mutate(year = as.numeric(year)) %>% 
-  left_join(area_df) %>% 
+  left_join(area_df, by = "survey_area") %>% 
   select(-survey_area)
 
 
 
-# All drivers
+
+
+
+#--------------------
+# # ECODATA calanus
+# Not strongly correlated, also a big mess to handle
+# Less likely to be important relative to the broader zooplankton landscape
+
+# # tidy the calanus stage abundance data
+# # Scale the abundances within each area
+# cal_idx <- ecodata::calanus_stage %>% 
+#   mutate(EPU = ifelse(EPU == "GOM", "GoM", EPU)) %>% 
+#   group_by(Var, EPU) %>% 
+#   mutate(value = as.numeric(scale(Value))) %>% 
+#   ungroup() %>% 
+#   select(-Value, -Units) %>% 
+#   setNames(c("year", "var", "survey_area", "value"))  %>% 
+#   left_join(area_df, by = "survey_area") %>% 
+#   select(-survey_area)
+
+
+
+
+#--------------------
+# All Metrics Together
 all_drivers <- bind_rows(
   list(
     clim_idx,
     landings_idx,
     cpr_idx,
+    #cal_idx,
     sst_idx,
     ss_idx
   )
@@ -518,31 +573,131 @@ all_drivers <- bind_rows(
 
 
 
-# Do some reshaping:
-driver_matrix <- all_drivers %>% 
-  mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
-  select(-c(area, var)) %>% 
-  pivot_wider(names_from = id, values_from = value) %>% 
-  drop_na() %>% 
-  column_to_rownames(var = "year")
+```
+
+
+```{r}
+#| label: driver-matrix-correlations
+
+
+
+
+# 1. Split the Matrix into two time periods
+driver_periods <- all_drivers %>% 
+  mutate(period = ifelse(year <= 1995, "exploitation", "recovery")) %>% 
+  bind_rows(mutate(all_drivers, period = "full")) %>% 
+  split(.$period)
+
+
+
+# Run Correlations for Each period and for the entire period
+period_correlations <- map(driver_periods, function(drivers){
+  
+  
+  # Step 1.
+  # Do some reshaping to create a matrix for correlations:
+  driver_matrix <- drivers %>% 
+    mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
+    select(-c(area, var, period)) %>% 
+    pivot_wider(names_from = id, values_from = value) %>% 
+    #filter(if_any(everything(), is.na)) %>% tail() # Finding NA's in any column
+    drop_na() %>% 
+    column_to_rownames(var = "year")
+  
+  
+  # Step 2. 
+  # Get the correlation matrix after scaling the data
+  rho <- cor(scale(driver_matrix))
+  
+  # Step 3. 
+  # Make it a dataframe for GGplot correlation Matrix
+  gg_rho <- as.data.frame(rho) %>%
+    rownames_to_column(var = "xvar") %>%
+    pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
+  
+  
+  # Step 4.  
+  # Tidy it up, enhance the labels for plotting
+  # label the drivers and the responses specifically so we can group them
+  # in an orderly way
+  gg_rho_tidy <- gg_rho %>% 
+    mutate(
+      # Slope and intercept are the only size spectra features
+      response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
+      # These are the drivers, use string detect
+      driver_var = ifelse(str_detect(yvar, "adt|c5|osc|pca|landings|index|anom"), T, F),
+      area = case_when(
+        str_detect(xvar, "Georges") ~ "Georges Bank",
+        str_detect(xvar, "Gulf") ~ "Gulf of Maine",
+        str_detect(xvar, "Southern") ~ "Southern New England",
+        str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+      area = factor(area, levels = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+      driver_type = case_when(
+        str_detect(yvar, "landings") ~ "Fishing",
+        str_detect(yvar, "adt|c5") ~ "Calanus",
+        str_detect(yvar, "pca|stream|anom|osci") ~ "Environmental"),
+      x_short = case_when(
+        str_detect(xvar, "slope") ~ "Spectra Slope",
+        str_detect(xvar, "int") ~ "Spectra Intercept"))
+  
+  
+  # Do some filtering and string formatting:
+  only_driver_response <- gg_rho_tidy %>% 
+    filter( 
+      response_var,
+      driver_var) %>% 
+    mutate(
+      yvar = str_replace_all(yvar, "_", " "),
+      yvar = factor(yvar, levels = c(
+        "Gulf of Maine cpr pca 1",
+        "Gulf of Maine cpr pca 2",
+        "All gulf stream index",
+        "All north atlantic oscillation",
+        "All sst anom",
+        "Gulf of Maine sst anom",
+        "Georges Bank sst anom", 
+        "Southern New England sst anom",
+        "Mid-Atlantic Bight sst anom",
+        "Gulf of Maine landings",
+        "Georges Bank landings",
+        "Southern New England landings",
+        "Mid-Atlantic Bight landings"
+      ))) 
+
+  
+  
+  # Spit out all the pieces in an organized list
+  correlation_details <- list(
+    "drivers_matrix"       = driver_matrix,
+    "rho"                  = rho,
+    "ggrho"                = gg_rho,
+    "ggrho_tidy"           = gg_rho_tidy,
+    "only_driver_response" = only_driver_response
+  )
+  
+  
+})
+
+
   
 
-# Get correlation matrix:
-rho <- cor(driver_matrix)
 
 
-# # GGplot correlation Matrix data
-gg_rho <- as.data.frame(rho) %>%
-  rownames_to_column(var = "xvar") %>%
-  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
 
 ```
 
+
+
+
+
+
 # Results
+
+
 
 ### Abundance Distribution
 
-Estimated total abundance across all body sizes remained relatively stable from the 1970's until abundance began to rise beginning in the northern regions around 1990 in the Gulf of Maine. Beginning at this time a slow but steady increase in abundance began in the area which continued through the mid 2010's. Further south in the adjacent Georges Bank region abundances remained flat until the 2010's when they more than tripled before falling to previous levels by the end of the century. Southern New England saw a less dramatic rise and fall that began just before 2010, and like Georges Bank fell to prior levels by the end of the century. The Mid Atlantic Bight region was uniquely consistent throughout, with no major periods of abundance growth or decline.
+Abundance across all body sizes remained relatively stable from the 1970's before rising in the northern regions around 1990 beginning in the Gulf of Maine. Around this time abundances increased through the mid 2010's. Further south in Georges Bank, abundances remained flat until the 2010's, when overall abundance roughly tripled, only to fall back to previous amounts by the end of the century. Southern New England saw a less dramatic rise and fall that began just before 2010, again falling back to earlier levels by the end of the century. The Mid Atlantic Bight had relatively consistent abundances throughout, with no major periods of abundance growth or decline, but with larger inter-annual variability.
 
 ```{r}
 #| label: abundance distributions
@@ -563,23 +718,25 @@ fgroup_area$weight_bins %>%
   ggplot(aes(Year, abund_millions, fill = spec_class)) +
   geom_area() +
   scale_fill_gmri() +
+  scale_x_continuous(expand = expansion(add = c(0,0))) +
   facet_wrap(~survey_area, ncol = 1) + 
   labs(y = "Abundance (millions)",  
-         title = "Estimated Total Abundance from\nArea-Stratified Catch Rates",
+        title = "Estimated Total Abundance from\nArea-Stratified Catch Rates",
          x = "",
        fill = "Functional Group") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        panel.background = element_rect(colour = "black", size=2, fill = NA))
 
 
 ```
 
-Gains in abundance observed in Georges Bank and Gulf of Maine were almost entirely attributable to groundfish species, with some additional growth from demersal species in the Gulf of Maine only. All increases in abundance during this period was among individuals weighing less than .5kg, with some years driven in large-part by exceptional yearclasses in haddock in Georges Bank. The observed abundance volatility in Southern New England and the Mid-Atlantic Bight conversely was largely the result of changes in abundance in pelagic species, whose abundance varied by several times the magnitude that of the other functional groups.
+Abundance gains observed in Georges Bank and Gulf of Maine were primarily from groundfish species, with additional growth from demersal species in the Gulf of Maine. Increases in abundance across all areas was mostly confined to individuals weighing less than .5kg. With some years driven in large-part by exceptional year-classes in a handful of species like haddock in Georges Bank. The observed abundance volatility in Southern New England and the Mid-Atlantic Bight conversely was largely the result of changes in abundance in pelagic species, whose abundance varied by several times the magnitude that of the other functional groups.
 
 ```{r}
 #| label: abundance-by-group
 #| fig.height: 8
 #| fig.width: 8
-#| eval: false
+#| eval: true
 
 
 # Plot abundance by region and Group
@@ -639,26 +796,35 @@ The average fish size in the Gulf of Maine (length and weight) declined the grea
 #| fig.weight: 8
 
 # Re-factor
-regional_size <- mutate(regional_size, 
-                        survey_area = factor(survey_area, levels = c("GoM", "GB", "MAB", "SNE")))
+regional_size <- regional_size %>% 
+  mutate(
+    survey_area = factor(survey_area, levels = c("GoM", "GB", "MAB", "SNE")),
+    area_copy = survey_area)
 
 
 # Length plot
-avg_len_p <- ggplot(regional_size, 
-       aes(Year, mean_len_cm, group = survey_area)) +
-  geom_line() + 
-  geom_point() +
-  facet_wrap(~survey_area, ncol = 1) + 
-  labs(title = "Average Length",
-       y = "Length (cm)")
+
+avg_len_p <-  regional_size %>% 
+    ggplot(aes(Year, mean_len_cm)) +
+    geom_line(data = select(regional_size, -survey_area),
+              aes(group = area_copy),
+              alpha = 0.2, size = 0.5) + 
+    geom_line(aes(group = survey_area), size = 1) + 
+    #theme_minimal() +
+    facet_wrap(~survey_area, ncol = 1) + 
+    labs(title = "Average Length",
+         y = "Length (cm)")
 
 
 # Weight plot
-avg_wt_p <- ggplot(regional_size, 
-       aes(Year, mean_wt_kg, group = survey_area)) + 
-  geom_line() + 
-  geom_point() +
-  facet_wrap(~survey_area, ncol = 1)+ 
+avg_wt_p <- regional_size %>% 
+  ggplot(aes(Year, mean_wt_kg)) + 
+  geom_line(data = select(regional_size, -survey_area),
+            aes(group = area_copy),
+            alpha = 0.2, size = 0.5) + 
+  geom_line(aes(group = survey_area), size = 1) + 
+  # theme_minimal() +
+  facet_wrap(~survey_area, ncol = 1) + 
   labs(title = "Average Weight",
        y = "Weight (kg)")
   
@@ -677,87 +843,67 @@ Size spectrum slopes were least steep in the two Northern regions.
 
 -   all slopes similar steepness
 
+
 ```{r}
 #| label: size spectra results
 #| fig.height: 8
 #| fig.weight: 8
 
+# Make a copy so we can gray out the lines
+region_indices <- mutate(region_indices, area_copy = survey_area)
+
 
 # Plot the Regional Slopes
-slope_timeline <- ggplot(region_indices, 
-                         aes(yr, l10_slope_strat, group = survey_area)) +
-  geom_line(linetype = 1) +
-  geom_point() +
+slope_timeline <- region_indices %>% 
+  ggplot(aes(yr, l10_slope_strat, group = survey_area)) +
+  geom_line(data = select(region_indices, -survey_area),
+            aes(group = area_copy),
+            alpha = 0.2, size = 0.5) +
+  geom_line(aes(group = survey_area), size = 1) +
   scale_color_gmri() +
   facet_wrap(~survey_area, ncol = 1) +
-  # geom_smooth(method = "lm", formula = y~x, alpha = 0.75) +
+  # theme_minimal() +
   labs(x = "Year", y = "Slope", title = "Normalized Biomass Spectra") 
 
 # Plot the Regional Intercepts
 int_timeline <- ggplot(region_indices, aes(yr, l10_int_strat, group = survey_area)) +
-  geom_line(linetype = 1) +
-  geom_point() +
+  geom_line(data = select(region_indices, -survey_area),
+            aes(group = area_copy),
+            alpha = 0.2, size = 0.5) +
+  geom_line(aes(group = survey_area), size = 1) +
   facet_wrap(~survey_area, ncol = 1) +
-  # geom_smooth(method = "lm", formula = y~x, alpha = 0.75) +
+  # theme_minimal() +
   labs(x = "Year", y = "Intercept") 
 
 
 # Assemble
 slope_timeline | int_timeline 
+
 ```
 
 ## Size Spectra Drivers
 
+
+
+
+
+
+### Driver Correlations 
+
+
+::: panel-tabset
+
+#### Exploitation Period (1970 - 1995)
+
 ```{r}
-#| label: ggcorr-drivers
+#| label: ggcorr-drivers-exploitation
 #| fig-height: 6
 #| fig-width: 8
 
-# Tidy it up, enhance the labels
-gg_rho_tidy <- gg_rho %>% 
-  mutate(
-    response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
-    driver_var = ifelse(str_detect(yvar, "osc|pca|landings|index|anom|Rings"), T, F),
-    area = case_when(
-      str_detect(xvar, "Georges") ~ "Georges Bank",
-      str_detect(xvar, "Gulf") ~ "Gulf of Maine",
-      str_detect(xvar, "Southern") ~ "Southern New England",
-      str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    area = factor(area, levels = c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-    driver_type = ifelse(str_detect(yvar, "landings"), 
-                         "Fishing", "Environmental"),
-    x_short = case_when(
-      str_detect(xvar, "slope") ~ "Spectra Slope",
-      str_detect(xvar, "int") ~ "Spectra Intercept"))
-
-
-# Do some filtering and string formatting:
-only_driver_response <- gg_rho_tidy %>% 
-  filter( 
-    response_var,
-    driver_var) %>% 
-  mutate(
-    yvar = str_replace_all(yvar, "_", " "),
-    yvar = factor(yvar, levels = c(
-      "Gulf of Maine cpr pca 1",
-      "Gulf of Maine cpr pca 2",
-      "All gulf stream index",
-      "All Warm Core Rings",
-      "All north atlantic oscillation",
-      "All sst anom",
-      "Gulf of Maine sst anom",
-      "Georges Bank sst anom", 
-      "Southern New England sst anom",
-      "Mid-Atlantic Bight sst anom",
-      "Gulf of Maine landings",
-      "Georges Bank landings",
-      "Southern New England landings",
-      "Mid-Atlantic Bight landings"
-    ))) 
-
 
 # Plot the convoluted thing:
-only_driver_response %>% 
+period_correlations$exploitation$only_driver_response %>% 
+  filter(driver_type != "Calanus") %>% 
   ggplot(aes(yvar, x_short, fill = r2)) +
   geom_tile() +
   facet_grid(area~driver_type, scales = "free_x", space = "free") +
@@ -765,18 +911,80 @@ only_driver_response %>%
   coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         strip.text.y = element_text(angle = 0),
-        legend.position = c(1.225, -.25),
+        legend.position = c(1.205, -.25),
         legend.title = element_text(vjust = 0.75)) +
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
-  labs(x = "Hypopthesized Driver", y = "Bodymass Spectra Coefficient",
+  labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
-       title = "Correlation of Size Spectra to Hypothesized Drivers",
+       title = "Correlation of Size Spectra to Hypothesized Drivers | Exploitation Era",
        subtitle = "Correlation coefficients shown display same-year correlations.")
+
 ```
+
+#### Recovery Period (1996-2019)
+
+
+```{r}
+#| label: ggcorr-drivers-recovery
+#| fig-height: 6
+#| fig-width: 8
+
+
+# Plot the convoluted thing:
+period_correlations$recovery$only_driver_response %>% 
+  filter(driver_type != "Calanus") %>% 
+  ggplot(aes(yvar, x_short, fill = r2)) +
+  geom_tile() +
+  facet_grid(area~driver_type, scales = "free_x", space = "free") +
+  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.y = element_text(angle = 0),
+        legend.position = c(1.205, -.25),
+        legend.title = element_text(vjust = 0.75)) +
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
+  labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
+       fill = "Correlation Coefficient",
+       title = "Correlation of Size Spectra to Hypothesized Drivers | Recovery Era",
+       subtitle = "Correlation coefficients shown display same-year correlations.")
+
+```
+
+#### Full Time Series
+
+
+```{r}
+#| label: ggcorr-drivers-full
+#| fig-height: 6
+#| fig-width: 8
+
+
+# Plot the convoluted thing:
+period_correlations$full$only_driver_response %>% 
+  filter(driver_type != "Calanus") %>% 
+  ggplot(aes(yvar, x_short, fill = r2)) +
+  geom_tile() +
+  facet_grid(area~driver_type, scales = "free_x", space = "free") +
+  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.y = element_text(angle = 0),
+        legend.position = c(1.205, -.25),
+        legend.title = element_text(vjust = 0.75)) +
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
+  labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
+       fill = "Correlation Coefficient",
+       title = "Correlation of Size Spectra to Hypothesized Drivers | All Years",
+       subtitle = "Correlation coefficients shown display same-year correlations.")
+
+```
+
+:::
+
 
 # Discussion
 
-The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoid[@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggests that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had just begun to reflect a regime shift, and could have been considered at that time an acute stressor. Since then the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining.
+The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoids [@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggests that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had just begun to reflect a regime shift, and could have been considered at that time an acute stressor. Since then the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining.
 
 ### Potential Drivers:
 
@@ -785,23 +993,22 @@ The data we rely on in this analysis was collected as part of a survey program w
 
 ```{r}
 #| label: temperature-index
-#| fig.height: 6
+#| fig.height: 8
 
 
 # Plot the timelines
 temp_regimes %>% 
-  #filter(survey_area == "Full Region") %>% 
+  mutate(anom_direction = ifelse(sst_anom > 0, "Positive", "Negative")) %>% 
   ggplot( aes(yr, sst_anom)) +
-  #geom_col(aes(fill = regime),  size = 0.75, alpha = 0.8) +
-  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
-  geom_line(size = 0.75, alpha = 0.8) +
+  geom_col(aes(fill = anom_direction),  
+           size = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, size = 0.5, lty = 1) +
   scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
   scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
+  scale_fill_gmri() +  
   facet_wrap(~survey_area, ncol = 1) +
-  guides(fill = "none") +
   theme(
     legend.title = element_blank(),
-    legend.position = "bottom",
     legend.background = element_rect(fill = "transparent"),
     legend.key = element_rect(fill = "transparent", color = "transparent")) + 
   labs(
@@ -809,7 +1016,8 @@ temp_regimes %>%
     x = "", 
     y = "Surface Temperature Anomaly",
     caption = "Anomalies calculated using 1982-2011 reference period.") +
-  guides(label = "none",
+  guides(fill = "none",
+         label = "none",
          color = guide_legend(keyheight = unit(0.5, "cm")))
 ```
 
@@ -817,18 +1025,21 @@ temp_regimes %>%
 
 ```{r}
 #| label: landings-index
-
+#| fig.height: 8
 
 ####  Landings  ####
 landings_summ %>% 
+  mutate(anom_direction = ifelse(total_wt_z > 0, "Positive", "Negative")) %>% 
   ggplot(aes(year, total_wt_z, group = survey_area)) +
-  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
-  geom_line() +
+  geom_col(aes(fill = anom_direction),  
+           size = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, size = 0.5, lty = 1) +
+  scale_fill_gmri() +  
   facet_wrap(~survey_area, ncol = 1) +
-  #scale_y_continuous(labels = scales::comma_format()) +
   scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
   labs(x = "Year", y = "Finfish Landings Index (z)",
-       title = "GARFO Finfish Landings")
+       title = "GARFO Finfish Landings")  +
+  guides(fill = "none")
 ```
 
 #### Climate Modes
@@ -837,16 +1048,22 @@ landings_summ %>%
 #| label: climate-modes
 
 ####  Climate Drivers  ####
-
-ggplot(clim_drivers, aes(Time, Value, group = Var)) +
-  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
-  geom_line() +
+clim_drivers %>% 
+  group_by(year = lubridate::year(Time), Var, EPU) %>% 
+  summarise(Value = mean(Value, na.rm = T)) %>% 
+  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative")) %>% 
+  ggplot(aes(year, Value, group = EPU)) +
+  geom_col(aes(fill = anom_direction),  
+           size = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, size = 0.5, lty = 1) +
+  scale_fill_gmri() +  
   facet_wrap(~Var, ncol = 1) +
   scale_y_continuous(labels = scales::comma_format()) +
-  scale_x_date(limits = as.Date(c("1965-01-01", "2020-12-31")),
-               breaks = scales::breaks_pretty(n = 6)) +
+  scale_x_continuous(limits = c(1960, 2020), 
+                     breaks = seq(1950, 2030, by = 10)) +
   labs(x = "Year", y = "Total Finfish Landings (lb.)",
-       title = "Environmental Drivers")
+       title = "Environmental Drivers") +
+  guides(fill = "none")
 ```
 
 #### CPR PCA
@@ -859,63 +1076,60 @@ ggplot(clim_drivers, aes(Time, Value, group = Var)) +
 
 # CPR Plot
 cpr_indices %>% 
+  mutate(anom_direction = ifelse(pca_loading > 0, "Positive", "Negative")) %>% 
   ggplot(aes(year, pca_loading, group = pca_mode)) +
-  geom_hline(yintercept = 0, color = gmri_cols("orange"), size = 1, lty = 2) +
-  geom_line() +
+  geom_col(aes(fill = anom_direction),  
+           size = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, size = 0.5, lty = 1) +
+  scale_fill_gmri() +  
   facet_wrap(~pca_mode, ncol = 1) +
   scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
-  labs(x = "Year", y = "PCA Loading", title = "Gulf of Maine CPR PCA")
+  labs(x = "Year", y = "PCA Loading", title = "Gulf of Maine CPR PCA")  +
+  guides(fill = "none")
 
 ```
 :::
 
-### All Correlations Matrix
+### Supplemental Materials
+
+#### Species Functional Groups
+
+
+#### GARFO Landings Summaries
 
 ```{r}
-#| label: drivers-and-spectra
-#| eval: true
-#| fig-height: 7
-#| fig-width: 7
 
-# # Correlation Plot
-# corrplot(rho,
-#          method="ellipse",
-#          type="lower",
-#          order = "hclust",
-#          tl.col = "black",
-#          tl.srt = 0,
-#          tl.cex = 0.6,
-#          tl.offset = 0.7,
-#          cl.cex = 0.8,
-#          cl.offset = 0.9,
-#          cl.ratio = 0.1,
-#          title = "All Year Correlation Matrix")
-# 
-
-
+# Add the labels into the landings data and remove what we don't need there:
+landings %>% 
+  mutate(disturbance_era = ifelse(year <= 1995, 
+                                  "1964 - 1995", 
+                                  "1996 - 2021"),
+         sppname = str_to_title(sppname)) %>% 
+  group_by(survey_area, disturbance_era,  sppname) %>% 
+  summarise(avg_landings_lb = mean(`landed lbs`, na.rm = T),
+            across(.cols = c(landings_lb = `landed lbs`, 
+                             value = value), 
+                   .fns = sum, 
+                   .names = "total_{.col}")) %>% 
+  slice_max(order_by = total_landings_lb, n = 2) %>% 
+  #ungroup() %>% 
+  gt() %>% 
+  fmt_number(columns = c(avg_landings_lb, total_landings_lb, total_value),
+             use_seps = T, 
+             sep_mark = ",",
+             suffixing = T) %>% 
+  cols_label(
+    sppname = "Harvest Region & Time Period",
+    avg_landings_lb = "Avg. Annual Landings (lb.)",
+    total_landings_lb = "Total Landings (lb.)",
+    total_value = "Total Value ($)") %>%
+  gt::tab_header(title = "Top Landings by Weight")
+  
+  
+  
+  
 ```
 
-```{r}
-#| label: ggcorr-all
-#| fig-height: 6
-#| fig-width: 6
-#| eval: false
 
-gg_rho %>% 
-  mutate(
-    xvar = str_replace(xvar, "_", " "),
-    yvar = str_replace(yvar, "_", " ")) %>% 
-  ggplot(aes(yvar, xvar, fill = r2)) +
-    geom_tile() +
-    scale_fill_distiller(palette = "RdBu", 
-                         limits = c(-1, 1), 
-                         breaks = c(-1,0,1)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-        strip.text.y = element_text(angle = 0),
-        legend.position = "bottom") +
-  labs(x = "With these Other Indices (y)", y = "Correlation of These Indices (x)",
-       fill = "Correlation Coefficient",
-       title = "Correlation Matrix of All Drivers & Response")
-```
 
 # References
