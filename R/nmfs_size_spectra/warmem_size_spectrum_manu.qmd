@@ -1,11 +1,12 @@
 ---
-title: "Raising Temperatures Extend Fisheries-Exploitation Harm to the Community Size Structure of Northeast US Groundfishes"
+title: "Rising Temperatures Extend Community Size-Structure Damage Done by Decades of Size-Selective Fishing"
 author: 
-    name: "Adam Kemberling"
+    name: "Adam A. Kemberling"
+    title: "Quantitative Research Associate"
     url: https://github.com/adamkemberling
     affiliation: Gulf of Maine Research Institute
 description: | 
-  Size Spectrum Analysis of the Northeast US Groundfish Community
+  Results from a Size Spectrum Analysis of the Northeast US Groundfish Community
 date: "`r Sys.Date()`"
 # format: docx
 format:
@@ -149,11 +150,7 @@ While these examples show that species can respond to changes in the physical en
 
 ### Purpose
 
-With the understanding that populations depend on the health of their ecosystems, there is a need to have community-wide metrics to effectively understand and manage marine resources. Size based indices are metrics that can be estimated from the information that has historically been available from long-term survey efforts. These indices have been shown to be sensitive to the impacts of fishing, but should also capture environmentally driven stress as well. We estimated size spectrum relationships as SBI's for the groundfish populations for each sub-region of the Northeast US continental shelf. In the case of the NW Atlantic sustained increases in temperature should have a physiological impact on the community size structure.
-
-This leads to our second hypothesis:
-
-> #### H2. Warming alters the community through the direct influence of temperature on metabolism, growth, and population productivity.
+With the understanding that populations depend on the health of their ecosystems, there is a need to have community-wide metrics to effectively understand and manage marine resources. Size based indices are metrics that can be estimated from the information that has historically been available from long-term survey efforts. These indices have been shown to be sensitive to the impacts of fishing, but should also capture environmentally driven stress as well. In this way they have the potential to track ecosystem wide signals of community health that are otherwise overlooked when looking through a single-species recovery lens, and might overlook factors beyond life-history traits like environmental disturbances like warming. Warming alters the community through the direct influence of temperature on metabolism, growth, and population productivity. In the case of the NW Atlantic, we anticipate that sustained increases in temperature should have an impact on the community size structure for the region that can be detected through the community biomass size spectra parameters. To this goal, we estimated size spectrum relationships as SBI's for the groundfish populations for each sub-region of the Northeast US continental shelf.
 
 # Methods
 
@@ -172,7 +169,7 @@ nefsc_size_bins <- nefsc_1g_labelled
 n_species <- length(unique(nefsc_size_bins$comname))
 ```
 
-Fishery Independent data on was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. Analyses using the trawl survey data took used data from both the Spring and Fall survey seasons covering all years from 1970 to 2019. Correction factors were applied to total species abundance and biomass to account for changes in vessels, gear, and doors when appropriate as part of the survey program. However, abundance and biomass by length is not corrected. To account for this, abundance at length for each species were adjusted to match the correction factors applied to total species abundance at each station, with allocation following the distributions of length caught at that station. Such that for each species: the sum of adjusted abundances for each length class is equal to the gross abundance as corrected for changes in vessels, gear, etc. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data was area-stratified.
+Fishery Independent data on was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. Trawls are performed for a fixed duration at each station, reporting abundance at length and total biomass for all species caught. Trawl survey analyses incorporated data from both the Spring and Fall survey seasons, and for all years from 1970 to 2019. Correction factors were applied to total species abundance and aggregate species biomass to account for all changes in vessels, gear, and doors when appropriate as part of the survey program. However, abundance and biomass at length is not corrected for as part of the standard survey data protocol and needed to be estimated. To account for this, abundance at length for each species were adjusted to match the correction factors applied to total species abundance at each station, with allocations following the distributions of length caught at that station. Such that for each species: the sum of the resulting adjusted abundance numbers across each length is equal to the total abundance that was corrected for changes in vessels, gear, etc. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data was then area-stratified.
 
 ```{r}
 #| label: make region map
@@ -292,7 +289,7 @@ temp_regimes <- regional_oisst %>%
 
 The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential environmental drivers include sea surface temperature anomalies, Gulf Stream Index (GSI), and zooplankton community indices from the continuous plankton recorder (CPR) dataset. Anthropogenic drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
 
-![](images/garfo_regions.png){fig-align="center",width = "420"}
+![](images/garfo_regions.png){fig-align="center" width="473"}
 
 ```{r}
 #| label: spectra-driver-data
@@ -451,10 +448,6 @@ cpr_indices <- cpr_indices %>%
 
 ```
 
-
-
-
-
 ```{r}
 #| label: all-drivers-table
 
@@ -575,7 +568,6 @@ all_drivers <- bind_rows(
 
 ```
 
-
 ```{r}
 #| label: driver-matrix-correlations
 
@@ -686,14 +678,7 @@ period_correlations <- map(driver_periods, function(drivers){
 
 ```
 
-
-
-
-
-
 # Results
-
-
 
 ### Abundance Distribution
 
@@ -835,14 +820,7 @@ avg_len_p | avg_wt_p
 
 ### Regional Size Spectra
 
-Size spectrum slopes were least steep in the two Northern regions.
-
--   Steepening of northern slopes
-
--   lack of bounce-back
-
--   all slopes similar steepness
-
+Beginning in the 1970's, there was a clear difference in the relative positions of spectra parameters among the different regions. Gulf of Maine and Georges Bank showed the least steep spectra slopes in the earlier time periods with slopes around -1 & -1.1 respectively. The relatively flat slopes in these regions both steepened over time, settling near -1.3 (GoM) and -1.5 (GB). Gulf of Maine experienced much of its decline during the 1980's and 1990's. There was a brief reversal in this trend during the 2000's, but slopes continued to steepen by 2010 and remained steep through 2019. Georges Bank did not experience as rapid of a decline, but experienced a similar long-term steepening. In contrast to the northern regions, SNE and MAB had steeper slopes in the -1.2 to -1.5 territory. The long term pattern for SNE was one of increasing volatility, but not so much a decline. The spectra slope for the MAB was less volatile, but similarly maintained a relatively stable wander around -1.4. By the end of the study period all regions had slopes that were at or near a similar level.
 
 ```{r}
 #| label: size spectra results
@@ -883,16 +861,9 @@ slope_timeline | int_timeline
 
 ## Size Spectra Drivers
 
-
-
-
-
-
-### Driver Correlations 
-
+### Driver Correlations
 
 ::: panel-tabset
-
 #### Exploitation Period (1970 - 1995)
 
 ```{r}
@@ -923,7 +894,6 @@ period_correlations$exploitation$only_driver_response %>%
 
 #### Recovery Period (1996-2019)
 
-
 ```{r}
 #| label: ggcorr-drivers-recovery
 #| fig-height: 6
@@ -952,7 +922,6 @@ period_correlations$recovery$only_driver_response %>%
 
 #### Full Time Series
 
-
 ```{r}
 #| label: ggcorr-drivers-full
 #| fig-height: 6
@@ -978,15 +947,15 @@ period_correlations$full$only_driver_response %>%
        subtitle = "Correlation coefficients shown display same-year correlations.")
 
 ```
-
 :::
-
 
 # Discussion
 
-The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoids [@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggests that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had just begun to reflect a regime shift, and could have been considered at that time an acute stressor. Since then the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining.
+## Separating Complimentary Forces Impacting Growth
 
-### Potential Drivers:
+The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoids [@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggested that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had only begun to resemble a regime shift, and could have been considered at that time an acute stressor. Since that time the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining. While temperature change has been associated with changes in growth rates and size-at-age, so too have size-selective fishing practices, making it difficult to disentangle the importance of exploitation & temperature on the overall community size structure when body size integrates these two forces [@shackell2007].
+
+### Potential Drivers Timeseries:
 
 ::: panel-tabset
 #### Surface Temperature Anomalies
@@ -1090,14 +1059,91 @@ cpr_indices %>%
 ```
 :::
 
-### Supplemental Materials
+## Determining Index Credibility 
 
-#### Species Functional Groups
-
-
-#### GARFO Landings Summaries
+Our ability to make statements on community size-structure change in this study is limited by the community that is effectively sampled as part of the groundfish survey, and of species with available weight-at-length information. When looking at the composition of total biomass in each region separated out by species and by functional groups it became clear that in SNE and MAB a larger proportion of the community biomass was held within a relatively small number of species, primarily the elasmobranchs. Whether or not this is incomplete representation of the community due to the sampling gear, or an accurate representation of the entire community is unclear. In these two regions the biomass spectra information is largely that of the elasmobranch community. Whether or not this is a sufficient fraction of the broader community, what key community members are absent, and what the ecological implications of this are remain unclear.
 
 ```{r}
+#| label: proportion-of-fgroup
+#| fig-height: 8
+
+# panel plot the biomass by body size
+fgroup_area$weight_bins %>% 
+  mutate(strat_lwbio_mill = wtbin_strat_lw_bio / 1e6) %>% 
+  group_by(Year, survey_area, spec_class) %>% 
+  summarise(total_lwbio_mill = sum(strat_lwbio_mill, na.rm = T),
+            .groups = "drop") %>% 
+  ggplot(aes(Year, total_lwbio_mill, fill = spec_class)) +
+  geom_col(position = "fill") +
+  facet_grid(survey_area~.) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = percent_format()) +
+  labs(y = "Fraction of Stratified Biomass",  
+       title = "Biomass Allocation by Functional Group",
+       x = "", 
+       fill = "Functional Group") +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Looking at both the level of noise in the body-size trends and the size spectra parameters, the Gulf of Maine and Georges Bank seem to have the clearest signals coming through. It is likely not coincidental that these two regions also have large proportions of their sampled biomass represented by groundfish and demersal species, functional groups that are best sampled by a bottom trawl survey. Looking specifically at these two regions only, we see two parallel trends of declining body size (length and weight) among the community as a whole. We also simultaneously see a steepening of the size spectra slope. Both of these trends are slightly more severe in the Gulf of Maine.
+
+# Supplemental Materials
+
+::: panel-tabset
+## Species Functional Groups
+
+```{r}
+#| label: functional-group-table
+
+
+# Tidy up a key of what is labeled what
+spec_key <- nefsc_1g_labelled %>% 
+  distinct(comname, spec_class) %>% 
+  mutate(
+    spec_class = ifelse(is.na(spec_class), "Not Classified", spec_class),
+    spec_class = fct_drop(spec_class),
+    spec_class = factor(spec_class, levels = c("Demersal", "Groundfish", "Elasmobranch", "Pelagic", "Not Classified"))
+  )
+
+
+# Reformat the data to check presence absence
+nefsc_1g_labelled %>% 
+  distinct(comname, survey_area) %>% 
+  mutate(Presence = "X") %>% 
+  complete(comname, survey_area) %>% 
+  left_join(spec_key, by = "comname") %>% 
+  mutate(comname = str_to_title(comname),
+         Presence = ifelse(is.na(Presence) == FALSE, "X", ""),
+         Presence = ifelse(is.na(Presence) == TRUE, "", Presence)) %>% 
+  left_join(area_df, by = "survey_area") %>% 
+  select(spec_class, comname, area, Presence) %>% 
+  pivot_wider(names_from = area, values_from = Presence) %>% 
+  arrange(spec_class, comname) %>% 
+  group_by(spec_class) %>% 
+  gt()  %>% 
+  gt::tab_header(title = md("**Functional Group Assignments and Regional Presence/Absence**")) %>% 
+  tab_stubhead(label = md("**Functional Group**")) %>% 
+  cols_label(
+    comname = md(""),
+    `Gulf of Maine` = md("*Gulf of Maine*"),
+    `Georges Bank` = md("*Georges Bank*"),
+    `Southern New England` = md("*Southern New England*"),
+    `Mid-Atlantic Bight` = md("*Mid-Atlantic Bight*")
+    ) %>%
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_row_groups()
+  ) %>% 
+  gt::tab_source_note(source_note = md("*Functional group assignments adapted from ________*"))
+
+```
+
+## GARFO Landings Summary
+
+```{r}
+#| label: garfo-landings-summary
 
 # Add the labels into the landings data and remove what we don't need there:
 landings %>% 
@@ -1112,24 +1158,29 @@ landings %>%
                    .fns = sum, 
                    .names = "total_{.col}")) %>% 
   slice_max(order_by = total_landings_lb, n = 2) %>% 
-  #ungroup() %>% 
-  gt() %>% 
+  ungroup() %>% 
+  gt(rowname_col = "survey_area") %>% 
+  gt::tab_header(title = md("**Largest Commercial Fisheries Landings of Northeastern US (by weight)**")) %>% 
+  tab_stubhead(label = md("*Harvest Region*")) %>% 
+  tab_row_group(
+    label = md("*Exploitation Era*"),
+    rows = disturbance_era == "1964 - 1995") %>%
+  tab_row_group(
+    label = md("*Recovery Era*"),
+    rows = disturbance_era == "1996 - 2021") %>% 
   fmt_number(columns = c(avg_landings_lb, total_landings_lb, total_value),
              use_seps = T, 
              sep_mark = ",",
              suffixing = T) %>% 
   cols_label(
-    sppname = "Harvest Region & Time Period",
-    avg_landings_lb = "Avg. Annual Landings (lb.)",
-    total_landings_lb = "Total Landings (lb.)",
-    total_value = "Total Value ($)") %>%
-  gt::tab_header(title = "Top Landings by Weight")
-  
-  
-  
+    disturbance_era   = md("*Period*"),
+    sppname           = md("*Common Name*"),
+    avg_landings_lb   = md("*Avg. Annual Landings (lb.)*"),
+    total_landings_lb = md("*Total Landings (lb.)*"),
+    total_value       = md("*Total Value ($)*")) %>%
+  gt::tab_source_note(source_note = md("*Landings data obtained from the Greater Atlantic Regional Fishing Office (GARFO)*"))
   
 ```
-
-
+:::
 
 # References
