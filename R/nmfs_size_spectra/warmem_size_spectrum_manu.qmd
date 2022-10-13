@@ -1126,7 +1126,7 @@ nefsc_1g_labelled %>%
   gt::tab_header(title = md("**Functional Group Assignments and Regional Presence/Absence**")) %>% 
   tab_stubhead(label = md("**Functional Group**")) %>% 
   cols_label(
-    comname = md(""),
+    comname = md("*Common Name*"),
     `Gulf of Maine` = md("*Gulf of Maine*"),
     `Georges Bank` = md("*Georges Bank*"),
     `Southern New England` = md("*Southern New England*"),
@@ -1159,19 +1159,17 @@ landings %>%
                    .names = "total_{.col}")) %>% 
   slice_max(order_by = total_landings_lb, n = 2) %>% 
   ungroup() %>% 
+  group_by(disturbance_era) %>% 
   gt(rowname_col = "survey_area") %>% 
   gt::tab_header(title = md("**Largest Commercial Fisheries Landings of Northeastern US (by weight)**")) %>% 
   tab_stubhead(label = md("*Harvest Region*")) %>% 
-  tab_row_group(
-    label = md("*Exploitation Era*"),
-    rows = disturbance_era == "1964 - 1995") %>%
-  tab_row_group(
-    label = md("*Recovery Era*"),
-    rows = disturbance_era == "1996 - 2021") %>% 
   fmt_number(columns = c(avg_landings_lb, total_landings_lb, total_value),
              use_seps = T, 
              sep_mark = ",",
              suffixing = T) %>% 
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_row_groups()) %>% 
   cols_label(
     disturbance_era   = md("*Period*"),
     sppname           = md("*Common Name*"),

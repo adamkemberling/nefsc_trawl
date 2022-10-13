@@ -40,34 +40,34 @@ list(
   
   #####__ a. Full Survdat  ####
   # Preparing Survdat Data
-  tar_target(targets_os, 
+  tar_target(boxdata_location, 
              command = "mojave"),
   tar_target(
     name = survdat_clean,
     command = gmri_survdat_prep(survdat = NULL, 
                                 survdat_source = "most recent", 
-                                mac_os = targets_os)),
+                                box_location = boxdata_location)),
   tar_target(
     name = survdat_lw,
     command = add_lw_info(survdat_clean, 
                           cutoff = T, 
-                          mac_os = targets_os) ),
+                          box_location = boxdata_location) ),
   tar_target(
     name = nefsc_stratified,
     command = add_area_stratification(survdat_lw, 
                                       include_epu = F, 
-                                      mac_os = targets_os) ),
+                                      box_location = boxdata_location) ),
   
   #####__ b. Biological Data  ####
   # survdat biological data - for actual length relationships
   tar_target(
     name = survdat_biological,
     command = gmri_survdat_prep(survdat_source = "bio", 
-                                mac_os = targets_os) ),
+                                box_location = boxdata_location) ),
   tar_target(
     name = survdat_bio_lw,
     command = add_lw_info(survdat_biological, cutoff = T, 
-                          mac_os = targets_os) %>% 
+                          box_location = boxdata_location) %>% 
       mutate(Year = est_year,
              season = str_to_title(season))),
   
@@ -169,31 +169,31 @@ list(
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "gulf of maine", 
-      mac_os = targets_os )),
+      box_location = boxdata_location )),
   tar_target(
     gb_oisst, 
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "georges bank", 
-      mac_os = targets_os )),
+      box_location = boxdata_location )),
   tar_target(
     mab_oisst,
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "mid atlantic bight", 
-      mac_os = targets_os )),
+      box_location = boxdata_location )),
   tar_target(
     sne_oisst,
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "southern new england", 
-      mac_os = targets_os )),
+      box_location = boxdata_location )),
   tar_target(
     inuse_strata_oisst,
     oisst_access_timeseries(
       region_family = "nmfs trawl regions", 
       poly_name = "inuse strata", 
-      mac_os = targets_os )),
+      box_location = boxdata_location )),
   
   # Make every daily timeseries into a yearly one
   tar_target(

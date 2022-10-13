@@ -1,13 +1,15 @@
 ---
 title: "Growth Regimes in the NW Atlantic Following Temperature Regime Shift"
 author: 
-    name: "Adam Kemberling"
+    name: "Adam A. Kemberling"
+    title: "Quantitative Research Associate"
     url: https://github.com/adamkemberling
     affiliation: Gulf of Maine Research Institute
 description: | 
-  Differential Growth Rates of Northeast US Fishes Following Temperature Regime Shift
+  Results from a Size Spectrum Analysis of the Northeast US Groundfish Community
 date: "`r Sys.Date()`"
-format: 
+# format: docx
+format:
   html:
     self-contained: true
     code-fold: true
@@ -17,7 +19,7 @@ format:
     toc-depth: 2
 editor: source
 execute: 
-  echo: true
+  echo: false
   warning: false
   message: false
   fig.height: 6
@@ -28,8 +30,6 @@ bibliography: references.bib
 ---
 
 ```{r packages and functions}
-#| include = FALSE,
-#| echo = FALSE
 
 ####  Packages  ####
 library(FSAdata)
@@ -278,7 +278,9 @@ global_benchmarks <- group_spat_metrics(station_totals)
 
 The available age data is a subset of the overall catch data from the NMFS trawl survey. This biological data subset contains additional information on individual fishes such as otolith-derived aging that require additional workup to ascertain. Not all fish species have age available for the full time period, with special attention being given to aid in the management of commercially valuable species. The data used for size-at-age analyses comes from both the Spring and Fall surveys.
 
-```{r bio data prep}
+```{r}
+#| label: bio-data-prep
+
 # Access Biological Data with {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(survdat_biological))
@@ -311,7 +313,7 @@ regime_dat <- filter(nmfs_bio, est_year >= 2000, est_year <= 2019)
 
 # Rank species by how many measurements there are
 species_abunds <- regime_dat %>% 
-  count(comname) %>% 
+  dplyr::count(comname) %>% 
   arrange(desc(n)) # ordered by number measured
 
 # # Reorder alphabetically And take
@@ -328,7 +330,9 @@ vonbert_species <- species_abunds %>%
 
 Size at age analyses were performed on `r length(vonbert_species)` species. Species were omitted from analyses if age data was not available across both temperature regimes (bluefish & ocean pout) or if their physiology prevented accurate aging (elasmobranch species). The following 18 species had sufficient age data across both temperature regimes to be included in the analysis: **`r pander::pander(vonbert_species)`**.
 
-```{r panel species}
+```{r}
+#| label: set-panel-species
+
 
 # Name the list so it carries through
 names(vonbert_species) <- vonbert_species
@@ -341,7 +345,7 @@ vonbert_species_agedat <-  map_dfr(vonbert_species, function(species_name){
     mutate(group_id = str_c(regime, comname, sep = "-")) 
 }, .id = "common name") 
 
-# Species we want panels for:
+# Set the Species we want panels for:
 key_species <- sort(c(
   "american plaice",
   "atlantic cod",
@@ -364,11 +368,14 @@ To assess the impact of an elevated temperature regime, the size-at-age data was
 $$L_t~=~L_{\infty}(1-e^{-K(t-t_0)})$$ Where $L_t$ is the length in cm of a species at age $t$. $L_\infty$ is the asymptotic maximum length, $K$ is \_\_\_\_\_, and $t_0$ is x intercept, or the hypothetical age at 0 cm length.
 
 ```{r}
+#| label: set-VB-function
+
 # Set the function for nls() to solve
 vb <- vbFuns(param="Typical") 
 ```
 
-```{r vonbert test example}
+```{r}
+#| label: vonbert-test-example
 #| eval: false
 #| echo: false
 
@@ -401,7 +408,8 @@ t_sum$convInfo$isConv
 
 ```
 
-```{r vonbert model fitter}
+```{r}
+#| label: vonbert-model-fitting
 
 # Function to Pull Vonbert Coefficients, 
 # In development: boot strapped intervals
@@ -485,7 +493,8 @@ vonbert_coef <- function(length_age_dat, start_points, min_obs = 20){
 
 ```
 
-```{r vonbert group wrapper function}
+```{r}
+#| label: vonbert-fitting-wrapper
 # Second Function for running that for a single Species, split by a factor column
 
 # Function does these things:
@@ -514,7 +523,8 @@ process_group_vbert <- function(spec_name, split_col, min_obs){
 
 ```
 
-```{r vonbert coefficient processing}
+```{r}
+#| label: vonbert-coefficient-processing
 # Running Each Species * Regime
 species_coef <- vonbert_species %>% 
   map_dfr(function(x){
@@ -535,7 +545,7 @@ Yield-per-recruit analysis similar to Baudron et al. 2014?
 ## Temperature Regime Shift
 
 ```{r}
-#| label: Temperature regime shift test
+#| label: Temperature-regime-shift
 
 # Pull the whole area's temps
 survey_temps <- filter(temp_regimes, survey_area == "Full Region")
@@ -600,7 +610,7 @@ prob_text <- paste(round(anom_bcp$Probability *100, 2), collapse = ", ")
 SST anomaly time series of the region indicate a jump in annual temperature anomalies indicative of a regime shift centered around 2010. A bayesian change point analysis showed highest support for a regime shift among `r nrow(anom_bcp)` the years: 2009-2011. Change point probabilities for these years were `r prob_text`% respectively.
 
 ```{r}
-#| label: bcp plotting function
+#| label: bcp-plotting-fun
 
 # Function to plot bcp breaks, highlighting their support
 plot_bcp_breaks <- function(bcp_data, 
@@ -641,7 +651,7 @@ plot_bcp_breaks(bcp_data = survey_temps,
 ### Warming Trends
 
 ```{r}
-#| label: temperature warming trends
+#| label: temperature-warming-trends
 
 # warming trends
 list(
@@ -657,8 +667,8 @@ list(
 
 Temperatures prior to the 2010 regime shift rose at a rate of 0.7 $°C/Decade$. Regional temperatures then peaked in 2012 and have remained high while decreasing slowly at a rate of 0.02 $°C/Decade$. Average temperatures following the regime shift (2011-2021), were on average 1.09°C warmer than the than the average over the previous 28 years (1982-2009). Temperatures within each regime were relatively stable, indicative of a jump in mean temperatures rather than a rate change between them. While temperatures in the current regime are falling, the rate is such that
 
-```{r temp regimes}
-#| label: temperature regime figure
+```{r}
+#| label: temperature-regime-figure
 
 # Plot how each one exhibits a break in the temperature across the region
 temp_regimes %>% 
@@ -706,6 +716,7 @@ temp_regimes %>%
 ## Distribution Shifts
 
 ```{r}
+#| label: center-bio-heatmaps
 #| fig.height: 8
 #| fig-width: 8
 
@@ -780,43 +791,57 @@ standardized_changes %>%
 ### Latitude
 
 ```{r}
+#| label: center-lat-shifts
+
+
 # Standardized Plots
 lat_yrly %>% 
+  group_by(comname) %>% 
+  mutate(slope = lm(biom_z ~ est_year)$coeff[2],
+         change = ifelse(slope > 0, "Positive Change", "Negative Change")) %>%
   ggplot(aes(est_year, biom_z, group = comname)) +
-  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
-  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_smooth(method = "lm", 
+              formula = y ~ x, 
+              aes(color = change),
+              alpha = 0.8, 
+              se = FALSE) +
   geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
-  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  geom_hline(aes(yintercept = 0, color = "No Change Null Hypothesis"), size = 1, linetype = 1) +
   scale_color_gmri(reverse = T) +
   labs(
     title = "Shift in Center of Biomass Latitudes",
     subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
     y = "Center of Biomass Latitude (z)",  
     x = "", 
-    color = "Time Period", 
-    fill = "Time Period") +
+    color = "Species Change") +
   theme(legend.position = "bottom")
 ```
 
 ### Longitude
 
 ```{r}
+#| label: center-lon-shifts
+
 # Longitude
 lon_yrly %>% 
+  group_by(comname) %>% 
+  mutate(slope = lm(biom_z ~ est_year)$coeff[2],
+         change = ifelse(slope > 0, "Positive Change", "Negative Change")) %>%
   ggplot(aes(est_year, biom_z, group = comname)) +
-  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
-  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_smooth(method = "lm", 
+              formula = y ~ x, 
+              aes(color = change),
+              alpha = 0.8, 
+              se = FALSE) +
   geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
-  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  geom_hline(aes(yintercept = 0, color = "No Change Null Hypothesis"), size = 1, linetype = 1) +
   scale_color_gmri(reverse = T) +
-  #coord_flip() +
   labs(
     title = "Shift in Center of Biomass Longtitudes",
     subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
     y = "Center of Biomass Longitude (z)",  
     x = "", 
-    color = "Time Period", 
-    fill = "Time Period") +
+    color = "Species Change") +
   theme(strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
         legend.position = "bottom")
 
@@ -826,44 +851,56 @@ lon_yrly %>%
 ### Mean Temperature
 
 ```{r}
+#| label: center-temp-shifts
+
 # Temperature
 t_yrly %>% 
+  group_by(comname) %>% 
+  mutate(slope = lm(biom_z ~ est_year)$coeff[2],
+         change = ifelse(slope > 0, "Positive Change", "Negative Change")) %>%
   ggplot(aes(est_year, biom_z, group = comname)) +
-  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
-  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_smooth(method = "lm", 
+              formula = y ~ x, 
+              aes(color = change),
+              alpha = 0.8, 
+              se = FALSE) +
   geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
-  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  geom_hline(aes(yintercept = 0, color = "No Change Null Hypothesis"), size = 1, linetype = 1) +
   scale_color_gmri(reverse = T) +
-  #coord_flip() +
   labs(
     title = "Shift in Center of Biomass Temperature",
     subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
     y = "Center of Biomass Bottom Temperature (z)",  
     x = "", 
-    color = "Time Period", 
-    fill = "Time Period") +
+    color = "Species Change") +
   theme(legend.position = "bottom")
 ```
 
 ### Mean Depth
 
 ```{r}
+#| label: center-depth-shifts
+
 # Depth
 d_yrly %>% 
+  group_by(comname) %>% 
+  mutate(slope = lm(biom_z ~ est_year)$coeff[2],
+         change = ifelse(slope > 0, "Positive Change", "Negative Change")) %>%
   ggplot(aes(est_year, biom_z, group = comname)) +
-  # geom_path(aes(group = comname), linetype = 1, color = "gray50", size = 0.5, alpha = 0.2) +
-  geom_smooth(method = "lm", formula = y ~ x, alpha = 0.8, se = FALSE, color = "gray50") +
+  geom_smooth(method = "lm", 
+              formula = y ~ x, 
+              aes(color = change),
+              alpha = 0.8, 
+              se = FALSE) +
   geom_jitter(width = 0.1, size = 2, alpha = 0.25) +
-  geom_hline(aes(yintercept = 0, color = "Overall Average"), size = 1, linetype = 1) +
+  geom_hline(aes(yintercept = 0, color = "No Change Null Hypothesis"), size = 1, linetype = 1) +
   scale_color_gmri(reverse = T) +
-  #coord_flip() +
   labs(
     title = "Shift in Center of Biomass Depth",
     subtitle = "Yearly averages weighted by biomass, scaled against all-year average.",
     y = "Center of Biomass Depth (z)",  
     x = "", 
-    color = "Time Period", 
-    fill = "Time Period") +
+    color = "Species Change") +
   theme(strip.text.y = element_text(size = 7, angle = 0, hjust = 0),
         legend.position = "bottom")
 ```
@@ -871,7 +908,8 @@ d_yrly %>%
 
 ## Changes to Growth
 
-```{r regime comparison data}
+```{r}
+#| label: regime-comparison-data
 
 # Take the first part from the previous plot:
 # takes each species
@@ -925,8 +963,9 @@ regime_comparison <- vonbert_species %>%
 Changes in the size-at-age growth relationship varied across species, with the majority (14/18) of the species exhibiting smaller L-infinity during the warmer temperature regime.
 
 ```{r}
-#| eval = TRUE,
-#| fig.height = 2
+#| label: growth-waffle-plot
+#| eval: false
+#| fig.height: 2
 
 
 # Try geom_waffle to just count each species as an individual and show that they are growing to smaller sizes in new regime:
@@ -951,8 +990,10 @@ ggplot(data = waffle_iron(
 
 The species that showed larger asymptotic lengths include the three hake species: **red hake, silver hake, & white hake** as well as **Atlantic herring.** These species are all among the majority group of species that is found primarily in the Northern part of the survey area, in and around the Gulf of Maine.
 
-```{r, fig.height = 6}
-#| eval = TRUE
+```{r}
+#| label: growth-coef-plot
+#| fig.height: 6
+#| eval: true
 
 # Reshape things so you can show confidence intervals here
 plot_dat <- species_coef %>% 
@@ -990,8 +1031,10 @@ ggplot(plot_dat, aes(x = estimate, y = comname, group = regime, color = regime))
   
 ```
 
-```{r, fig.height = 6}
-#| eval = FALSE
+```{r}
+#| label: growth-coef-bars
+#| eval: false
+#| fig.height: 6
 # Plotting Everything
 species_coef %>%
   distinct(comname, regime, parameter, estimate) %>% 
@@ -1016,6 +1059,8 @@ species_coef %>%
 ## Changes in $L_\infty$
 
 ```{r}
+#| label: linf-change-table
+
 species_coef %>% 
   distinct(comname, regime, parameter, estimate) %>% 
   pivot_wider(values_from = "estimate", names_from = "parameter") %>% 
@@ -1025,16 +1070,21 @@ species_coef %>%
   mutate(linf_diff = warm - early,
          diff_perc = (linf_diff / early) * 100) %>% 
   mutate(across(where(is.numeric), round, 2)) %>% 
-  arrange(desc(diff_perc)) %>% 
+  arrange(diff_perc) %>% 
   select(c(1, 4, 5)) %>% 
   setNames(c("Common Name", #"Early Regime Linf", "Warm Regime Linf", 
              "Change in Linf (cm)", "Percent Change")) %>% 
-  gt()
+  gt(rowname_col = "Common Name") %>% 
+  gt::tab_header(title = "Changes in L-infinity") %>% 
+  tab_stubhead(label = "Common Name") %>% 
+  tab_row_group(label = "Body Size Increase", rows = `Percent Change` > 0) %>% 
+  tab_row_group(label = "Body Size Decrease", rows = `Percent Change` < 0)
 ```
 
 ## VB Fits to Data:
 
 ```{r}
+#| label: vb-fits-fun
 
 # Make the plot for each species
 vb_fits_plot = function(spec_name){
@@ -1087,6 +1137,7 @@ vb_fits_plot = function(spec_name){
 
 ::: panelset
 ```{r, results="asis", fig.height = 6}
+#| label: vb-fits-plots
 
 # Loop through the key species:
 walk(key_species, 
@@ -1106,7 +1157,10 @@ walk(key_species,
 
 The availability of age data varied by species and through time, with older ages becoming less frequently sampled in recent years across many species.
 
-```{r ridgeplot fun}
+```{r}
+#| label: ridge-plot-function
+
+
 # Plotting age distribution as ggridges
 plot_age_ridgeplot <- function(species){
   vonbert_species_agedat %>% 
@@ -1127,7 +1181,8 @@ plot_age_ridgeplot <- function(species){
 ```
 
 ::: panelset
-```{r ridge panels, results="asis", fig.height=8}
+```{r, results="asis", fig.height=8}
+#| label: ridge-plot-panels
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_age_ridgeplot)
@@ -1149,6 +1204,8 @@ Strong age classes were particularly prominent in the following species, showing
 Annual Growth increments for each species were computed to track the change in growth of specific age-groups through time.
 
 ```{r}
+#| label: age-size-increments
+
 
 # Age-Size Increments Differences
 vb_incs <- vonbert_species_agedat %>% 
@@ -1183,6 +1240,7 @@ vb_incs <- vonbert_species_agedat %>%
 Age specific growth (annual growth increments) help detail where in a species life cycle it may be experiencing favorable or less-favorable conditions for growth. These can be a result of differences in habitat use or prey resources at different ages, and/or a change in exposure to temperature or other stressors that inflict a metabolic cost.
 
 ```{r}
+#| label: age-increment-fun
 
 # Put together a timeseries of:
 # how big were the age 0's,
@@ -1238,6 +1296,7 @@ plot_age_increments <- function(
 
 ::: panelset
 ```{r, results="asis", fig.height = 8}
+#| label: age-inc-panels
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "weight", gam_knots = 5)
@@ -1247,7 +1306,8 @@ walk(key_species, plot_panelset, plot_fun = plot_age_increments, var_choice = "w
 
 ## Length at Age Changes
 
-```{r regime size plots}
+```{r}
+#| label: regime-size-plots
 
 # Distribution of Length/Weight Across Regimes 
 plot_regime_sizes <- function(spec, 
@@ -1338,6 +1398,7 @@ plot_regime_sizes <- function(spec,
 
 ::: panelset
 ```{r, results="asis", fig.height = 8}
+#| label: regime-size-panels
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "length")
@@ -1349,6 +1410,7 @@ walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "length")
 
 ::: panelset
 ```{r, results="asis", fig.height = 8}
+#| label: weight-at-age-panels
 
 # Loop through the key species:
 walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "weight")
@@ -1358,9 +1420,10 @@ walk(key_species, plot_panelset, plot_fun = plot_regime_sizes, var = "weight")
 
 ## Shifts in Growth
 
-```{r regime impact plot}
-#| fig.height = 8,
-#| fig.width = 8
+```{r}
+#| label: growth-curve-shifts
+#| fig.height: 8
+#| fig.width: 8
 
 # Plot their growth curves
 regime_comparison %>% 
@@ -1376,7 +1439,8 @@ regime_comparison %>%
 ```
 
 ```{r}
-#| eval = FALSE
+#| label: data-for-curves
+#| eval: false
 
 # Kathy requested the curve data.
 # Going to save both the coefficients and the fitted data for all species
@@ -1387,6 +1451,8 @@ write_csv(species_coef, here("data/growth_results/growth_regime_coefs.csv"))
 ```
 
 ```{r}
+#| label: growth-change-horizons
+
 # Try horizons
 library(ggHoriPlot)
 
@@ -1493,6 +1559,223 @@ ggplot(regime_comparison, aes(x = age, y = growth_frac)) +
   guides(fill = guide_legend(ncol = 1))
 
 
+
+```
+
+## Parameters & Environment
+
+The following figures plot the change in Linf and K against the center of biomass values of depth, temp, lat, and lon.
+
+```{r}
+#| label: center-bio-estimation
+regime_dat
+
+
+# Group on Common Name and Regime
+# run weighted mean/median/sd via biomass_kg
+regime_center_bio <- regime_dat %>% 
+  group_by(comname, regime) %>% 
+  summarise(
+    across(.cols = c(depth = avgdepth,
+                     temp = bottemp,
+                     lat = decdeg_beglat,
+                     lon = decdeg_beglon), 
+           .fns = ~ weighted.mean(.x, w = biomass_kg, na.rm = T), 
+           .names = "{.col}_mu"),
+    .groups = "drop"
+  )
+
+
+# Join the coefficients
+coef_and_cbio <- species_coef %>% 
+  select(comname, regime, parameter, estimate, converged) %>% 
+  pivot_wider(names_from = "parameter", values_from = "estimate") %>% 
+  left_join(regime_center_bio, by = c("comname", "regime"))
+
+
+```
+
+### Depth
+
+```{r}
+#| label: center-depth-change-plots
+
+# K
+ggplot(coef_and_cbio, aes(depth_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Depth (m)",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+ggplot(coef_and_cbio, aes(depth_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Depth (m)",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+```
+
+### Bottom Temperature
+
+```{r}
+#| label: center-temp-change-plots
+
+# K
+ggplot(coef_and_cbio, aes(temp_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Temp (C)",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+ggplot(coef_and_cbio, aes(temp_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Temp (c)",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+```
+
+### Latitude
+
+```{r}
+#| label: center-lat-change-plots
+
+# K
+ggplot(coef_and_cbio, aes(lat_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Lat",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+ggplot(coef_and_cbio, aes(lat_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Lat",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+```
+
+### Longitude
+
+```{r}
+#| label: center-lon-change-plots
+
+# K
+ggplot(coef_and_cbio, aes(lon_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Lon",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+ggplot(coef_and_cbio, aes(lon_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Lon",
+       y = "Linf",
+       color = "Species Center of Biomass")
 
 ```
 
