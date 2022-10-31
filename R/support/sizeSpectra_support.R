@@ -694,10 +694,13 @@ aggregate_l10_bins <- function(l10_assigned){
   
   #### normalize abundances using the bin widths
   l10_prepped <- l10_prepped %>% 
-    mutate(normalized_abund = observed_abundance / bin_width,
-           normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
-           norm_strat_abund = stratified_abundance / bin_width,
-           norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund))
+    mutate(
+      normalized_abund = observed_abundance / bin_width,
+      norm_strat_abund = stratified_abundance / bin_width,
+      # # Remove Bins Where Normalized Biomass < 0? No.
+      # normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
+      # norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund)
+    )
   
   # Add de-normalized abundances (abundance * bin midpoint)
   l10_prepped <- l10_prepped %>% 
@@ -829,21 +832,24 @@ group_log10_slopes <- function(wmin_grams,
 #'
 #' @param wmin_grams Catch data prepped using assign_log10_bins
 #' @param min_weight_g Minimum weight cutoff in grams
+#' @param max_weight_g Maximum weight cutoff in grams
 #'
 #' @return
 #' @export
 #'
 #' @examples
 log10_ss_all_groups <- function(wmin_grams,
-                                min_weight_g){
+                                min_weight_g,
+                                max_weight_g){
   
   
   ####__  Set Bodymass Cutoff and Groups
   
-  # 1. Set bodymass lower limit
-  # Used to filter for lower end of gear selectivity
-  l10_assigned_trunc <- filter(wmin_grams, 
-                               wmin_g >= min_weight_g) %>% 
+  # 1. ilter for lower/upper ends of gear selectivity
+  l10_assigned_trunc <- filter(
+    wmin_grams, 
+    wmin_g >= min_weight_g,
+    wmin_g < max_weight_g) %>% 
     mutate(decade = floor_decade(Year))
   
   

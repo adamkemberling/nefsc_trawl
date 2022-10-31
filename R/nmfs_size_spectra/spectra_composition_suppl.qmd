@@ -1,0 +1,417 @@
+---
+title: "Comparing the Species Composition of Size Spectra"
+author: 
+    name: "Adam A. Kemberling"
+    title: "Quantitative Research Associate"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+  Supplemental materials for size spectrum manuscript.
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+    toc-depth: 3
+editor: source
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig.height: 8
+  fig.width: 6
+  fig.align: "center"
+  comment: ""
+---
+
+```{r}
+#| label: load packages and functions
+
+####  Packages  ####
+library(targets)
+library(rnaturalearth)
+library(here)
+library(sf)
+library(gmRi)
+library(patchwork)
+library(gt)
+library(knitr)
+library(tidyverse)
+library(ggstream)
+library(ggforce)
+library(bcp)
+library(scales)
+library(corrplot)
+library(readxl)
+
+
+# Support functions
+source(here("R/support/sizeSpectra_support.R"))
+
+# Set theme
+theme_set(theme_gmri())
+```
+
+## Purpose
+
+The goal of this markdown is to highlight differences in how the presence/absence of different functional groups impacts the different size spectra.
+
+How does a lack of groundfish impact volatility (see-saw)?
+
+What body sizes are notably deficient (if any)?
+
+### Data:
+
+This is the target point for the stratified abundance data. It has been filtered to exclude biomass below 1g.
+
+```{r}
+#| label: load survdat_data
+
+# 1. Biological data used as input
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(nefsc_1g_binned))   
+
+# rename and format
+nefsc_size_bins <- nefsc_1g_binned %>% 
+  mutate(spec_class = ifelse(is.na(spec_class), "Unclassified", spec_class))
+
+n_species <- length(unique(nefsc_size_bins$comname))
+```
+
+This is the target point for the size spectrum results. Any of the plots should match these results as a consistency check:
+
+```{r}
+#| label: load the size spectrum indices
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(size_spectrum_indices))   
+
+
+# Grab SS Groups we care about
+region_indices <- size_spectrum_indices  %>% 
+  filter(`group ID` == "single years * region") %>% 
+  mutate(yr = as.numeric(as.character(Year)),
+         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+         sig_fit = ifelse(l10_sig_strat < 0.05, "Significant", "Non-Significant"))
+```
+
+### Preparing Data For Figures:
+
+This is the code for the aggregation function, it totals the abundance within each size bin based on some grouping variable. Usually its just year and area, but we also want to preserve functional groups here:
+
+```{r}
+#| label: prepare-spectra-plots
+
+
+# Step 1: Aggregate Data into Bins:
+# Need to add step to preserve source groups: functional groups etc.
+agg_spectra_bins <- function(l10_assigned, ...){
+  
+  # Pull out the bin structure
+  l10_bin_structure <- l10_assigned %>% 
+    distinct(log10_bins, left_lim, right_lim, log10_bins, 
+             bin_label, bin_width, bin_midpoint)
+  
+  # Get bin breaks
+  l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
+  
+  
+  # Get Totals for bodymass and abundances
+  l10_aggregates <- l10_assigned %>% 
+    complete(..., log10_bins) %>% 
+    group_by(..., log10_bins) %>% 
+    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
+              observed_weight_g    = sum(wmin_g, na.rm = T),
+              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
+              stratified_weight_g  = sum(wmin_area_strat, na.rm = T),
+              .groups = "drop")
+  
+  
+  # join back in what the limits and labels are
+  l10_prepped <- left_join(l10_aggregates, l10_bin_structure)
+  # l10_prepped <- left_join(l10_aggregates, l10_bin_structure, by = "log10_bins")
+  
+  #### normalize abundances using the bin widths
+  l10_prepped <- l10_prepped %>% 
+    mutate(normalized_abund = observed_abundance / bin_width,
+           normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
+           norm_strat_abund = stratified_abundance / bin_width,
+           norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund))
+  
+  # Add de-normalized abundances (abundance * bin midpoint)
+  l10_prepped <- l10_prepped %>% 
+    mutate(
+      denorm_abund = normalized_abund * bin_midpoint,
+      denorm_strat_abund = norm_strat_abund * bin_midpoint)
+  
+  # Return the aggregations
+  return(l10_prepped)
+  
+}
+
+
+
+
+
+```
+
+### Classifying the Unclassified
+
+Some species (particularly in the South) do not have \`spec_class\` functional groups defined. This step reduces the amount of orphans by relabeling any of the obvious ones.
+
+```{r}
+
+# For reference, Kathy's group's gaps
+spec_class_gaps <- nefsc_size_bins %>% 
+  distinct(comname, spec_class) %>% 
+  filter(is.na(spec_class))
+
+hare_group_gaps <- nefsc_size_bins %>% 
+  distinct(comname, hare_group)  %>% 
+  filter(is.na(hare_group))
+
+# Assign the Rest of the Unclassified Values
+spec_class_swap <- nefsc_size_bins %>% 
+  distinct(comname, spec_class, hare_group) %>% 
+  #filter(spec_class == "Unclassified") %>% 
+  mutate(
+    spec_class = case_when(
+      str_detect(comname, "ray|shark|sand tiger|skate") ~ "Elasmobranch",
+      str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
+      str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
+      str_detect(comname, "mackerel|herring|sardine") ~ "Pelagic",
+      str_detect(comname, "amberjack|spadefish") ~ "Reef",
+      TRUE ~ spec_class),
+    hare_group = case_when(
+      str_detect(comname, "flounder") ~ "groundfish",
+      str_detect(comname, "scup") ~ "reef",
+      str_detect(comname, "thread herring") ~ "coastal",
+      str_detect(comname, "dory") ~ "pelagic",
+      str_detect(comname, "sturgeon") ~ "diadromous",
+      TRUE ~ hare_group
+    )
+  )
+
+
+
+# Join the new ones in:
+nefsc_size_bins <- nefsc_size_bins %>% 
+  select(-spec_class, -hare_group) %>% 
+  left_join(spec_class_swap, by = "comname")
+```
+
+### Running the Aggregation
+
+```{r}
+
+# Run it for the hare groups
+hare_group_aggregates <- agg_spectra_bins(
+  l10_assigned = nefsc_size_bins, 
+  Year, survey_area, hare_group)
+
+# Run just the years so we can assure that the totals are the same:
+year_group_aggregates <- agg_spectra_bins(
+  l10_assigned = nefsc_size_bins, 
+  Year, survey_area)
+
+
+
+# Do they Add up?
+
+# original
+gom_90 <- filter(year_group_aggregates, Year == 1990, survey_area == "GoM")
+
+# with functional groups
+gom_90_check <- hare_group_aggregates %>% 
+  filter( Year == 1990, survey_area == "GoM") %>% 
+  group_by(Year, survey_area, log10_bins, left_lim, 
+           right_lim, bin_label, bin_width, bin_midpoint) %>% 
+  summarise(
+    observed_abundance = sum(observed_abundance),
+    observed_weight_g = sum(observed_weight_g),
+    stratified_abundance  = sum(stratified_abundance),
+    stratified_weight_g = sum(stratified_weight_g),
+    normalized_abund  = sum(normalized_abund),
+    norm_strat_abund = sum(norm_strat_abund),
+    denorm_abund = sum(denorm_abund),
+    denorm_strat_abund = sum(denorm_strat_abund),
+    .groups = "drop"
+  )
+
+
+# Look the same to me!
+# glimpse(select(gom_90, Year, survey_area, left_lim, observed_abundance, stratified_abundance))
+# glimpse(select(gom_90_check, Year, survey_area, left_lim, observed_abundance, stratified_abundance))
+
+```
+
+### Comparing Functional Group Compositions:
+
+Two things here. 1) Need to verify that the aggregations for the annual summary and the functional groups match up for direct comparison. 2) I'm expecting to see in more recent years how dominant the elasmobranchs have become in the community.
+
+This plotting function will plot this size spectrum aggregates for both the functional group and overall annual aggregates. The slope and intercept will be plotted on the annual aggregate panels.
+
+```{r}
+#| label: Spectr-Comparison-Plot
+
+# Ideally:
+# 4 row figure, row for each region
+# Show what the side bins looked like, 
+# with their compositions from each functional group
+
+
+
+
+
+#' @title Compare Proportions of Size Bins to Spectra Slopes
+#'
+#' @param functional_group_aggregates Aggregated Numbers of Stratified Abundance, result of agg_spectra_bins, using Year and spec_class
+#' @param annual_aggregates Same as functional_group_aggregates, but only on Year
+#' @param filter_years A year range to filter by
+#'
+#' @return
+#' @export
+#'
+#' @examples
+compare_spectra_components <- function(functional_group_aggregates, annual_aggregates, filter_years = 2012, fill_group){
+  
+  
+  # Filter the year
+  functional_group_aggregates <-filter(functional_group_aggregates, 
+                                       Year %in% filter_years)
+  
+   
+  # Stacked Bar Plot for the Functional Groups
+  fgroup_figure <- functional_group_aggregates %>% 
+    group_by(survey_area, {{fill_group}}, left_lim, bin_label) %>% 
+    summarise(norm_strat_abund = sum(norm_strat_abund),
+              .groups = "drop") %>% 
+    ggplot(aes(left_lim, norm_strat_abund)) +
+      geom_col(aes(fill = {{fill_group}}), position = "fill", color = "gray30", size = 0.1) +
+      scale_fill_gmri() +
+      scale_x_continuous(breaks = seq(0, 7, by = 0.5), labels = math_format(10^.x)) +
+      # Use this with position Fill
+      scale_y_continuous(labels = percent_format()) +
+      # Does not work with position stack
+      #scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+      facet_wrap(~survey_area, ncol = 1, scales = "free") +
+      labs(x = "Individual Bodymass (g)", 
+           y = "Fraction of Abundance (Area-Stratified)",
+           fill = "Functional Group:",
+           title = str_c("Functional Group Composition: ", filter_years[[1]], "-", filter_years[[length(filter_years)]])) + 
+    guides(fill = guide_legend(nrow = 2))
+  
+  
+  
+  # Get the total abundance in each bin
+  bin_data_summary <- annual_aggregates %>% 
+    filter(Year %in% filter_years,
+           left_lim <= 4.5) %>% 
+    complete(survey_area, left_lim, 
+             fill = list("norm_strat_abund" = 0)) %>% 
+    group_by(survey_area, left_lim) %>% 
+    summarise(norm_strat_abund = sum(norm_strat_abund), 
+              .groups = "drop")
+    
+    
+    # Make Plot
+    # Solid Bar Graph for Annual Totals
+    annual_figure <- ggplot(
+      bin_data_summary, 
+      aes(left_lim, norm_strat_abund)) +
+        geom_col(fill = gmri_cols("gmri blue"), alpha = 0.7) +
+        geom_point(color = gmri_cols("gmri blue")) +
+        geom_smooth(formula = y ~ x,
+                    method = "lm",
+                    color = gmri_cols("orange")) +
+        stat_poly_eq(formula = y ~ x,
+                     aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                     label.y = 1, 
+                     label.x = 0.9,
+                     parse = TRUE) +
+        scale_x_continuous(breaks = seq(0, 7, by = 0.5), labels = math_format(10^.x)) +
+        scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+        facet_wrap(~survey_area, ncol = 1, scales = "free") +
+        labs(x = "Individual Bodymass (g)", 
+             y = "Stratified Abundance (Normalized)",
+             fill = "Functional Group:",
+             title = str_c("Aggregate Community Size Spectra:"))
+  
+  # Collect the plots together
+  plot_out <- (fgroup_figure | annual_figure) + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+  return(plot_out)
+
+}
+  
+```
+
+
+
+
+### 1970-2005 - Hare Functional Groups
+
+```{r}
+#| label: early-regime-hare
+
+# What does 1990 look like
+t <- compare_spectra_components(
+  functional_group_aggregates = hare_group_aggregates, 
+  annual_aggregates = year_group_aggregates, 
+  filter_year = c(1970:2005), 
+  fill_group = hare_group)
+
+t[[2]]
+
+```
+
+### 1996-2019 - Hare Functional Groups
+
+```{r}
+#| label: late-regime-hare2
+
+# What does 1996-2019 look like
+(t <- compare_spectra_components(
+  functional_group_aggregates = hare_group_aggregates, 
+  annual_aggregates = year_group_aggregates, 
+  filter_year = c(2006:2019), 
+  fill_group = hare_group))
+
+
+```
+
+## Specific Years
+
+This is what a single year looks like in the most recent regime, do we see any absences in lower size groups at a yearly step?
+
+```{r}
+#| label: late-regime-hare
+
+# What does 1990 look like
+(t <- compare_spectra_components(
+  functional_group_aggregates = hare_group_aggregates, 
+  annual_aggregates = filter(year_group_aggregates, left_lim <= 4),
+  filter_year = c(1999), 
+  fill_group = hare_group))
+
+```
+
+
+
+### When/Where are Large-Size Bins Missing
+
+This should be a table, but it would be useful to document where and how often the 10^4 and 10^5 size bins are used or not in the analysis. If 10^4 is routinely absent in some areas, should it be kept? What if it is the result of fishing, shouldn't the 0 be meaningful?
+
+```{r}
+year_group_aggregates %>% 
+  #complete(Year, survey_area, log10_bins) %>% 
+  mutate(
+    observed_abundance = ifelse(observed_abundance == 0, NA, observed_abundance),
+    log10_bins = as.numeric(as.character(log10_bins))) %>% 
+  ggplot(aes(Year, log10_bins, fill = observed_abundance)) +
+  geom_point() +
+  scale_y_continuous(breaks = scales::pretty_breaks()) +
+  facet_wrap(~survey_area)
+```
+

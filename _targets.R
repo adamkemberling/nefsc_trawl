@@ -107,9 +107,12 @@ list(
 
   
   # Run the different groupings through the slope estimation
+  # lower end is >=, upper end is <
   tar_target(nmfs_log10_slopes,
-             log10_ss_all_groups(wmin_grams = nefsc_1g_binned,
-                                 min_weight_g = 1)),
+             log10_ss_all_groups(
+               wmin_grams = nefsc_1g_binned,
+               min_weight_g = 10^0,
+               max_weight_g = 10^5)),
   
   
   
@@ -125,7 +128,7 @@ list(
                                    min_weight_g = 1, 
                                    abundance_vals = "stratified")),
   
-  # Join the MLE and Binned Resukts into a table
+  # Join the MLE and Binned Results into a table
   tar_target(size_spectrum_indices,
              full_join(strat_total_mle_results, nmfs_log10_slopes,
                        by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
