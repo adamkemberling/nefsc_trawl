@@ -1202,7 +1202,7 @@ functional_group_size %>%
                   ), 
               size = 1,
               show.legend = F) + 
-    facet_grid(survey_area~hare_group, scales = "free_y") + 
+    facet_grid(hare_group~survey_area, scales = "free_y") + 
     labs(title = "Average Length",
          y = "Length (cm)",
          color = "Region")
@@ -1219,13 +1219,13 @@ functional_group_size %>%
 #| fig-height: 8
 
 
-
+# Average individual weight
 functional_group_size %>% 
   ggplot(aes(Year, mean_wt_kg)) +
   geom_line(aes(group = survey_area), 
               size = 1,
               show.legend = F) + 
-    facet_grid(survey_area~hare_group, scales = "free_y") + 
+    facet_grid(hare_group~survey_area, scales = "free_y") + 
     labs(title = "Average Weight",
          y = "Weight (kg)",
          color = "Region")
