@@ -13,22 +13,30 @@ suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(gmRi)))
 suppressPackageStartupMessages(suppressWarnings(suppressMessages(library(targets))))
 
 
-####  Build code and stratification functions  ####
+####  Targets Workflow Function Libraries  ####
 
-# Survdat cleanup functions
+# 1.
+# NEFSC Survey Data "Survdat" cleanup functions (from gmRi package)
 source("~/Documents/Repositories/gmRi/R/nefsc_groundfish_access.R")
 
-# Size Spectra Build Functions
+# 2.
+# Size Spectra Preparation and Analysis Functions
 # source(here("R/support/maine_nh_trawl_build.R"))
-source(here("R/support/sizeSpectra_support.R"))
-source(here("R/support/temp_support.R"))
+source(here::here("R/support/sizeSpectra_support.R"))
 
+# 3. 
+# OISST Loading and Reshaping
+source(here::here("R/support/temp_support.R"))
+
+# 4.
+# Macro-Functions for Condensing the visible pipeline
+source(here("R/support/targets_macro_functions.R"))
 
 
 
 ####_____________________________####
 
-####__  Groundfish Data Preparation  __####
+####____  Groundfish Data Preparation  __####
 
 # Define target pipeline: Outlines high-level steps of the analysis
 # Format is just a list of all the targets
@@ -38,60 +46,41 @@ list(
   ##### 1. NMFS Data Import  ####
   
   
-  #####__ a. Full Survdat  ####
-  # Preparing Survdat Data
+  # Pointer to data on Box,
+  # Can be changed to trigger a full workflow reset
   tar_target(boxdata_location, 
-             command = "mojave"),
-  tar_target(
-    name = survdat_clean,
-    command = gmri_survdat_prep(survdat = NULL, 
-                                survdat_source = "most recent", 
-                                box_location = boxdata_location)),
-  tar_target(
-    name = survdat_lw,
-    command = add_lw_info(survdat_clean, 
-                          cutoff = T, 
-                          box_location = boxdata_location) ),
-  tar_target(
-    name = nefsc_stratified,
-    command = add_area_stratification(survdat_lw, 
-                                      include_epu = F, 
-                                      box_location = boxdata_location) ),
+             command = "cloudstorage"),
   
-  #####__ b. Biological Data  ####
-  # survdat biological data - for actual length relationships
-  tar_target(
-    name = survdat_biological,
-    command = gmri_survdat_prep(survdat_source = "bio", 
-                                box_location = boxdata_location) ),
-  tar_target(
-    name = survdat_bio_lw,
-    command = add_lw_info(survdat_biological, cutoff = T, 
-                          box_location = boxdata_location) %>% 
-      mutate(Year = est_year,
-             season = str_to_title(season))),
+  
+  
+  ###### a. Catch Data  ####
+  
+  # Run all the import and tidying for catch data
+  tar_target(catch_complete,
+             command = import_and_tidy_catch(box_location = boxdata_location)),
+  
+  ###### b. Biological Data  ####
+  
+  # Import and tidy the biological dataset
+  tar_target(bio_complete,
+             command = import_and_tidy_bio(box_location = boxdata_location)),
   
 
   #####  2. Size Spectrum Prep  #####
   
-  # Prep the minimum size (wmin) and-
-  # the maximum size (wmax) in grams for all the data
-  tar_target(
-    name = wmin_grams,
-    command = prep_sizeSpectra_data(lw_trawl_data = nefsc_stratified)),
+
   
-  # Apply a minimum size cutoff
+  # Prepare the data for use in size spectrum analysis:
+  # Set weight column units to grams
+  # impose a max/min weight
+  # set up the size bins
+  # set a min/max weight a fish could be within 1cm growth increments for lme method
   tar_target(
-    name = nefsc_1g,
-    command = min_weight_cutoff(nefsc_lw = wmin_grams, min_weight_g = 1)
-  ),
-  
-  
-  # Format the group labels and add discrete size groups for length/width
-  tar_target(
-    name = nefsc_1g_labelled,
-    command = size_bin_formatting(nefsc_1g)
-  ),
+    catch_1g_labelled,
+    command = size_spectrum_prep(
+      catch_data = catch_complete, 
+      min_weight_g = 1, 
+      max_weight_g = 10^5)),
   
   
 
@@ -99,10 +88,7 @@ list(
   
   ##### 4. log10 SS Slopes  ####
   
-  # Assing the bin structure to the lw data
-  tar_target(nefsc_1g_binned,
-             assign_log10_bins(nefsc_1g_labelled)),
-  
+
   
 
   
@@ -110,9 +96,12 @@ list(
   # lower end is >=, upper end is <
   tar_target(nmfs_log10_slopes,
              log10_ss_all_groups(
-               wmin_grams = nefsc_1g_binned,
+               wmin_grams = catch_1g_labelled,
                min_weight_g = 10^0,
-               max_weight_g = 10^5)),
+               max_weight_g = 10^5, 
+               min_l10_bin = 0, 
+               max_l10_bin = 5, 
+               bin_increment = 0.5)),
   
   
   
@@ -124,7 +113,7 @@ list(
   # Run the mle calculation on stratified abundance
   tar_target(
     name = strat_total_mle_results,
-    command = ss_slopes_all_groups(nefsc_1g_labelled, 
+    command = ss_slopes_all_groups(catch_1g_labelled, 
                                    min_weight_g = 1, 
                                    abundance_vals = "stratified")),
   
@@ -146,7 +135,7 @@ list(
   # # Create parallel groups that do not contain a species at each iteration
   # get the l1- slope info
   tar_target(species_ommission_dat,
-             species_omit_spectra(start_dat = nefsc_1g_binned)),
+             species_omit_spectra(start_dat = catch_1g_labelled)),
 
   
   
@@ -164,69 +153,12 @@ list(
   
   ####_____________________________####
   
-  ####__  Physical Drivers  ####
+  ####______  Physical Drivers  _______####
   
-  #### 1. Temperature Data  ####
+  # ##### 1. Temperature Data  ####
   tar_target(
-    gom_oisst,
-    oisst_access_timeseries(
-      region_family = "nmfs trawl regions", 
-      poly_name = "gulf of maine", 
-      box_location = boxdata_location )),
-  tar_target(
-    gb_oisst, 
-    oisst_access_timeseries(
-      region_family = "nmfs trawl regions", 
-      poly_name = "georges bank", 
-      box_location = boxdata_location )),
-  tar_target(
-    mab_oisst,
-    oisst_access_timeseries(
-      region_family = "nmfs trawl regions", 
-      poly_name = "mid atlantic bight", 
-      box_location = boxdata_location )),
-  tar_target(
-    sne_oisst,
-    oisst_access_timeseries(
-      region_family = "nmfs trawl regions", 
-      poly_name = "southern new england", 
-      box_location = boxdata_location )),
-  tar_target(
-    inuse_strata_oisst,
-    oisst_access_timeseries(
-      region_family = "nmfs trawl regions", 
-      poly_name = "inuse strata", 
-      box_location = boxdata_location )),
-  
-  # Make every daily timeseries into a yearly one
-  tar_target(
-    gom_yrly,
-    make_yearly(gom_oisst) ),
-  tar_target(
-    gb_yrly,
-    make_yearly(gb_oisst) ),
-  tar_target(
-    mab_yrly,
-    make_yearly(mab_oisst) ),
-  tar_target(
-    sne_yrly,
-    make_yearly(sne_oisst) ),
-  tar_target(
-    all_yrly,
-    make_yearly(inuse_strata_oisst) ),
-  
-  # Put them together for plotting/merging
-  tar_target(
-    regional_oisst,
-    bind_rows(
-      list(
-        "GoM" = gom_yrly,
-        "GB"  = gb_yrly,
-        "MAB" = mab_yrly,
-        "SNE" = sne_yrly,
-        "all" = all_yrly
-      ), .id = "survey_area"
-    )
+    name = regional_oisst,
+    command = process_regional_sst(box_location = boxdata_location)
   ),
   
   
@@ -234,7 +166,7 @@ list(
   
   
   ####_____________________________####
-  ####__ Body Size Changes  __####
+  ####_____ Body Size Changes  ______####
   
   ##### 1. Mean Size Change  ####
   
@@ -256,16 +188,20 @@ list(
   # Run the main suite of groupings
   tar_target(
     mean_sizes_ss_groups,
-    mean_sizes_all_groups(size_data = rename(as.data.frame(nefsc_stratified), Year = est_year),
+    mean_sizes_all_groups(size_data = rename(as.data.frame(catch_complete), Year = est_year),
                           min_weight_g = 0, 
-                          abund_vals = "stratified")),
+                          abund_vals = "numlen_adj")
+                          #abund_vals = "stratified")
+    ),
  
   # Run the size change for each species across years using stratified abundances
   tar_target(
     annual_individual_sizes,
-    group_size_metrics(size_data = rename(as.data.frame(nefsc_stratified), Year = est_year),
+    group_size_metrics(size_data = rename(as.data.frame(catch_complete), Year = est_year),
                        .group_cols = c("comname", "Year", "season"),
-                       abund_vals = "stratified")),
+                       abund_vals = "numlen_adj")
+                       #abund_vals = "stratified")
+    ),
   
   
   
@@ -275,7 +211,7 @@ list(
   # ref code: size_at_age_exploration.Rmd
   
   tar_target(vonbert_species_bio,
-             select_vonbert_species(survdat_biological, rank_cutoff = 17))
+             select_vonbert_species(bio_complete, rank_cutoff = 17))
   
   
   # tar_target(vonbert_growth_coef,
@@ -283,31 +219,6 @@ list(
   # 
   
   
-  
-  
-  
-  
-  ####_____________________________####
-  ####__  Summary Tables  __####
-  
-  # ##### 1. Table of indices  ####
-  # tar_target(
-  #   group_community_indicators,
-  #   full_join(mean_sizes_ss_groups, strat_total_mle_results)
-  
-  
-  
-  ##### 11. Chronological Clustering  ##
-  # "
-  # Based on these indicators, we will identify several multi-year “stanzas” 
-  # with contrasting ecosystem conditions. These will be identified objectively
-  # using chronological clustering. From prior work, we expect that the stanzas 
-  # will roughly correspond to the 1980s, 1990s, 2000s, and 2010s 
-  # (Pershing et al. 2010, Perretti et al. 2017). For simplicity, we will refer 
-  # to these periods in our plan below, but the exact year ranges may change 
-  # based on the analysis.
-  # "
-  # 
   
   
   
@@ -320,8 +231,8 @@ list(
   
   
   
-) 
-####__  Close Pipeline  __####
+) ####_____________________________####
+####______  Close Pipeline  __________####
 
 
 
@@ -338,9 +249,180 @@ list(
 
 
 
-####______####
-####  Additional non-necessary steps  ####
 
 
 
+
+####_____________________________####
+####__ Additional phased-out steps  __####
+
+
+
+#### Condensed into Macro Steps:  ####
+
+
+
+##### 1. Catch Data  ####
+
+# # Perform standard cleanup
+# tar_target(
+#   name = survdat_clean,
+#   command = gmri_survdat_prep(survdat = NULL, 
+#                               survdat_source = "most recent", 
+#                               box_location = boxdata_location)),
+# 
+# # Assign Length-Weight Relationships
+# tar_target(
+#   name = survdat_lw,
+#   command = add_lw_info(survdat_clean, 
+#                         cutoff = T, 
+#                         box_location = boxdata_location) ),
+# 
+# # Perform Area Stratification
+# tar_target(
+#   name = catch_stratified,
+#   command = add_area_stratification(survdat_lw, 
+#                                     include_epu = F, 
+#                                     box_location = boxdata_location) ),
+# 
+# # Fill in Gaps in functional groups
+# tar_target(
+#   name = catch_complete,
+#   command = fill_func_groups(catch_stratified)
+# ),
+
+##### 2. Bio Data  ####
+
+
+# # survdat biological data - for actual length relationships
+# tar_target(
+#   name = survdat_biological,
+#   command = gmri_survdat_prep(survdat_source = "bio", 
+#                               box_location = boxdata_location) ),
+# tar_target(
+#   name = survdat_bio_lw,
+#   command = add_lw_info(survdat_biological, cutoff = T, 
+#                         box_location = boxdata_location) %>% 
+#     mutate(Year = est_year,
+#            season = str_to_title(season))),
+
+##### 3.  Spectra Prep  ####
+# # Prep the minimum size (wmin) and-
+# # the maximum size (wmax) in grams for all the data based on 
+# # length in cm, and length+1 in cm using LW relationships
+# tar_target(
+#   name = wmin_grams,
+#   command = prep_sizeSpectra_data(lw_trawl_data = catch_complete)),
+# 
+# # Apply a minimum size cutoff
+# tar_target(
+#   name = catch_mincut,
+#   command = min_weight_cutoff(catch_lw = wmin_grams, min_weight_g = 1)),
+# 
+# 
+# # Apply a maximum weight cutoff
+# tar_target(
+#   name = catch_maxcut,
+#   command = max_weight_cutoff(catch_lw = catch_mincut, max_weight_g = 10^5)),
+# 
+# 
+# # Format the group labels and add discrete size groups for length/width
+# tar_target(
+#   name = catch_1g_labelled,
+#   command = size_bin_formatting(catch_maxcut)),
+# 
+# # Assign the bin structure to the lw data
+# tar_target(catch_1g_binned,
+#            assign_log10_bins(catch_1g_labelled)),
+
+
+
+
+
+##### 4. Temperature Data  ####
+# tar_target(
+#   gom_oisst,
+#   oisst_access_timeseries(
+#     region_family = "nmfs trawl regions", 
+#     poly_name = "gulf of maine", 
+#     box_location = boxdata_location )),
+# tar_target(
+#   gb_oisst, 
+#   oisst_access_timeseries(
+#     region_family = "nmfs trawl regions", 
+#     poly_name = "georges bank", 
+#     box_location = boxdata_location )),
+# tar_target(
+#   mab_oisst,
+#   oisst_access_timeseries(
+#     region_family = "nmfs trawl regions", 
+#     poly_name = "mid atlantic bight", 
+#     box_location = boxdata_location )),
+# tar_target(
+#   sne_oisst,
+#   oisst_access_timeseries(
+#     region_family = "nmfs trawl regions", 
+#     poly_name = "southern new england", 
+#     box_location = boxdata_location )),
+# tar_target(
+#   inuse_strata_oisst,
+#   oisst_access_timeseries(
+#     region_family = "nmfs trawl regions", 
+#     poly_name = "inuse strata", 
+#     box_location = boxdata_location )),
+# 
+# # Make every daily timeseries into a yearly one
+# tar_target(
+#   gom_yrly,
+#   make_yearly(gom_oisst) ),
+# tar_target(
+#   gb_yrly,
+#   make_yearly(gb_oisst) ),
+# tar_target(
+#   mab_yrly,
+#   make_yearly(mab_oisst) ),
+# tar_target(
+#   sne_yrly,
+#   make_yearly(sne_oisst) ),
+# tar_target(
+#   all_yrly,
+#   make_yearly(inuse_strata_oisst) ),
+# 
+# # Put them together for plotting/merging
+# tar_target(
+#   regional_oisst,
+#   bind_rows(
+#     list(
+#       "GoM" = gom_yrly,
+#       "GB"  = gb_yrly,
+#       "MAB" = mab_yrly,
+#       "SNE" = sne_yrly,
+#       "all" = all_yrly
+#     ), .id = "survey_area"
+#   )
+# ),
+
+####____________________________####
+
+
+####__  Summary Tables  ####
+
+# ##### 1. Table of indices  ####
+# tar_target(
+#   group_community_indicators,
+#   full_join(mean_sizes_ss_groups, strat_total_mle_results)
+
+
+
+##### 11. Chronological Clustering  ##
+# "
+# Based on these indicators, we will identify several multi-year “stanzas” 
+# with contrasting ecosystem conditions. These will be identified objectively
+# using chronological clustering. From prior work, we expect that the stanzas 
+# will roughly correspond to the 1980s, 1990s, 2000s, and 2010s 
+# (Pershing et al. 2010, Perretti et al. 2017). For simplicity, we will refer 
+# to these periods in our plan below, but the exact year ranges may change 
+# based on the analysis.
+# "
+# 
 

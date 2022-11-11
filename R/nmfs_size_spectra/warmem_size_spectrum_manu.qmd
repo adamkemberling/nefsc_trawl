@@ -49,6 +49,7 @@ library(scales)
 library(corrplot)
 library(readxl)
 library(ggforce)
+library(Hmisc)
 
 
 
@@ -221,13 +222,13 @@ With the understanding that populations depend on the health of their ecosystems
 
 # 1. Biological data used as input
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_1g_binned))   
+                tar_load(catch_1g_labelled))   
 
 # rename and format
-nefsc_size_bins <- nefsc_1g_binned
+catch_size_bins <- catch_1g_labelled
 
 # Get total number of species
-n_species <- length(unique(nefsc_size_bins$comname))
+n_species <- length(unique(catch_size_bins$comname))
 ```
 
 Fishery Independent data on was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. Trawls are performed for a fixed duration at each station, reporting abundance at length and total biomass for all species caught. Trawl survey analyses incorporated data from both the Spring and Fall survey seasons, and for all years from 1970 to 2019. Correction factors were applied to total species abundance and aggregate species biomass to account for all changes in vessels, gear, and doors when appropriate as part of the survey program. However, abundance and biomass at length is not corrected for as part of the standard survey data protocol and needed to be estimated. To account for this, abundance at length for each species were adjusted to match the correction factors applied to total species abundance at each station, with allocations following the distributions of length caught at that station. Such that for each species: the sum of the resulting adjusted abundance numbers across each length is equal to the total abundance that was corrected for changes in vessels, gear, etc. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data was then area-stratified.
@@ -272,22 +273,22 @@ Functional groups were assigned to each species based on life history and geogra
 #| label: functional-group-gap-assignment
 
 # make a column that contains all data
-nefsc_size_bins <- nefsc_size_bins %>% 
+catch_size_bins <- catch_size_bins %>% 
   mutate(group_col = "All Data") 
 
 
 # Make changes to the functional groups for missing designations
 # For reference, Kathy's group's gaps
-spec_class_gaps <- nefsc_size_bins %>% 
+spec_class_gaps <- catch_size_bins %>% 
   distinct(comname, spec_class) %>% 
   filter(is.na(spec_class))
 
-hare_group_gaps <- nefsc_size_bins %>% 
+hare_group_gaps <- catch_size_bins %>% 
   distinct(comname, hare_group)  %>% 
   filter(is.na(hare_group))
 
 # Assign the Rest of the Unclassified Values
-spec_class_swap <- nefsc_size_bins %>% 
+spec_class_swap <- catch_size_bins %>% 
   distinct(comname, spec_class, hare_group) %>% 
   mutate(
     spec_class = case_when(
@@ -308,7 +309,7 @@ spec_class_swap <- nefsc_size_bins %>%
   )
 
 # Join the new ones in:
-nefsc_size_bins <- nefsc_size_bins %>% 
+catch_size_bins <- catch_size_bins %>% 
   select(-spec_class, -hare_group) %>% 
   left_join(spec_class_swap, by = "comname")
 ```
@@ -319,15 +320,15 @@ nefsc_size_bins <- nefsc_size_bins %>%
 
 # The handmade weight and length bins
 # # Do some grouping by year survey area and functional group
-# fgroup_area <- get_group_summaries(data_in = nefsc_size_bins, Year, survey_area, hare_group)
-# fgroup_all <- get_group_summaries(data_in = nefsc_size_bins, Year, hare_group)
+# fgroup_area <- get_group_summaries(data_in = catch_size_bins, Year, survey_area, hare_group)
+# fgroup_all <- get_group_summaries(data_in = catch_size_bins, Year, hare_group)
 # fgroup_all <- fgroup_all %>% map(~mutate(.x, survey_area = "Northeast Shelf, Full"))
 
 
 # Actual loog10 bins
 # Do some grouping by year survey area and functional group
-fgroup_area <- l10_bin_summaries(data_in = nefsc_size_bins, Year, survey_area, hare_group)
-fgroup_all  <- l10_bin_summaries(data_in = nefsc_size_bins, Year, hare_group)
+fgroup_area <- l10_bin_summaries(data_in = catch_size_bins, Year, survey_area, hare_group)
+fgroup_all  <- l10_bin_summaries(data_in = catch_size_bins, Year, hare_group)
 fgroup_all  <- fgroup_all %>% map(~mutate(.x, survey_area = "Northeast Shelf, Full"))
 
 
@@ -338,7 +339,7 @@ fgroup_area <- map2(fgroup_area, fgroup_all, bind_rows)
 
 ### Body Size Trends
 
-The annual stratified-abundance weighted body length and body weight within each region and for each functional group were also estimated using the numbers at length and the estimated biomass at length information. Data for body size trends was not truncated at 1g minimum body weight.
+The annual stratified-abundance weighted body length and body weight within each region and for each functional group were also estimated using the numbers at length and the estimated biomass at length information. Data for body size trends was not truncated at 1g minimum body weight and is has not been adjusted to reflect any area-stratified estimation of abundance.
 
 ```{r}
 #| label: body size data
@@ -351,7 +352,14 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 regional_size <- mean_sizes_ss_groups %>% 
   filter(`group ID` == "single years * region") %>% 
   mutate(Year = as.numeric(Year),
-         factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")))
+         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")))
+
+
+# Grouped on year, region, & functional group
+functional_group_size <- mean_sizes_ss_groups %>% 
+  filter(`group ID` == "single years * region * functional group") %>% 
+  mutate(Year = as.numeric(Year),
+         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")))
 
 ```
 
@@ -404,7 +412,7 @@ temp_regimes <- regional_oisst %>%
 
 ## Spectra Drivers
 
-The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential environmental drivers include sea surface temperature anomalies, Gulf Stream Index (GSI), and zooplankton community indices from the continuous plankton recorder (CPR) dataset. Anthropogenic drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
+The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential environmental drivers include sea surface temperature anomalies, Gulf Stream Index (GSI), and two zooplankton community indices derived from the Gulf of Maine continuous plankton recorder (CPR) program. Hypothesized anthropogenic drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
 
 ![](images/garfo_regions.png){fig-align="center" width="473"}
 
@@ -718,34 +726,6 @@ driver_period_l <- map(driver_periods, function(yrs){
 
 
 
-####  Old Way, big mess
-# All messed up, check github
-
-
-# # 1. Set the two periods up
-# driver_periods <- all_drivers %>% 
-#   mutate(period = ifelse(year <= 2005, "regime_1", "regime_2")) %>% 
-#   bind_rows(mutate(all_drivers, period = "full")) #%>% 
-#   split(.$period)
-# 
-# 
-# 
-# 
-# 
-# # Need to Reshape and Scale Before anything else happens
-# driver_matrix <-  driver_periods %>% 
-#     mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
-#     select(-c(area, var)) %>% 
-#     pivot_wider(names_from = id, values_from = value) 
-# 
-# # Split the periods into their own lists
-# driver_period_l <- driver_matrix %>%
-#     split(.$period) %>% 
-#     map(~ .x %>% drop_na() %>% column_to_rownames(var = "year"))
-#     
-
-
-
 
 ```
 
@@ -761,27 +741,39 @@ driver_period_l <- map(driver_periods, function(yrs){
 # flag them on correlation plot
 # Grab scatterplots of the relationships too
 
+
 # Step 1.
 # Do some reshaping to create a matrix for correlations:
-d_test  <- driver_period_l$regime_2
+d_test  <- driver_period_l$regime_1
 
 
-# Step 2. 
-# Get the correlation matrix after scaling the data
-rho <- cor(d_test)
+# Step 1.
+# Get the correlation matrix (data is pre-scaled)
+corr_matrix <- rcorr(as.matrix(d_test))
+rho <- corr_matrix$r
+
+# Step 2. Significance
+sig_mat <- corr_matrix$P
+
 
 # Step 3. 
-# Make it a dataframe for GGplot correlation Matrix
+# Make correlation matrix & significance a dataframe for GGplot
 gg_rho <- as.data.frame(rho) %>%
   rownames_to_column(var = "xvar") %>%
   pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
+
+gg_sig <- as.data.frame(sig_mat) %>%
+  rownames_to_column(var = "xvar") %>%
+  pivot_longer(cols = -xvar, names_to = "yvar", values_to = "pval")
+
+
 
 
 # Step 4.  
 # Tidy it up, enhance the labels for plotting
 # label the drivers and the responses specifically so we can group them
 # in an orderly way
-gg_rho_tidy <- gg_rho %>% 
+gg_rho_tidy <- left_join(gg_rho, gg_sig) %>% 
   mutate(
     # A. Slope and intercept are the only size spectra features
     response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
@@ -846,10 +838,17 @@ only_driver_response <- gg_rho_tidy %>%
 #-------  
 
 
+
+# Do some flagging for significance
+only_driver_response <- only_driver_response %>% mutate(
+  signif = ifelse(pval < 0.05, "*", "")
+)
+
 # Check Correlation Plot
 only_driver_response %>% 
   ggplot(aes(yvar, x_short, fill = r2)) +
   geom_tile() +
+  geom_text(aes(label = signif)) +
   facet_grid(xvar_area~driver_type, scales = "free_x", space = "free") +
   scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
   coord_cartesian(clip = "off") +
@@ -861,7 +860,8 @@ only_driver_response %>%
   labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
        title = "Correlation of Size Spectra to Hypothesized Drivers | All Years",
-       subtitle = "Correlation coefficients shown display same-year correlations.")
+       subtitle = "Correlation coefficients shown display same-year correlations.",
+       caption = md("* Symbol signals a significant correlation at an alpha =  0.05"))
 
 
 
@@ -889,29 +889,40 @@ d_test %>%
 # Run Correlations for Each period and for the entire period
 period_correlations <- map(driver_period_l, function(drivers){
   
-  
   # Step 1.
   # Get the correlation matrix (data is pre-scaled)
-  rho <- cor(drivers)
+  corr_matrix <- rcorr(as.matrix(drivers))
+  rho <- corr_matrix$r
   
-  # Step 2. 
-  # Make correlation matrix a dataframe for GGplot
+  # Step 2. Significance
+  sig_mat <- corr_matrix$P
+  
+  
+  # Step 3. 
+  # Make correlation matrix & significance a dataframe for GGplot
   gg_rho <- as.data.frame(rho) %>%
     rownames_to_column(var = "xvar") %>%
     pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
+  
+  gg_sig <- as.data.frame(sig_mat) %>%
+    rownames_to_column(var = "xvar") %>%
+    pivot_longer(cols = -xvar, names_to = "yvar", values_to = "pval")
+  
+  
   
   
   # Step 4.  
   # Tidy it up, enhance the labels for plotting
   # label the drivers and the responses specifically so we can group them
   # in an orderly way
-  gg_rho_tidy <- gg_rho %>% 
+  gg_rho_tidy <- left_join(gg_rho, gg_sig, by = c("xvar", "yvar")) %>% 
     mutate(
       # A. Slope and intercept are the only size spectra features
       response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
       
       # B.These are the drivers, use string detect to pull them out
-      driver_var = ifelse(str_detect(yvar, "adt|c5|osc|pca|landings|index|anom"), T, F),
+      driver_var = ifelse(
+        str_detect(yvar, "adt|c5|osc|pca|landings|index|anom"), T, F),
       driver_type = case_when(
         str_detect(yvar, "landings") ~ "Top-Down",
         str_detect(yvar, "adt|c5") ~ "Calanus",
@@ -961,16 +972,18 @@ period_correlations <- map(driver_period_l, function(drivers){
         "Gulf Stream Index",
         "All north atlantic oscillation",
         "SST Anomalies",
-        "Commercial Landings"))
+        "Commercial Landings")),
+      # Flag whether the relationship wa significant or not
+      signif = ifelse(pval < 0.05, "*", "")
       ) 
 
 
-  
   
   # Spit out all the pieces in an organized list
   correlation_details <- list(
     "drivers_matrix"       = drivers,
     "rho"                  = rho,
+    "pvals"                = sig_mat,
     "ggrho"                = gg_rho,
     "ggrho_tidy"           = gg_rho_tidy,
     "only_driver_response" = only_driver_response
@@ -984,122 +997,6 @@ period_correlations <- map(driver_period_l, function(drivers){
 
 ```
 
-
-
-```{r}
-#| label: run-period-correlations
-#| eval: false
-
-# 
-# # Run Correlations for Each period and for the entire period
-# period_correlations <- map(driver_period_l, function(drivers){
-#   
-#   
-#   # Step 1.
-#   # Do some reshaping to create a matrix for correlations:
-#   driver_matrix <-  drivers %>% 
-#       mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
-#       select(-c(area, var, period)) %>% 
-#       pivot_wider(names_from = id, values_from = value) %>% 
-#       drop_na() %>% 
-#       column_to_rownames(var = "year")
-#   
-#   
-#   # Step 2. 
-#   # Get the correlation matrix after scaling the data
-#   rho <- cor(scale(driver_matrix))
-#   
-#   # Step 3. 
-#   # Make it a dataframe for GGplot correlation Matrix
-#   gg_rho <- as.data.frame(rho) %>%
-#     rownames_to_column(var = "xvar") %>%
-#     pivot_longer(cols = -xvar, names_to = "yvar", values_to = "r2")
-#   
-#   
-#   # Step 4.  
-#   # Tidy it up, enhance the labels for plotting
-#   # label the drivers and the responses specifically so we can group them
-#   # in an orderly way
-#   gg_rho_tidy <- gg_rho %>% 
-#     mutate(
-#       # A. Slope and intercept are the only size spectra features
-#       response_var = ifelse(str_detect(xvar, "slope|int"), T, F),
-#       
-#       # B.These are the drivers, use string detect to pull them out
-#       driver_var = ifelse(str_detect(yvar, "adt|c5|osc|pca|landings|index|anom"), T, F),
-#       driver_type = case_when(
-#         str_detect(yvar, "landings") ~ "Top-Down",
-#         str_detect(yvar, "adt|c5") ~ "Calanus",
-#         str_detect(yvar, "pca|stream|anom|osci") ~ "Bottom-Up"),
-#       
-#       # C. These are the areas associated with the Spectra Features
-#       xvar_area = case_when(
-#         str_detect(xvar, "All") ~ "All",
-#         str_detect(xvar, "Georges") ~ "Georges Bank",
-#         str_detect(xvar, "Gulf") ~ "Gulf of Maine",
-#         str_detect(xvar, "Southern") ~ "Southern New England",
-#         str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-#       xvar_area = factor(xvar_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-#       
-#       # D. These are the areas of the drivers
-#       yvar_area = case_when(
-#         str_detect(yvar, "All") ~ "All",
-#         str_detect(yvar, "Georges") ~ "Georges Bank",
-#         str_detect(yvar, "Gulf") ~ "Gulf of Maine",
-#         str_detect(yvar, "Southern") ~ "Southern New England",
-#         str_detect(yvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-#       yvar_area = factor(yvar_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-#       
-#       # Shorthand for the Spectra Parameters
-#       x_short = case_when(
-#         str_detect(xvar, "slope") ~ "Spectra Slope",
-#         str_detect(xvar, "int") ~ "Spectra Intercept"))
-#   
-#   
-#   
-#   
-#   # Match SST and Landings to their areas:
-#   # Rename landings and SST so they occupy the same plot space
-#   # Do some filtering and string formatting:
-#   only_driver_response <- gg_rho_tidy %>% 
-#     filter( 
-#       response_var,
-#       driver_var) %>% 
-#     mutate(area_match = xvar_area == yvar_area) %>% 
-#     filter(area_match | !str_detect(yvar, "sst|landings")) %>% 
-#     mutate(
-#       yvar = ifelse(str_detect(yvar, "landings"), "Commercial_Landings", yvar),
-#       yvar = ifelse(str_detect(yvar, "sst"), "SST_Anomalies", yvar),
-#       yvar = ifelse(str_detect(yvar, "gulf_stream_index"), "Gulf Stream Index", yvar),
-#       yvar = str_replace_all(yvar, "_", " "),
-#       yvar = factor(yvar, levels = c(
-#         "Gulf of Maine cpr pca 1",
-#         "Gulf of Maine cpr pca 2",
-#         "Gulf Stream Index",
-#         "All north atlantic oscillation",
-#         "SST Anomalies",
-#         "Commercial Landings"))
-#       ) 
-# 
-# 
-#   
-#   
-#   # Spit out all the pieces in an organized list
-#   correlation_details <- list(
-#     "drivers_matrix"       = driver_matrix,
-#     "rho"                  = rho,
-#     "ggrho"                = gg_rho,
-#     "ggrho_tidy"           = gg_rho_tidy,
-#     "only_driver_response" = only_driver_response
-#   )
-#   
-#   
-# })
-# 
-# 
-#   
-
-```
 
 # Results
 
@@ -1176,7 +1073,6 @@ Abundance gains observed in Georges Bank and Gulf of Maine were primarily from g
 
 # Plot abundance by region and Group
 fgroup_area$weight_bins %>% 
-  complete(Year, hare_group, survey_area, left_lim) %>% 
   # ggplot(aes(Year, strat_abund_mill, fill = weight_bin)) +
   ggplot(aes(Year, strat_abund_mill, fill = factor(left_lim))) +
     geom_area(color = "transparent") +
@@ -1228,8 +1124,11 @@ There was a distinct difference between Northern and Southern regions in the way
 
 The average fish size in the Gulf of Maine (length and weight) declined the greatest of all regions over our study period. The average individual length was greatest in the 1970's in the 35-40cm range, falling to 28-33cm over the last decade. Body-weight fell dramatically in the 1980's, from around .75kg in the 1970's to .25-.30kg, roughly a third of what it had been. Georges Bank body sizes also declined during the study period, but less dramatically. Both of these Northern regions had brief period in the late 2000's where average length and weight rose, before falling again in the 2010's. The MAB region was the only region to see a long-term increase in both length and weight during the study period. SNE saw no long-term change in length, and a minor decline in average body-weight.
 
+::: panel-tabset
+#### All Species
+
 ```{r}
-#| label: average body size trends
+#| label: regional-size-trends
 #| fig.height: 8
 #| fig.weight: 8
 
@@ -1246,8 +1145,9 @@ avg_len_p <-  regional_size %>%
     geom_line(data = select(regional_size, -survey_area),
               aes(group = area_copy),
               alpha = 0.2, size = 0.5) + 
-    geom_line(aes(group = survey_area,
-                  color = area_copy), 
+    geom_line(aes(group = survey_area#,
+                  #color = area_copy
+                  ), 
               size = 1,
               show.legend = F) + 
     scale_color_gmri() +
@@ -1263,12 +1163,13 @@ avg_wt_p <- regional_size %>%
   geom_line(data = select(regional_size, -survey_area),
             aes(group = area_copy),
             alpha = 0.2, size = 0.5) + 
-  geom_line(aes(group = survey_area,
-                  color = area_copy), 
+  geom_line(aes(group = survey_area#,
+                  #color = area_copy
+                ), 
             size = 1,
               show.legend = F) + 
   scale_color_gmri() +
-    facet_wrap(~survey_area, ncol = 1) + 
+  facet_wrap(~survey_area, ncol = 1) + 
   labs(title = "Average Weight",
        y = "Weight (kg)",
        color = "Region")
@@ -1277,6 +1178,60 @@ avg_wt_p <- regional_size %>%
 (avg_len_p | avg_wt_p) 
 
 ```
+
+
+#### Functional Group Length
+
+```{r}
+#| label: functional-group-length-trends
+#| fig.width: 10
+#| fig-height: 8
+
+
+# Refactor areas
+functional_group_size <- functional_group_size %>% 
+  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+      area_copy = survey_area)
+
+
+
+functional_group_size %>% 
+  ggplot(aes(Year, mean_len_cm)) +
+  geom_line(aes(group = survey_area#,
+                  #color = area_copy
+                  ), 
+              size = 1,
+              show.legend = F) + 
+    facet_grid(survey_area~hare_group, scales = "free_y") + 
+    labs(title = "Average Length",
+         y = "Length (cm)",
+         color = "Region")
+
+
+```
+
+
+#### Functional Group Bodymass
+
+```{r}
+#| label: functional-group-weight-trends
+#| fig.width: 10
+#| fig-height: 8
+
+
+
+functional_group_size %>% 
+  ggplot(aes(Year, mean_wt_kg)) +
+  geom_line(aes(group = survey_area), 
+              size = 1,
+              show.legend = F) + 
+    facet_grid(survey_area~hare_group, scales = "free_y") + 
+    labs(title = "Average Weight",
+         y = "Weight (kg)",
+         color = "Region")
+
+```
+:::
 
 ### Regional Size Spectra
 
@@ -1336,18 +1291,22 @@ slope_timeline | int_timeline
 period_correlations$regime_1$only_driver_response %>% 
   ggplot(aes(yvar, x_short, fill = r2)) +
   geom_tile() +
+  geom_text(aes(label = signif)) +
   facet_grid(xvar_area~driver_type, scales = "free_x", space = "free") +
   scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
   coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         strip.text.y = element_text(angle = 0),
         legend.position = c(1.205, -.25),
-        legend.title = element_text(vjust = 0.75)) +
+        legend.title = element_text(vjust = 0.75),
+        plot.caption = element_text(hjust = 0)) +
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
-  labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
+  labs(x = "Hypothesized Driver", 
+       y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
-       title = "Correlation of Size Spectra to Hypothesized Drivers | Regime 1",
-       subtitle = "Correlation coefficients shown display same-year correlations.")
+       title = "Correlation of Size Spectra to Hypothesized Drivers | All Years",
+       subtitle = "Correlation coefficients shown display same-year correlations.",
+       caption = md("* Symbol signals a significant correlation at an alpha =  0.05"))
 
 ```
 
@@ -1363,18 +1322,22 @@ period_correlations$regime_1$only_driver_response %>%
 period_correlations$regime_2$only_driver_response %>% 
   ggplot(aes(yvar, x_short, fill = r2)) +
   geom_tile() +
+  geom_text(aes(label = signif)) +
   facet_grid(xvar_area~driver_type, scales = "free_x", space = "free") +
   scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
   coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         strip.text.y = element_text(angle = 0),
         legend.position = c(1.205, -.25),
-        legend.title = element_text(vjust = 0.75)) +
+        legend.title = element_text(vjust = 0.75),
+        plot.caption = element_text(hjust = 0)) +
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
-  labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
+  labs(x = "Hypothesized Driver", 
+       y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
        title = "Correlation of Size Spectra to Hypothesized Drivers | Regime 2",
-       subtitle = "Correlation coefficients shown display same-year correlations.")
+       subtitle = "Correlation coefficients shown display same-year correlations.",
+       caption = md("* Symbol signals a significant correlation at an alpha =  0.05"))
 
 ```
 
@@ -1390,18 +1353,21 @@ period_correlations$regime_2$only_driver_response %>%
 period_correlations$full$only_driver_response %>% 
   ggplot(aes(yvar, x_short, fill = r2)) +
   geom_tile() +
+  geom_text(aes(label = signif)) +
   facet_grid(xvar_area~driver_type, scales = "free_x", space = "free") +
   scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
   coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         strip.text.y = element_text(angle = 0),
         legend.position = c(1.205, -.25),
-        legend.title = element_text(vjust = 0.75)) +
+        legend.title = element_text(vjust = 0.75),
+        plot.caption = element_text(hjust = 0)) +
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
   labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
        fill = "Correlation Coefficient",
        title = "Correlation of Size Spectra to Hypothesized Drivers | All Years",
-       subtitle = "Correlation coefficients shown display same-year correlations.")
+       subtitle = "Correlation coefficients shown display same-year correlations.",
+       caption = md("* Symbol signals a significant correlation at an alpha =  0.05"))
 
 ```
 :::
@@ -1412,16 +1378,15 @@ period_correlations$full$only_driver_response %>%
  
  Some of the major drivers suggested here operate on both, but to varying degrees. Here are some potential mechanisms:
  
- Literature suggests:
+ **Literature suggests:**
   - Intercept (a proxy for productivity and carrying capacity) is primarily determined by bottom up features like: nutrient availability, temperature
   - Slope (a measure of energy transfer efficiency and static biomass distribution) has been shown to be sensitive to the physical removal of larger individuals.
   
   
-Temperature Mechanisms:
+**Temperature Mechanisms:**
   - Temperature's impact on growth via genetic plasticity impacts both the available biomass at the primary producer level, as well as the Linf of larger species.
   - Temperature also impacts the efficiency of energy (as biomass) being transferred between individuals via predator & prey interactions. More energy per-capita is expended in the form of increased metabolic rates and/or behavioral changes. This metabolic tax should steepen the spectrum slope by removing available energy at a system wide level.
-  
-  ()
+
 
 
 
@@ -1574,7 +1539,7 @@ Looking at both the level of noise in the body-size trends and the size spectra 
 
 
 # Tidy up a key of what is labeled what
-spec_key <- nefsc_size_bins %>% 
+spec_key <- catch_size_bins %>% 
   distinct(comname, hare_group) %>% 
   mutate(
     hare_group = ifelse(is.na(hare_group), "Not Classified", hare_group),
@@ -1585,7 +1550,7 @@ spec_key <- nefsc_size_bins %>%
 
 
 # Reformat the data to check presence absence
-nefsc_size_bins %>% 
+catch_size_bins %>% 
   distinct(comname, survey_area) %>% 
   mutate(Presence = "X") %>% 
   complete(comname, survey_area) %>% 

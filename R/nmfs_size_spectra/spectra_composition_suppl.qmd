@@ -21,8 +21,6 @@ execute:
   echo: false
   warning: false
   message: false
-  fig.height: 8
-  fig.width: 6
   fig.align: "center"
   comment: ""
 ---
@@ -168,6 +166,7 @@ spec_class_gaps <- nefsc_size_bins %>%
   distinct(comname, spec_class) %>% 
   filter(is.na(spec_class))
 
+# Gaps in hare paper's functional groups
 hare_group_gaps <- nefsc_size_bins %>% 
   distinct(comname, hare_group)  %>% 
   filter(is.na(hare_group))
@@ -275,7 +274,11 @@ This plotting function will plot this size spectrum aggregates for both the func
 #' @export
 #'
 #' @examples
-compare_spectra_components <- function(functional_group_aggregates, annual_aggregates, filter_years = 2012, fill_group){
+compare_spectra_components <- function(
+    functional_group_aggregates, 
+    annual_aggregates, 
+    filter_years = 2012, 
+    fill_group){
   
   
   # Filter the year
@@ -355,7 +358,7 @@ compare_spectra_components <- function(functional_group_aggregates, annual_aggre
 ```{r}
 #| label: early-regime-hare
 
-# What does 1990 look like
+# What does 1970-2005 look like
 t <- compare_spectra_components(
   functional_group_aggregates = hare_group_aggregates, 
   annual_aggregates = year_group_aggregates, 
@@ -404,14 +407,24 @@ This is what a single year looks like in the most recent regime, do we see any a
 This should be a table, but it would be useful to document where and how often the 10^4 and 10^5 size bins are used or not in the analysis. If 10^4 is routinely absent in some areas, should it be kept? What if it is the result of fishing, shouldn't the 0 be meaningful?
 
 ```{r}
-year_group_aggregates %>% 
-  #complete(Year, survey_area, log10_bins) %>% 
-  mutate(
-    observed_abundance = ifelse(observed_abundance == 0, NA, observed_abundance),
-    log10_bins = as.numeric(as.character(log10_bins))) %>% 
-  ggplot(aes(Year, log10_bins, fill = observed_abundance)) +
-  geom_point() +
-  scale_y_continuous(breaks = scales::pretty_breaks()) +
-  facet_wrap(~survey_area)
-```
 
+# format breaks as n/2
+half_format <- function(x) {
+  .x <- format(x = x/2, digits = 3)
+  return(.x)
+}
+
+
+# Plot em
+year_group_aggregates %>% 
+  complete(Year, survey_area, log10_bins) %>% 
+  mutate(
+    observed_abundance = ifelse(observed_abundance == 0, "Absent", "Present"),
+    log10_bins = as.numeric(as.character(log10_bins))) %>% 
+  ggplot(aes(Year, log10_bins, color = observed_abundance)) +
+  geom_point() +
+  scale_color_gmri(reverse = T) +
+  scale_y_continuous(breaks = seq(0,12, by = 2), 
+                     labels = half_format) +
+  facet_wrap(~survey_area, ncol = 1)
+```

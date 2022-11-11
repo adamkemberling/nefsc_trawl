@@ -11,6 +11,7 @@ docs/*
 R/qaqc_reports/09_ss_sensitivity_cache/
 R/qaqc_reports/09_ss_sensitivity_files/
 R/survdat_pull_check_files/
+R/map30challenge/
 
 # Ignore _targets files
 _targets*/
