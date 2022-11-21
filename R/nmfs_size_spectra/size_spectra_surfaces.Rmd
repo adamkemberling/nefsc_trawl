@@ -177,7 +177,7 @@ slopes | ints
 ```{r}
 # Load the data used to estimate spectra
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_1g_binned))      
+                tar_load(catch_1g_binned))      
 
 
 # Get yearly biomass and abundance

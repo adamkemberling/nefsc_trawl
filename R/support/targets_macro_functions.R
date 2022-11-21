@@ -49,7 +49,10 @@ import_and_tidy_bio <- function(box_location){
 # Macro 2: Prepare Size Spectra
 # area stratification, size truncation, set units, 
 # prepare upper/lower weight limits for 1cm length increments
-size_spectrum_prep <- function(catch_data, min_weight_g = 1, max_weight_g = 10^5){
+size_spectrum_prep <- function(
+    catch_data, 
+    min_weight_g = 1, 
+    max_weight_g = 10^5){
   spectra_input <- prep_sizeSpectra_data(lw_trawl_data = catch_data) %>% 
     min_weight_cutoff(catch_lw = ., min_weight_g = min_weight_g) %>% 
     max_weight_cutoff(catch_lw = ., max_weight_g = max_weight_g) %>% 

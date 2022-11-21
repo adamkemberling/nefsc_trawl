@@ -76,10 +76,10 @@ Data for these `r nrow(spec_df)` species comes from fisheries independent trawl 
 ```{r data prep}
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_stratified))
+                tar_load(catch_complete))
 
 # Filter to just them, and the two time regimes
-trawldat <- nefsc_stratified %>% 
+trawldat <- catch_complete %>% 
   filter(comname %in% saa_species)
 
 # Pull the main columns to speed things up

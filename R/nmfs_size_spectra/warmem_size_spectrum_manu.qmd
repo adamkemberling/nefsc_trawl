@@ -71,6 +71,10 @@ theme_set(theme_gmri() + theme(
 # Map polygons
 us_poly <- ne_states("united states of america", returnclass = "sf")
 canada <- ne_states("canada", returnclass = "sf")
+
+# levels for faceting areas
+area_levels <- c("Northeast Shelf, Full", "GoM", "GB", "SNE", "MAB")
+area_levels_long <- c("Northeast Shelf, Full", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")
 ```
 
 
@@ -352,14 +356,14 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 regional_size <- mean_sizes_ss_groups %>% 
   filter(`group ID` == "single years * region") %>% 
   mutate(Year = as.numeric(Year),
-         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")))
+         survey_area = factor(survey_area, levels = area_levels))
 
 
 # Grouped on year, region, & functional group
 functional_group_size <- mean_sizes_ss_groups %>% 
   filter(`group ID` == "single years * region * functional group") %>% 
   mutate(Year = as.numeric(Year),
-         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")))
+         survey_area = factor(survey_area, levels = area_levels))
 
 ```
 
@@ -379,7 +383,7 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 region_indices <- size_spectrum_indices  %>% 
   filter(`group ID` == "single years * region") %>% 
   mutate(yr = as.numeric(as.character(Year)),
-         survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+         survey_area = factor(survey_area, levels = area_levels),
          sig_fit = ifelse(l10_sig_strat < 0.05, "Significant", "Non-Significant"))
 
 ```
@@ -403,8 +407,8 @@ temp_regimes <- regional_oisst %>%
   filter(yr > 1981) %>% 
   mutate(
     regime = ifelse(sst_anom > 0, "hot", "cold"),
-    survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
-    survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB"))) 
+    survey_area = ifelse(survey_area == "all", "Northeast Shelf, Full", survey_area),
+    survey_area = factor(survey_area, levels = area_levels)) 
 
 
 
@@ -479,9 +483,7 @@ landings <- landings %>%
       `stat area` %in% fish_zones$"Southern New England" ~ "Southern New England",
       `stat area` %in% fish_zones$"Mid-Atlantic Bight" ~ "Mid-Atlantic Bight")) %>% 
   filter(survey_area %in% c("Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight")) %>% 
-  mutate(survey_area = factor(survey_area, levels = c(
-    "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"
-  )))
+  mutate(survey_area = factor(survey_area, area_levels_long))
 
 
 
@@ -696,7 +698,7 @@ all_drivers <- bind_rows(
 
 
 ```{r}
-#| label: driver-matrix-correlations
+#| label: set-driver-periods
 
 ####  Working Here  ####
 
@@ -711,6 +713,7 @@ drivers_scaled <- all_drivers %>%
   as.data.frame()
   
 
+
 # Pull different years into a list
 driver_periods <- list(
   "regime_1" = c(1954:2005),
@@ -718,9 +721,12 @@ driver_periods <- list(
   "full"     = c(1954:2020)
 )
 
+
+
+
 # Split them out into a list that contains data for each period
 driver_period_l <- map(driver_periods, function(yrs){
-  period_matrix <- drivers_scaled[rownames(drivers_scaled) %in% yrs,] %>% 
+  period_matrix <- drivers_scaled[rownames(drivers_scaled) %in% yrs, ] %>% 
     drop_na()
 })
 
@@ -1014,7 +1020,7 @@ fgroup_area$weight_bins <- fgroup_area$weight_bins %>%
   mutate(strat_abund_mill = wtbin_strat_abund / 1e6,
          strat_lwbio_mill = wtbin_strat_lw_bio / 1e6,
          survey_area = factor(survey_area,
-                              levels = c("Northeast Shelf, Full", "GoM", "GB", "SNE", "MAB")))
+                              levels = area_levels))
 
 
 
@@ -1135,7 +1141,7 @@ The average fish size in the Gulf of Maine (length and weight) declined the grea
 # Re-factor
 regional_size <- regional_size %>% 
   mutate(
-    survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+    survey_area = factor(survey_area, area_levels),
     area_copy = survey_area)
 
 
@@ -1190,7 +1196,7 @@ avg_wt_p <- regional_size %>%
 
 # Refactor areas
 functional_group_size <- functional_group_size %>% 
-  mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
+  mutate(survey_area = factor(survey_area, area_levels),
       area_copy = survey_area)
 
 
@@ -1380,20 +1386,26 @@ period_correlations$full$only_driver_response %>%
  
  **Literature suggests:**
   - Intercept (a proxy for productivity and carrying capacity) is primarily determined by bottom up features like: nutrient availability, temperature
-  - Slope (a measure of energy transfer efficiency and static biomass distribution) has been shown to be sensitive to the physical removal of larger individuals.
+  
+  - Slope (a measure of energy transfer efficiency and static biomass distribution) has been shown to be sensitive to the physical removal of species through fishing.
   
   
 **Temperature Mechanisms:**
-  - Temperature's impact on growth via genetic plasticity impacts both the available biomass at the primary producer level, as well as the Linf of larger species.
+  - Temperature's impact on growth via genetic plasticity impacts both the available biomass at the primary producer level (impacting ecosystem carrying capacity), as well as the Linf of larger species (recruitment rate).
   - Temperature also impacts the efficiency of energy (as biomass) being transferred between individuals via predator & prey interactions. More energy per-capita is expended in the form of increased metabolic rates and/or behavioral changes. This metabolic tax should steepen the spectrum slope by removing available energy at a system wide level.
-
+ - Temperature impacts behavior via physiological impacts on metabolism and foraging rates as well as through the avoidance of temperature stresses.
 
 
 
 
 ## Separating Complimentary Forces Impacting Growth
 
-The data we rely on in this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Estimates by scientists at that time suggested that by the 1970's total biomass of Georges Bank had been halved and elasmobranchs had begun to replace the over-exploited gadoids [@fogarty1998]. The implication of such a large disturbance that pre-dates our time series is that the steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are the tail-ends of a longer and more severe decline. While metrics of overall fishing pressure is hard to align exactly with trawl survey coverage, historic and anecdotal evidence show that groundfish fishing pressures are a fraction of their historic pressure was in the 1960's and 1970's. This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been any sizable population of fishes larger than 1kg outside of elasmobranchs. Work by [@pershing2015] suggested that part of the failure in recovery was due to an inability to account for temperature change in fisheries management. At this point in time the regional temperatures had only begun to resemble a regime shift, and could have been considered at that time an acute stressor. Since that time the region has experienced nearly a decade of sustained above-average temperatures, and there are signs that the success seen in recruitment and survival of even the smaller size classes is declining. While temperature change has been associated with changes in growth rates and size-at-age, so too have size-selective fishing practices, making it difficult to disentangle the importance of exploitation & temperature on the overall community size structure when body size integrates these two forces [@shackell2007].
+The data used for this analysis was collected as part of a survey program which began out of concern that fisheries were already being over-harvested. Early estimates from scientists at that time suggested that by the 1970's total biomass of Georges Bank had already been halved, and elasmobranch species had begun to replace the over-harvested gadoid species [@fogarty1998]. Having such a large disturbance which pre-dates our time series is suggestive that the measured steepening of size spectrum slope we observed in this area and the adjacent Gulf of Maine are potentially the tail-ends of a longer and more severe ecosystem decline. While metrics of overall fishing pressure do not align exactly with trawl survey coverage, historical records and anecdotal evidence fro  that time suggest that groundfish fishing pressure in these areas are a fraction of their what their impacts were in the 1960's and 1970's. 
+
+## Forces Preventing the Recovery of Large Individuals
+
+This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals < 1kg, but there has since not been a recovery in fishes larger than 1kg outside of the elasmobranchs. Work by [@pershing2015] suggested this prolonged recovery period may be due to a lack of accounting for temperature change in fisheries management. At the time of that research, the regional temperatures had only begun rising, and could have been considered at that time an acute stressor. Since that time the region has experienced nearly a decade of sustained above-average temperatures. There are signs that the success seen in recruitment and survival of even the smaller size classes is declining. While temperature change has been associated with changes in growth rates and size-at-age, so too have size-selective fishing practices, making it difficult to disentangle the importance of exploitation & temperature on the overall community size structure when body size integrates these two forces [@shackell2007].
+
 
 ### Potential Drivers Timeseries:
 
@@ -1460,7 +1472,8 @@ landings_summ %>%
 clim_drivers %>% 
   group_by(year = lubridate::year(Time), Var, EPU) %>% 
   summarise(Value = mean(Value, na.rm = T)) %>% 
-  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative")) %>% 
+  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative"),
+         Var = str_to_title(Var)) %>% 
   ggplot(aes(year, Value, group = EPU)) +
   geom_col(aes(fill = anom_direction),  
            size = 0.75, alpha = 0.8) +
@@ -1499,9 +1512,9 @@ cpr_indices %>%
 ```
 :::
 
-## Determining Index Credibility
+## Index of What
 
-Our ability to make statements on community size-structure change in this study is limited by the community that is effectively sampled as part of the groundfish survey, and of species with available weight-at-length information. When looking at the composition of total biomass in each region separated out by species and by functional groups it became clear that in SNE and MAB a larger proportion of the community biomass was held within a relatively small number of species, primarily the elasmobranchs. Whether or not this is incomplete representation of the community due to the sampling gear, or an accurate representation of the entire community is unclear. In these two regions the biomass spectra information is largely that of the elasmobranch community. Whether or not this is a sufficient fraction of the broader community, what key community members are absent, and what the ecological implications of this are remain unclear.
+Our ability to make statements on community size-structure change in this study is limited by the community that is effectively sampled as part of the groundfish survey, and of species with available weight-at-length information. When looking at the species compositions in each region it is clear that in SNE and MAB a larger proportion of the community biomass was held within a relatively small number of species, primarily the elasmobranchs. Whether or not this is incomplete representation of the community due to the sampling gear, or an accurate representation of the entire community is unclear. In these two regions the biomass spectra information is largely that of the elasmobranch community. Whether or not this is a sufficient fraction of the broader community, what key community members are absent, and what the ecological implications of this are remain unclear.
 
 ```{r}
 #| label: proportion-of-fgroup
@@ -1509,13 +1522,15 @@ Our ability to make statements on community size-structure change in this study 
 
 # panel plot the biomass by body size
 fgroup_area$weight_bins %>% 
-  mutate(strat_lwbio_mill = wtbin_strat_lw_bio / 1e6) %>% 
+  mutate(
+    survey_area = factor(survey_area, levels = area_levels),
+    strat_lwbio_mill = wtbin_strat_lw_bio / 1e6) %>% 
   group_by(Year, survey_area, hare_group) %>% 
   summarise(total_lwbio_mill = sum(strat_lwbio_mill, na.rm = T),
             .groups = "drop") %>% 
   ggplot(aes(Year, total_lwbio_mill, fill = hare_group)) +
   geom_col(position = "fill") +
-  facet_grid(survey_area~.) +
+  facet_wrap(~survey_area, ncol = 1) +
   scale_fill_gmri() +
   scale_y_continuous(labels = percent_format()) +
   labs(y = "Fraction of Stratified Biomass",  

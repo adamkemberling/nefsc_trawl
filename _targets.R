@@ -43,6 +43,28 @@ source(here("R/support/targets_macro_functions.R"))
 # Order is not important, package sorts out connections for everything
 list(
   
+  
+  
+  ####  Global Options:  ####
+  
+  # These are linked to the remaining analysis steps
+  # with exception to analysis of average length/width, those are not filtered
+  tar_target(analysis_options, 
+             command = list(
+               # Control the data that reaches the analysis, and is used for context
+               # Sets min/max for ISD exponent estimates
+               min_input_weight_g = 10^0,
+               max_input_weight_g = 10^5,
+               
+               # Set/enforce the bin structure used for spectra analysis
+               # These enforce what bins go to binned size spectra analysis
+               l10_bin_width = 1,
+               min_l10_bin = 0,
+               max_l10_bin = 4)
+             ),
+  
+  
+  
   ##### 1. NMFS Data Import  ####
   
   
@@ -59,11 +81,25 @@ list(
   tar_target(catch_complete,
              command = import_and_tidy_catch(box_location = boxdata_location)),
   
+  
+  # Perform standard cleanup without LW and stratification for species that drop
+  tar_target(
+    name = survdat_clean,
+    command = gmri_survdat_prep(survdat = NULL,
+                                survdat_source = "most recent",
+                                box_location = boxdata_location)),
+  
   ###### b. Biological Data  ####
   
   # Import and tidy the biological dataset
   tar_target(bio_complete,
              command = import_and_tidy_bio(box_location = boxdata_location)),
+  
+  # survdat biological data - for actual length relationships
+  tar_target(
+    name = survdat_biological,
+    command = gmri_survdat_prep(survdat_source = "bio",
+                                box_location = boxdata_location) ),
   
 
   #####  2. Size Spectrum Prep  #####
@@ -79,8 +115,8 @@ list(
     catch_1g_labelled,
     command = size_spectrum_prep(
       catch_data = catch_complete, 
-      min_weight_g = 1, 
-      max_weight_g = 10^5)),
+      min_weight_g = analysis_options[["min_input_weight_g"]], 
+      max_weight_g = analysis_options[["max_input_weight_g"]])),
   
   
 
@@ -94,32 +130,47 @@ list(
   
   # Run the different groupings through the slope estimation
   # lower end is >=, upper end is <
-  tar_target(nmfs_log10_slopes,
-             log10_ss_all_groups(
+  tar_target(warmem_log10_slopes,
+             warmem_l10_estimates(
+               # The input data for all the group estimates, labelled for 
+               # both the binned and ISD analyses
                wmin_grams = catch_1g_labelled,
-               min_weight_g = 10^0,
-               max_weight_g = 10^5, 
-               min_l10_bin = 0, 
-               max_l10_bin = 5, 
-               bin_increment = 0.5)),
+               
+               # These two filter the input data
+               min_weight_g = analysis_options[["min_input_weight_g"]],
+               max_weight_g = analysis_options[["max_input_weight_g"]], 
+               
+               # These two enforce the bins used to estimate the spectra
+               min_l10_bin = analysis_options[["min_l10_bin"]], 
+               max_l10_bin = analysis_options[["max_l10_bin"]], 
+               bin_increment = analysis_options[["l10_bin_width"]])),
   
   
   
   
   ##### 5. sizeSpectra Exponents  ####
   
+  # These should match the max size available to the size spectra bins
+  # or be close to it
+  # its obvious from the composition qmd data those largest sizes just aren't sampled in many groups
+  # This can be achieved with the max size filtering, or with a control in this function
   
-  
-  # Run the mle calculation on stratified abundance
+  # Run the individual size distribution calculation on stratified abundances
   tar_target(
-    name = strat_total_mle_results,
-    command = ss_slopes_all_groups(catch_1g_labelled, 
-                                   min_weight_g = 1, 
-                                   abundance_vals = "stratified")),
+    name = warmem_isd_results,
+    command = warmem_isd_estimates(
+      wmin_grams = catch_1g_labelled, 
+      min_weight_g = analysis_options[["min_input_weight_g"]],
+      max_weight_g = analysis_options[["max_input_weight_g"]],
+      isd_xmin = analysis_options[["min_input_weight_g"]],
+      isd_xmax = analysis_options[["max_input_weight_g"]],
+      abundance_vals = "stratified")),
+  
+  
   
   # Join the MLE and Binned Results into a table
   tar_target(size_spectrum_indices,
-             full_join(strat_total_mle_results, nmfs_log10_slopes,
+             full_join(warmem_isd_results, warmem_log10_slopes,
                        by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
   
   
@@ -129,21 +180,21 @@ list(
   ##### 6. Spectra - Species Sensitivity  ####
   
   # This section will repeat the estimation of log10 ss slopes,
-  # repeating the steps with an omitted species to see the influence each has on 
+  # repeating the steps with an omitted species to see the influence each has on
   # the size spectrum estimate
-  
+
   # # Create parallel groups that do not contain a species at each iteration
   # get the l1- slope info
   tar_target(species_ommission_dat,
              species_omit_spectra(start_dat = catch_1g_labelled)),
 
-  
-  
+
+
   # Join the ommission data to the all species slopes to get the changes
   tar_target(year_region_only,
-             filter(nmfs_log10_slopes, `group ID` == "single years * region")),
-  
-  
+             filter(warmem_log10_slopes, `group ID` == "single years * region")),
+
+
   # Code to run for this target
   tar_target(species_sensitivity_shifts,
              species_omit_changes(spec_omit_results = species_ommission_dat,
@@ -176,31 +227,25 @@ list(
   # Year, season, taxonomic group, functional group, economic status
   # "
   
-  # NOTE: not using BIO data because it is a subset of lengths
-  # # Run the weighted mean sizes
-  # tar_target(
-  #   mean_individual_sizes,
-  #   group_size_metrics(size_data = survdat_bio_lw, 
-  #                      .group_cols = c("Year", "survey_area", "season", "spec_class", "fishery"))),
-  # 
-  
   # NOTE: Use all the data since all fish are measured, and we have LW weights
   # Run the main suite of groupings
   tar_target(
     mean_sizes_ss_groups,
-    mean_sizes_all_groups(size_data = rename(as.data.frame(catch_complete), Year = est_year),
-                          min_weight_g = 0, 
-                          abund_vals = "numlen_adj")
-                          #abund_vals = "stratified")
+    mean_sizes_all_groups(
+      size_data = rename(as.data.frame(catch_complete), Year = est_year),
+      min_weight_g = 0, 
+      abund_vals = "numlen_adj")
+      #abund_vals = "stratified")
     ),
  
   # Run the size change for each species across years using stratified abundances
   tar_target(
     annual_individual_sizes,
-    group_size_metrics(size_data = rename(as.data.frame(catch_complete), Year = est_year),
-                       .group_cols = c("comname", "Year", "season"),
-                       abund_vals = "numlen_adj")
-                       #abund_vals = "stratified")
+    group_size_metrics(
+      size_data = rename(as.data.frame(catch_complete), Year = est_year),
+      .group_cols = c("comname", "Year", "season"),
+      abund_vals = "numlen_adj")
+      #abund_vals = "stratified")
     ),
   
   
@@ -267,8 +312,8 @@ list(
 # # Perform standard cleanup
 # tar_target(
 #   name = survdat_clean,
-#   command = gmri_survdat_prep(survdat = NULL, 
-#                               survdat_source = "most recent", 
+#   command = gmri_survdat_prep(survdat = NULL,
+#                               survdat_source = "most recent",
 #                               box_location = boxdata_location)),
 # 
 # # Assign Length-Weight Relationships
@@ -410,7 +455,7 @@ list(
 # ##### 1. Table of indices  ####
 # tar_target(
 #   group_community_indicators,
-#   full_join(mean_sizes_ss_groups, strat_total_mle_results)
+#   full_join(mean_sizes_ss_groups, warmem_isd_results)
 
 
 

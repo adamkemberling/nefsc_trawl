@@ -228,7 +228,7 @@ max_weight_cutoff <- function(catch_lw, max_weight_g = 10^5){
 
 
 
-#' @title Add Size Group Formatting
+#' @title Add Size Group Formatting of Plotting
 #'
 #' @description Sets up the text labels and formatting for grouping and 
 #' plotting groups by size, weight, or season. Size groups do not follow log10 increments of 
@@ -373,7 +373,7 @@ add_missing_groups <- function(group_dataframe){
 
 
 ####_____________________####
-#### MLE Spectra Analysis ####
+#### MLE ISD Spectra Analysis ####
 
 
 
@@ -392,16 +392,21 @@ add_missing_groups <- function(group_dataframe){
 #' @export
 #'
 #' @examples
-group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratified", vecDiff = 0.5){
+group_isd_calc <- function(dataBinForLike, 
+                           group_var, 
+                           abundance_vals = "stratified",
+                           isd_xmin = NULL,
+                           isd_xmax = NULL,
+                           vecDiff = 0.5){
   
-  # toggle which abundance calue to use with switch
+  # 1. toggle which abundance calue to use with switch
   abundance_col <- switch(abundance_vals,
                           "observed"   = sym("numlen_adj"),
                           "strat_mean" = sym("strat_mean_abund_s"),
                           "stratified" = sym("strat_total_abund_s"))
   
   
-  # Select just the columns we need:
+  # 2. Select only the columns we need:
   # Rename them to match the code for sizeSpectra
   dataBinForLike <- dataBinForLike %>% 
     dplyr::select(
@@ -410,32 +415,48 @@ group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratifi
       wmax = wmax_g,
       Number = !!abundance_col)
   
-  # Set n, xmin, xmax
+  
+  
+  # 3. Set the power-law limits:
+  # n, xmin, xmax
+  
+  # Total individuals
   n    <- sum(dataBinForLike$Number)
-  xmin <- min(dataBinForLike$wmin)
-  xmax <- max(dataBinForLike$wmax)
+  
+  # left bound, grams
+  if(is.null(isd_xmin)){
+    isd_xmin <- min(dataBinForLike$wmin, na.rm = T)
+  }
+  
+  # right bound, grams
+  if(is.null(isd_xmax)){
+    isd_xmax <- max(dataBinForLike$wmax, na.rm = T)
+  }
   
   
-  # Get the likelihood calculation for the bins
-  # previously named MLEbins.nSeaFung.new
-  mle_group_bins <- calcLike(negLL.fn = negLL.PLB.bins.species,
-                             p = -1.9,
-                             vecDiff = vecDiff,
-                             suppress.warnings = TRUE,
-                             dataBinForLike = dataBinForLike,
-                             n = n,
-                             xmin = xmin,
-                             xmax = xmax)
+  
+  # 4. Estimate the Maximum likelihood calculation for the Individual size distribution
+  # previously named sizeSpectra::MLEbins.nSeaFung.new
+  mle_group_bins <- calcLike(
+    negLL.fn          = negLL.PLB.bins.species,
+    p                 = -1.9,
+    vecDiff           = vecDiff,
+    suppress.warnings = TRUE,
+    dataBinForLike    = dataBinForLike,
+    n                 = n,
+    xmin              = isd_xmin,
+    xmax              = isd_xmax)
   
   
-  # Store outputs in a dataframe
-  mle_group_results <- data.frame(group_var = group_var,
-                                  xmin = xmin,
-                                  xmax = xmax,
-                                  n = n,
-                                  b = mle_group_bins$MLE,
-                                  confMin = mle_group_bins$conf[1],
-                                  confMax = mle_group_bins$conf[2]) 
+  # 5. Store outputs in a dataframe
+  mle_group_results <- data.frame(
+    group_var = group_var,
+    xmin      = isd_xmin,
+    xmax      = isd_xmax,
+    n         = n,
+    b         = mle_group_bins$MLE,
+    confMin   = mle_group_bins$conf[1],
+    confMax   = mle_group_bins$conf[2]) 
   
   # Process C and standard error
   mle_group_results <- mle_group_results %>% 
@@ -450,8 +471,20 @@ group_mle_calc <- function(dataBinForLike, group_var, abundance_vals = "stratifi
 
 
 
-# Plotting size spectrum exponents for a group of estimates
-group_mle_plot <- function(mle_res){
+
+
+
+#' @title  Plot Individual Size Distribution Estimates for a group of estimates
+#'
+#' @description Plot the Individual Size Distribution fits from group_isd_calc
+#'
+#' @param mle_res output from group_isd_calc
+#'
+#' @return
+#' @export
+#'
+#' @examples
+group_isd_plot <- function(mle_res){
   plot <- mle_res %>% 
     ggplot(aes(Year, b, color = area, shape = season)) +
     geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax),
@@ -470,18 +503,17 @@ group_mle_plot <- function(mle_res){
 
 
 
-####  MLE SS Group Estimates  ####
 
-
-
-
-
-# Run size spectra slope for specific factor groups
-# returns un-used factors as "all" to be explicit about data used
-#' @title Grouped Estimation of MLE SS Slopes
+#' @title Grouped MLE of of Individual Size Distribution Fits
+#' 
+#' @description Estimates ISD exponent and confidence errors for specific factor groups
+#' and returns any un-used factors as "all" to be explicit about data was used.
 #'
 #' @param wmin_grams Data prepped for mle estimation, use prep_wmin_wmax
-#' @param min_weight_g Minimum weight cutoff to use
+#' @param min_weight_g Minimum weight cutoff to use for filtering input data
+#' @param max_weight_g Maximum weight cutoff to use for filtering input data
+#' @param isd_xmin minimum weight in grams for ISD power law fitting
+#' @param isd_xmax maximum weight in grams for ISD power law fitting
 #' @param abundance_vals Flag to use "observed" or "stratified" abundances
 #' @param .group_cols Vector of strings to indicate colummns to group on
 #'
@@ -489,35 +521,53 @@ group_mle_plot <- function(mle_res){
 #' @export
 #'
 #' @examples
-group_mle_slope_estimate <- function(wmin_grams, 
+group_isd_estimation <- function(wmin_grams, 
                                      min_weight_g = 1, 
+                                     max_weight_g = 10^6,
+                                     isd_xmin = NULL,
+                                     isd_xmax = NULL,
                                      abundance_vals = "stratified",
                                      .group_cols = "Year"){
   
   # 1. Set bodymass lower limit
-  # Used to filter for lower end of gear selectivity
-  dbin_truncated <- filter(wmin_grams, wmin_g >= min_weight_g) 
+  # Used to filter for upper & lower end of gear selectivity
+  dbin_truncated <- filter(wmin_grams, 
+                           wmin_g >= min_weight_g,
+                           wmin_g < max_weight_g) 
   
-  # # Set which function to operate on: stratified or not stratified
-  mle_function <- group_mle_calc
+  # # # Set which function to operate on: stratified or not stratified
+  # # options are toggled within group_isd_calc using "abundance_vals" argument
+  # mle_function <- group_isd_calc
+  
+  
+  # Set Bounds to Individual Size Distribution 
+  if(is.null(isd_xmin)){
+    isd_xmin <- min(dbin_truncated$wmin_g, na.rm = T) 
+  }
+  if(is.null(isd_xmin)){
+   isd_xmax <- max(dbin_truncated$wmin_g, na.rm =T) 
+  }
   
   
   
-  # 2. Build group_level from desired group columns
+  # 3. Build group_level from desired group columns
   dbin_truncated <- dbin_truncated %>% 
     unite(col = "group_var", {{.group_cols}}, sep = "_", remove = FALSE, na.rm = FALSE)
   
-  # 3. Make a table of constituent combinations
+  # 4. Make a table of constituent combinations
   col_syms <- syms(.group_cols)
   grouping_table <- dbin_truncated %>% distinct(!!!col_syms, group_var)
   
-  # 4. Add in any missing groups as "all data"
+  # 5. Add in any missing groups as "all data"
   grouping_table <- add_missing_groups(group_dataframe = grouping_table)
   
-  # 5. Run size spectra slopes for each group
+  # 6. Run individual size distribution fits for each group
   group_results <- dbin_truncated %>% 
     split(.$group_var) %>% 
-    imap_dfr(.f = mle_function, abundance_vals = abundance_vals)
+    imap_dfr(.f = group_isd_calc, 
+             isd_xmin = isd_xmin,
+             isd_xmax = isd_xmax,
+             abundance_vals = abundance_vals)
   
   # Merge in the group details
   group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
@@ -532,21 +582,28 @@ group_mle_slope_estimate <- function(wmin_grams,
 
 
 # Run all the groupings we care about to build single table
-# Source script
-# 06_nmfs_ss_group_estimates.R
-# original added to phase out, made modular with group_mle_slope_estimate
-#' @title Run Grouped MLE Calculation for WARMEM Groups
+
+#' @title Perform Estimates of Individual Size Distribution Fits for All WARMEM Groups
+#' 
+#' @description Source script: 06_nmfs_ss_group_estimates.R, original code added to phase 
+#' out section. That code was made to function more modular with group_isd_estimation
 #'
 #' @param wmin_grams Data prepped for mle estimation, use prep_wmin_wmax
-#' @param min_weight_g Minimum weight cutoff to use
+#' @param min_weight_g Minimum weight cutoff to usefor filtering input data
+#' @param max_weight_g Maximum weight cutoff to use for filtering input data
+#' @param isd_xmin minimum weight in grams for ISD power law fitting
+#' @param isd_xmax maximum weight in grams for ISD power law fitting
 #' @param abundance_vals Flag to use "observed" or "stratified" abundances
 #'
 #' @return
 #' @export
 #'
 #' @examples
-ss_slopes_all_groups <- function(wmin_grams, 
+warmem_isd_estimates <- function(wmin_grams, 
                                  min_weight_g = 1, 
+                                 max_weight_g = 10^6,
+                                 isd_xmin = NULL,
+                                 isd_xmax = NULL,
                                  abundance_vals = "stratified"){
   
   
@@ -554,7 +611,9 @@ ss_slopes_all_groups <- function(wmin_grams,
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  dbin_truncated <- filter(wmin_grams, wmin_g >= min_weight_g) %>% 
+  dbin_truncated <- filter(wmin_grams, 
+                           wmin_g >= min_weight_g,
+                           wmin_g <= max_weight_g) %>% 
     mutate(decade = floor_decade(Year))
   
   
@@ -564,68 +623,92 @@ ss_slopes_all_groups <- function(wmin_grams,
   message("Calculating ISD exponent with all data")
   g1_res <- dbin_truncated %>% 
     mutate(group_var = "all_data") %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("group_var")) 
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("group_var")) 
   
   
   ####_ 2. All Years, each season ####
   message("Calculating ISD exponent for each season")
   g2_res <- dbin_truncated %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("season")) 
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("season")) 
   
   
   ####_ 3. All Years, regions  ####
   message("Calculating ISD exponent for each region")
   g3_res <- dbin_truncated  %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("survey_area"))
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("survey_area"))
   
   
   ####_ 4. All Years, seasons * regions  ####
   message("Calculating ISD exponent for season * region")
   g4_res <- dbin_truncated %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("season", "survey_area"))
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("season", "survey_area"))
   
   ####_ 5. Every year, entire survey  ####
   message("Calculating ISD exponent for each year")
   g5_res <- dbin_truncated  %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("Year")) 
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("Year")) 
   
   ####_ 6. every year, every region  ####
   message("Calculating ISD exponent for each year in each region")
   g6_res <- dbin_truncated  %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("Year", "survey_area")) 
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("Year", "survey_area")) 
   
   ####_ 7. every year, only seasons  ####
   message("Calculating ISD exponent for each year in each season")
   g7_res <- dbin_truncated %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("Year", "season"))
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("Year", "season"))
   
   
   ####_ 8. every year, region * season  ####
   message("Calculating ISD exponent for each year in each region, for every season")
   g8_res <- dbin_truncated %>% 
-    group_mle_slope_estimate(min_weight_g = min_weight_g, 
-                            abundance_vals = abundance_vals,
-                            .group_cols = c("Year", "season", "survey_area")) 
+    group_isd_estimation(min_weight_g = min_weight_g, 
+                         max_weight_g = max_weight_g,
+                         isd_xmin = isd_xmin,
+                         isd_xmax = isd_xmax,
+                         abundance_vals = abundance_vals,
+                         .group_cols = c("Year", "season", "survey_area")) 
   
   
   # ####_ 9. Decades  ####
   # message("Calculating ISD exponent for each decade")
   # g9_res <- dbin_truncated %>% 
-  #   group_mle_slope_estimate(min_weight_g = min_weight_g,
+  #   group_isd_estimation(min_weight_g = min_weight_g,
   #                           abundance_vals = abundance_vals,
   #                           .group_cols = c("decade")) 
   # 
@@ -633,7 +716,7 @@ ss_slopes_all_groups <- function(wmin_grams,
   # ####_ 10. Decades and area  ####
   # message("Calculating ISD exponent for each decade in each area")
   # g10_res <- dbin_truncated %>% 
-  #   group_mle_slope_estimate(min_weight_g = min_weight_g,
+  #   group_isd_estimation(min_weight_g = min_weight_g,
   #                           abundance_vals = abundance_vals,
   #                           .group_cols = c("decade", "survey_area")) 
     
@@ -685,7 +768,7 @@ ss_slopes_all_groups <- function(wmin_grams,
 #' @export
 #'
 #' @examples
-define_l10_bins <- function(l10_min = 0, l10_max = 5, l10_increment = 0.5){
+define_l10_bins <- function(l10_min = 0, l10_max = 4.5, l10_increment = 0.5){
   
   # How many bins
   n_bins  <- length(seq(l10_max, l10_min + l10_increment, by = -l10_increment))
@@ -713,6 +796,8 @@ define_l10_bins <- function(l10_min = 0, l10_max = 5, l10_increment = 0.5){
 #' @description Manually assign log10 bins based on individual length-weight bodymass 
 #' in increments of 0.5 on the log10 scale. Returns data with bins assigned based on individual
 #' length-weight biomass
+#' 
+#' Uses maximum weight, and its corresponding bin as the limit.
 #'
 #' @param wmin_grams Catch data prepared for mle calculation, use prep_wmin_wmax
 #' @param l10_increment Equally spaced increments to use for log 10 bin sizes. Default = 0.5.
@@ -742,7 +827,10 @@ assign_log10_bins <- function(wmin_grams, l10_increment = 0.5){
   
   
   # Build a bin key, could be used to clean up the incremental assignment or for apply style functions
-  l10_bin_structure <- define_l10_bins(l10_min = min_bin, l10_max = max_bin, l10_increment = l10_increment)
+  l10_bin_structure <- define_l10_bins(
+    l10_min = min_bin, 
+    l10_max = max_bin, 
+    l10_increment = l10_increment)
   
   
   
@@ -794,17 +882,18 @@ assign_log10_bins <- function(wmin_grams, l10_increment = 0.5){
 #' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
 #' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
 #' @param bin_increment The bin-width on log scale that separates each bin
+#' @param ... Additional grouping factors with which to aggregate on besides the size bins themselves
 #'
 #' @return
 #' @export
 #'
 #' @examples
-aggregate_l10_bins <- function(l10_assigned, min_l10_bin = 0, max_l10_bin = 5, bin_increment = 0.5){
-  
-  # # Pull out the bin structure - REPLACED
-  # l10_bin_structure <- l10_assigned %>% 
-  #   distinct(log10_bins, left_lim, right_lim, 
-  #            bin_label, bin_width, bin_midpoint)
+aggregate_l10_bins <- function(
+    l10_assigned, 
+    min_l10_bin = 0, 
+    max_l10_bin = 4.5, 
+    bin_increment = 0.5,
+    ...){
   
   # Full Possible Bin Structure
   # Fills in any gaps
@@ -814,29 +903,53 @@ aggregate_l10_bins <- function(l10_assigned, min_l10_bin = 0, max_l10_bin = 5, b
     l10_increment = bin_increment)
   
   
+  # Capture all the group levels with a cheeky expand()
+  if(missing(...) == FALSE){
+    l10_bin_structure <- l10_bin_structure %>% 
+      expand(left_lim, distinct(l10_assigned, ...)) %>% 
+      full_join(l10_bin_structure)
+  }
+  
+  
+  
   # Get bin breaks
   l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
   
   
   # Get Totals for bodymass and abundances
   l10_aggregates <- l10_assigned %>% 
-    group_by(log10_bins) %>% 
+    # group_by(log10_bins, ...) %>% 
+    group_by(left_lim, ...) %>% 
     summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
               observed_weight_g    = sum(wmin_g, na.rm = T),
               stratified_abundance = sum(strat_total_abund_s, na.rm = T),
-              stratified_weight_g  = sum(wmin_area_strat, na.rm = T)) %>% 
-    ungroup()
+              stratified_weight_g  = sum(wmin_area_strat, na.rm = T),
+              .groups = "drop")
   
   
-  # join back in what the limits and labels are
-  l10_prepped <- full_join(l10_aggregates, l10_bin_structure, by = "log10_bins")
+  # Join back in what the limits and labels are
+  # The defined bins and their labels enforce the size limits
+  l10_prepped <- left_join(x = l10_bin_structure, 
+                           y = l10_aggregates#, 
+                           #by = "log10_bins"
+  )
+  
+  
+  #### Fill Gaps with Zero's  ####
+  # This ensures that any size bin that is intended to be in use is actually usedb=
+  l10_prepped <- l10_prepped %>% 
+    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
+           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
+           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
+           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
+  
   
   #### normalize abundances using the bin widths
   l10_prepped <- l10_prepped %>% 
     mutate(
       normalized_abund = observed_abundance / bin_width,
       norm_strat_abund = stratified_abundance / bin_width,
-      # # Remove Bins Where Normalized Biomass < 0? No.
+      # # Remove Bins Where Normalized Biomass < 0? No!
       # normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
       # norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund)
     )
@@ -866,8 +979,8 @@ aggregate_l10_bins <- function(l10_assigned, min_l10_bin = 0, max_l10_bin = 5, b
 #' @param wmin_grams Catch data prepped using prep_wmin_wmax
 #' @param min_weight_g Minimum weight cutoff in grams
 #' @param .group_cols 
-#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
-#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
+#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
+#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
 #' @param bin_increment The bin-width on log scale that separates each bin
 #'
 #' @return
@@ -878,8 +991,9 @@ group_l10_spectra <- function(wmin_grams,
                               .group_cols = "Year",
                               min_weight_g = 1,
                               min_l10_bin = 0,
-                              max_l10_bin = 5,
+                              max_l10_bin = 4.5,
                               bin_increment = 0.5){
+  
   
   # 1. Set bodymass lower limit, and assign bin labels
   # l10_assigned <- assign_log10_bins(wmin_grams) # done as a prep
@@ -901,7 +1015,7 @@ group_l10_spectra <- function(wmin_grams,
     distinct(!!!col_syms, group_var)
   
   
-  # 4. Add missing groups as "all data"
+  # 4. Add missing group factors as "all data"
   grouping_table <- add_missing_groups(group_dataframe = grouping_table)
   
   
@@ -926,6 +1040,7 @@ group_l10_spectra <- function(wmin_grams,
       # aka the minimum bodymass for bin
       
       # Abundance from area-stratification
+      # Will throw an error if norm_strat_abund = 0
       lm_abund_strat <- lm(log10(norm_strat_abund) ~ left_lim, data = l10_prepped)
   
       #  Pull Slope
@@ -997,11 +1112,11 @@ group_l10_spectra <- function(wmin_grams,
 #' @export
 #'
 #' @examples
-log10_ss_all_groups <- function(wmin_grams,
+warmem_l10_estimates <- function(wmin_grams,
                                 min_weight_g,
                                 max_weight_g,
                                 min_l10_bin = 0,
-                                max_l10_bin = 5,
+                                max_l10_bin = 4.5,
                                 bin_increment = 0.5){
   
   
@@ -1132,9 +1247,13 @@ species_omit_spectra <- function(start_dat = catch_1g_binned){
     
     
     # Run the bare essential spectra information for memory sake
-    spectra_res <-  group_l10_spectra(wmin_grams = filtered_dat,
-                                       min_weight_g = 1, 
-                                       .group_cols = c("Year", "survey_area"))
+    spectra_res <-  group_l10_spectra(
+      .group_cols = c("Year", "survey_area"),
+      wmin_grams = filtered_dat,
+      min_weight_g = 1,
+      min_l10_bin = 0,
+      max_l10_bin = 4.5,
+      bin_increment = 0.5)
     
     # Rename the columns so we can join them in to the data 
     # That had all species more easily
@@ -1160,6 +1279,9 @@ species_omit_spectra <- function(start_dat = catch_1g_binned){
 # tar_load(catch_1g_binned)
 # Get those sensitivity results
 # spec_omit_results <- species_omit_spectra(catch_1g_binned)
+
+
+
 
 
 
@@ -1481,7 +1603,7 @@ isd_plot_prep <- function(biomass_data = databin_split,
 #' @title Plot Individual Size Distribution Curves
 #'
 #' @param isd_data_prepped Data from isd_plot_prep
-#' @param mle_results Corresponding group results from group_mle_calc
+#' @param mle_results Corresponding group results from group_isd_calc
 #' @param abundance_used Label to add for context of what abundance source was used
 #' @param plot_rects Flag to plot bodymass rectangles
 #' @param show_pl_fit Flag to include powerlaw fit
@@ -1847,7 +1969,7 @@ group_size_metrics <- function(
 
 
 # Run all the groups, preserve the groups not stated for "overall" levels
-# Direct match to the groups in ss_slopes_all_groups
+# Direct match to the groups in warmem_isd_estimates
 mean_sizes_all_groups <- function(size_data, 
                                   min_weight_g = 0, 
                                   abund_vals = "numlen_adj"){
@@ -2041,7 +2163,7 @@ estimate_vonbert_coef <- function(species_size_age_data){
 #   
 #   # Set which function to operate on: stratified or not stratified
 #   mle_function <- switch(abundance_vals,
-#                          "observed" = group_mle_calc,
+#                          "observed" = group_isd_calc,
 #                          "stratified"  = strat_abund_mle_calc)
 #   
 #   

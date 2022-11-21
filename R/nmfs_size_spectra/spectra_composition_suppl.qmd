@@ -30,27 +30,20 @@ execute:
 
 ####  Packages  ####
 library(targets)
-library(rnaturalearth)
 library(here)
-library(sf)
 library(gmRi)
 library(patchwork)
 library(gt)
 library(knitr)
 library(tidyverse)
-library(ggstream)
-library(ggforce)
-library(bcp)
 library(scales)
-library(corrplot)
-library(readxl)
 
 
 # Support functions
 source(here("R/support/sizeSpectra_support.R"))
 
 # Set theme
-theme_set(theme_gmri())
+theme_set(theme_gmri(legend.position = "bottom"))
 ```
 
 ## Purpose
@@ -61,22 +54,24 @@ How does a lack of groundfish impact volatility (see-saw)?
 
 What body sizes are notably deficient (if any)?
 
+How does bin width, minimum weight, and maximum weight impact how the spectra is calculated.
+
 ### Data:
 
-This is the target point for the stratified abundance data. It has been filtered to exclude biomass below 1g.
+This is the target point for the stratified abundance data. It has been filtered to exclude biomass below 1g. 
 
 ```{r}
 #| label: load survdat_data
 
 # 1. Biological data used as input
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_1g_binned))   
+                tar_load(catch_1g_binned))   
 
 # rename and format
-nefsc_size_bins <- nefsc_1g_binned %>% 
+catch_size_bins <- catch_1g_binned %>% 
   mutate(spec_class = ifelse(is.na(spec_class), "Unclassified", spec_class))
 
-n_species <- length(unique(nefsc_size_bins$comname))
+n_species <- length(unique(catch_size_bins$comname))
 ```
 
 This is the target point for the size spectrum results. Any of the plots should match these results as a consistency check:
@@ -105,12 +100,29 @@ This is the code for the aggregation function, it totals the abundance within ea
 
 # Step 1: Aggregate Data into Bins:
 # Need to add step to preserve source groups: functional groups etc.
-agg_spectra_bins <- function(l10_assigned, ...){
+agg_spectra_bins <- function(
+    l10_assigned, 
+    min_l10_bin = 0, 
+    max_l10_bin = 4.5, 
+    bin_increment = 0.5,
+    ...){
+
+  # Full Possible Bin Structure
+  # Fills in any gaps
+  l10_bin_structure <- define_l10_bins(
+    l10_min = min_l10_bin, 
+    l10_max = max_l10_bin, 
+    l10_increment = bin_increment)
   
-  # Pull out the bin structure
-  l10_bin_structure <- l10_assigned %>% 
-    distinct(log10_bins, left_lim, right_lim, log10_bins, 
-             bin_label, bin_width, bin_midpoint)
+  
+  # Capture all the group levels with a cheeky expand()
+  if(missing(...) == FALSE){
+    l10_bin_structure <- l10_bin_structure %>% 
+      expand(left_lim, distinct(l10_assigned, ...)) %>% 
+      full_join(l10_bin_structure)
+  }
+  
+  
   
   # Get bin breaks
   l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
@@ -118,8 +130,8 @@ agg_spectra_bins <- function(l10_assigned, ...){
   
   # Get Totals for bodymass and abundances
   l10_aggregates <- l10_assigned %>% 
-    complete(..., log10_bins) %>% 
-    group_by(..., log10_bins) %>% 
+    #group_by(log10_bins, ...) %>% 
+    group_by(left_lim, ...) %>% 
     summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
               observed_weight_g    = sum(wmin_g, na.rm = T),
               stratified_abundance = sum(strat_total_abund_s, na.rm = T),
@@ -127,16 +139,29 @@ agg_spectra_bins <- function(l10_assigned, ...){
               .groups = "drop")
   
   
-  # join back in what the limits and labels are
-  l10_prepped <- left_join(l10_aggregates, l10_bin_structure)
-  # l10_prepped <- left_join(l10_aggregates, l10_bin_structure, by = "log10_bins")
+  # Join back in what the limits and labels are
+  # The defined bins and their labels enforce the size limits
+  l10_prepped <- left_join(x = l10_bin_structure, 
+                           y = l10_aggregates#, 
+                           #by = "log10_bins"
+                           )
+  #return(l10_prepped)
+  
+  
+  #### Fill Gaps of No abundance to preserve bins  ####
+  # This ensures that any size bin that is intended to be in use is actually used
+  l10_prepped <- l10_prepped %>% 
+    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
+           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
+           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
+           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
+  #return(l10_prepped)
   
   #### normalize abundances using the bin widths
   l10_prepped <- l10_prepped %>% 
-    mutate(normalized_abund = observed_abundance / bin_width,
-           normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
-           norm_strat_abund = stratified_abundance / bin_width,
-           norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund))
+    mutate(
+      normalized_abund = observed_abundance / bin_width,
+      norm_strat_abund = stratified_abundance / bin_width)
   
   # Add de-normalized abundances (abundance * bin midpoint)
   l10_prepped <- l10_prepped %>% 
@@ -146,7 +171,7 @@ agg_spectra_bins <- function(l10_assigned, ...){
   
   # Return the aggregations
   return(l10_prepped)
-  
+
 }
 
 
@@ -155,64 +180,60 @@ agg_spectra_bins <- function(l10_assigned, ...){
 
 ```
 
-### Classifying the Unclassified
 
-Some species (particularly in the South) do not have \`spec_class\` functional groups defined. This step reduces the amount of orphans by relabeling any of the obvious ones.
 
 ```{r}
+#| label: debug-bin-dropping
 
-# For reference, Kathy's group's gaps
-spec_class_gaps <- nefsc_size_bins %>% 
-  distinct(comname, spec_class) %>% 
-  filter(is.na(spec_class))
+# Southern New England in 1992 is losing 10^4 size bin still for some reason
 
-# Gaps in hare paper's functional groups
-hare_group_gaps <- nefsc_size_bins %>% 
-  distinct(comname, hare_group)  %>% 
-  filter(is.na(hare_group))
+# Looking into how the NA's pass through
 
-# Assign the Rest of the Unclassified Values
-spec_class_swap <- nefsc_size_bins %>% 
-  distinct(comname, spec_class, hare_group) %>% 
-  #filter(spec_class == "Unclassified") %>% 
-  mutate(
-    spec_class = case_when(
-      str_detect(comname, "ray|shark|sand tiger|skate") ~ "Elasmobranch",
-      str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
-      str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
-      str_detect(comname, "mackerel|herring|sardine") ~ "Pelagic",
-      str_detect(comname, "amberjack|spadefish") ~ "Reef",
-      TRUE ~ spec_class),
-    hare_group = case_when(
-      str_detect(comname, "flounder") ~ "groundfish",
-      str_detect(comname, "scup") ~ "reef",
-      str_detect(comname, "thread herring") ~ "coastal",
-      str_detect(comname, "dory") ~ "pelagic",
-      str_detect(comname, "sturgeon") ~ "diadromous",
-      TRUE ~ hare_group
-    )
-  )
+# So no fish >= 10^4g0
+test_case <- catch_size_bins %>% 
+  filter(survey_area == "GoM",
+         Year == 1992,
+         ind_weight_g <= 10^4)
+
+# We are losing grouping column information when the join happens, we also end up filling the
+# empties again here with NA
+agg_spectra_bins(
+  l10_assigned = test_case,
+  min_l10_bin = 0,
+  max_l10_bin = 4.5,
+  bin_increment = 0.5,
+  Year, survey_area) %>% 
+  glimpse()
 
 
+# whata if we complete the bin structure with group factors - works
+fake_bins <- define_l10_bins(0, 5, 0.5)# %>% 
+  #expand(distinct(test_case, survey_area, Year), left_lim)
 
-# Join the new ones in:
-nefsc_size_bins <- nefsc_size_bins %>% 
-  select(-spec_class, -hare_group) %>% 
-  left_join(spec_class_swap, by = "comname")
 ```
+
+
 
 ### Running the Aggregation
 
 ```{r}
+#| label: aggregate-bin-totals
 
 # Run it for the hare groups
 hare_group_aggregates <- agg_spectra_bins(
-  l10_assigned = nefsc_size_bins, 
-  Year, survey_area, hare_group)
+  l10_assigned = catch_size_bins, 
+  min_l10_bin = 0,
+  max_l10_bin = 4.5, 
+  bin_increment = 0.5,
+  Year, survey_area, hare_group
+  )
 
 # Run just the years so we can assure that the totals are the same:
 year_group_aggregates <- agg_spectra_bins(
-  l10_assigned = nefsc_size_bins, 
+  l10_assigned = catch_size_bins, 
+  min_l10_bin = 0,
+  max_l10_bin = 4.5, 
+  bin_increment = 0.5,
   Year, survey_area)
 
 
@@ -226,7 +247,7 @@ gom_90 <- filter(year_group_aggregates, Year == 1990, survey_area == "GoM")
 gom_90_check <- hare_group_aggregates %>% 
   filter( Year == 1990, survey_area == "GoM") %>% 
   group_by(Year, survey_area, log10_bins, left_lim, 
-           right_lim, bin_label, bin_width, bin_midpoint) %>% 
+           right_lim, bin_label, bin_width, bin_midpoint) %>% #glimpse()
   summarise(
     observed_abundance = sum(observed_abundance),
     observed_weight_g = sum(observed_weight_g),
@@ -292,7 +313,7 @@ compare_spectra_components <- function(
     summarise(norm_strat_abund = sum(norm_strat_abund),
               .groups = "drop") %>% 
     ggplot(aes(left_lim, norm_strat_abund)) +
-      geom_col(aes(fill = {{fill_group}}), position = "fill", color = "gray30", size = 0.1) +
+      geom_col(aes(fill = {{fill_group}}), position = "fill", color = "gray30") +
       scale_fill_gmri() +
       scale_x_continuous(breaks = seq(0, 7, by = 0.5), labels = math_format(10^.x)) +
       # Use this with position Fill
@@ -334,7 +355,7 @@ compare_spectra_components <- function(
                      label.y = 1, 
                      label.x = 0.9,
                      parse = TRUE) +
-        scale_x_continuous(breaks = seq(0, 7, by = 0.5), labels = math_format(10^.x)) +
+        scale_x_continuous(breaks = seq(0, 10, by = 0.5), labels = math_format(10^.x)) +
         scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
         facet_wrap(~survey_area, ncol = 1, scales = "free") +
         labs(x = "Individual Bodymass (g)", 
@@ -357,6 +378,8 @@ compare_spectra_components <- function(
 
 ```{r}
 #| label: early-regime-hare
+#| fig.height: 8
+#| fig.width: 8
 
 # What does 1970-2005 look like
 t <- compare_spectra_components(
@@ -365,7 +388,7 @@ t <- compare_spectra_components(
   filter_year = c(1970:2005), 
   fill_group = hare_group)
 
-t[[2]]
+t
 
 ```
 
@@ -373,6 +396,8 @@ t[[2]]
 
 ```{r}
 #| label: late-regime-hare2
+#| fig.height: 8
+#| fig-width: 10
 
 # What does 1996-2019 look like
 (t <- compare_spectra_components(
@@ -384,18 +409,69 @@ t[[2]]
 
 ```
 
-## Specific Years
+## Specific Years, Where Year is Critical
 
 This is what a single year looks like in the most recent regime, do we see any absences in lower size groups at a yearly step?
 
 ```{r}
 #| label: late-regime-hare
+#| fig.height: 8
+#| fig.width: 10
 
-# What does 1990 look like
+
+# Load the data before max size cutoff
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(catch_complete))
+
+
+# Run the pipeline without min/max filters
+all_sizes_prepped <- catch_complete %>% 
+  prep_sizeSpectra_data(lw_trawl_data = .) %>% 
+  assign_log10_bins(wmin_grams = ., l10_increment = 0.5)
+
+
+# # Catch of things larger than 10^5
+# all_sizes_prepped %>% filter(left_lim >= 5.5)
+
+
+
+#### Next steps before agregating:
+# catch_complete -> size_spectrum_prep
+# size_spectrum_prep:
+# a. prep_size_spectra_data - keep, does column formatting
+# b. min + max cutoffs - drop, for interrogating data
+# c. assign_l10_bins - keep
+# d. size_bin_formatting - drop, not used for estimation
+
+
+
+
+# Aggregate for all sizes on yr, area, functional group
+# all_sizes_hare <- agg_spectra_bins(
+all_sizes_hare <- aggregate_l10_bins(
+    l10_assigned = all_sizes_prepped, 
+    min_l10_bin = 0,
+    max_l10_bin = 5, 
+    bin_increment = 0.5,
+    Year, survey_area, hare_group)
+
+
+# Aggregate bodymass and abundance in the bins for all data, each year and region
+# all_sizes_yr_area <- agg_spectra_bins(
+all_sizes_yr_area <- aggregate_l10_bins(
+    l10_assigned = all_sizes_prepped, 
+    min_l10_bin = 0,
+    max_l10_bin = 5, 
+    bin_increment = 1,
+    Year, survey_area)
+
+
+
+# What does 2015 look like
 (t <- compare_spectra_components(
-  functional_group_aggregates = hare_group_aggregates, 
-  annual_aggregates = filter(year_group_aggregates, left_lim <= 4),
-  filter_year = c(1999), 
+  functional_group_aggregates = all_sizes_hare, 
+  annual_aggregates = all_sizes_yr_area,
+  filter_year = c(2015), 
   fill_group = hare_group))
 
 ```
@@ -404,27 +480,100 @@ This is what a single year looks like in the most recent regime, do we see any a
 
 ### When/Where are Large-Size Bins Missing
 
-This should be a table, but it would be useful to document where and how often the 10^4 and 10^5 size bins are used or not in the analysis. If 10^4 is routinely absent in some areas, should it be kept? What if it is the result of fishing, shouldn't the 0 be meaningful?
+This section is for documenting where and how often do fish in the 10^4 and 10^5 size bins get used/removed in the analysis. These are the sistuations where I am testing the impacts surrounding how I treat situations where:
+> If 10^4 is routinely absent in some areas, should it be kept? What if it is the result of fishing, shouldn't the 0 biomass be meaningful?
 
 ```{r}
+#| label: size-bin-presence-absence
+#| fig.height: 8
 
-# format breaks as n/2
-half_format <- function(x) {
-  .x <- format(x = x/2, digits = 3)
-  return(.x)
-}
+# What would all size aggregates be if they werent filtered:
+# i.e. all possible points on a spectrum
 
 
-# Plot em
-year_group_aggregates %>% 
-  complete(Year, survey_area, log10_bins) %>% 
-  mutate(
-    observed_abundance = ifelse(observed_abundance == 0, "Absent", "Present"),
-    log10_bins = as.numeric(as.character(log10_bins))) %>% 
-  ggplot(aes(Year, log10_bins, color = observed_abundance)) +
-  geom_point() +
-  scale_color_gmri(reverse = T) +
-  scale_y_continuous(breaks = seq(0,12, by = 2), 
-                     labels = half_format) +
-  facet_wrap(~survey_area, ncol = 1)
+# Flag for each group when it is present, there was no catch, or if there aree still NA's 
+agg_flags <- all_sizes_yr_area %>% 
+  mutate(observed_abundance = ifelse(observed_abundance == 1, "Absent", "Present")) 
+
+
+
+# Plot them
+agg_flags %>% 
+  ggplot(aes(Year, left_lim, fill = observed_abundance)) +
+  geom_tile(color = "gray15") +
+  scale_fill_gmri(reverse = T) +
+  scale_y_continuous(
+    breaks = seq(0,12, by = 1),#labels = half_format
+    labels = math_format(10^.x)) +
+  facet_wrap(~survey_area, ncol = 1) + 
+  labs(y = "MassSize Bin Left Limit (g)")
+
+
+# # Wtf is happening in SNE
+# year_group_aggregates %>% 
+#   filter(survey_area == "SNE", Year == 1992)
+
+
+# 
+# # Way to format axes breaks as n/2
+# half_format <- function(x) {
+#   .x <- format(x = x/2, digits = 3)
+#   return(.x)
+# }
+
 ```
+
+
+---
+
+### Classifying the Unclassified Species
+
+Some species (particularly in the South) do not have \`spec_class\` functional groups defined. This step reduces the amount of orphans by relabeling any of the obvious ones.
+
+```{r}
+#| label: species-labelling
+#| eval: false
+
+# This has all been added to targets
+
+
+# # For reference, Kathy's group's gaps
+# spec_class_gaps <- catch_size_bins %>% 
+#   distinct(comname, spec_class) %>% 
+#   filter(is.na(spec_class))
+# 
+# # Gaps in hare paper's functional groups
+# hare_group_gaps <- catch_size_bins %>% 
+#   distinct(comname, hare_group)  %>% 
+#   filter(is.na(hare_group))
+# 
+# # Assign the Rest of the Unclassified Values
+# spec_class_swap <- catch_size_bins %>% 
+#   distinct(comname, spec_class, hare_group) %>% 
+#   #filter(spec_class == "Unclassified") %>% 
+#   mutate(
+#     spec_class = case_when(
+#       str_detect(comname, "ray|shark|sand tiger|skate") ~ "Elasmobranch",
+#       str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
+#       str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
+#       str_detect(comname, "mackerel|herring|sardine") ~ "Pelagic",
+#       str_detect(comname, "amberjack|spadefish") ~ "Reef",
+#       TRUE ~ spec_class),
+#     hare_group = case_when(
+#       str_detect(comname, "flounder") ~ "groundfish",
+#       str_detect(comname, "scup") ~ "reef",
+#       str_detect(comname, "thread herring") ~ "coastal",
+#       str_detect(comname, "dory") ~ "pelagic",
+#       str_detect(comname, "sturgeon") ~ "diadromous",
+#       TRUE ~ hare_group
+#     )
+#   )
+# 
+# 
+# 
+# # Join the new ones in:
+# catch_size_bins <- catch_size_bins %>% 
+#   select(-spec_class, -hare_group) %>% 
+#   left_join(spec_class_swap, by = "comname")
+```
+
