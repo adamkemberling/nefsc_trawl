@@ -1,26 +1,33 @@
 ---
 title: "Size Spectrum Species Sensitivity"
-author: "Adam A. Kemberling"
+author: 
+    name: "Adam A. Kemberling"
+    title: "Quantitative Research Associate"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+  Supplemental materials for size spectrum manuscript.
 date: "`r Sys.Date()`"
-output: 
-  html_document:
-    toc: TRUE
-    toc_float:
-        collapsed: FALSE
-    code_folding: hide
-editor_options: 
-  chunk_output_type: console
+format:
+  html:
+    self-contained: true
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+    toc-depth: 3
+editor: source
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig.align: "center"
+  comment: ""
+  fig.width: 8
+  fig.height: 6
 ---
 
-```{r setup, include=FALSE}
-
-# Chunk Options
-knitr::opts_chunk$set(echo = TRUE, 
-                      message = F, 
-                      warning = F, 
-                      comment = "", 
-                      fig.height = 6, 
-                      fig.width = 8)
+```{r setup}
 
 
 ####  Packages  ####
@@ -34,30 +41,7 @@ library(directlabels)
 library(treemapify)
 
 # set theme
-theme_set(theme_minimal() + 
-            theme(
-              # Titles
-              plot.title = element_text(hjust = 0.5),
-              # Axes
-              axis.line.y = element_line(),
-              axis.ticks.y = element_line(), 
-              axis.line.x = element_line(),
-              axis.ticks.x = element_line(), 
-              axis.text = element_text(size = 11),
-              # Facets
-              strip.text = element_text(color = "white", 
-                                        face = "bold",
-                                        size = 11),
-              strip.background = element_rect(
-                color = "white", 
-                fill = "#36454F", 
-                size = 1, 
-                linetype="solid"), 
-              # Legends
-              legend.position = "bottom", 
-              legend.background = element_rect(fill = "transparent", 
-                                               color = "black"))
-          )
+theme_set(theme_gmri())
 ```
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
@@ -74,49 +58,52 @@ The biological data used as a starting point is the same "node" used for the siz
 # Access Biological Data with {gmRi}
 # nmfs_bio <- gmRi::gmri_survdat_prep(survdat_source = "bio")
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(nefsc_1g_binned))
+                tar_load(catch_1g_labelled))
 
 
 # Get Yearly and Regionally averaged Biomasses
-yr_szn_overall <- nefsc_1g_binned %>% 
+yr_szn_overall <- catch_1g_labelled %>% 
   group_by(Year, survey_area) %>% 
   summarise(overall_bio = sum(strat_total_lwbio_s, na.rm = T),
             overall_abund = sum(strat_total_abund_s, na.rm = T),
             .groups = "drop")
 
 # Get what it is for each species
-sp_yr_szn <- nefsc_1g_binned %>% 
-  group_by(comname, spec_class, fishery, hare_group, Year, survey_area) %>% 
+sp_yr_szn <- catch_1g_labelled %>% 
+  group_by(comname, hare_group, fishery, Year, survey_area) %>% 
   summarise(sp_bio = sum(strat_total_lwbio_s, na.rm = T),
             sp_abund = sum(strat_total_abund_s, na.rm = T),
             .groups = "drop")
 
 
 # Join in the overall, get the fraction and what the percent would be
-perc_bio <- left_join(sp_yr_szn, yr_szn_overall, by = c("Year", "survey_area")) %>% 
+perc_bio <- left_join(yr_szn_overall, sp_yr_szn, by = c("Year", "survey_area")) %>% 
   mutate(
     bio_frac = sp_bio / overall_bio,
     abund_frac = sp_abund / overall_abund,
     bio_perc = bio_frac * 100,
-    abund_perc = abund_frac * 100
-  )
+    abund_perc = abund_frac * 100)
 ```
 
 
-### Overall Biomass Distributions {.tabset}
+### Overall Biomass Distributions
 
 ```{r}
 # perc_bio overall rankings
 region_overalls <- perc_bio %>% 
-  group_by(comname, spec_class, fishery, hare_group, survey_area) %>% 
+  group_by(comname, hare_group, fishery,survey_area) %>% 
   summarise(avg_bio_perc   = mean(bio_perc, na.rm = T),
             avg_abund_perc = mean(abund_perc, na.rm = T),
             .groups = "drop")
 ```
 
+
+::: panel-tabset
 ####  Biomass
 
 ```{r}
+#| fig.height: 8
+
 # Treemaps
 ggplot(region_overalls) +
   geom_treemap(aes(area = avg_bio_perc, fill = comname)) +
@@ -130,6 +117,8 @@ ggplot(region_overalls) +
 #### Abundance
 
 ```{r}
+#| fig.height: 8
+
 # Treemaps
 ggplot(region_overalls) +
   geom_treemap(aes(area = avg_abund_perc, fill = comname)) +
@@ -140,25 +129,27 @@ ggplot(region_overalls) +
   labs(title = "Fraction of Stratified Abundance: 1970-2019")
 ```
 
+:::
 
+### Yearly Patterns
 
-### Yearly Patterns {.tabset}
-
+::: panel-tabset
 #### Biomass
 
 ```{r}
+#| fig.height: 8
+
 # Play around with plotting yearly influences
 ggplot(perc_bio, aes(Year, bio_perc)) +
-  # geom_point(aes(color = comname), show.legend = F) +
-  # geom_line(aes(color = comname, group = comname), show.legend = F) +
-  geom_col(aes(fill = spec_class)) +
-  facet_grid(survey_area~.) +
+  geom_col(aes(fill = hare_group)) +
+  facet_wrap(~survey_area, ncol = 1) +
   scale_color_gmri() +
   scale_fill_gmri() +
   theme(legend.position = "bottom") +
   labs(y = "Percent of Yearly Biomass",
        x = NULL,
-       fill = "")
+       fill = "",
+       title = "Percent of Stratified Biomass")
 
 # 
 
@@ -167,24 +158,25 @@ ggplot(perc_bio, aes(Year, bio_perc)) +
 ####  Abundance
 
 ```{r}
+#| fig.height: 8
+
 # Play around with plotting yearly influences
 ggplot(perc_bio, aes(Year, abund_perc)) +
-  # geom_point(aes(color = comname), show.legend = F) +
-  # geom_line(aes(color = comname, group = comname), show.legend = F) +
-  geom_col(aes(fill = spec_class)) +
-  facet_grid(survey_area~.) +
-  #facet_grid(spec_class~survey_area) +
+  geom_col(aes(fill = hare_group)) +
+  facet_wrap(~survey_area, ncol = 1) +
+  #facet_grid(hare_group~survey_area) +
   scale_color_gmri() +
   scale_fill_gmri() +
   theme(legend.position = "bottom") +
-  labs(y = "Percent of Yearly Biomass",
+  labs(y = "Percent of Yearly Abundance",
        x = NULL,
-       fill = "")
+       fill = "",
+       title = "Percent of Stratified Abundance")
 
 # 
 
 ```
-
+:::
 
 ## Loading Sensitivity Results
 
@@ -201,23 +193,26 @@ sens_results <- species_sensitivity_shifts %>%
 
 
 # Join in the biomass info
+#names(sens_results)[which(names(sens_results) %in% names(perc_bio))]
 sens_results <- sens_results %>% 
-  select(-spec_class) %>% 
+  select(-c(hare_group)) %>% 
   left_join(perc_bio,
             by = c("Year" = "Year", 
                    "survey_area" = "survey_area", 
-                   "spec_omit" = "comname"))
+                   "spec_omit" = "comname")) %>% 
+  drop_na() # All species are not present in all areas each year
 
 ```
 
-### Single Species Removal Impacts {.tabset}
+### Single Species Removal Impacts
 
 ```{r}
+# Get averages across all areas and years to rank them
 sens_ranks <- sens_results %>% 
   group_by(
     `Species Removed` = spec_omit, 
     Area = survey_area, 
-    Guild = spec_class, 
+    Guild = hare_group, 
     Fishery = fishery) %>% 
   summarise(`Avg. Slope Shift` = mean(slope_shift, na.rm = T),
             `Avg. Slope Shift (z)` = mean(slope_shift_z, na.rm = T),
@@ -225,7 +220,7 @@ sens_ranks <- sens_results %>%
   mutate(across(where(is.numeric), round, 2))
 ```
 
-
+::: panel-tabset
 ####  Slope Increase
 
 
@@ -255,10 +250,11 @@ sens_ranks %>%
   )
 ```
 
+:::
 
 
 
-### Regional Influence Heatmaps {.tabset}
+### Regional Influence Heatmaps
 
 ```{r}
 # Do we need to show the relative influence?
@@ -308,8 +304,6 @@ influence_heatmap <- function(sens_results,
                          na.value = "gray20") +
     scale_x_continuous(expand = expansion(add = c(0,0))) +
     facet_wrap(~survey_area, ncol = 2, scales = "free") +
-    #facet_grid(spec_class~survey_area, scales = "free") +
-    #facet_grid(fishery~survey_area, scales = "free") +
     theme(legend.position = "bottom", 
           legend.title = element_text(angle = 0), 
           axis.text.y = element_text(size = 7),
@@ -325,12 +319,15 @@ influence_heatmap <- function(sens_results,
 }
 ```
 
-#### Gulf of Maine {.tabset .tabset-pills}
+::: panel-tabset
+#### Gulf of Maine
 
 ```{r}
+#| fig.height: 8
+
 # GOM
 sens_results %>% 
-  #filter(spec_class == "Groundfish") %>% 
+  #filter(hare_group == "Groundfish") %>% 
 influence_heatmap(filt_area =  "GoM", lims = c(-2,2))
 
 
@@ -339,6 +336,8 @@ influence_heatmap(filt_area =  "GoM", lims = c(-2,2))
 #### Georges Bank
 
 ```{r}
+#| fig.height: 8
+
 # GOM
 influence_heatmap(sens_results, "GB", lims = c(-2,2))
 
@@ -348,6 +347,8 @@ influence_heatmap(sens_results, "GB", lims = c(-2,2))
 #### Southern New England
 
 ```{r}
+#| fig.height: 8
+
 # GOM
 influence_heatmap(sens_results, "SNE", lims = c(-4,4))
 
@@ -357,11 +358,15 @@ influence_heatmap(sens_results, "SNE", lims = c(-4,4))
 #### Mid-Atlantic Bight
 
 ```{r}
+#| fig.height: 8
+
 # GOM
 influence_heatmap(sens_results, "MAB", lims = c(-4,4))
 
 
 ```
+:::
+
 
 ### Correlation to Biomass Fraction
 
@@ -370,7 +375,7 @@ sens_results %>%
   ggplot(aes(bio_frac, slope_shift_z)) +
   geom_point(alpha = 0.3) +
   geom_smooth(formula = "y ~ x", method = "lm") +
-  labs(x = "Fration of Biomass", y = "Shift in Spectra Slope (z)")
+  labs(x = "Fraction of Biomass", y = "Shift in Spectra Slope (z)")
 ```
 
 
@@ -381,8 +386,7 @@ I think this might help get around the "wash out" of the heatmap. The color scal
 
 
 
-
-### Singe Species Checks: {.tabset .tabset-pills}
+### Singe Species Checks: 
 
 ```{r}
 # plot a species:
@@ -439,50 +443,67 @@ plot_spectra_influence <- function(sens_results, filter_spec, filter_area){
 
 ```
 
-
-#### Haddock (nowhere)
+::: panel-tabset
+#### Haddock (GOM)
 
 ```{r}
+#| fig.height: 8
+
+
 plot_spectra_influence(sens_results = sens_results, 
                        filter_spec = "haddock", 
                        filter_area = "GoM")
 ```
 
 
-#### Spiny Dogfish
+#### Spiny Dogfish (SNE)
 
 ```{r}
+#| fig.height: 8
+
 plot_spectra_influence(sens_results = sens_results, 
-                       filter_spec = "atlantic herring", 
+                       filter_spec = "spiny dogfish", 
                        filter_area = "SNE")
 ```
 
-#### Silver Hake (GoM & GB)
+#### Silver Hake (GoM)
 
 ```{r}
+#| fig.height: 8
+
 plot_spectra_influence(sens_results = sens_results, 
                        filter_spec = "silver hake", 
                        filter_area = "GoM")
 ```
 
+### Silver Hake (GB)
+
 ```{r}
+#| fig.height: 8
+
 plot_spectra_influence(sens_results = sens_results, 
                        filter_spec = "silver hake", 
                        filter_area = "GB")
 ```
 
-#### Butterfish
+#### Butterfish (GOM)
 
 ```{r}
+#| fig.height: 8
+
 plot_spectra_influence(sens_results = sens_results, 
                        filter_spec = "butterfish", 
                        filter_area = "GoM")
 ```
 
-#### Atlantic Cod
+#### Atlantic Cod (GOM)
 
 ```{r}
+#| fig.height: 8
+
 plot_spectra_influence(sens_results = sens_results, 
                        filter_spec = "atlantic cod", 
                        filter_area = "GoM")
 ```
+
+:::

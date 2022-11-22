@@ -258,7 +258,8 @@ ggplot() +
   theme_bw() +
   map_theme(legend.position = "bottom", 
             legend.background = element_rect(fill = "white")) +
-  guides(fill = guide_legend(title = "", nrow = 2))
+  guides(fill = guide_legend(title = "", nrow = 2)) +
+  labs(title = "Groundfish Survey Regions")
 ```
 
 Data from the survey was grouped by strata to form geographically meaningful sub-regions: Gulf of Maine, Georges Bank, Southern New England, Mid-Atlantic Bight. For each region, we developed several time series indicators:

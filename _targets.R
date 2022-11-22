@@ -186,7 +186,15 @@ list(
   # # Create parallel groups that do not contain a species at each iteration
   # get the l1- slope info
   tar_target(species_ommission_dat,
-             species_omit_spectra(start_dat = catch_1g_labelled)),
+             species_omit_spectra(
+               start_dat = catch_1g_labelled,
+             .group_cols = c("Year", "survey_area"),
+             # To filter the input data
+             min_weight_g = analysis_options[["min_input_weight_g"]],
+             # These two enforce the bins used to estimate the spectra
+             min_l10_bin = analysis_options[["min_l10_bin"]], 
+             max_l10_bin = analysis_options[["max_l10_bin"]], 
+             bin_increment = analysis_options[["l10_bin_width"]])),
 
 
 

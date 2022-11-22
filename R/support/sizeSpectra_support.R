@@ -111,7 +111,7 @@ prep_sizeSpectra_data <- function(lw_trawl_data){
 #' @description Supplement the GMRI cleanup step's species name and functional group assignments to 
 #' pick up remaining stragglers.
 #'
-#' @param species_dat Dataframe containing common name "comname", species class "spec_class",
+#' @param species_dat Dataframe containing common name "comname", species class "hare_group",
 #' and functional group "hare_group" with which to supplement.
 #'
 #' @return
@@ -346,14 +346,14 @@ add_missing_groups <- function(group_dataframe){
   szn_flag    <- "season" %in% names(group_dataframe)
   area_flag   <- "survey_area" %in% names(group_dataframe)
   decade_flag <- "decade" %in% names(group_dataframe)
-  class_flag  <- "spec_class" %in% names(group_dataframe)
+  class_flag  <- "hare_group" %in% names(group_dataframe)
   
   # flag for which ones to build
   flag_checks <- c("Year"        = yr_flag, 
                    "season"      = szn_flag, 
                    "survey_area" = area_flag, 
                    "decade"      = decade_flag,
-                   "spec_class"  = class_flag)
+                   "hare_group"  = class_flag)
   
   # Columns to add as "all"
   cols_2_add <- flag_checks[which(flag_checks == FALSE)] 
@@ -977,8 +977,8 @@ aggregate_l10_bins <- function(
 #' @title Process Size Spectrum Slope and Intercept using log10 bins for a group of data
 #'
 #' @param wmin_grams Catch data prepped using prep_wmin_wmax
+#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
 #' @param min_weight_g Minimum weight cutoff in grams
-#' @param .group_cols 
 #' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
 #' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
 #' @param bin_increment The bin-width on log scale that separates each bin
@@ -996,9 +996,7 @@ group_l10_spectra <- function(wmin_grams,
   
   
   # 1. Set bodymass lower limit, and assign bin labels
-  # l10_assigned <- assign_log10_bins(wmin_grams) # done as a prep
   l10_assigned <- filter(wmin_grams, wmin_g >= min_weight_g )
-  
   
   
   # 2. Build group_var from desired grouping columns
@@ -1225,21 +1223,48 @@ warmem_l10_estimates <- function(wmin_grams,
 ####______________________####
 ####  Species Omission Sensitivity  ####
 
-species_omit_spectra <- function(start_dat = catch_1g_binned){
+
+
+
+
+#' @title Perform Leave-One-Out Size Spectra Estimation
+#'
+#' @description Iterates through the input data for the size spectrum analysis,
+#' performing binned size spectrum slope estimation with a single species removed. 
+#'
+#'
+#' @param start_dat Input dataframe that could be passed to `group_l10_spectra()`
+#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
+#' @param min_weight_g Minimum weight cutoff in grams
+#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
+#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
+#' @param bin_increment The bin-width on log scale that separates each bin
+#'
+#' @return
+#' @export
+#'
+#' @examples
+species_omit_spectra <- function(
+    start_dat = catch_1g_binned,
+    .group_cols = c("Year", "survey_area"),
+    min_weight_g = 1,
+    min_l10_bin = 0,
+    max_l10_bin = 4.5,
+    bin_increment = 0.5){
   
-  # Get a list of all the species
+  
+  # 1. Get a list of all the species to iterate through
   spec_list <- start_dat  %>% 
     distinct(comname) %>% 
     pull(comname)
   
-  # Set names for vector
+  # Set names for that vector
   spec_list <- setNames(spec_list, spec_list)
   
-  
-  # For each one, filter comname != species
+  # 2. For each one, filter comname != species
   # label group as the species omitted
+  # Perform group_l10_spectra
   omit_dat <- map_dfr(spec_list, function(species_id){
-    
     
     # Filter the species out
     filtered_dat <- start_dat %>% 
@@ -1248,12 +1273,12 @@ species_omit_spectra <- function(start_dat = catch_1g_binned){
     
     # Run the bare essential spectra information for memory sake
     spectra_res <-  group_l10_spectra(
-      .group_cols = c("Year", "survey_area"),
-      wmin_grams = filtered_dat,
-      min_weight_g = 1,
-      min_l10_bin = 0,
-      max_l10_bin = 4.5,
-      bin_increment = 0.5)
+      .group_cols   = .group_cols,
+      wmin_grams    = filtered_dat,
+      min_weight_g  = min_weight_g,
+      min_l10_bin   = min_l10_bin,
+      max_l10_bin   = max_l10_bin,
+      bin_increment = bin_increment)
     
     # Rename the columns so we can join them in to the data 
     # That had all species more easily
@@ -1286,15 +1311,13 @@ species_omit_spectra <- function(start_dat = catch_1g_binned){
 
 
 
-
-
 species_omit_changes <- function(spec_omit_results,
                                   all_spec_results){
   
   
   # join thew species ommissions to the all species results
   changes_d <- left_join(spec_omit_results, all_spec_results,
-                         by = c("group_var", "Year", "season", "survey_area", "spec_class", "decade"))
+                         by = c("group_var", "Year", "season", "survey_area", "hare_group", "decade"))
   
   # Get the variance in the original data for each region
   region_var_df <- all_spec_results %>% 
@@ -1956,7 +1979,7 @@ group_size_metrics <- function(
                     decade, 
                     season, 
                     survey_area,
-                    spec_class), as.character))
+                    hare_group), as.character))
   
   # Return the results
   return(group_results)

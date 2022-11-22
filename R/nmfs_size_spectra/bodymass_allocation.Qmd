@@ -1,5 +1,5 @@
 ---
-title: "NEFSC Trawl Bodymass Distribution"
+title: "NEFSC Trawl Bodymass Distribution Allocations"
 author: 
     name: "Adam A. Kemberling"
     title: "Quantitative Research Associate"
