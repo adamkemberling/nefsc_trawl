@@ -619,51 +619,51 @@ warmem_isd_estimates <- function(wmin_grams,
   
   # 2. Set up the factor groupings we want to compare : 
   
-  ####_ 1.  All years, every region ####
-  message("Calculating ISD exponent with all data")
-  g1_res <- dbin_truncated %>% 
-    mutate(group_var = "all_data") %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("group_var")) 
+  # ####_ 1.  All years, every region 
+  # message("Calculating ISD exponent with all data")
+  # g1_res <- dbin_truncated %>% 
+  #   mutate(group_var = "all_data") %>% 
+  #   group_isd_estimation(min_weight_g = min_weight_g, 
+  #                        max_weight_g = max_weight_g,
+  #                        isd_xmin = isd_xmin,
+  #                        isd_xmax = isd_xmax,
+  #                        abundance_vals = abundance_vals,
+  #                        .group_cols = c("group_var")) 
   
   
-  ####_ 2. All Years, each season ####
-  message("Calculating ISD exponent for each season")
-  g2_res <- dbin_truncated %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("season")) 
+  # ####_ 2. All Years, each season 
+  # message("Calculating ISD exponent for each season")
+  # g2_res <- dbin_truncated %>% 
+  #   group_isd_estimation(min_weight_g = min_weight_g, 
+  #                        max_weight_g = max_weight_g,
+  #                        isd_xmin = isd_xmin,
+  #                        isd_xmax = isd_xmax,
+  #                        abundance_vals = abundance_vals,
+  #                        .group_cols = c("season")) 
   
   
-  ####_ 3. All Years, regions  ####
-  message("Calculating ISD exponent for each region")
-  g3_res <- dbin_truncated  %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("survey_area"))
+  # ####_ 3. All Years, regions 
+  # message("Calculating ISD exponent for each region")
+  # g3_res <- dbin_truncated  %>% 
+  #   group_isd_estimation(min_weight_g = min_weight_g, 
+  #                        max_weight_g = max_weight_g,
+  #                        isd_xmin = isd_xmin,
+  #                        isd_xmax = isd_xmax,
+  #                        abundance_vals = abundance_vals,
+  #                        .group_cols = c("survey_area"))
   
   
-  ####_ 4. All Years, seasons * regions  ####
-  message("Calculating ISD exponent for season * region")
-  g4_res <- dbin_truncated %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("season", "survey_area"))
+  # ####_ 4. All Years, seasons * regions 
+  # message("Calculating ISD exponent for season * region")
+  # g4_res <- dbin_truncated %>% 
+  #   group_isd_estimation(min_weight_g = min_weight_g, 
+  #                        max_weight_g = max_weight_g,
+  #                        isd_xmin = isd_xmin,
+  #                        isd_xmax = isd_xmax,
+  #                        abundance_vals = abundance_vals,
+  #                        .group_cols = c("season", "survey_area"))
   
-  ####_ 5. Every year, entire survey  ####
+  ####_ 5. Every year, entire survey 
   message("Calculating ISD exponent for each year")
   g5_res <- dbin_truncated  %>% 
     group_isd_estimation(min_weight_g = min_weight_g, 
@@ -673,7 +673,7 @@ warmem_isd_estimates <- function(wmin_grams,
                          abundance_vals = abundance_vals,
                          .group_cols = c("Year")) 
   
-  ####_ 6. every year, every region  ####
+  ####_ 6. every year, every region 
   message("Calculating ISD exponent for each year in each region")
   g6_res <- dbin_truncated  %>% 
     group_isd_estimation(min_weight_g = min_weight_g, 
@@ -683,7 +683,7 @@ warmem_isd_estimates <- function(wmin_grams,
                          abundance_vals = abundance_vals,
                          .group_cols = c("Year", "survey_area")) 
   
-  ####_ 7. every year, only seasons  ####
+  ####_ 7. every year, only seasons 
   message("Calculating ISD exponent for each year in each season")
   g7_res <- dbin_truncated %>% 
     group_isd_estimation(min_weight_g = min_weight_g, 
@@ -694,7 +694,7 @@ warmem_isd_estimates <- function(wmin_grams,
                          .group_cols = c("Year", "season"))
   
   
-  ####_ 8. every year, region * season  ####
+  ####_ 8. every year, region * season 
   message("Calculating ISD exponent for each year in each region, for every season")
   g8_res <- dbin_truncated %>% 
     group_isd_estimation(min_weight_g = min_weight_g, 
@@ -705,7 +705,7 @@ warmem_isd_estimates <- function(wmin_grams,
                          .group_cols = c("Year", "season", "survey_area")) 
   
   
-  # ####_ 9. Decades  ####
+  # ####_ 9. Decades 
   # message("Calculating ISD exponent for each decade")
   # g9_res <- dbin_truncated %>% 
   #   group_isd_estimation(min_weight_g = min_weight_g,
@@ -713,7 +713,7 @@ warmem_isd_estimates <- function(wmin_grams,
   #                           .group_cols = c("decade")) 
   # 
   # 
-  # ####_ 10. Decades and area  ####
+  # ####_ 10. Decades and area 
   # message("Calculating ISD exponent for each decade in each area")
   # g10_res <- dbin_truncated %>% 
   #   group_isd_estimation(min_weight_g = min_weight_g,
@@ -724,10 +724,10 @@ warmem_isd_estimates <- function(wmin_grams,
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "Overall"                        = g1_res,
-      "only seasons"                   = g2_res,
-      "only regions"                   = g3_res,
-      "region * seasons"               = g4_res,
+      # "Overall"                        = g1_res,
+      # "only seasons"                   = g2_res,
+      # "only regions"                   = g3_res,
+      # "region * seasons"               = g4_res,
       "single years"                   = g5_res,
       "single years * region"          = g6_res,
       "single years * season "         = g7_res,
@@ -1130,68 +1130,68 @@ warmem_l10_estimates <- function(wmin_grams,
   
   # 2. Set up the factor groupings we want to compare : 
   
-  ####_ 1.  All years, every region ####
-  message("Calculating log(10) size spectrum with all data")
-  g1_res <- l10_assigned_trunc %>% 
-    mutate(group_var = "all_data") %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                       .group_cols = c("group_var")) 
+  # ####_ 1.  All years, every region
+  # message("Calculating log(10) size spectrum with all data")
+  # g1_res <- l10_assigned_trunc %>% 
+  #   mutate(group_var = "all_data") %>% 
+  #   group_l10_spectra(min_weight_g = min_weight_g, 
+  #                      .group_cols = c("group_var")) 
   
   
-  ####_ 2. All Years, each season ####
-  message("Calculating log(10) size spectrum for each season")
-  g2_res <- l10_assigned_trunc %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                       .group_cols = c("season")) 
+  # ####_ 2. All Years, each season
+  # message("Calculating log(10) size spectrum for each season")
+  # g2_res <- l10_assigned_trunc %>% 
+  #   group_l10_spectra(min_weight_g = min_weight_g, 
+  #                      .group_cols = c("season")) 
   
   
-  ####_ 3. All Years, regions  ####
-  message("Calculating log(10) size spectrum for each region")
-  g3_res <- l10_assigned_trunc  %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                       .group_cols = c("survey_area"))
+  # ####_ 3. All Years, regions 
+  # message("Calculating log(10) size spectrum for each region")
+  # g3_res <- l10_assigned_trunc  %>% 
+  #   group_l10_spectra(min_weight_g = min_weight_g, 
+  #                      .group_cols = c("survey_area"))
   
   
-  ####_ 4. All Years, seasons * regions  ####
-  message("Calculating log(10) size spectrum for season * region")
-  g4_res <- l10_assigned_trunc %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                       .group_cols = c("season", "survey_area"))
+  # ####_ 4. All Years, seasons * regions 
+  # message("Calculating log(10) size spectrum for season * region")
+  # g4_res <- l10_assigned_trunc %>% 
+  #   group_l10_spectra(min_weight_g = min_weight_g, 
+  #                      .group_cols = c("season", "survey_area"))
   
-  ####_ 5. Every year, entire survey  ####
+  ####_ 5. Every year, entire survey 
   message("Calculating log(10) size spectrum slope each year")
   g5_res <- l10_assigned_trunc  %>% 
     group_l10_spectra(min_weight_g = min_weight_g, 
                      .group_cols = c("Year")) 
   
-  ####_ 6. every year, every region  ####
+  ####_ 6. every year, every region 
   message("Calculating log(10) size spectrum slope each year in each region")
   g6_res <- l10_assigned_trunc  %>% 
     group_l10_spectra(min_weight_g = min_weight_g, 
                      .group_cols = c("Year", "survey_area")) 
   
-  ####_ 7. every year, only seasons  ####
+  ####_ 7. every year, only seasons 
   message("Calculating log(10) size spectrum slope each year in each season")
   g7_res <- l10_assigned_trunc %>% 
     group_l10_spectra(min_weight_g = min_weight_g, 
                      .group_cols = c("Year", "season"))
   
   
-  ####_ 8. every year, region * season  ####
+  ####_ 8. every year, region * season 
   message("Calculating log(10) size spectrum slope each year in each region, for every season")
-  g8_res <- l10_assigned_trunc %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                     .group_cols = c("Year", "season", "survey_area")) 
+  g8_res <- l10_assigned_trunc %>%
+    group_l10_spectra(min_weight_g = min_weight_g,
+                     .group_cols = c("Year", "season", "survey_area"))
   
   
-  # ###_ 9. Decades  ####
+  # ###_ 9. Decades 
   # message("Calculating log(10) size spectrum slope each decade")
   # g9_res <- l10_assigned_trunc %>% 
   #   group_l10_spectra(min_weight_g = min_weight_g,
   #                    .group_cols = c("decade")) 
   # 
   # 
-  # ###_ 10. Decades and area  ####
+  # ###_ 10. Decades and area 
   # message("Calculating log(10) size spectrum slope each decade in each area")
   # g10_res <- l10_assigned_trunc %>% 
   #   group_l10_spectra(min_weight_g = min_weight_g,
@@ -1201,14 +1201,14 @@ warmem_l10_estimates <- function(wmin_grams,
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "Overall"                        = g1_res,
-      "only seasons"                   = g2_res,
-      "only regions"                   = g3_res,
-      "region * seasons"               = g4_res,
+      # "Overall"                        = g1_res,
+      # "only seasons"                   = g2_res,
+      # "only regions"                   = g3_res,
+      # "region * seasons"               = g4_res,
       "single years"                   = g5_res,
       "single years * region"          = g6_res,
       "single years * season"          = g7_res,
-      "single years * season * region" = g8_res#,
+       "single years * season * region" = g8_res#,
       # "decades"                        = g9_res,
       # "decades * region"               = g10_res
       ), 

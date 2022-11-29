@@ -111,60 +111,6 @@ catch_size_bins <- catch_1g_labelled
 
 The biological data was filtered prior to doing the size spectrum analysis so that any individuals smaller than 1g were removed. Then to dig into where the biomass andd abundances were distributed I've made some size bins to help tease out what the community looks like.
 
-```{r}
-# # Cut up discrete length and weight bins
-# catch_size_bins <- catch_1g %>% 
-#   mutate(
-#     length_bin = case_when(
-#       length_cm <= 5   ~ "0 - 5cm",
-#       length_cm <= 10  ~ "5 - 10cm",
-#       length_cm <= 25  ~ "10 - 25cm",
-#       length_cm <= 50  ~ "25 - 50cm",
-#       length_cm <= 75  ~ "50 - 75cm",
-#       length_cm <= 100 ~ "75 - 100cm",
-#       length_cm >= 100 ~ ">= 100cm"),
-#     length_bin = factor(length_bin, levels = c(
-#       "0 - 5cm", "5 - 10cm", "10 - 25cm",
-#       "25 - 50cm", "50 - 75cm", "75 - 100cm", ">= 100cm")))
-# 
-# 
-# # Weight bins
-# catch_size_bins <- catch_size_bins %>% 
-#   mutate(
-#     weight_bin = case_when(
-#       ind_weight_kg <= 0.001 ~ "0 - 1g",
-#       ind_weight_kg <= 0.005 ~ "1 - 5g",
-#       ind_weight_kg <= 0.010 ~ "5 - 10g",
-#       ind_weight_kg <= 0.050 ~ "10 - 50g",
-#       ind_weight_kg <= 0.100 ~ "50 - 100g",
-#       ind_weight_kg <= 0.500 ~ "100 - 500g",
-#       ind_weight_kg <= 1.000 ~ ".5 - 1kg",
-#       ind_weight_kg <= 5.000 ~ "1 - 2kg",
-#       ind_weight_kg <= 5.000 ~ "2 - 5kg",
-#       ind_weight_kg <= 10.00 ~ "5 - 10kg",
-#       ind_weight_kg >= 10.00 ~ ">= 10kg" ),
-#     weight_bin = factor(weight_bin, levels = c(
-#       "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
-#       "50 - 100g", "100 - 500g", ".5 - 1kg",
-#       "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
-# 
-# 
-# # Rename the functional groups
-# catch_size_bins <- catch_size_bins %>% 
-#   mutate(
-#     spec_class = case_when(
-#       spec_class == "gf"  ~ "Groundfish",
-#       spec_class == "pel" ~ "Pelagic",
-#       spec_class == "dem" ~ "Demersal",
-#       spec_class == "el"  ~ "Elasmobranch",
-#       spec_class == "<NA>" ~ "NA"))
-# 
-# # Make regions go N->S
-# catch_size_bins <- catch_size_bins %>% 
-#   mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
-#          season = factor(season, levels = c("Spring", "Fall")))
-
-```
 
 **Group Summary Functions**
 
@@ -805,12 +751,12 @@ Starting data used for both methods was the same. A minimum individual biomass o
 
 ```{r}
 # Pull the group ID for the slopes grouped on year, season, and region
-warmem_group_slopes <- size_spectrum_indices %>% 
+yr_region_season_res <- size_spectrum_indices %>% 
   filter(`group ID`== "single years * season * region")
 
 
 # Or just regions and years
-year_region_slopes <- size_spectrum_indices %>% 
+yr_region_res <- size_spectrum_indices %>% 
   filter(`group ID` == "single years * region")
 ```
 
@@ -878,7 +824,7 @@ ggplot(fgroup_area$weight_bins,
 
 
 
-## Edwards Methodology
+## Individual Size Distribution Exponents
 
 The Edwards methodology differs from the other methods for estimating size spectra by avoiding the subjective decisions around how to bin data prior to fitting the log-linear regression.
 
@@ -894,16 +840,16 @@ The next difference is that the individual body size data is presumed to follow 
 ```{r}
 
 # Just years and regions
-(ss_patterns <- year_region_slopes %>% 
+(ss_patterns <- yr_region_res %>% 
   ggplot(aes(yr, b, color = survey_area)) +
-  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_line(aes(group = survey_area), linetype = 1, alpha = 1) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x, 
-              alpha = 0.2) +
+  # geom_smooth(method = "lm", formula = y ~ x,
+  #             alpha = 0.2) +
   facet_wrap(~survey_area, ncol = 1) +
   scale_color_gmri() +
   labs(x = "", 
-       y = "Size Spectrum Slope (b)", 
+       y = "Exponent of Individual Size Distribution (Size Spectrum Slope b)", 
        color = "",
        title = "Results from Area-Stratified Abundance - Edwards Method"))
 
@@ -918,12 +864,12 @@ The next difference is that the individual body size data is presumed to follow 
 ```{r}
 
 # Plot the sizeSpectra slopes - year*region*season
-(ss_patterns <- warmem_group_slopes %>% 
+(ss_patterns <- yr_region_season_res %>% 
   ggplot(aes(yr, b, color = survey_area)) +
-  geom_line(aes(group = survey_area), linetype = 3) +
+  geom_line(aes(group = survey_area), linetype = 1) +
   geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", formula = y ~ x, 
-              alpha = 0.2) +
+  # geom_smooth(method = "lm", formula = y ~ x, 
+  #             alpha = 0.2) +
   facet_grid(survey_area~season) +
   scale_color_gmri() +
   labs(x = "", 
@@ -938,13 +884,13 @@ The next difference is that the individual body size data is presumed to follow 
 :::
 
 
-## Odd Years 
+## Investigating Fits from Odd Years
 
 In the previous figure, for Georges Bank there are a number of years when b is close to -1.2 that do not follow the rest of the trend.  These occur on 1974 and 1980. This section exists to see why that is:
 
 ```{r}
 # Find the years
-odd_years <- warmem_group_slopes %>% 
+odd_years <- yr_region_season_res %>% 
   filter(survey_area == "GB", 
          b < -1.2) %>% 
   split(.$Year)
@@ -976,21 +922,28 @@ The red line is a bounded power law fit to those blue lines. The power law relat
 # ISD plot preparation
 # counts how many of each size there are with overlapping sizes counting
 # towards the discrete size bins when possible
-isd_prepped <- map(odd_year_dat, ~ isd_plot_prep(as.data.frame(.x),
-                                                stratified_abundance = T,
-                                                min_weight_g = 1))
+isd_prepped <- map(odd_year_dat, function(.x){
+  isd_plot_prep(
+    biomass_data = as.data.frame(.x),
+    stratified_abundance = T,
+    min_weight_g = 1)
+})
 
 ```
 
 **Plotting Function**
 
 ```{r}
+#| eval: true
+
+# Note, code for this function lives in sizeSpectra_support.R
+
 # Function for ISD plots 
 # should work on whatever the grouping variable is as long as the lists match
 #' @title Plot Individual Size Distribution Curves
 #'
 #' @param isd_data_prepped Data from isd_plot_prep
-#' @param mle_results Corresponding group results from group_mle_calc
+#' @param mle_results Corresponding group results from group_isd_calc
 #' @param abundance_used Label to add for context of what abundance source was used
 #' @param plot_rects Flag to plot bodymass rectangles
 #' @param show_pl_fit Flag to include powerlaw fit
@@ -1116,7 +1069,7 @@ ggplot_isd <- function(isd_data_prepped,
     labs(x = "Individual Bodymass (g)",
          y =  "Fishes with BodyMass \u2265 x",
          title = group_name, 
-         tag = str_c("b = ", the_slope),
+         tag = str_c("ISD exponent:\nb = ", the_slope),
          caption = str_c(abundance_label, " used for size spectrum slope estimation.")) +
     theme(plot.tag.position = "topright")
   
@@ -1143,18 +1096,21 @@ isd_1974 <- ggplot_isd(isd_data_prepped = isd_prepped$`1974`,
                        abundance_vals = "stratified", 
                        plot_rects = FALSE, 
                        show_pl_fit = TRUE, 
-                       group_name = "1974, Fall, GB")$obs_y
+                       group_name = "1974, Fall, GB")$log10_y
 
-# isd_1980 <- ggplot_isd(isd_data_prepped = isd_prepped$`1980`, 
-#                        mle_results = odd_years$`1974`, 
-#                        abundance_vals = "stratified", 
-#                        plot_rects = FALSE, 
-#                        show_pl_fit = TRUE, 
-#                        group_name = "1980, Fall, GB")$obs_y
+isd_1980 <- ggplot_isd(isd_data_prepped = isd_prepped$`1980`,
+                       mle_results = odd_years$`1974`,
+                       abundance_vals = "stratified",
+                       plot_rects = FALSE,
+                       show_pl_fit = TRUE,
+                       group_name = "1980, Fall, GB")$log10_y
 
+
+# Plot the two years with an unusually low intercept
 isd_1974 #/ isd_1980
 
 ```
+
 
 ### Binned Biomass
 
@@ -1177,6 +1133,54 @@ l10_1974[[2]] + labs(title = "1974, Fall, GB")
 #l10_1980[[2]] + labs(title = "1980, Fall, GB")
 ```
 
+
+### Both Seasons
+
+
+
+```{r}
+#| eval: false
+#| label: good-year-fit
+
+
+# Example of a good year, or both seasons combined and no outward sign of  bad fit:
+
+# Pull the ISD result details:
+gb_1974 <- yr_region_res %>% 
+  filter(survey_area == "GB", 
+         Year == 1974,
+         season == "all")  
+
+# Find the data that went into that estimate
+gb_1974_dat <- catch_size_bins %>% 
+  filter(survey_area == "GB",
+         Year %in% c(1974)) 
+
+
+# Prep the data to be visualized
+gb_1974_prepped <- isd_plot_prep(
+    biomass_data = gb_1974_dat,
+    stratified_abundance = T,
+    min_weight_g = 1)
+
+# Plot the fit
+ggplot_isd(isd_data_prepped = gb_1974_prepped, 
+           mle_results = gb_1974, 
+           abundance_vals = "stratified", 
+           plot_rects = FALSE, 
+           show_pl_fit = TRUE, 
+           group_name = "1974, Spring + Fall, GB")$log10_y
+
+
+
+# And the bins that would go with:
+
+# plot bin structure for survey abundance and stratified abundance
+l10_1974 <- plot_log10_ss(l10_assigned = gb_1974_dat)[[2]] + labs(title = "1974, Spring + Fall, GB") 
+l10_1974
+
+```
+
 :::
 
 
@@ -1190,7 +1194,7 @@ l10_1974[[2]] + labs(title = "1974, Fall, GB")
 ```{r}
 
 # plot trends of log10 slopes
-(l10_patterns <- warmem_group_slopes %>% 
+(l10_patterns <- yr_region_season_res %>% 
   ggplot(aes(yr, l10_slope_strat, color = survey_area)) +
   geom_line(aes(group = survey_area), linetype = 3) +
   geom_point(alpha = 0.6) +
@@ -1212,7 +1216,7 @@ l10_1974[[2]] + labs(title = "1974, Fall, GB")
 ```{r}
 
 # plot trends of log10 slopes
-(int_patterns <- warmem_group_slopes %>% 
+(int_patterns <- yr_region_season_res %>% 
   ggplot(aes(yr, l10_int_strat, color = survey_area)) +
   geom_line(aes(group = survey_area), linetype = 3) +
   geom_point(alpha = 0.6) +
@@ -1236,7 +1240,7 @@ For each of the slope/intercepts derived using a linear model and binned data I 
 ```{r}
 # Reshaping
 # Goal: Row for Years, columns for each different group
-l10_fit_dat <- warmem_group_slopes %>% 
+l10_fit_dat <- yr_region_season_res %>% 
   select(Year, season, survey_area, l10_slope_strat, l10_int_strat, l10_rsqr_strat) %>% 
   mutate(yr = as.numeric(Year))
 

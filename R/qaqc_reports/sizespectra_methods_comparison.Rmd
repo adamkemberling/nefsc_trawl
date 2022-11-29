@@ -43,10 +43,6 @@ theme_set(theme_bw())
 
 `r use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
 
-```{r}
-showtext::showtext_auto()
-```
-
 
 # Exporatory Data Analysis of NEFSC Bottom Trawl Survey Data
 

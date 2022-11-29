@@ -36,7 +36,9 @@ source(here("R/support/targets_macro_functions.R"))
 
 ####_____________________________####
 
-####____  Groundfish Data Preparation  __####
+####____  Groundfish Data Preparation:  __####
+
+####_____________________________####
 
 # Define target pipeline: Outlines high-level steps of the analysis
 # Format is just a list of all the targets
@@ -45,22 +47,25 @@ list(
   
   
   
-  ####  Global Options:  ####
+  ####  Configure Global Options:  ####
+  
   
   # These are linked to the remaining analysis steps
   # with exception to analysis of average length/width, those are not filtered
   tar_target(analysis_options, 
              command = list(
-               # Control the data that reaches the analysis, and is used for context
-               # Sets min/max for ISD exponent estimates
+               # Controls the data that reaches the analysis, and is used for context
+               # Also Sets min/max for ISD exponent estimates
                min_input_weight_g = 10^0,
-               max_input_weight_g = 10^5,
+               max_input_weight_g = 10^4,
                
                # Set/enforce the bin structure used for spectra analysis
                # These enforce what bins go to binned size spectra analysis
+               # min and max set the left limits of the bin range: 
+               # i.e. max_l10_bin of 3 = 14^3 to 10^4
                l10_bin_width = 1,
                min_l10_bin = 0,
-               max_l10_bin = 4)
+               max_l10_bin = 3)
              ),
   
   
@@ -77,17 +82,21 @@ list(
   
   ###### a. Catch Data  ####
   
-  # Run all the import and tidying for catch data
-  tar_target(catch_complete,
-             command = import_and_tidy_catch(box_location = boxdata_location)),
+  
   
   
   # Perform standard cleanup without LW and stratification for species that drop
+  # This target is used to investigate data immediately after the base cleanup
   tar_target(
     name = survdat_clean,
     command = gmri_survdat_prep(survdat = NULL,
                                 survdat_source = "most recent",
                                 box_location = boxdata_location)),
+  
+  
+  # Run all the import and tidying for catch data to use for the pipeline
+  tar_target(catch_complete,
+             command = import_and_tidy_catch(box_location = boxdata_location)),
   
   ###### b. Biological Data  ####
   
