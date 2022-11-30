@@ -671,6 +671,9 @@ all_drivers <- bind_rows(
 ```
 
 
+
+
+
 ```{r}
 #| label: set-driver-periods
 
@@ -1322,8 +1325,10 @@ isd_timeline
 
 ### Driver Correlations
 
+**NOTE:** Correlation matrix is computed starting at the year where there are no NA values in any drivers. Currently with SST included that begins the matrix at 1982.
+
 ::: panel-tabset
-#### Regime 1 (1970 - 2005)
+#### Regime 1 (1982* - 2005)
 
 ```{r}
 #| label: ggcorr-drivers-regime_1

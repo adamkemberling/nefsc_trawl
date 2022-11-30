@@ -640,6 +640,15 @@ agg_98 %>%
          title = str_c("Ignore Empty Bin"))
 ```
 
+
+### ISD Analogs
+
+```{r}
+
+```
+
+
+
 :::
 
 
