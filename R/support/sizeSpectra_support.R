@@ -490,7 +490,7 @@ group_isd_plot <- function(mle_res){
     geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax),
                     alpha = 0.6) +
     labs(x = "",
-         y = "Size Spectrum Slope (b)") +
+         y = "Exponent of Size Spectra (b)") +
     theme(axis.text.x = element_text(angle = 90, size = 6, vjust = 0.5))
   
   return(plot)

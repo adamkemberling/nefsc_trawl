@@ -643,7 +643,57 @@ agg_98 %>%
 
 ### ISD Analogs
 
+This is what Georges Bank would resemble
+
 ```{r}
+
+# Grab data for 1998
+#ex 98
+gb_98 <- all_sizes_full_increments %>% filter(Year == 1998, survey_area == "GB")
+
+# prep the catch data for isd plotting
+gb_98_isd <- isd_plot_prep(biomass_data = gb_98, stratified_abundance = T, min_weight_g = 1)
+
+# What is the fit we have in the pipeline:
+gb_res_98 <- region_indices %>% filter(Year == 1984, survey_area == "GB")
+
+
+# Plot the current setup
+maxcut1 <- ggplot_isd(isd_data_prepped = gb_98_isd, 
+           mle_results = gb_res_98, 
+           abundance_vals = "stratified",
+           plot_rects = F,
+           show_pl_fit = TRUE,
+           xlim_global = NULL,
+           group_name = NULL)[[2]] +
+  labs(title = "Georges Bank 1998, Max ISD Size 10^4g")
+
+
+#--------
+
+# plotting a different xmax
+
+# What does it look like if we fit it with different xmax
+gb_res_98_2 <- group_isd_calc(dataBinForLike = gb_98, 
+                         group_var = "GB 1998", 
+                         abundance_vals = "stratified",
+                         isd_xmin = 1,
+                         isd_xmax = 10^5,
+                         vecDiff = 0.5)
+
+maxcut2 <- ggplot_isd(isd_data_prepped = gb_98_isd, 
+           mle_results = gb_res_98_2, 
+           abundance_vals = "stratified",
+           plot_rects = F,
+           show_pl_fit = TRUE,
+           xlim_global = NULL,
+           group_name = NULL)[[2]] +
+  labs(title = "Georges Bank 1998, Max ISD Size 10^5g")
+
+
+
+# Compare the two
+maxcut1 / maxcut2
 
 ```
 
