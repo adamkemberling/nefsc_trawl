@@ -21,7 +21,7 @@ execute:
   echo: false
   warning: false
   message: false
-  fig.align: "center"
+  fig.align: center
   comment: ""
 ---
 
@@ -56,6 +56,11 @@ What body sizes are notably deficient (if any)?
 
 How does bin width, minimum weight, and maximum weight impact how the spectra is calculated.
 
+
+**What size bins are consistently present across all years and areas?**
+
+
+
 ### Data:
 
 This is the target point for the stratified abundance data. It has been filtered to exclude biomass below 1g. 
@@ -65,12 +70,11 @@ This is the target point for the stratified abundance data. It has been filtered
 
 # 1. Biological data used as input
 withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(catch_1g_binned))   
+                tar_load(catch_log2_labelled))   
 
-# rename and format
-catch_size_bins <- catch_1g_binned %>% 
-  mutate(spec_class = ifelse(is.na(spec_class), "Unclassified", spec_class))
+catch_size_bins <- catch_log2_labelled
 
+# Number of Unique Species
 n_species <- length(unique(catch_size_bins$comname))
 ```
 
@@ -87,157 +91,12 @@ region_indices <- size_spectrum_indices  %>%
   filter(`group ID` == "single years * region") %>% 
   mutate(yr = as.numeric(as.character(Year)),
          survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
-         sig_fit = ifelse(l10_sig_strat < 0.05, "Significant", "Non-Significant"))
+         sig_fit = ifelse(log2_sig_strat < 0.05, "Significant", "Non-Significant"))
 ```
 
 ### Preparing Data For Figures:
 
 This is the code for the aggregation function, it totals the abundance within each size bin based on some grouping variable. Usually its just year and area, but we also want to preserve functional groups here:
-
-```{r}
-#| label: prepare-spectra-plots
-
-
-# Step 1: Aggregate Data into Bins:
-
-
-
-
-#' @title Calculate Normalized and De-Normalized Abundances
-#'
-#' @description For binned size spectra estimation we use the stratified abundance divided by the
-#' bin widths (normalized size spectra). Another way to present the data is to de-normalize, which 
-#' takes those values and multiplies them by the mid-point of the log-scale bins.
-#' 
-#' min/max & bin_increments are used to enforce the presence of a size bin in the event that 
-#' there is no abundance. This is done for comparing across different groups/areas that should 
-#' conceivably have the same size range sampled.
-#'
-#' @param l10_assigned size data containing the bin assignments to use
-#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
-#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
-#' @param bin_increment The bin-width on log scale that separates each bin
-#' @param ... Additional grouping factors with which to aggregate on besides the size bins themselves
-#'
-#' @return
-#' @export
-#'
-#' @examples
-aggregate_l10_bins <- function(
-    l10_assigned, 
-    min_l10_bin = 0, 
-    max_l10_bin = 4.5, 
-    bin_increment = 0.5,
-    ...){
-  
-  # Full Possible Bin Structure
-  # Fills in any gaps
-  l10_bin_structure <- define_l10_bins(
-    l10_min = min_l10_bin, 
-    l10_max = max_l10_bin, 
-    l10_increment = bin_increment)
-  
-  
-  # Capture all the group levels with a cheeky expand()
-  if(missing(...) == FALSE){
-    l10_bin_structure <- l10_bin_structure %>% 
-      expand(left_lim, distinct(l10_assigned, ...)) %>% 
-      full_join(l10_bin_structure)
-  }
-  
-  
-  
-  # Get bin breaks
-  l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
-  
-  
-  # Get Totals for bodymass and abundances
-  l10_aggregates <- l10_assigned %>% 
-    # group_by(log10_bins, ...) %>% 
-    group_by(left_lim, ...) %>% 
-    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
-              observed_weight_g    = sum(wmin_g, na.rm = T),
-              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
-              stratified_weight_g  = sum(wmin_area_strat, na.rm = T),
-              .groups = "drop")
-  
-  
-  # Join back in what the limits and labels are
-  # The defined bins and their labels enforce the size limits
-  l10_prepped <- left_join(x = l10_bin_structure, 
-                           y = l10_aggregates#, 
-                           #by = "log10_bins"
-  )
-  
-  
-  #### Fill Gaps with Zero's  ####
-  # This ensures that any size bin that is intended to be in use is actually usedb=
-  l10_prepped <- l10_prepped %>% 
-    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
-           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
-           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
-           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
-  
-  
-  #### normalize abundances using the bin widths
-  l10_prepped <- l10_prepped %>% 
-    mutate(
-      normalized_abund = observed_abundance / bin_width,
-      norm_strat_abund = stratified_abundance / bin_width,
-      # # Remove Bins Where Normalized Biomass < 0? No!
-      # normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
-      # norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund)
-    )
-  
-  # Add de-normalized abundances (abundance * bin midpoint)
-  l10_prepped <- l10_prepped %>% 
-    mutate(
-      denorm_abund = normalized_abund * bin_midpoint,
-      denorm_strat_abund = norm_strat_abund * bin_midpoint)
-  
-  # Return the aggregations
-  return(l10_prepped)
-  
-}
-
-
-
-
-```
-
-
-
-```{r}
-#| label: debug-bin-dropping
-#| eval: false
-
-# Southern New England in 1992 is losing 10^4 size bin still for some reason
-
-# Looking into how the NA's pass through
-
-# So no fish >= 10^4g0
-test_case <- catch_size_bins %>% 
-  filter(survey_area == "GoM",
-         Year == 1992,
-         ind_weight_g <= 10^4)
-
-# We are losing grouping column information when the join happens, we also end up filling the
-# empties again here with NA
-aggregate_l10_bins(
-  l10_assigned = test_case,
-  min_l10_bin = 0,
-  max_l10_bin = 4.5,
-  bin_increment = 0.5,
-  Year, survey_area) %>% 
-  glimpse()
-
-
-# whata if we complete the bin structure with group factors - works
-fake_bins <- define_l10_bins(0, 5, 0.5)# %>% 
-  #expand(distinct(test_case, survey_area, Year), left_lim)
-
-```
-
 
 
 ### Running the Aggregation
@@ -246,19 +105,18 @@ fake_bins <- define_l10_bins(0, 5, 0.5)# %>%
 #| label: aggregate-bin-totals
 
 # Run it for the hare groups
-hare_group_aggregates <- aggregate_l10_bins(
-  l10_assigned = catch_size_bins, 
-  min_l10_bin = 0,
-  max_l10_bin = 5, 
+hare_group_aggregates <- aggregate_log2_bins(
+  log2_assigned = catch_size_bins, 
+  min_log2_bin = 0,
+  max_log2_bin = 13, 
   bin_increment = 1,
-  Year, survey_area, hare_group
-  )
+  Year, survey_area, hare_group)
 
 # Run just the years so we can assure that the totals are the same:
-year_group_aggregates <- aggregate_l10_bins(
-  l10_assigned = catch_size_bins, 
-  min_l10_bin = 0,
-  max_l10_bin = 5, 
+year_group_aggregates <- aggregate_log2_bins(
+  log2_assigned = catch_size_bins, 
+  min_log2_bin = 0,
+  max_log2_bin = 13, 
   bin_increment = 1,
   Year, survey_area)
 
@@ -273,7 +131,7 @@ gom_90 <- filter(year_group_aggregates,
 # with functional groups
 gom_90_check <- hare_group_aggregates %>% 
   filter( Year == 1990, survey_area == "GoM") %>% 
-  group_by(Year, survey_area, log10_bins, left_lim, 
+  group_by(Year, survey_area, log2_bins, left_lim, 
            right_lim, bin_label, bin_width, bin_midpoint) %>% #glimpse()
   summarise(
     observed_abundance    = sum(observed_abundance),
@@ -317,6 +175,8 @@ This plotting function will plot this size spectrum aggregates for both the func
 #' @param functional_group_aggregates Aggregated Numbers of Stratified Abundance, result of agg_spectra_bins, using Year and spec_class
 #' @param annual_aggregates Same as functional_group_aggregates, but only on Year
 #' @param filter_years A year range to filter by
+#' @param fill_group factor group to do composition fill with
+#' @param x_icrement the spacing between log increments
 #'
 #' @return
 #' @export
@@ -343,7 +203,7 @@ compare_spectra_components <- function(
     ggplot(aes(left_lim, norm_strat_abund)) +
       geom_col(aes(fill = {{fill_group}}), position = "fill", color = "gray30") +
       scale_fill_gmri() +
-      scale_x_continuous(breaks = seq(0, 7, by = x_increment), labels = math_format(10^.x)) +
+      scale_x_continuous(breaks = seq(0, 15, by = x_increment), labels = math_format(2^.x)) +
       # Use this with position Fill
       scale_y_continuous(labels = percent_format()) +
       # Does not work with position stack
@@ -359,11 +219,12 @@ compare_spectra_components <- function(
   
   # Get the total abundance in each bin
   bin_data_summary <- annual_aggregates %>% 
-    filter(Year %in% filter_years,
-           left_lim <= 4.5) %>% 
-    complete(survey_area, left_lim, 
+    filter(Year %in% filter_years#,
+           #left_lim <= 4.5
+           ) %>% 
+    complete(survey_area, bin_midpoint, 
              fill = list("norm_strat_abund" = 0)) %>% 
-    group_by(survey_area, left_lim) %>% 
+    group_by(survey_area, bin_midpoint) %>% 
     summarise(norm_strat_abund = sum(norm_strat_abund), 
               .groups = "drop")
     
@@ -372,7 +233,8 @@ compare_spectra_components <- function(
     # Solid Bar Graph for Annual Totals
     annual_figure <- ggplot(
       bin_data_summary, 
-      aes(left_lim, norm_strat_abund)) +
+      # aes(left_lim, norm_strat_abund)) +
+      aes(bin_midpoint, norm_strat_abund)) +
         geom_col(fill = gmri_cols("gmri blue"), alpha = 0.7) +
         geom_point(color = gmri_cols("gmri blue")) +
         geom_smooth(formula = y ~ x,
@@ -383,7 +245,8 @@ compare_spectra_components <- function(
                      label.y = 1, 
                      label.x = 0.9,
                      parse = TRUE) +
-        scale_x_continuous(breaks = seq(0, 10, by = x_increment), labels = math_format(10^.x)) +
+        #scale_x_continuous(breaks = seq(0, 15, by = x_increment), labels = math_format(2^.x)) +
+        scale_x_log10(labels = trans_format("log10", math_format(10^.x))) +
         scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
         facet_wrap(~survey_area, ncol = 1, scales = "free") +
         labs(x = "Individual Bodymass (g)", 
@@ -445,7 +308,11 @@ t
 
 This is what a single year looks like in the most recent regime, do we see any absences in lower size groups at a yearly step?
 
+
 ```{r}
+#| label: log2-binning-swap
+
+
 # Load the data before max size cutoff
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(catch_complete))
@@ -455,42 +322,37 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
 # Run the pipeline preparations without any min/max filters:
 
 
+#### Log2 Binning  ####
 # 1. Set 0.5 increments to check presence absence with more detail
-all_sizes_half_increments <- catch_complete %>% 
+all_sizes_l2 <- catch_complete %>% 
   prep_sizeSpectra_data(lw_trawl_data = .) %>% 
-  assign_log10_bins(wmin_grams = .,  
-                    l10_increment = 0.5)
+  assign_log2_bins(wmin_grams = .,  
+                   log2_increment = 1)
 
-# 2. Set 1 increments to check how a spectra would look if estimated
-all_sizes_full_increments <- catch_complete %>% 
-  prep_sizeSpectra_data(lw_trawl_data = .) %>% 
-  assign_log10_bins(wmin_grams = .,  
-                    l10_increment = 1)
-```
-
-
-```{r}
-# Perform the aggregations again using all possible data,
-# not the filtered data that goes to the analyses
 
 
 # Aggregate for all sizes on yr, area, functional group
-all_sizes_hare <- aggregate_l10_bins(
-    l10_assigned = all_sizes_full_increments, 
-    min_l10_bin = 0,
-    max_l10_bin = 5, 
+all_sizes_hare <- aggregate_log2_bins(
+    log2_assigned = all_sizes_l2, 
+    min_log2_bin = 0,
+    max_log2_bin = 13, 
     bin_increment = 1,
     Year, survey_area, hare_group)
 
 
 # Aggregate bodymass and abundance in the bins for all data, each year and region
-all_sizes_yr_area <- aggregate_l10_bins(
-    l10_assigned = all_sizes_full_increments, 
-    min_l10_bin = 0,
-    max_l10_bin = 5, 
+all_sizes_yr_area <- aggregate_log2_bins(
+    log2_assigned = all_sizes_l2, 
+    min_log2_bin = 0,
+    max_log2_bin = 13, 
     bin_increment = 1,
     Year, survey_area)
+
+
+
 ```
+
+
 
 
 
@@ -525,11 +387,11 @@ This section is for documenting where and how often size bins do not have abunda
 # What would all size aggregates be if they werent filtered:
 # i.e. all possible points on a spectrum
 
-all_sizes_check <- aggregate_l10_bins(
-    l10_assigned = all_sizes_half_increments, 
-    min_l10_bin = 0,
-    max_l10_bin = 6, 
-    bin_increment = 0.5,
+all_sizes_check <- aggregate_log2_bins(
+    log2_assigned = all_sizes_l2, 
+    min_log2_bin = 0,
+    max_log2_bin = 14, 
+    bin_increment = 1,
     Year, survey_area)
 
 
@@ -545,8 +407,8 @@ agg_flags %>%
   geom_tile(color = "gray15") +
   scale_fill_gmri(reverse = T) +
   scale_y_continuous(
-    breaks = seq(0,12, by = 1),#labels = half_format
-    labels = math_format(10^.x)) +
+    breaks = seq(0,15, by = 1),#labels = half_format
+    labels = math_format(2^.x)) +
   facet_wrap(~survey_area, ncol = 1) + 
   labs(y = "Body-Mass Size Bin Left Limit (g)")
 
@@ -559,13 +421,13 @@ Whenever a bin is empty, there is a decision to make about how to handle that ga
 
 ```{r}
 # Grab data for 1998
-ex_98 <- all_sizes_full_increments %>% filter(Year == 1998)
+test_1998 <- all_sizes_l2 %>% filter(Year == 1998)
   
 # Aggregate bodymass and abundance in the bins for all data, each year and region
-agg_98 <- aggregate_l10_bins(
-    l10_assigned = ex_98, 
-    min_l10_bin = 0,
-    max_l10_bin = 5, 
+agg_log2_1998 <- aggregate_log2_bins(
+    log2_assigned = test_1998, 
+    min_log2_bin = 0,
+    max_log2_bin = 13, 
     bin_increment = 1,
     Year, survey_area) %>% 
   mutate(observed_abundance = ifelse(observed_abundance == 1, "Absent", "Present")) 
@@ -582,7 +444,7 @@ agg_98 <- aggregate_l10_bins(
 
 
 # Plot the binned spectra
-agg_98 %>% 
+agg_log2_1998 %>% 
   ggplot(aes(left_lim, norm_strat_abund)) +
     geom_col(fill = gmri_cols("gmri blue"), alpha = 0.5) +
     geom_point(color = gmri_cols("gmri blue")) +
@@ -614,7 +476,7 @@ agg_98 %>%
 
 
 # Plot the binned spectra
-agg_98 %>% 
+agg_log2_1998 %>% 
   mutate(norm_strat_abund = ifelse(norm_strat_abund < 1, NA, norm_strat_abund)) %>% 
   ggplot(aes(left_lim, norm_strat_abund)) +
     geom_col(fill = gmri_cols("gmri blue"), alpha = 0.5) +
@@ -643,13 +505,14 @@ agg_98 %>%
 
 ### ISD Analogs
 
-This is what Georges Bank would resemble
+To pick a single year as an example, this is what Georges Bank's ISD exponent fit changes with a change in maximum size parameter from 10^4 to 10^5.
 
 ```{r}
+#| fig.height: 8
 
 # Grab data for 1998
 #ex 98
-gb_98 <- all_sizes_full_increments %>% filter(Year == 1998, survey_area == "GB")
+gb_98 <- all_sizes_l2 %>% filter(Year == 1998, survey_area == "GB")
 
 # prep the catch data for isd plotting
 gb_98_isd <- isd_plot_prep(biomass_data = gb_98, stratified_abundance = T, min_weight_g = 1)

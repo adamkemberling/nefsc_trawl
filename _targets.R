@@ -56,8 +56,9 @@ list(
              command = list(
                # Controls the data that reaches the analysis, and is used for context
                # Also Sets min/max for ISD exponent estimates
-               min_input_weight_g = 10^0,
-               max_input_weight_g = 10^4,
+               min_input_weight_g = 2^0,
+               max_input_weight_g = 10^4, # To pick a reasonable sounding limit
+               # max_input_weight_g = 2^13, # To match log2 bins
                
                # Set/enforce the bin structure used for spectra analysis
                # These enforce what bins go to binned size spectra analysis
@@ -65,7 +66,13 @@ list(
                # i.e. max_l10_bin of 3 = 14^3 to 10^4
                l10_bin_width = 1,
                min_l10_bin = 0,
-               max_l10_bin = 3)
+               max_l10_bin = 3,
+               
+               # log2 bin limits - LBNbiom method
+               log2_bin_width = 1,
+               min_log2_bin = 0,
+               max_log2_bin = 12
+               )
              ),
   
   
@@ -115,44 +122,76 @@ list(
   
 
   
-  # Prepare the data for use in size spectrum analysis:
-  # Set weight column units to grams
-  # impose a max/min weight
-  # set up the size bins
-  # set a min/max weight a fish could be within 1cm growth increments for lme method
+  # # Prepare the data for use in size spectrum analysis:
+  # # Set weight column units to grams
+  # # impose a max/min weight
+  # # set up the size bins - for plotting
+  # # set a min/max weight a fish could be within 1cm growth increments for lme method
+  # tar_target(
+  #   catch_1g_labelled,
+  #   command = size_spectrum_prep(
+  #     catch_data = catch_complete, 
+  #     min_weight_g = analysis_options[["min_input_weight_g"]], 
+  #     max_weight_g = analysis_options[["max_input_weight_g"]], 
+  #     bin_increment = analysis_options[["l10_bin_width"]])),
+  
+
+  
+  # Assign the log size bins and apply min/max cutoffs
   tar_target(
-    catch_1g_labelled,
-    command = size_spectrum_prep(
+    catch_log2_labelled,
+    command = LBNbiom_prep(
       catch_data = catch_complete, 
-      min_weight_g = analysis_options[["min_input_weight_g"]], 
-      max_weight_g = analysis_options[["max_input_weight_g"]])),
+      min_weight_g = analysis_options[["min_input_weight_g"]], # 2^0, 
+      max_weight_g = analysis_options[["max_input_weight_g"]], # 2^13, 
+      bin_increment = analysis_options[["log2_bin_width"]])),
   
-  
-
-  
-  
-  ##### 4. log10 SS Slopes  ####
+  ##### 4a. log10 SS Slopes  ####
   
 
+  # # Run the different groupings through the slope estimation
+  # # lower end is >=, upper end is <
+  # tar_target(warmem_log10_slopes,
+  #            warmem_l10_estimates(
+  #              # The input data for all the group estimates, labelled for 
+  #              # both the binned and ISD analyses
+  #              wmin_grams = catch_1g_labelled,
+  #              
+  #              # These two filter the input data
+  #              min_weight_g = analysis_options[["min_input_weight_g"]],
+  #              max_weight_g = analysis_options[["max_input_weight_g"]], 
+  #              
+  #              # These two enforce the bins used to estimate the spectra
+  #              min_l10_bin = analysis_options[["min_l10_bin"]], 
+  #              max_l10_bin = analysis_options[["max_l10_bin"]], 
+  #              bin_increment = analysis_options[["l10_bin_width"]])),
   
-
   
-  # Run the different groupings through the slope estimation
-  # lower end is >=, upper end is <
-  tar_target(warmem_log10_slopes,
-             warmem_l10_estimates(
+  
+  
+  
+  ##### 4b. LBNbiom Method Spectra  ####
+  # See Edwards et al. 2016
+  # Method LBNbiom
+  
+  
+  
+  
+  # Run the spectrum fitting using the log2 binning and LBNbiom methodology
+  tar_target(warmem_log2_slopes,
+             warmem_log2_estimates(
                # The input data for all the group estimates, labelled for 
                # both the binned and ISD analyses
-               wmin_grams = catch_1g_labelled,
+               wmin_grams = catch_log2_labelled,
                
                # These two filter the input data
                min_weight_g = analysis_options[["min_input_weight_g"]],
                max_weight_g = analysis_options[["max_input_weight_g"]], 
                
                # These two enforce the bins used to estimate the spectra
-               min_l10_bin = analysis_options[["min_l10_bin"]], 
-               max_l10_bin = analysis_options[["max_l10_bin"]], 
-               bin_increment = analysis_options[["l10_bin_width"]])),
+               min_log2_bin = analysis_options[["min_log2_bin"]],
+               max_log2_bin = analysis_options[["min_log2_bin"]], 
+               bin_increment = analysis_options[["log2_bin_width"]])),
   
   
   
@@ -168,7 +207,7 @@ list(
   tar_target(
     name = warmem_isd_results,
     command = warmem_isd_estimates(
-      wmin_grams = catch_1g_labelled, 
+      wmin_grams = catch_log2_labelled, 
       min_weight_g = analysis_options[["min_input_weight_g"]],
       max_weight_g = analysis_options[["max_input_weight_g"]],
       isd_xmin = analysis_options[["min_input_weight_g"]],
@@ -179,43 +218,9 @@ list(
   
   # Join the MLE and Binned Results into a table
   tar_target(size_spectrum_indices,
-             full_join(warmem_isd_results, warmem_log10_slopes,
+             full_join(warmem_isd_results, warmem_log2_slopes,
                        by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
   
-  
-  
-  
-  
-  ##### 6. Spectra - Species Sensitivity  ####
-  
-  # This section will repeat the estimation of log10 ss slopes,
-  # repeating the steps with an omitted species to see the influence each has on
-  # the size spectrum estimate
-
-  # # Create parallel groups that do not contain a species at each iteration
-  # get the l1- slope info
-  tar_target(species_ommission_dat,
-             species_omit_spectra(
-               start_dat = catch_1g_labelled,
-             .group_cols = c("Year", "survey_area"),
-             # To filter the input data
-             min_weight_g = analysis_options[["min_input_weight_g"]],
-             # These two enforce the bins used to estimate the spectra
-             min_l10_bin = analysis_options[["min_l10_bin"]], 
-             max_l10_bin = analysis_options[["max_l10_bin"]], 
-             bin_increment = analysis_options[["l10_bin_width"]])),
-
-
-
-  # Join the ommission data to the all species slopes to get the changes
-  tar_target(year_region_only,
-             filter(warmem_log10_slopes, `group ID` == "single years * region")),
-
-
-  # Code to run for this target
-  tar_target(species_sensitivity_shifts,
-             species_omit_changes(spec_omit_results = species_ommission_dat,
-                                  all_spec_results = year_region_only)),
 
   
   
@@ -294,7 +299,7 @@ list(
   
   
 ) ####_____________________________####
-####______  Close Pipeline  __________####
+####______  END PIPELINE  __________####
 
 
 
@@ -393,7 +398,7 @@ list(
 #   name = catch_1g_labelled,
 #   command = size_bin_formatting(catch_maxcut)),
 # 
-# # Assign the bin structure to the lw data
+# # Assign the bin structure to the lw data 
 # tar_target(catch_1g_binned,
 #            assign_log10_bins(catch_1g_labelled)),
 
@@ -463,6 +468,41 @@ list(
 #     ), .id = "survey_area"
 #   )
 # ),
+
+
+
+
+
+# ##### 6. Spectra - Species Sensitivity  ####
+# 
+# # This section will repeat the estimation of log10 ss slopes,
+# # repeating the steps with an omitted species to see the influence each has on
+# # the size spectrum estimate
+# 
+# # # Create parallel groups that do not contain a species at each iteration
+# # get the l1- slope info
+# tar_target(species_ommission_dat,
+#            species_omit_spectra(
+#              start_dat = catch_1g_labelled,
+#              .group_cols = c("Year", "survey_area"),
+#              # To filter the input data
+#              min_weight_g = analysis_options[["min_input_weight_g"]],
+#              # These two enforce the bins used to estimate the spectra
+#              min_l10_bin = analysis_options[["min_l10_bin"]], 
+#              max_l10_bin = analysis_options[["max_l10_bin"]], 
+#              bin_increment = analysis_options[["l10_bin_width"]])),
+# 
+# 
+# 
+# # Join the ommission data to the all species slopes to get the changes
+# tar_target(year_region_only,
+#            filter(warmem_log10_slopes, `group ID` == "single years * region")),
+# 
+# 
+# # Code to run for this target
+# tar_target(species_sensitivity_shifts,
+#            species_omit_changes(spec_omit_results = species_ommission_dat,
+#                                 all_spec_results = year_region_only)),
 
 ####____________________________####
 

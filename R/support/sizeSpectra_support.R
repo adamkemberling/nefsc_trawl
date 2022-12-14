@@ -95,6 +95,35 @@ prep_sizeSpectra_data <- function(lw_trawl_data){
                    wmax_g!= 0,
                    is.na(wmax_g) == FALSE)
   
+  
+  
+  
+  # Rename the functional groups
+  ss_dat <- ss_dat %>% 
+    mutate(
+      spec_class = case_when(
+        spec_class == "gf"   ~ "Groundfish",
+        spec_class == "pel"  ~ "Pelagic",
+        spec_class == "dem"  ~ "Demersal",
+        spec_class == "el"   ~ "Elasmobranch",
+        spec_class == "<NA>" ~ "NA"))
+  
+  # Make regions go N->S
+  ss_dat <- ss_dat %>% 
+    mutate(
+      survey_area = factor(survey_area, levels = c(
+        "GoM", "GB", "SNE", "MAB")),
+      season = factor(season, levels = c(
+        "Spring", "Fall")))
+  
+  
+  # change texxt for fishery status
+  ss_dat <- ss_dat %>% 
+    mutate(fishery = case_when(
+      fishery == "com" ~ "Commercially Targeted",
+      fishery == "nc"  ~ "Not Commercially Targeted",
+      TRUE             ~ "Not Labelled"))
+  
   # return data prepped for sizeSpectra
   return(ss_dat)
   
@@ -125,18 +154,18 @@ fill_func_groups <- function(species_dat){
     distinct(comname, spec_class, hare_group) %>% 
     mutate(
       spec_class = case_when(
-        str_detect(comname, "ray|shark|sand tiger|skate") ~ "Elasmobranch",
+        str_detect(comname, "ray|shark|sand tiger|skate")      ~ "Elasmobranch",
         str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
         str_detect(comname, "kingfish|sturgeon|weakfish|spot") ~ "Demersal",
-        str_detect(comname, "mackerel|herring|sardine") ~ "Pelagic",
-        str_detect(comname, "amberjack|spadefish") ~ "Reef",
+        str_detect(comname, "mackerel|herring|sardine")        ~ "Pelagic",
+        str_detect(comname, "amberjack|spadefish")             ~ "Reef",
         TRUE ~ spec_class),
       hare_group = case_when(
-        str_detect(comname, "flounder") ~ "groundfish",
-        str_detect(comname, "scup") ~ "reef",
+        str_detect(comname, "flounder")       ~ "groundfish",
+        str_detect(comname, "scup")           ~ "reef",
         str_detect(comname, "thread herring") ~ "coastal",
-        str_detect(comname, "dory") ~ "pelagic",
-        str_detect(comname, "sturgeon") ~ "diadromous",
+        str_detect(comname, "dory")           ~ "pelagic",
+        str_detect(comname, "sturgeon")       ~ "diadromous",
         TRUE ~ hare_group
       )
     )
@@ -279,28 +308,7 @@ size_bin_formatting <- function(catch_1g){
         "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
   
   
-  # Rename the functional groups
-  catch_size_bins <- catch_size_bins %>% 
-    mutate(
-      spec_class = case_when(
-        spec_class == "gf"  ~ "Groundfish",
-        spec_class == "pel" ~ "Pelagic",
-        spec_class == "dem" ~ "Demersal",
-        spec_class == "el"  ~ "Elasmobranch",
-        spec_class == "<NA>" ~ "NA"))
   
-  # Make regions go N->S
-  catch_size_bins <- catch_size_bins %>% 
-    mutate(survey_area = factor(survey_area, levels = c("GoM", "GB", "SNE", "MAB")),
-           season = factor(season, levels = c("Spring", "Fall")))
-  
-  
-  # change texxt for fishery status
-  catch_size_bins <- catch_size_bins %>% 
-    mutate(fishery = case_when(
-      fishery == "com" ~ "Commercially Targeted",
-      fishery == "nc" ~ "Not Commercially Targeted",
-      TRUE ~ "Not Labelled"))
   
 return(catch_size_bins)
   
@@ -476,7 +484,8 @@ group_isd_calc <- function(dataBinForLike,
 
 #' @title  Plot Individual Size Distribution Estimates for a group of estimates
 #'
-#' @description Plot the Individual Size Distribution fits from group_isd_calc
+#' @description Plot the Individual Size Distribution fits from group_isd_calc displaying the 
+#' exponent of individual size spectra (b) and confidence intervals on its estimates.
 #'
 #' @param mle_res output from group_isd_calc
 #'
@@ -534,10 +543,6 @@ group_isd_estimation <- function(wmin_grams,
   dbin_truncated <- filter(wmin_grams, 
                            wmin_g >= min_weight_g,
                            wmin_g < max_weight_g) 
-  
-  # # # Set which function to operate on: stratified or not stratified
-  # # options are toggled within group_isd_calc using "abundance_vals" argument
-  # mle_function <- group_isd_calc
   
   
   # Set Bounds to Individual Size Distribution 
@@ -619,49 +624,6 @@ warmem_isd_estimates <- function(wmin_grams,
   
   # 2. Set up the factor groupings we want to compare : 
   
-  # ####_ 1.  All years, every region 
-  # message("Calculating ISD exponent with all data")
-  # g1_res <- dbin_truncated %>% 
-  #   mutate(group_var = "all_data") %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g, 
-  #                        max_weight_g = max_weight_g,
-  #                        isd_xmin = isd_xmin,
-  #                        isd_xmax = isd_xmax,
-  #                        abundance_vals = abundance_vals,
-  #                        .group_cols = c("group_var")) 
-  
-  
-  # ####_ 2. All Years, each season 
-  # message("Calculating ISD exponent for each season")
-  # g2_res <- dbin_truncated %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g, 
-  #                        max_weight_g = max_weight_g,
-  #                        isd_xmin = isd_xmin,
-  #                        isd_xmax = isd_xmax,
-  #                        abundance_vals = abundance_vals,
-  #                        .group_cols = c("season")) 
-  
-  
-  # ####_ 3. All Years, regions 
-  # message("Calculating ISD exponent for each region")
-  # g3_res <- dbin_truncated  %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g, 
-  #                        max_weight_g = max_weight_g,
-  #                        isd_xmin = isd_xmin,
-  #                        isd_xmax = isd_xmax,
-  #                        abundance_vals = abundance_vals,
-  #                        .group_cols = c("survey_area"))
-  
-  
-  # ####_ 4. All Years, seasons * regions 
-  # message("Calculating ISD exponent for season * region")
-  # g4_res <- dbin_truncated %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g, 
-  #                        max_weight_g = max_weight_g,
-  #                        isd_xmin = isd_xmin,
-  #                        isd_xmax = isd_xmax,
-  #                        abundance_vals = abundance_vals,
-  #                        .group_cols = c("season", "survey_area"))
   
   ####_ 5. Every year, entire survey 
   message("Calculating ISD exponent for each year")
@@ -703,38 +665,15 @@ warmem_isd_estimates <- function(wmin_grams,
                          isd_xmax = isd_xmax,
                          abundance_vals = abundance_vals,
                          .group_cols = c("Year", "season", "survey_area")) 
-  
-  
-  # ####_ 9. Decades 
-  # message("Calculating ISD exponent for each decade")
-  # g9_res <- dbin_truncated %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g,
-  #                           abundance_vals = abundance_vals,
-  #                           .group_cols = c("decade")) 
-  # 
-  # 
-  # ####_ 10. Decades and area 
-  # message("Calculating ISD exponent for each decade in each area")
-  # g10_res <- dbin_truncated %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g,
-  #                           abundance_vals = abundance_vals,
-  #                           .group_cols = c("decade", "survey_area")) 
     
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      # "Overall"                        = g1_res,
-      # "only seasons"                   = g2_res,
-      # "only regions"                   = g3_res,
-      # "region * seasons"               = g4_res,
       "single years"                   = g5_res,
       "single years * region"          = g6_res,
       "single years * season "         = g7_res,
-      "single years * season * region" = g8_res#,
-      # "decades"                        = g9_res,
-      # "decades * region"               = g10_res
-      ), 
+      "single years * season * region" = g8_res), 
     .id = "group ID")
   
   # Return the summary table
@@ -744,784 +683,6 @@ warmem_isd_estimates <- function(wmin_grams,
 
 
 
-
-
-
-####______________________####
-#### Binned Spectra Analysis  ####
-
-
-
-
-
-#' @title Build Log 10 Bin Structure Dataframe
-#' 
-#' @description Used to build a dataframe containing equally spaced log10 bins for
-#' size spectra analysis. Contains details on the left and right limits, midpoint, bin width, 
-#' and a text label for the bins. l10bin number ascends with increasing size for eeasy plotting.
-#'
-#' @param l10_min 
-#' @param l10_max 
-#' @param l10_increment 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-define_l10_bins <- function(l10_min = 0, l10_max = 4.5, l10_increment = 0.5){
-  
-  # How many bins
-  n_bins  <- length(seq(l10_max, l10_min + l10_increment, by = -l10_increment))
-  
-  # Build Equally spaced log10 bin df
-  l10_bin_structure <- data.frame(
-    "log10_bins" = as.character(seq(n_bins, 1, by = -1)),
-    "left_lim"  = seq(l10_max - l10_increment, l10_min, by = -l10_increment),
-    "right_lim" = seq(l10_max, l10_min + l10_increment, by = -l10_increment)) %>% 
-    mutate(
-      bin_label    = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
-      bin_width    = 10^right_lim - 10^left_lim,
-      bin_midpoint = (10^right_lim + 10^left_lim) / 2) %>% 
-    arrange(log10_bins)
-  
-  return(l10_bin_structure)
-}
-
-
-
-
-
-#' @title Assign Manual log10 Bodymass Bins
-#'
-#' @description Manually assign log10 bins based on individual length-weight bodymass 
-#' in increments of 0.5 on the log10 scale. Returns data with bins assigned based on individual
-#' length-weight biomass
-#' 
-#' Uses maximum weight, and its corresponding bin as the limit.
-#'
-#' @param wmin_grams Catch data prepared for mle calculation, use prep_wmin_wmax
-#' @param l10_increment Equally spaced increments to use for log 10 bin sizes. Default = 0.5.
-#'
-#' @return
-#' @export
-#'
-#' @examples
-assign_log10_bins <- function(wmin_grams, l10_increment = 0.5){
-  
-  
-  #### 1. Set up bodymass bins
-  
-  # filter missing weights
-  size_data <- wmin_grams %>% 
-    filter(wmin_g > 0,
-           is.na(wmin_g) == FALSE,
-           wmax_g > 0,
-           is.na(wmax_g) == FALSE)
-
-  # Get bodymass on log10() scale
-  size_data$log10_weight <- log10(size_data$ind_weight_g)
-  
-  # Set up the bins using 0.5 spacing - Pull min and max weights from data available
-  min_bin <- floor(min(size_data$log10_weight))
-  max_bin <- ceiling(max(size_data$log10_weight))
-  
-  
-  # Build a bin key, could be used to clean up the incremental assignment or for apply style functions
-  l10_bin_structure <- define_l10_bins(
-    l10_min = min_bin, 
-    l10_max = max_bin, 
-    l10_increment = l10_increment)
-  
-  
-  
-  # Loop through bins to assign the bin details to the data
-  l10_assigned <- l10_bin_structure %>%
-    split(.$log10_bins) %>%
-    map_dfr(function(l10_bin){
-      
-      # limits and labels
-      l_lim   <- l10_bin$left_lim
-      r_lim   <- l10_bin$right_lim
-      bin_num <- as.character(l10_bin$log10_bin)
-      
-      # assign the label to the appropriate bodymasses
-      size_data %>% mutate(
-        log10_bins = ifelse( between(log10_weight, l_lim, r_lim), bin_num, NA),
-        log10_bins = as.character(log10_bins)) %>%
-        drop_na(log10_bins)
-      
-    })
-  
-  # Join in the size bins
-  l10_assigned <- left_join(l10_assigned, l10_bin_structure, by = "log10_bins")
-  
-  # return the data with the bins assigned
-  return(l10_assigned)
-  
-}
-
-
-
-
-
-
-
-
-
-#' @title Calculate Normalized and De-Normalized Abundances
-#'
-#' @description For binned size spectra estimation we use the stratified abundance divided by the
-#' bin widths (normalized size spectra). Another way to present the data is to de-normalize, which 
-#' takes those values and multiplies them by the mid-point of the log-scale bins.
-#' 
-#' min/max & bin_increments are used to enforce the presence of a size bin in the event that 
-#' there is no abundance. This is done for comparing across different groups/areas that should 
-#' conceivably have the same size range sampled.
-#'
-#' @param l10_assigned size data containing the bin assignments to use
-#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
-#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
-#' @param bin_increment The bin-width on log scale that separates each bin
-#' @param ... Additional grouping factors with which to aggregate on besides the size bins themselves
-#'
-#' @return
-#' @export
-#'
-#' @examples
-aggregate_l10_bins <- function(
-    l10_assigned, 
-    min_l10_bin = 0, 
-    max_l10_bin = 4.5, 
-    bin_increment = 0.5,
-    ...){
-  
-  # Full Possible Bin Structure
-  # Fills in any gaps
-  l10_bin_structure <- define_l10_bins(
-    l10_min = min_l10_bin, 
-    l10_max = max_l10_bin, 
-    l10_increment = bin_increment)
-  
-  
-  # Capture all the group levels with a cheeky expand()
-  if(missing(...) == FALSE){
-    l10_bin_structure <- l10_bin_structure %>% 
-      expand(left_lim, distinct(l10_assigned, ...)) %>% 
-      full_join(l10_bin_structure)
-  }
-  
-  
-  
-  # Get bin breaks
-  l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
-  
-  
-  # Get Totals for bodymass and abundances
-  l10_aggregates <- l10_assigned %>% 
-    # group_by(log10_bins, ...) %>% 
-    group_by(left_lim, ...) %>% 
-    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
-              observed_weight_g    = sum(wmin_g, na.rm = T),
-              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
-              stratified_weight_g  = sum(wmin_area_strat, na.rm = T),
-              .groups = "drop")
-  
-  
-  # Join back in what the limits and labels are
-  # The defined bins and their labels enforce the size limits
-  l10_prepped <- left_join(x = l10_bin_structure, 
-                           y = l10_aggregates#, 
-                           #by = "log10_bins"
-  )
-  
-  
-  #### Fill Gaps with Zero's  ####
-  # This ensures that any size bin that is intended to be in use is actually usedb=
-  l10_prepped <- l10_prepped %>% 
-    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
-           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
-           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
-           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
-  
-  
-  #### normalize abundances using the bin widths
-  l10_prepped <- l10_prepped %>% 
-    mutate(
-      normalized_abund = observed_abundance / bin_width,
-      norm_strat_abund = stratified_abundance / bin_width,
-      # # Remove Bins Where Normalized Biomass < 0? No!
-      # normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
-      # norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund)
-    )
-  
-  # Add de-normalized abundances (abundance * bin midpoint)
-  l10_prepped <- l10_prepped %>% 
-    mutate(
-      denorm_abund = normalized_abund * bin_midpoint,
-      denorm_strat_abund = norm_strat_abund * bin_midpoint)
-  
-  # Return the aggregations
-  return(l10_prepped)
-  
-}
-
-
-
-
-
-
-#### log10 Group Estimates  ####
-
-
-# Return the slope and intercept for manual estimation of size spectrum slope
-#' @title Process Size Spectrum Slope and Intercept using log10 bins for a group of data
-#'
-#' @param wmin_grams Catch data prepped using prep_wmin_wmax
-#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
-#' @param min_weight_g Minimum weight cutoff in grams
-#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
-#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
-#' @param bin_increment The bin-width on log scale that separates each bin
-#'
-#' @return
-#' @export
-#'
-#' @examples
-group_l10_spectra <- function(wmin_grams,
-                              .group_cols = "Year",
-                              min_weight_g = 1,
-                              min_l10_bin = 0,
-                              max_l10_bin = 4.5,
-                              bin_increment = 0.5){
-  
-  
-  # 1. Set bodymass lower limit, and assign bin labels
-  l10_assigned <- filter(wmin_grams, wmin_g >= min_weight_g )
-  
-  
-  # 2. Build group_var from desired grouping columns
-  l10_assigned <- l10_assigned %>% 
-    unite(col = "group_var", 
-          {{.group_cols}}, 
-          sep = "_", 
-          remove = FALSE, 
-          na.rm = FALSE)
-  
-  # 3. Make a table of constituent combinations
-  col_syms <- syms(.group_cols)
-  grouping_table <- l10_assigned %>% 
-    distinct(!!!col_syms, group_var)
-  
-  
-  # 4. Add missing group factors as "all data"
-  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
-  
-  
-  
-  #### 5.  Running log10 slopes/intercepts
-  
-  # Run size spectra slopes for each group
-  group_results <- l10_assigned %>% 
-    split(.$group_var) %>% 
-    imap_dfr(function(l10_assigned, group_label){
-      
-      # Total the abundances for each bin, normalize them
-      l10_prepped <- aggregate_l10_bins(
-        l10_assigned = l10_assigned, 
-        min_l10_bin = min_l10_bin, 
-        max_l10_bin = max_l10_bin, 
-        bin_increment = bin_increment)
-      
-      
-      ####  Run linear models for slopes
-      # Formula for size spectrum slope: log10(abundance) ~ log10 bin, 
-      # aka the minimum bodymass for bin
-      
-      # Abundance from area-stratification
-      # Will throw an error if norm_strat_abund = 0
-      lm_abund_strat <- lm(log10(norm_strat_abund) ~ left_lim, data = l10_prepped)
-  
-      #  Pull Slope
-      lm_b_strat <- lm_abund_strat$coeff[2] #- 1
-      
-      # Pull intercept  
-      lm_int_strat <- lm_abund_strat$coeff[1] 
-      
-      # R squared
-      lm_rsqr_strat <- summary(lm_abund_strat)$adj.r.squared
-      
-      # sig
-      lm_sig_strat <- broom::tidy(lm_abund_strat)$p.value[2]
-      
-      # Run for abundance from the survey catch
-      #lm_abund       <- lm(log10(normalized_abund) ~ left_lim, data = l10_prepped)
-      # pull out slope coefficient
-      #lm_b <- lm_abund$coeff[2] #- 1
-      #lm_int <- lm_abund$coeff[1] 
-      #lm_rsqr       <- summary(lm_abund)$adj.r.squared
-      #lm_sig       <- broom::tidy(lm_abund)$p.value[2]
-      
-      
-      
-      # Put Spectra Details in Table
-      l10_results <- data.frame(
-        group_var       = group_label,
-        l10_slope_strat = lm_b_strat,
-        l10_int_strat   = lm_int_strat,
-        l10_rsqr_strat  = lm_rsqr_strat,
-        l10_sig_strat   = lm_sig_strat#,
-        #l10_slope       = lm_b,
-        #l10_rsqr        = lm_rsqr,
-        #l10_int         = lm_int,
-        #l10_sig         = lm_sig,
-      )
-      
-      # Return the group results
-      return(l10_results)
-  
-  })
-  
-  
-  # Merge in the group details
-  group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
-    mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
-  
-  # Return the results
-  return(group_results)
-  
-}
-
-
-
-#' @title Process log10 binned size spectra for the collections of WARMEM Groups
-#' 
-#' 
-#' @description Takes a dataframe of all data (weight in grams) and performs the
-#' group_log10_spectra()
-#'
-#' @param wmin_grams Catch data prepped using assign_log10_bins
-#' @param min_weight_g Minimum weight cutoff in grams
-#' @param max_weight_g Maximum weight cutoff in grams
-#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
-#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
-#' @param bin_increment The bin-width on log scale that separates each bin
-#'
-#' @return
-#' @export
-#'
-#' @examples
-warmem_l10_estimates <- function(wmin_grams,
-                                min_weight_g,
-                                max_weight_g,
-                                min_l10_bin = 0,
-                                max_l10_bin = 4.5,
-                                bin_increment = 0.5){
-  
-  
-  ####__  Set Bodymass Cutoff and Groups
-  
-  # 1. Filter for lower/upper ends of gear selectivity
-  l10_assigned_trunc <- filter(
-    wmin_grams, 
-    wmin_g >= min_weight_g,
-    wmin_g < max_weight_g) %>% 
-    mutate(decade = floor_decade(Year))
-  
-  
-  # 2. Set up the factor groupings we want to compare : 
-  
-  # ####_ 1.  All years, every region
-  # message("Calculating log(10) size spectrum with all data")
-  # g1_res <- l10_assigned_trunc %>% 
-  #   mutate(group_var = "all_data") %>% 
-  #   group_l10_spectra(min_weight_g = min_weight_g, 
-  #                      .group_cols = c("group_var")) 
-  
-  
-  # ####_ 2. All Years, each season
-  # message("Calculating log(10) size spectrum for each season")
-  # g2_res <- l10_assigned_trunc %>% 
-  #   group_l10_spectra(min_weight_g = min_weight_g, 
-  #                      .group_cols = c("season")) 
-  
-  
-  # ####_ 3. All Years, regions 
-  # message("Calculating log(10) size spectrum for each region")
-  # g3_res <- l10_assigned_trunc  %>% 
-  #   group_l10_spectra(min_weight_g = min_weight_g, 
-  #                      .group_cols = c("survey_area"))
-  
-  
-  # ####_ 4. All Years, seasons * regions 
-  # message("Calculating log(10) size spectrum for season * region")
-  # g4_res <- l10_assigned_trunc %>% 
-  #   group_l10_spectra(min_weight_g = min_weight_g, 
-  #                      .group_cols = c("season", "survey_area"))
-  
-  ####_ 5. Every year, entire survey 
-  message("Calculating log(10) size spectrum slope each year")
-  g5_res <- l10_assigned_trunc  %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                     .group_cols = c("Year")) 
-  
-  ####_ 6. every year, every region 
-  message("Calculating log(10) size spectrum slope each year in each region")
-  g6_res <- l10_assigned_trunc  %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                     .group_cols = c("Year", "survey_area")) 
-  
-  ####_ 7. every year, only seasons 
-  message("Calculating log(10) size spectrum slope each year in each season")
-  g7_res <- l10_assigned_trunc %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                     .group_cols = c("Year", "season"))
-  
-  
-  ####_ 8. every year, region * season 
-  message("Calculating log(10) size spectrum slope each year in each region, for every season")
-  g8_res <- l10_assigned_trunc %>%
-    group_l10_spectra(min_weight_g = min_weight_g,
-                     .group_cols = c("Year", "season", "survey_area"))
-  
-  
-  # ###_ 9. Decades 
-  # message("Calculating log(10) size spectrum slope each decade")
-  # g9_res <- l10_assigned_trunc %>% 
-  #   group_l10_spectra(min_weight_g = min_weight_g,
-  #                    .group_cols = c("decade")) 
-  # 
-  # 
-  # ###_ 10. Decades and area 
-  # message("Calculating log(10) size spectrum slope each decade in each area")
-  # g10_res <- l10_assigned_trunc %>% 
-  #   group_l10_spectra(min_weight_g = min_weight_g,
-  #                    .group_cols = c("decade", "survey_area")) 
-  
-  
-  # Put the reults in one table with an ID for how they groups are set up
-  table_complete <- bind_rows(
-    list(
-      # "Overall"                        = g1_res,
-      # "only seasons"                   = g2_res,
-      # "only regions"                   = g3_res,
-      # "region * seasons"               = g4_res,
-      "single years"                   = g5_res,
-      "single years * region"          = g6_res,
-      "single years * season"          = g7_res,
-       "single years * season * region" = g8_res#,
-      # "decades"                        = g9_res,
-      # "decades * region"               = g10_res
-      ), 
-    .id = "group ID")
-  
-  # Return the summary table
-  return(table_complete)
-  
-}
-
-
-####______________________####
-####  Species Omission Sensitivity  ####
-
-
-
-
-
-#' @title Perform Leave-One-Out Size Spectra Estimation
-#'
-#' @description Iterates through the input data for the size spectrum analysis,
-#' performing binned size spectrum slope estimation with a single species removed. 
-#'
-#'
-#' @param start_dat Input dataframe that could be passed to `group_l10_spectra()`
-#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
-#' @param min_weight_g Minimum weight cutoff in grams
-#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
-#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
-#' @param bin_increment The bin-width on log scale that separates each bin
-#'
-#' @return
-#' @export
-#'
-#' @examples
-species_omit_spectra <- function(
-    start_dat = catch_1g_binned,
-    .group_cols = c("Year", "survey_area"),
-    min_weight_g = 1,
-    min_l10_bin = 0,
-    max_l10_bin = 4.5,
-    bin_increment = 0.5){
-  
-  
-  # 1. Get a list of all the species to iterate through
-  spec_list <- start_dat  %>% 
-    distinct(comname) %>% 
-    pull(comname)
-  
-  # Set names for that vector
-  spec_list <- setNames(spec_list, spec_list)
-  
-  # 2. For each one, filter comname != species
-  # label group as the species omitted
-  # Perform group_l10_spectra
-  omit_dat <- map_dfr(spec_list, function(species_id){
-    
-    # Filter the species out
-    filtered_dat <- start_dat %>% 
-      filter(comname != species_id)
-    
-    
-    # Run the bare essential spectra information for memory sake
-    spectra_res <-  group_l10_spectra(
-      .group_cols   = .group_cols,
-      wmin_grams    = filtered_dat,
-      min_weight_g  = min_weight_g,
-      min_l10_bin   = min_l10_bin,
-      max_l10_bin   = max_l10_bin,
-      bin_increment = bin_increment)
-    
-    # Rename the columns so we can join them in to the data 
-    # That had all species more easily
-    spectra_res <- spectra_res %>% 
-      rename(omit_slope_strat = l10_slope_strat,
-             omit_int_strat   = l10_int_strat,
-             omit_rsqr_strat  = l10_rsqr_strat,
-             omit_sig_strat   = l10_sig_strat)
-    
-    # Return the results
-    return(spectra_res)
-    
-    # Label what species was left out
-  }, .id = "spec_omit")
-  
-  # Return the list
-  return(omit_dat)
-  
-  
-}
-
-# testing
-# tar_load(catch_1g_binned)
-# Get those sensitivity results
-# spec_omit_results <- species_omit_spectra(catch_1g_binned)
-
-
-
-
-
-
-
-species_omit_changes <- function(spec_omit_results,
-                                  all_spec_results){
-  
-  
-  # join thew species ommissions to the all species results
-  changes_d <- left_join(spec_omit_results, all_spec_results,
-                         by = c("group_var", "Year", "season", "survey_area", "hare_group", "decade"))
-  
-  # Get the variance in the original data for each region
-  region_var_df <- all_spec_results %>% 
-    select(survey_area, l10_slope_strat, l10_int_strat) %>% 
-    group_by(survey_area) %>% 
-    summarise(slope_mu = mean(l10_slope_strat, na.rm = T),
-              slope_sd = sd(l10_slope_strat, na.rm = T),
-              int_mu   = mean(l10_int_strat, na.rm = T),
-              int_sd   = sd(l10_int_strat, na.rm = T), 
-              .groups = "drop")
-  
-  # Calculate the difference between
-  changes_d <- left_join(changes_d, region_var_df, by = "survey_area") %>% 
-    mutate(
-      # Subtract the change that omitting a species makes
-      slope_shift = l10_slope_strat - omit_slope_strat,
-      int_shift   = l10_int_strat - omit_int_strat,
-      # standardize the shift with the variance
-      slope_shift_z = slope_shift / slope_sd,
-      int_shift_z   = int_shift / int_sd
-    )
-  
-  # Return the changes
-  return(changes_d)
-  
-}
-
-
-# Testing
-# Load the slope results for all species, 
-# tar_load(nmfs_log10_slopes)
-# filter out the groupings well run sensistivity for:
-# l10_reg_year <- filter(nmfs_log10_slopes, `group ID` == "single years * region")
-
-# Get Results
-# sens_results <- species_omit_changes(spec_omit_results, l10_reg_year)
-
-
-# # plot a species
-# sens_results %>% 
-#   mutate(Year = as.numeric(Year)) %>% 
-#   filter(spec_omit == "haddock",
-#          survey_area == "GoM") %>% 
-#   ggplot(aes(Year, l10_slope_strat)) + 
-#   geom_point(aes(color = "All Species")) +
-#   geom_line(aes(color = "All Species"), group = 1) +
-#   geom_point(aes(y = omit_slope_strat, color = "Haddock Removed")) +
-#   geom_line(aes(y = omit_slope_strat, color = "Haddock Removed"), group = 1) +
-#   facet_wrap(~survey_area, ncol = 1) +
-#   theme(legend.position = "bottom") +
-#   labs(y = "Biomass Size Spectrum Slope")
-# 
-# 
-# # plot heatmap
-# sens_results %>% 
-#   mutate(Year = as.numeric(Year)) %>% 
-#   filter(survey_area == "GoM") %>% 
-#   ggplot(aes(Year, fct_rev(spec_omit), fill = slope_shift_z)) + 
-#   geom_tile() +
-#   scale_fill_distiller(palette = "RdBu", 
-#                        limits = c(-1, 1), 
-#                        oob = scales::oob_squish) +
-#   facet_wrap(~survey_area, ncol = 1) +
-#   theme(legend.position = "bottom") +
-#   labs(y = "Species omitted", fill = "Shift in Slope (z-score)")
-# 
-
-
-
-
-
-
-####______________________####
-####  Plotting l10 Spectra  ####
-
-# Plot the bins and the size spectrum slope
-#' @title Plot log-10 bin size spectrum with slope fits
-#'
-#' @param l10_assigned Catch data prepped using assign_log10_bins
-#'
-#' @return
-#' @export
-#'
-#' @examples
-plot_log10_ss <- function(l10_assigned){
-  
-  # Bin aggregation moved to aggregate_log10_bins
-  
-  # Get totals for each bin:
-  l10_prepped <- aggregate_l10_bins(l10_assigned)
-  
-  
-  #### Plots Correcting for the bin widths
-  norm_abund_plot <- l10_prepped %>% 
-    ggplot(aes(left_lim, normalized_abund)) +
-    geom_col(fill = gmri_cols("green")) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
-    labs(x = "Log10(bodymass)", y = "Normalized Abundances",
-         subtitle = "Abundances Divided by Bin Widths")
-  
-  norm_strat_abund_plot <- l10_prepped  %>% 
-    ggplot(aes(left_lim, norm_strat_abund)) +
-    geom_col(fill = gmri_cols("green")) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
-    labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
-  
-  # Abundances from Survey
-  p1 <- norm_abund_plot +
-    geom_smooth(formula = y ~ x,
-                method = "lm",
-                color = gmri_cols("orange")) +
-    stat_poly_eq(formula = y ~ x,
-                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                 label.y = 1.1, 
-                 parse = TRUE) +
-    labs(caption = "Survey Abundance", subtitle = "", title = "Manual log10 Binning")
-  
-  # Stratified Abundances
-  p2 <- norm_strat_abund_plot +
-    geom_smooth(formula = y ~ x,
-                method = "lm",
-                color = gmri_cols("orange")) +
-    stat_poly_eq(formula = y ~ x,
-                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                 label.y = 1.1, 
-                 parse = TRUE) +
-    labs(caption = "Stratified Abundance")
-  
-  # assemble with patchwork
-  plot_out <- (p1 | p2)
-  return(plot_out)
-  
-  
-}
-
-
-#' @title Plot normalized abundance of Size Spectra
-#' 
-#' @description Single panel plot of the distribution of abundance on log size bins.
-#'
-#' @param l10_assigned Catch data prepped using assign_log10_bins
-#' @param stratified Stratified or survey abundances
-#'
-#' @return
-#' @export
-#'
-#' @examples
-plot_normalized_ss <- function(l10_assigned, stratified = TRUE){
-  
-  # Get totals for each bin:
-  l10_prepped <- aggregate_l10_bins(l10_assigned)
-  
-  #### Plots Correcting for the bin widths
-  norm_strat_abund_plot <- l10_prepped  %>% 
-    ggplot(aes(left_lim, norm_strat_abund)) +
-    geom_col(fill = gmri_cols("green")) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
-    labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
-  
-  
-  # Stratified Abundances
-  p1 <- norm_strat_abund_plot +
-    geom_smooth(formula = y ~ x,
-                method = "lm",
-                color = gmri_cols("orange")) +
-    stat_poly_eq(formula = y ~ x,
-                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                 label.y = 1.1, 
-                 parse = TRUE) +
-    labs(caption = "Abundance normalized by bin-width.")
-  
-  # Return plot
-  return(p1)
-}
-
-
-#' @title Plot De-normalized abundances of size spectra
-#'
-#' @param l10_assigned Catch data prepped using assign_log10_bins
-#' @param stratified Stratified or survey abundances
-#'
-#' @return
-#' @export
-#'
-#' @examples
-plot_denormalized_ss <- function(l10_assigned, stratified = TRUE){
-  
-  # Get totals for each bin:
-  l10_prepped <- aggregate_l10_bins(l10_assigned)
-  
-  #### Plots Correcting for the bin widths
-  p1 <- l10_prepped  %>% 
-    ggplot(aes(left_lim, denorm_strat_abund)) +
-    geom_point(color = gmri_cols("green")) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
-    labs(x = "Log10(bodymass)", 
-         y = "De-Normalized Stratified Abundances",
-         caption = "Normalized abundance, multiplied by bin mid-point.")
-  
-  # Return plot
-  return(p1)
-  
-  
-}
 
 
 
@@ -1646,7 +807,8 @@ ggplot_isd <- function(isd_data_prepped,
                        group_name = NULL){
   
   # Columns and labels
-  abundance_lab <- c("observed" = "Survey Abundance", "stratified" = "Stratified Abundance")
+  abundance_lab <- c("observed" = "Survey Abundance", 
+                     "stratified" = "Stratified Abundance")
   abundance_label <- abundance_lab[[abundance_vals]]
   
   # Power law parameters and summary details for the group of data:
@@ -1887,6 +1049,977 @@ isd_lite <- function(wmin_grams,
   return(plot_list)
 }
 
+
+
+
+
+
+
+
+####______________________####
+#### Binned Spectra Analysis  ####
+####______________________####
+
+
+
+
+####__ Base 2 Binning__  ####
+
+# Follows methodology of LBNbiom from Edwards et al. 2016
+# Original Method: Blanchard 2005
+
+
+#' @title Build Log 2 Bin Structure Dataframe
+#' 
+#' @description Used to build a dataframe containing equally spaced log2 bins for
+#' size spectra analysis. Contains details on the left and right limits, midpoint, bin width, 
+#' and a text label for the bins. log2bin number ascends with increasing size for eeasy plotting.
+#'
+#' @param log2_min 
+#' @param log2_max 
+#' @param log2_increment 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+define_log2_bins <- function(log2_min = 0, log2_max = 13, log2_increment = 1){
+  
+  # How many bins
+  n_bins  <- length(seq(log2_max, log2_min + log2_increment, by = -log2_increment))
+  
+  # Build Equally spaced log2 bin df
+  log2_bin_structure <- data.frame(
+    "log2_bins" = as.character(seq(n_bins, 1, by = -1)),
+    "left_lim"  = seq(log2_max - log2_increment, log2_min, by = -log2_increment),
+    "right_lim" = seq(log2_max, log2_min + log2_increment, by = -log2_increment)) %>% 
+    mutate(
+      bin_label    = str_c(round(2^left_lim, 3), " - ", round(2^right_lim, 3), "g"),
+      bin_width    = 2^right_lim - 2^left_lim,
+      bin_midpoint = (2^right_lim + 2^left_lim) / 2) %>% 
+    arrange(left_lim)
+  
+  return(log2_bin_structure)
+}
+
+
+
+
+#' @title Assign Manual log2 Bodymass Bins
+#'
+#' @description Manually assign log2 bins based on individual length-weight bodymass 
+#' in increments of 1 on the log2 scale. Returns data with bins assigned based on individual
+#' length-weight biomass
+#' 
+#' Uses maximum weight, and its corresponding bin as the limit.
+#'
+#' @param wmin_grams Catch data prepared for mle calculation, use prep_wmin_wmax
+#' @param log2_increment Equally spaced increments to use for log 2 bin sizes. Default = 0.5.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+assign_log2_bins <- function(wmin_grams, log2_increment = 1){
+  
+  
+  #### 1. Set up bodymass bins
+  
+  # filter missing weights
+  size_data <- wmin_grams %>% 
+    filter(wmin_g > 0,
+           is.na(wmin_g) == FALSE,
+           wmax_g > 0,
+           is.na(wmax_g) == FALSE)
+  
+  # Get bodymass on log2() scale
+  size_data$log2_weight <- log2(size_data$ind_weight_g)
+  
+  # Set up the bins - Pull min and max weights from data available
+  #min_bin <- floor(min(size_data$log2_weight))
+  min_bin <- 0
+  max_bin <- ceiling(max(size_data$log2_weight))
+  
+  
+  # Build a bin key, could be used to clean up the incremental assignment or for apply style functions
+  log2_bin_structure <- define_log2_bins(
+    log2_min = min_bin, 
+    log2_max = max_bin, 
+    log2_increment = log2_increment)
+  
+  
+  
+  # Loop through bins to assign the bin details to the data
+  log2_assigned <- log2_bin_structure %>%
+    split(.$log2_bins) %>%
+    map_dfr(function(log2_bin){
+      
+      # limits and labels
+      l_lim   <- log2_bin$left_lim
+      r_lim   <- log2_bin$right_lim
+      bin_num <- as.character(log2_bin$log2_bin)
+      
+      # assign the label to the appropriate bodymasses
+      size_data %>% mutate(
+        log2_bins = ifelse( between(log2_weight, l_lim, r_lim), bin_num, NA),
+        log2_bins = as.character(log2_bins)) %>%
+        drop_na(log2_bins)
+      
+    })
+  
+  # Join in the size bins
+  log2_assigned <- left_join(log2_assigned, log2_bin_structure, by = "log2_bins")
+  
+  # return the data with the bins assigned
+  return(log2_assigned)
+  
+}
+
+
+
+
+#' @title Calculate Normalized and De-Normalized Abundances
+#'
+#' @description For binned size spectra estimation we use the stratified abundance divided by the
+#' bin widths (normalized size spectra). Another way to present the data is to de-normalize, which 
+#' takes those values and multiplies them by the mid-point of the log-scale bins.
+#' 
+#' min/max & bin_increments are used to enforce the presence of a size bin in the event that 
+#' there is no abundance. This is done for comparing across different groups/areas that should 
+#' conceivably have the same size range sampled.
+#'
+#' @param log2_assigned size data containing the bin assignments to use
+#' @param min_log2_bin Minimum 2^x value for the size spectra being measured (>=)
+#' @param max_log2_bin Maximum 2^x value for the size spectra being measured (<)
+#' @param bin_increment The bin-width on log scale that separates each bin
+#' @param ... Additional grouping factors with which to aggregate on besides the size bins themselves
+#'
+#' @return
+#' @export
+#'
+#' @examples
+aggregate_log2_bins <- function(
+    log2_assigned, 
+    min_log2_bin = 0, 
+    max_log2_bin = 13, 
+    bin_increment = 1,
+    ...){
+  
+  # Full Possible Bin Structure
+  # Fills in any gaps
+  log2_bin_structure <- define_log2_bins(
+    log2_min = min_log2_bin, 
+    log2_max = max_log2_bin, 
+    log2_increment = bin_increment)
+  
+  
+  # Capture all the group levels with a cheeky expand()
+  if(missing(...) == FALSE){
+    log2_bin_structure <- log2_bin_structure %>% 
+      expand(left_lim, distinct(log2_assigned, ...)) %>% 
+      full_join(log2_bin_structure)
+  }
+  
+  
+  
+  # Get bin breaks
+  log2_breaks <- sort(unique(c(log2_bin_structure$left_lim, log2_bin_structure$right_lim)))
+  
+  
+  # Get Totals for bodymass and abundances
+  log2_aggregates <- log2_assigned %>% 
+    group_by(left_lim, ...) %>% 
+    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
+              observed_weight_g    = sum(wmin_g, na.rm = T),
+              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
+              stratified_weight_g  = sum(wmin_area_strat, na.rm = T),
+              .groups = "drop")
+  
+  
+  # Join back in what the limits and labels are
+  # The defined bins and their labels enforce the size limits
+  log2_prepped <- left_join(x = log2_bin_structure, 
+                           y = log2_aggregates)
+  
+  
+  #### Fill Gaps with Zero's?? 
+  # This ensures that any size bin that is intended to be in use is actually used
+  log2_prepped <- log2_prepped %>% 
+    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
+           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
+           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
+           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
+  
+  
+  #### normalize abundances using the bin widths
+  log2_prepped <- log2_prepped %>% 
+    mutate(
+      normalized_abund = observed_abundance / bin_width,
+      norm_strat_abund = stratified_abundance / bin_width,
+      # # Remove Bins Where Normalized Biomass < 0? No!
+      # normalized_abund = ifelse(normalized_abund < 2^0, NA, normalized_abund),
+      # norm_strat_abund = ifelse(norm_strat_abund < 2^0, NA, norm_strat_abund)
+    )
+  
+  # Add de-normalized abundances (abundance * bin midpoint)
+  log2_prepped <- log2_prepped %>% 
+    mutate(
+      denorm_abund = normalized_abund * bin_midpoint,
+      denorm_strat_abund = norm_strat_abund * bin_midpoint)
+  
+  # Return the aggregations
+  return(log2_prepped)
+  
+}
+
+
+
+
+
+
+# Return the slope and intercept for manual estimation of size spectrum slope
+#' @title Process Size Spectrum Slope and Intercept using log2 bins for a group of data
+#'
+#' @param wmin_grams Catch data prepped using prep_wmin_wmax
+#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
+#' @param min_weight_g Minimum weight cutoff in grams
+#' @param min_log2_bin Minimum 2^x value for the size spectra being measured (>=). Left limit of smallest bin.
+#' @param max_log2_bin Maximum 2^x value for the size spectra being measured (<). Left limit of largest bin.
+#' @param bin_increment The bin-width on log scale that separates each bin
+#'
+#' @return
+#' @export
+#'
+#' @examples
+group_log2_spectra <- function(wmin_grams,
+                              .group_cols = "Year",
+                              min_weight_g = 1,
+                              min_log2_bin = 0,
+                              max_log2_bin = 13,
+                              bin_increment = 1){
+  
+  
+  # 1. Set bodymass lower limit, and assign bin labels
+  log2_assigned <- filter(wmin_grams, wmin_g >= min_weight_g )
+  
+  
+  # 2. Build group_var from desired grouping columns
+  log2_assigned <- log2_assigned %>% 
+    unite(col = "group_var", 
+          {{.group_cols}}, 
+          sep = "_", 
+          remove = FALSE, 
+          na.rm = FALSE)
+  
+  # 3. Make a table of constituent combinations
+  col_syms <- syms(.group_cols)
+  grouping_table <- log2_assigned %>% 
+    distinct(!!!col_syms, group_var)
+  
+  
+  # 4. Add missing group factors as "all data"
+  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
+  
+  
+  
+  #### 5.  Running log2 slopes/intercepts
+  
+  # Run size spectra slopes for each group
+  group_results <- log2_assigned %>% 
+    split(.$group_var) %>% 
+    imap_dfr(function(log2_assigned, group_label){
+      
+      # Total the abundances for each bin, normalize them
+      log2_prepped <- aggregate_log2_bins(
+        log2_assigned = log2_assigned, 
+        min_log2_bin = min_log2_bin, 
+        max_log2_bin = max_log2_bin, 
+        bin_increment = bin_increment)
+      
+      
+      ####  Run linear models for slopes
+      # Formula for size spectrum slope: log2(abundance) ~ log2 bin, 
+      # aka the minimum bodymass for bin
+      
+      # Abundance from area-stratification
+      # Will throw an error if norm_strat_abund = 0
+      lm_abund_strat <- lm(log10(norm_strat_abund) ~ log10(bin_midpoint), data = log2_prepped)
+      
+      #  Pull Slope
+      # See edwards et al 2016 methodology Table 2.
+      # Really not sure whether to add or subtract values:
+      lm_b_strat <- lm_abund_strat$coeff[2] #+ 1 
+      
+      # Pull intercept  
+      lm_int_strat <- lm_abund_strat$coeff[1] 
+      
+      # R squared
+      lm_rsqr_strat <- summary(lm_abund_strat)$adj.r.squared
+      
+      # sig
+      lm_sig_strat <- broom::tidy(lm_abund_strat)$p.value[2]
+      
+
+      # Put Spectra Details in Table
+      log2_results <- data.frame(
+        group_var       = group_label,
+        log2_slope_strat = lm_b_strat,
+        log2_int_strat   = lm_int_strat,
+        log2_rsqr_strat  = lm_rsqr_strat,
+        log2_sig_strat   = lm_sig_strat
+      )
+      
+      # Return the group results
+      return(log2_results)
+      
+    })
+  
+  
+  # Merge in the group details
+  group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
+    mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
+  
+  # Return the results
+  return(group_results)
+  
+}
+
+
+
+
+#' @title Process log2 binned size spectra for the collections of WARMEM Groups
+#' 
+#' 
+#' @description Takes a dataframe of all data (weight in grams) and performs the
+#' group_log2_spectra()
+#'
+#' @param wmin_grams Catch data prepped using assign_log2_bins
+#' @param min_weight_g Minimum weight cutoff in grams
+#' @param max_weight_g Maximum weight cutoff in grams
+#' @param min_log2_bin Minimum 2^x value for the size spectra being measured (>=)
+#' @param max_log2_bin Maximum 2^x value for the size spectra being measured (<)
+#' @param bin_increment The bin-width on log scale that separates each bin
+#'
+#' @return
+#' @export
+#'
+#' @examples
+warmem_log2_estimates <- function(wmin_grams,
+                                 min_weight_g,
+                                 max_weight_g,
+                                 min_log2_bin = 0,
+                                 max_log2_bin = 13,
+                                 bin_increment = 1){
+  
+  
+  ####__  Set Bodymass Cutoff and Groups
+  
+  # 1. Filter for lower/upper ends of gear selectivity
+  log2_assigned_trunc <- filter(
+    wmin_grams, 
+    wmin_g >= min_weight_g,
+    wmin_g < max_weight_g) %>% 
+    mutate(decade = floor_decade(Year))
+  
+  
+  ####_ 2. Every year, entire survey 
+  message("Calculating log(2) size spectrum slope each year")
+  g5_res <- log2_assigned_trunc  %>% 
+    group_log2_spectra(min_weight_g = min_weight_g, 
+                      .group_cols = c("Year")) 
+  
+  ####_ 6. every year, every region 
+  message("Calculating log(2) size spectrum slope each year in each region")
+  g6_res <- log2_assigned_trunc  %>% 
+    group_log2_spectra(min_weight_g = min_weight_g, 
+                      .group_cols = c("Year", "survey_area")) 
+  
+  ####_ 7. every year, only seasons 
+  message("Calculating log(2) size spectrum slope each year in each season")
+  g7_res <- log2_assigned_trunc %>% 
+    group_log2_spectra(min_weight_g = min_weight_g, 
+                      .group_cols = c("Year", "season"))
+  
+  
+  ####_ 8. every year, region * season 
+  message("Calculating log(2) size spectrum slope each year in each region, for every season")
+  g8_res <- log2_assigned_trunc %>%
+    group_log2_spectra(min_weight_g = min_weight_g,
+                      .group_cols = c("Year", "season", "survey_area"))
+  
+  
+  # Put the reults in one table with an ID for how they groups are set up
+  table_complete <- bind_rows(
+    list(
+      "single years"                   = g5_res,
+      "single years * region"          = g6_res,
+      "single years * season"          = g7_res,
+      "single years * season * region" = g8_res), 
+    .id = "group ID")
+  
+  # Return the summary table
+  return(table_complete)
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+####__ Base 10 Binning__  ####
+
+
+#' @title Build Log 10 Bin Structure Dataframe
+#' 
+#' @description Used to build a dataframe containing equally spaced log10 bins for
+#' size spectra analysis. Contains details on the left and right limits, midpoint, bin width, 
+#' and a text label for the bins. l10bin number ascends with increasing size for eeasy plotting.
+#'
+#' @param l10_min 
+#' @param l10_max 
+#' @param l10_increment 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+define_l10_bins <- function(l10_min = 0, l10_max = 4.5, l10_increment = 0.5){
+  
+  # How many bins
+  n_bins  <- length(seq(l10_max, l10_min + l10_increment, by = -l10_increment))
+  
+  # Build Equally spaced log10 bin df
+  l10_bin_structure <- data.frame(
+    "log10_bins" = as.character(seq(n_bins, 1, by = -1)),
+    "left_lim"  = seq(l10_max - l10_increment, l10_min, by = -l10_increment),
+    "right_lim" = seq(l10_max, l10_min + l10_increment, by = -l10_increment)) %>% 
+    mutate(
+      bin_label    = str_c(round(10^left_lim, 3), " - ", round(10^right_lim, 3), "g"),
+      bin_width    = 10^right_lim - 10^left_lim,
+      bin_midpoint = (10^right_lim + 10^left_lim) / 2) %>% 
+    arrange(log10_bins)
+  
+  return(l10_bin_structure)
+}
+
+
+
+
+
+#' @title Assign Manual log10 Bodymass Bins
+#'
+#' @description Manually assign log10 bins based on individual length-weight bodymass 
+#' in increments of 0.5 on the log10 scale. Returns data with bins assigned based on individual
+#' length-weight biomass
+#' 
+#' Uses maximum weight, and its corresponding bin as the limit.
+#'
+#' @param wmin_grams Catch data prepared for mle calculation, use prep_wmin_wmax
+#' @param l10_increment Equally spaced increments to use for log 10 bin sizes. Default = 0.5.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+assign_log10_bins <- function(wmin_grams, l10_increment = 1){
+  
+  
+  #### 1. Set up bodymass bins
+  
+  # filter missing weights
+  size_data <- wmin_grams %>% 
+    filter(wmin_g > 0,
+           is.na(wmin_g) == FALSE,
+           wmax_g > 0,
+           is.na(wmax_g) == FALSE)
+
+  # Get bodymass on log10() scale
+  size_data$log10_weight <- log10(size_data$ind_weight_g)
+  
+  # Set up the bins - Pull min and max weights from data available
+  min_bin <- floor(min(size_data$log10_weight))
+  max_bin <- ceiling(max(size_data$log10_weight))
+  
+  
+  # Build a bin key, could be used to clean up the incremental assignment or for apply style functions
+  l10_bin_structure <- define_l10_bins(
+    l10_min = min_bin, 
+    l10_max = max_bin, 
+    l10_increment = l10_increment)
+  
+  
+  
+  # Loop through bins to assign the bin details to the data
+  l10_assigned <- l10_bin_structure %>%
+    split(.$log10_bins) %>%
+    map_dfr(function(l10_bin){
+      
+      # limits and labels
+      l_lim   <- l10_bin$left_lim
+      r_lim   <- l10_bin$right_lim
+      bin_num <- as.character(l10_bin$log10_bin)
+      
+      # assign the label to the appropriate bodymasses
+      size_data %>% mutate(
+        log10_bins = ifelse( between(log10_weight, l_lim, r_lim), bin_num, NA),
+        log10_bins = as.character(log10_bins)) %>%
+        drop_na(log10_bins)
+      
+    })
+  
+  # Join in the size bins
+  l10_assigned <- left_join(l10_assigned, l10_bin_structure, by = "log10_bins")
+  
+  # return the data with the bins assigned
+  return(l10_assigned)
+  
+}
+
+
+
+
+
+
+
+#' @title Calculate Normalized and De-Normalized Abundances
+#'
+#' @description For binned size spectra estimation we use the stratified abundance divided by the
+#' bin widths (normalized size spectra). Another way to present the data is to de-normalize, which 
+#' takes those values and multiplies them by the mid-point of the log-scale bins.
+#' 
+#' min/max & bin_increments are used to enforce the presence of a size bin in the event that 
+#' there is no abundance. This is done for comparing across different groups/areas that should 
+#' conceivably have the same size range sampled.
+#'
+#' @param l10_assigned size data containing the bin assignments to use
+#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
+#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
+#' @param bin_increment The bin-width on log scale that separates each bin
+#' @param ... Additional grouping factors with which to aggregate on besides the size bins themselves
+#'
+#' @return
+#' @export
+#'
+#' @examples
+aggregate_l10_bins <- function(
+    l10_assigned, 
+    min_l10_bin = 0, 
+    max_l10_bin = 4.5, 
+    bin_increment = 0.5,
+    ...){
+  
+  # Full Possible Bin Structure
+  # Fills in any gaps
+  l10_bin_structure <- define_l10_bins(
+    l10_min = min_l10_bin, 
+    l10_max = max_l10_bin, 
+    l10_increment = bin_increment)
+  
+  
+  # Capture all the group levels with a cheeky expand()
+  if(missing(...) == FALSE){
+    l10_bin_structure <- l10_bin_structure %>% 
+      expand(left_lim, distinct(l10_assigned, ...)) %>% 
+      full_join(l10_bin_structure)
+  }
+  
+  
+  
+  # Get bin breaks
+  l10_breaks <- sort(unique(c(l10_bin_structure$left_lim, l10_bin_structure$right_lim)))
+  
+  
+  # Get Totals for bodymass and abundances
+  l10_aggregates <- l10_assigned %>% 
+    # group_by(log10_bins, ...) %>% 
+    group_by(left_lim, ...) %>% 
+    summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
+              observed_weight_g    = sum(wmin_g, na.rm = T),
+              stratified_abundance = sum(strat_total_abund_s, na.rm = T),
+              stratified_weight_g  = sum(wmin_area_strat, na.rm = T),
+              .groups = "drop")
+  
+  
+  # Join back in what the limits and labels are
+  # The defined bins and their labels enforce the size limits
+  l10_prepped <- left_join(x = l10_bin_structure, 
+                           y = l10_aggregates)
+  
+  
+  #### Fill Gaps with Zero's??
+  # This ensures that any size bin that is intended to be in use is actually used
+  l10_prepped <- l10_prepped %>% 
+    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
+           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
+           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
+           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
+  
+  
+  #### normalize abundances using the bin widths
+  l10_prepped <- l10_prepped %>% 
+    mutate(
+      normalized_abund = observed_abundance / bin_width,
+      norm_strat_abund = stratified_abundance / bin_width,
+      # # Remove Bins Where Normalized Biomass < 0? No!
+      # normalized_abund = ifelse(normalized_abund < 10^0, NA, normalized_abund),
+      # norm_strat_abund = ifelse(norm_strat_abund < 10^0, NA, norm_strat_abund)
+    )
+  
+  # Add de-normalized abundances (abundance * bin midpoint)
+  l10_prepped <- l10_prepped %>% 
+    mutate(
+      denorm_abund = normalized_abund * bin_midpoint,
+      denorm_strat_abund = norm_strat_abund * bin_midpoint)
+  
+  # Return the aggregations
+  return(l10_prepped)
+  
+}
+
+
+# Return the slope and intercept for manual estimation of size spectrum slope
+#' @title Process Size Spectrum Slope and Intercept using log10 bins for a group of data
+#'
+#' @param wmin_grams Catch data prepped using prep_wmin_wmax
+#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
+#' @param min_weight_g Minimum weight cutoff in grams
+#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
+#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
+#' @param bin_increment The bin-width on log scale that separates each bin
+#'
+#' @return
+#' @export
+#'
+#' @examples
+group_l10_spectra <- function(wmin_grams,
+                              .group_cols = "Year",
+                              min_weight_g = 1,
+                              min_l10_bin = 0,
+                              max_l10_bin = 4.5,
+                              bin_increment = 0.5){
+  
+  
+  # 1. Set bodymass lower limit, and assign bin labels
+  l10_assigned <- filter(wmin_grams, wmin_g >= min_weight_g )
+  
+  
+  # 2. Build group_var from desired grouping columns
+  l10_assigned <- l10_assigned %>% 
+    unite(col = "group_var", 
+          {{.group_cols}}, 
+          sep = "_", 
+          remove = FALSE, 
+          na.rm = FALSE)
+  
+  # 3. Make a table of constituent combinations
+  col_syms <- syms(.group_cols)
+  grouping_table <- l10_assigned %>% 
+    distinct(!!!col_syms, group_var)
+  
+  
+  # 4. Add missing group factors as "all data"
+  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
+  
+  
+  
+  #### 5.  Running log10 slopes/intercepts
+  
+  # Run size spectra slopes for each group
+  group_results <- l10_assigned %>% 
+    split(.$group_var) %>% 
+    imap_dfr(function(l10_assigned, group_label){
+      
+      # Total the abundances for each bin, normalize them
+      l10_prepped <- aggregate_l10_bins(
+        l10_assigned = l10_assigned, 
+        min_l10_bin = min_l10_bin, 
+        max_l10_bin = max_l10_bin, 
+        bin_increment = bin_increment)
+      
+      
+      ####  Run linear models for slopes
+      # Formula for size spectrum slope: log10(abundance) ~ log10 bin, 
+      # aka the minimum bodymass for bin
+      
+      # Abundance from area-stratification
+      # Will throw an error if norm_strat_abund = 0
+      # lm_abund_strat <- lm(log10(norm_strat_abund) ~ left_lim, data = l10_prepped)
+      lm_abund_strat <- lm(log10(norm_strat_abund) ~ log10(bin_midpoint), data = l10_prepped)
+  
+      #  Pull Slope
+      # See edwards et al 2016 methodology Table 2.
+      # Really not sure whether to add or subtract values:
+      
+      lm_b_strat <- lm_abund_strat$coeff[2] #+ 1 
+      
+      # Pull intercept  
+      lm_int_strat <- lm_abund_strat$coeff[1] 
+      
+      # R squared
+      lm_rsqr_strat <- summary(lm_abund_strat)$adj.r.squared
+      
+      # sig
+      lm_sig_strat <- broom::tidy(lm_abund_strat)$p.value[2]
+      
+      # Run for abundance from the survey catch
+      #lm_abund       <- lm(log10(normalized_abund) ~ left_lim, data = l10_prepped)
+      # pull out slope coefficient
+      #lm_b <- lm_abund$coeff[2] #- 1
+      #lm_int <- lm_abund$coeff[1] 
+      #lm_rsqr       <- summary(lm_abund)$adj.r.squared
+      #lm_sig       <- broom::tidy(lm_abund)$p.value[2]
+      
+      
+      
+      # Put Spectra Details in Table
+      l10_results <- data.frame(
+        group_var       = group_label,
+        l10_slope_strat = lm_b_strat,
+        l10_int_strat   = lm_int_strat,
+        l10_rsqr_strat  = lm_rsqr_strat,
+        l10_sig_strat   = lm_sig_strat#,
+        #l10_slope       = lm_b,
+        #l10_rsqr        = lm_rsqr,
+        #l10_int         = lm_int,
+        #l10_sig         = lm_sig,
+      )
+      
+      # Return the group results
+      return(l10_results)
+  
+  })
+  
+  
+  # Merge in the group details
+  group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
+    mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
+  
+  # Return the results
+  return(group_results)
+  
+}
+
+
+
+#' @title Process log10 binned size spectra for the collections of WARMEM Groups
+#' 
+#' 
+#' @description Takes a dataframe of all data (weight in grams) and performs the
+#' group_log10_spectra()
+#'
+#' @param wmin_grams Catch data prepped using assign_log10_bins
+#' @param min_weight_g Minimum weight cutoff in grams
+#' @param max_weight_g Maximum weight cutoff in grams
+#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=)
+#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<)
+#' @param bin_increment The bin-width on log scale that separates each bin
+#'
+#' @return
+#' @export
+#'
+#' @examples
+warmem_l10_estimates <- function(wmin_grams,
+                                min_weight_g,
+                                max_weight_g,
+                                min_l10_bin = 0,
+                                max_l10_bin = 4.5,
+                                bin_increment = 0.5){
+  
+  
+  ####__  Set Bodymass Cutoff and Groups
+  
+  # 1. Filter for lower/upper ends of gear selectivity
+  l10_assigned_trunc <- filter(
+    wmin_grams, 
+    wmin_g >= min_weight_g,
+    wmin_g < max_weight_g) %>% 
+    mutate(decade = floor_decade(Year))
+  
+  
+  # 2. Set up the factor groupings we want to compare : 
+  
+  ####_ 5. Every year, entire survey 
+  message("Calculating log(10) size spectrum slope each year")
+  g5_res <- l10_assigned_trunc  %>% 
+    group_l10_spectra(min_weight_g = min_weight_g, 
+                     .group_cols = c("Year")) 
+  
+  ####_ 6. every year, every region 
+  message("Calculating log(10) size spectrum slope each year in each region")
+  g6_res <- l10_assigned_trunc  %>% 
+    group_l10_spectra(min_weight_g = min_weight_g, 
+                     .group_cols = c("Year", "survey_area")) 
+  
+  ####_ 7. every year, only seasons 
+  message("Calculating log(10) size spectrum slope each year in each season")
+  g7_res <- l10_assigned_trunc %>% 
+    group_l10_spectra(min_weight_g = min_weight_g, 
+                     .group_cols = c("Year", "season"))
+  
+  
+  ####_ 8. every year, region * season 
+  message("Calculating log(10) size spectrum slope each year in each region, for every season")
+  g8_res <- l10_assigned_trunc %>%
+    group_l10_spectra(min_weight_g = min_weight_g,
+                     .group_cols = c("Year", "season", "survey_area"))
+  
+  
+  # Put the reults in one table with an ID for how they groups are set up
+  table_complete <- bind_rows(
+    list(
+      "single years"                   = g5_res,
+      "single years * region"          = g6_res,
+      "single years * season"          = g7_res,
+       "single years * season * region" = g8_res), 
+    .id = "group ID")
+  
+  # Return the summary table
+  return(table_complete)
+  
+}
+
+
+
+
+####______________________####
+####  Plotting l10 Spectra  ####
+
+# Plot the bins and the size spectrum slope
+#' @title Plot log-10 bin size spectrum with slope fits
+#'
+#' @param l10_assigned Catch data prepped using assign_log10_bins
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_log10_ss <- function(l10_assigned){
+  
+  # Bin aggregation moved to aggregate_log10_bins
+  
+  # Get totals for each bin:
+  l10_prepped <- aggregate_l10_bins(l10_assigned)
+  
+  
+  #### Plots Correcting for the bin widths
+  norm_abund_plot <- l10_prepped %>% 
+    ggplot(aes(left_lim, normalized_abund)) +
+    geom_col(fill = gmri_cols("green")) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+    labs(x = "Log10(bodymass)", y = "Normalized Abundances",
+         subtitle = "Abundances Divided by Bin Widths")
+  
+  norm_strat_abund_plot <- l10_prepped  %>% 
+    ggplot(aes(left_lim, norm_strat_abund)) +
+    geom_col(fill = gmri_cols("green")) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+    labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
+  
+  # Abundances from Survey
+  p1 <- norm_abund_plot +
+    geom_smooth(formula = y ~ x,
+                method = "lm",
+                color = gmri_cols("orange")) +
+    stat_poly_eq(formula = y ~ x,
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                 label.y = 1.1, 
+                 parse = TRUE) +
+    labs(caption = "Survey Abundance", subtitle = "", title = "Manual log10 Binning")
+  
+  # Stratified Abundances
+  p2 <- norm_strat_abund_plot +
+    geom_smooth(formula = y ~ x,
+                method = "lm",
+                color = gmri_cols("orange")) +
+    stat_poly_eq(formula = y ~ x,
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                 label.y = 1.1, 
+                 parse = TRUE) +
+    labs(caption = "Stratified Abundance")
+  
+  # assemble with patchwork
+  plot_out <- (p1 | p2)
+  return(plot_out)
+  
+  
+}
+
+
+#' @title Plot normalized abundance of Size Spectra
+#' 
+#' @description Single panel plot of the distribution of abundance on log size bins.
+#'
+#' @param l10_assigned Catch data prepped using assign_log10_bins
+#' @param stratified Stratified or survey abundances
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_normalized_ss <- function(l10_assigned, stratified = TRUE){
+  
+  # Get totals for each bin:
+  l10_prepped <- aggregate_l10_bins(l10_assigned)
+  
+  #### Plots Correcting for the bin widths
+  norm_strat_abund_plot <- l10_prepped  %>% 
+    ggplot(aes(left_lim, norm_strat_abund)) +
+    geom_col(fill = gmri_cols("green")) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+    labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
+  
+  
+  # Stratified Abundances
+  p1 <- norm_strat_abund_plot +
+    geom_smooth(formula = y ~ x,
+                method = "lm",
+                color = gmri_cols("orange")) +
+    stat_poly_eq(formula = y ~ x,
+                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+                 label.y = 1.1, 
+                 parse = TRUE) +
+    labs(caption = "Abundance normalized by bin-width.")
+  
+  # Return plot
+  return(p1)
+}
+
+
+#' @title Plot De-normalized abundances of size spectra
+#'
+#' @param l10_assigned Catch data prepped using assign_log10_bins
+#' @param stratified Stratified or survey abundances
+#'
+#' @return
+#' @export
+#'
+#' @examples
+plot_denormalized_ss <- function(l10_assigned, stratified = TRUE){
+  
+  # Get totals for each bin:
+  l10_prepped <- aggregate_l10_bins(l10_assigned)
+  
+  #### Plots Correcting for the bin widths
+  p1 <- l10_prepped  %>% 
+    ggplot(aes(left_lim, denorm_strat_abund)) +
+    geom_point(color = gmri_cols("green")) +
+    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+    labs(x = "Log10(bodymass)", 
+         y = "De-Normalized Stratified Abundances",
+         caption = "Normalized abundance, multiplied by bin mid-point.")
+  
+  # Return plot
+  return(p1)
+  
+  
+}
 
 
 
@@ -2152,6 +2285,177 @@ set_vonbert_groups <- function(cutoff_rank){
 estimate_vonbert_coef <- function(species_size_age_data){
   "work in progress"
 }
+
+
+
+
+
+####______________________####
+####  Species Omission Sensitivity Testing ####
+
+
+
+
+
+#' @title Perform Leave-One-Out Size Spectra Estimation
+#'
+#' @description Iterates through the input data for the size spectrum analysis,
+#' performing binned size spectrum slope estimation with a single species removed. 
+#'
+#'
+#' @param start_dat Input dataframe that could be passed to `group_l10_spectra()`
+#' @param .group_cols Vector of string(s) to use as grouping factors that correspond to column names
+#' @param min_weight_g Minimum weight cutoff in grams
+#' @param min_l10_bin Minimum 10^x value for the size spectra being measured (>=). Left limit of smallest bin.
+#' @param max_l10_bin Maximum 10^x value for the size spectra being measured (<). Left limit of largest bin.
+#' @param bin_increment The bin-width on log scale that separates each bin
+#'
+#' @return
+#' @export
+#'
+#' @examples
+species_omit_spectra <- function(
+    start_dat = catch_1g_binned,
+    .group_cols = c("Year", "survey_area"),
+    min_weight_g = 1,
+    min_l10_bin = 0,
+    max_l10_bin = 4.5,
+    bin_increment = 0.5){
+  
+  
+  # 1. Get a list of all the species to iterate through
+  spec_list <- start_dat  %>% 
+    distinct(comname) %>% 
+    pull(comname)
+  
+  # Set names for that vector
+  spec_list <- setNames(spec_list, spec_list)
+  
+  # 2. For each one, filter comname != species
+  # label group as the species omitted
+  # Perform group_l10_spectra
+  omit_dat <- map_dfr(spec_list, function(species_id){
+    
+    # Filter the species out
+    filtered_dat <- start_dat %>% 
+      filter(comname != species_id)
+    
+    
+    # Run the bare essential spectra information for memory sake
+    spectra_res <-  group_l10_spectra(
+      .group_cols   = .group_cols,
+      wmin_grams    = filtered_dat,
+      min_weight_g  = min_weight_g,
+      min_l10_bin   = min_l10_bin,
+      max_l10_bin   = max_l10_bin,
+      bin_increment = bin_increment)
+    
+    # Rename the columns so we can join them in to the data 
+    # That had all species more easily
+    spectra_res <- spectra_res %>% 
+      rename(omit_slope_strat = l10_slope_strat,
+             omit_int_strat   = l10_int_strat,
+             omit_rsqr_strat  = l10_rsqr_strat,
+             omit_sig_strat   = l10_sig_strat)
+    
+    # Return the results
+    return(spectra_res)
+    
+    # Label what species was left out
+  }, .id = "spec_omit")
+  
+  # Return the list
+  return(omit_dat)
+  
+  
+}
+
+# testing
+# tar_load(catch_1g_binned)
+# Get those sensitivity results
+# spec_omit_results <- species_omit_spectra(catch_1g_binned)
+
+
+
+
+
+
+
+species_omit_changes <- function(spec_omit_results,
+                                 all_spec_results){
+  
+  
+  # join thew species ommissions to the all species results
+  changes_d <- left_join(spec_omit_results, all_spec_results,
+                         by = c("group_var", "Year", "season", "survey_area", "hare_group", "decade"))
+  
+  # Get the variance in the original data for each region
+  region_var_df <- all_spec_results %>% 
+    select(survey_area, l10_slope_strat, l10_int_strat) %>% 
+    group_by(survey_area) %>% 
+    summarise(slope_mu = mean(l10_slope_strat, na.rm = T),
+              slope_sd = sd(l10_slope_strat, na.rm = T),
+              int_mu   = mean(l10_int_strat, na.rm = T),
+              int_sd   = sd(l10_int_strat, na.rm = T), 
+              .groups = "drop")
+  
+  # Calculate the difference between
+  changes_d <- left_join(changes_d, region_var_df, by = "survey_area") %>% 
+    mutate(
+      # Subtract the change that omitting a species makes
+      slope_shift = l10_slope_strat - omit_slope_strat,
+      int_shift   = l10_int_strat - omit_int_strat,
+      # standardize the shift with the variance
+      slope_shift_z = slope_shift / slope_sd,
+      int_shift_z   = int_shift / int_sd
+    )
+  
+  # Return the changes
+  return(changes_d)
+  
+}
+
+
+# Testing
+# Load the slope results for all species, 
+# tar_load(nmfs_log10_slopes)
+# filter out the groupings well run sensistivity for:
+# l10_reg_year <- filter(nmfs_log10_slopes, `group ID` == "single years * region")
+
+# Get Results
+# sens_results <- species_omit_changes(spec_omit_results, l10_reg_year)
+
+
+# # plot a species
+# sens_results %>% 
+#   mutate(Year = as.numeric(Year)) %>% 
+#   filter(spec_omit == "haddock",
+#          survey_area == "GoM") %>% 
+#   ggplot(aes(Year, l10_slope_strat)) + 
+#   geom_point(aes(color = "All Species")) +
+#   geom_line(aes(color = "All Species"), group = 1) +
+#   geom_point(aes(y = omit_slope_strat, color = "Haddock Removed")) +
+#   geom_line(aes(y = omit_slope_strat, color = "Haddock Removed"), group = 1) +
+#   facet_wrap(~survey_area, ncol = 1) +
+#   theme(legend.position = "bottom") +
+#   labs(y = "Biomass Size Spectrum Slope")
+# 
+# 
+# # plot heatmap
+# sens_results %>% 
+#   mutate(Year = as.numeric(Year)) %>% 
+#   filter(survey_area == "GoM") %>% 
+#   ggplot(aes(Year, fct_rev(spec_omit), fill = slope_shift_z)) + 
+#   geom_tile() +
+#   scale_fill_distiller(palette = "RdBu", 
+#                        limits = c(-1, 1), 
+#                        oob = scales::oob_squish) +
+#   facet_wrap(~survey_area, ncol = 1) +
+#   theme(legend.position = "bottom") +
+#   labs(y = "Species omitted", fill = "Shift in Slope (z-score)")
+# 
+
+
 
 
 

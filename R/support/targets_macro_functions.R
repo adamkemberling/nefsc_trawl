@@ -52,12 +52,34 @@ import_and_tidy_bio <- function(box_location){
 size_spectrum_prep <- function(
     catch_data, 
     min_weight_g = 1, 
-    max_weight_g = 10^5){
+    max_weight_g = 10^5,
+    bin_increment = 1){
   spectra_input <- prep_sizeSpectra_data(lw_trawl_data = catch_data) %>% 
     min_weight_cutoff(catch_lw = ., min_weight_g = min_weight_g) %>% 
     max_weight_cutoff(catch_lw = ., max_weight_g = max_weight_g) %>% 
-    size_bin_formatting(catch_1g = .) %>% 
-    assign_log10_bins(.)
+    #size_bin_formatting(catch_1g = .) %>%  # purely aesthetic binning
+    assign_log10_bins(., l10_increment = bin_increment)
+  return(spectra_input)
+}
+
+
+
+
+
+
+
+# Macro 2: Prepare Size Spectra
+# area stratification, size truncation, set units, 
+# prepare upper/lower weight limits for 1cm length increments
+LBNbiom_prep <- function(
+    catch_data, 
+    min_weight_g = 1, 
+    max_weight_g = 2^13,
+    bin_increment = 1){
+  spectra_input <- prep_sizeSpectra_data(lw_trawl_data = catch_data) %>% 
+    min_weight_cutoff(catch_lw = ., min_weight_g = min_weight_g) %>% 
+    max_weight_cutoff(catch_lw = ., max_weight_g = max_weight_g) %>% 
+    assign_log2_bins(., log2_increment = bin_increment)
   return(spectra_input)
 }
 
