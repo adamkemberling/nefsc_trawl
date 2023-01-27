@@ -327,13 +327,12 @@ catch_data <- catch_data %>%
 
 
 # Get the total biomass at each station
-# Totals up the abundance and biomass across sex*
+# Totals up the abundance and biomass across sex, ignores repeated biomass values
 catch_station_totals <- catch_data %>% 
+  distinct(est_year, survey_area, stratum, tow, est_towdate, season, comname, catchsex, .keep_all = T) %>%
   group_by(est_year, survey_area, stratum, tow, est_towdate, season, 
            avgdepth, bottemp, decdeg_beglat, decdeg_beglon, comname) %>% 
-  summarise(
-    biomass_kg = sum(biomass_kg, na.rm = T),
-    .groups = "drop")
+  summarise(biomass_kg = sum(biomass_kg, na.rm = T), .groups = "drop")
 
 
 rm(survdat_clean)
@@ -346,7 +345,7 @@ rm(survdat_clean)
 #| label: weighted-mean-functions
 
 # Function to run the group weighted means on different groups using ...
-# Does all variables: depth, temp, lat, lon & their variance (sd)
+# Does all variables: depth, bottemp, lat, lon & their variance (sd)
 grouped_center_bio <- function(station_totals, ...){
   station_totals %>% 
     group_by(comname, ...) %>% 
@@ -375,14 +374,14 @@ grouped_center_bio <- function(station_totals, ...){
 variable_center_bio <- function(station_totals, var_col, wt_col = biomass_kg, ...){
   var_lab <- deparse(substitute(var_col))
   mean_df <- station_totals %>% 
-  group_by(comname, ...) %>% 
-  summarise(
-    biom_median  = weightedMedian({{var_col}}, {{wt_col}}, na.rm = T),
-    biom_mu      = weightedMean({{var_col}},   {{wt_col}}, na.rm = T),
-    biom_sd      = weightedSd({{var_col}},     {{wt_col}}, na.rm = T), 
-    .groups = "drop") %>% 
-    mutate(var = var_lab)
-  
+    group_by(comname, ...) %>% 
+    summarise(
+      biom_median  = weightedMedian({{var_col}}, {{wt_col}}, na.rm = T),
+      biom_mu      = weightedMean({{var_col}},   {{wt_col}}, na.rm = T),
+      biom_sd      = weightedSd({{var_col}},     {{wt_col}}, na.rm = T), 
+      .groups = "drop") %>% 
+      mutate(var = var_lab)
+    
   return(mean_df)
   
 }
@@ -1124,10 +1123,9 @@ ggplot(plot_dat, aes(x = estimate, y = comname, group = regime, color = regime))
 ```
 
 
+# Summary Tables of Growth Change
 
-```{r}
-
-```
+::: panel-tabset
 
 ## Changes in $L_\infty$
 
@@ -1175,7 +1173,7 @@ condition_changes %>%
   tab_row_group(label = "Condition Stable", rows = `Change in Condition (K)` == 0)
 ```
 
-
+:::
 
 ## Growth with Changes in The Environment
 
@@ -1218,25 +1216,8 @@ regime_deltas <- all_regime_estimates%>%
 ### Temperature
 
 ::: panel-tabset
-#### K
-```{r}
 
-regime_deltas %>% 
-  filter(regime == "regime_delta") %>% 
-  ggplot(aes(avg_temp, Linf, color = residence)) +
-    geom_hline(yintercept = 0, color = "gray50") +
-    geom_vline(xintercept = 0, color = "gray50") +
-    geom_label_repel(aes(label = comname), size = 3, 
-                     nudge_y = 2, show.legend = FALSE) +
-    geom_point() +
-  scale_x_continuous(limits = c(-2,2), labels = number_format(suffix = deg_c)) +
-    labs(x = expression(Delta~t),
-         y = expression(Delta~L~infinity~~(cm)),
-         title = str_c("Change in L-Infinity with Temperature Change"))
-```
- 
- 
-#### L infinity
+#### K
 
 ```{r}
 regime_deltas %>% 
@@ -1253,6 +1234,27 @@ regime_deltas %>%
          title = str_c("Change in K with Temperature Change"))
 
 ```
+ 
+#### L infinity
+
+
+
+```{r}
+
+regime_deltas %>% 
+  filter(regime == "regime_delta") %>% 
+  ggplot(aes(avg_temp, Linf, color = residence)) +
+    geom_hline(yintercept = 0, color = "gray50") +
+    geom_vline(xintercept = 0, color = "gray50") +
+    geom_label_repel(aes(label = comname), size = 3, 
+                     nudge_y = 2, show.legend = FALSE) +
+    geom_point() +
+  scale_x_continuous(limits = c(-2,2), labels = number_format(suffix = deg_c)) +
+    labs(x = expression(Delta~t),
+         y = expression(Delta~L~infinity~~(cm)),
+         title = str_c("Change in L-Infinity with Temperature Change"))
+```
+
 
 #### Condition
 
@@ -1307,7 +1309,7 @@ regime_deltas %>%
     geom_label_repel(aes(label = comname), size = 3, 
                      nudge_y = 2, show.legend = FALSE) +
     geom_point() +
-    labs(x = expression(Delta~Depth~~(m)),
+    labs(x = expression(Delta~L~infinity~~(cm)),
          y = expression(Delta~K),
          title = str_c("Change in L-Infinity with Depth Change"),
          color = "Center of Biomass Location")
@@ -1478,14 +1480,14 @@ vb_incs <- vbert_age_data %>%
         # String built from the value to confirm
         diff_name  = str_c(age, " - ", lead_age),
         # Length/Weight at age + 1
-        len_age_p1 = lead(avg_len, n = 1),
-        wt_age_p1  = lead(avg_wt, n = 1),
+        len_age_plus1 = lead(avg_len, n = 1),
+        wt_age_plus1  = lead(avg_wt, n = 1),
         # Length/Weight Growth Increments
-        len_inc    = len_age_p1 - avg_len,
-        wt_inc     = wt_age_p1 - avg_wt,
+        length_increment    = len_age_plus1 - avg_len,
+        weight_increment     = wt_age_plus1 - avg_wt,
         # Percent change in bodymass for going from age to age+1
-        len_perc_change = (len_inc / avg_len) * 100,
-        wt_perc_change = (wt_inc / avg_wt) * 100) %>% 
+        len_perc_change = (length_increment / avg_len) * 100,
+        wt_perc_change = (weight_increment / avg_wt) * 100) %>% 
       filter((lead_age - age == 1))
   })
 
@@ -1511,8 +1513,8 @@ plot_age_increments <- function(
   
 # Code to switch variables and their labels:
   var_sym <- switch(var_choice,
-    "length" = sym("len_inc"),
-    "weight" = sym("wt_inc"))
+    "length" = sym("length_increment"),
+    "weight" = sym("weight_increment"))
   var_label <- switch(var_choice,
                       "length" = "Annual Growth  (cm)",
                       "weight" = "Annual Growth  (kg)")
@@ -1562,12 +1564,65 @@ walk(display_species, plot_panelset, plot_fun = plot_age_increments, var_choice 
 
 
 ## Temperature and Age Increments
-# WORKING HERE
 
-I’m also trying to think about how to look at lagged temperature effects on size, with a particular interest in MHWs. A starting point might be to look at cross-correlation (ccf) between temperature and the age increments. That would enable us to see the time period over which potential lagged effects operate. This will produce lots of plots (one for each age increment), so let’s start with just a few species…maybe plaice, cod, silver hake, and summer flounder based on some differences I see in the VB curves.
+
+I’m also trying to think about how to look at lagged temperature effects on size, with a particular interest in MHWs. A starting point might be to look at cross-correlation (ccf) between temperature and the age increments. That would enable us to see the time period over which potential lagged effects operate.
+
+This will produce lots of plots (one for each age increment), so let’s start with just a few species…maybe plaice, cod, silver hake, and summer flounder based on some differences I see in the VB curves.
+
+
 
 ```{r}
+#| label: ccf-plot
+#| fig-height: 6
 
+# Pull growth increments and add sst for whole area:
+increment_temps <- vb_incs %>% 
+  distinct(yr = est_year, comname =`common name`, diff_name, age, avg_len, avg_wt, lead_age, len_age_plus1, wt_age_plus1, length_increment, weight_increment) %>% 
+  left_join(
+    select(temp_regimes, -c(decade, avg_temp_c, temp_label, avg_anom_c, x, xend)) %>% 
+      filter(survey_area == "Full Region")
+  )
+
+
+# Do cross correlation of growth increments and sst anomalies
+age_increment_ccf <- increment_temps %>% 
+  split(.$comname) %>% 
+  map_dfr(function(species){
+    # Split again to run ccf on each age increment
+    age_increment_results <- species %>% 
+      split(.$diff_name) %>% 
+      map_dfr(function(x) {
+        split_ccf <- ccf(x$sst_anom, x$length_increment, 
+                         plot = FALSE, type = "correlation", lag.max = 6)
+        ccf_results <- data.frame(
+          "lag" = split_ccf$lag %>% as.numeric(),
+          "correlation" = split_ccf$acf %>% as.numeric())}, 
+        .id = "Age Increment" )
+    
+    return(age_increment_results)
+  }, .id = "comname")
+  
+
+
+# Plot them
+age_increment_ccf %>% 
+  filter(`Age Increment` %in% c("0 - 1", "1 - 2", "2 - 3", "3 - 4",
+                                "4 - 5", "5 - 6"),
+         lag <= 0 ) %>% 
+  ggplot(aes(lag, y = comname, fill = correlation)) +
+  geom_tile() +
+  scale_x_continuous(breaks = seq(-10,10,1)) +
+  # scale_fill_distiller(palette = "RdBu", limits = c(-1,1)) +
+  scale_fill_fermenter(palette = "RdBu", limits = c(-1,1), breaks = seq(-1,1, .2)) +
+  facet_wrap(`Age Increment`~., labeller = as_labeller(~str_c("Age Increment ", .x))) +
+  labs(x = "Year Lags on Predictor (SST Anomaly)",
+       y = "Common Name",
+       fill = "Correlation",
+       title = "Lagged Response in Length Growth at Various Age Increments",
+       subtitle = "A counterpart to CCF Plots") +
+  guides(fill = guide_colorsteps(barwidth = unit(5, "in"), 
+                                 title.position = "top", title.hjust = 0.5))
 ```
 
 
@@ -1578,11 +1633,12 @@ I’m also trying to think about how to look at lagged temperature effects on si
 #| label: regime-size-plots
 
 # Distribution of Length/Weight Across Regimes 
-plot_regime_sizes <- function(spec, 
-                              var = "length", 
-                              age_lim = 5, 
-                              facet_prefix = "Age - ", 
-                              facet_suffix = ""){
+plot_regime_sizes <- function(
+    spec, 
+    var = "length", 
+    age_lim = 5, 
+    facet_prefix = "Age - ", 
+    facet_suffix = ""){
   
   # switches for length or width
   var_col <- switch (var,
@@ -1600,7 +1656,7 @@ plot_regime_sizes <- function(spec,
   size_changes <- bio_regimes %>% 
   filter(
     comname == spec,
-    age <= 6) %>% 
+    age <= 10) %>% 
   ## Calculate group averages
   group_by(age, regime) %>% 
   mutate(
@@ -1614,6 +1670,7 @@ plot_regime_sizes <- function(spec,
   
   # Make Plot
   size_changes %>% 
+    mutate(age = fct_rev(factor(age))) %>% 
     ggplot(aes(x = !!{{var_col}})) +
     
     ## distribution
@@ -1635,19 +1692,17 @@ plot_regime_sizes <- function(spec,
           y = 0,
           yend = 0),
       size = .8,
-      color = "grey25", # , position = position_nudge(y = -.15)
-    ) +
+      color = "grey25") +
     
     ## median points - not working
     stat_halfeye(aes(color = regime), .width = c(0), slab_fill = NA) +
-    
-   
-    facet_wrap(~age, ncol = 1, 
-               labeller = as_labeller(appender), scales = "free") +
+    facet_grid(age~., labeller = as_labeller(appender), scales = "free_y") +
     scale_color_gmri() + 
     scale_fill_gmri() +
     scale_y_continuous(labels = percent_format()) +
-    theme(legend.position = "bottom") +
+    theme(legend.position = "bottom", 
+          strip.text.y = element_text(angle = 0),
+          axis.text.y = element_text(size = 8)) +
     labs(x = var_lab,
          y = "Proportion",
          title = spec,
@@ -1663,6 +1718,7 @@ plot_regime_sizes <- function(spec,
 # Tester: 
 # plot_regime_sizes(display_species[[1]], var = "length")
 ```
+
 
 ::: panelset
 ```{r, results="asis", fig.height = 8}
