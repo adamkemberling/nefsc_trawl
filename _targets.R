@@ -54,6 +54,7 @@ list(
   # with exception to analysis of average length/width, those are not filtered
   tar_target(analysis_options, 
              command = list(
+               
                # Controls the data that reaches the analysis, and is used for context
                # Also Sets min/max for ISD exponent estimates
                min_input_weight_g = 2^0,
@@ -63,15 +64,15 @@ list(
                # Set/enforce the bin structure used for spectra analysis
                # These enforce what bins go to binned size spectra analysis
                # min and max set the left limits of the bin range: 
-               # i.e. max_l10_bin of 3 = 14^3 to 10^4
+               # i.e. max_l10_bin of 3 = 14^3 up to 10^4
                l10_bin_width = 1,
-               min_l10_bin = 0,
-               max_l10_bin = 3,
+               min_l10_bin   = 0,
+               max_l10_bin   = 3,
                
                # log2 bin limits - LBNbiom method
                log2_bin_width = 1,
-               min_log2_bin = 0,
-               max_log2_bin = 12
+               min_log2_bin   = 0,
+               max_log2_bin   = 12
                )
              ),
   
@@ -256,8 +257,8 @@ list(
     mean_sizes_all_groups(
       size_data = rename(as.data.frame(catch_complete), Year = est_year),
       min_weight_g = 0, 
-      abund_vals = "numlen_adj")
-      #abund_vals = "stratified")
+      # abund_vals = "numlen_adj")
+      abund_vals = "stratified")
     ),
  
   # Run the size change for each species across years using stratified abundances
@@ -266,8 +267,8 @@ list(
     group_size_metrics(
       size_data = rename(as.data.frame(catch_complete), Year = est_year),
       .group_cols = c("comname", "Year", "season"),
-      abund_vals = "numlen_adj")
-      #abund_vals = "stratified")
+      # abund_vals = "numlen_adj")
+      abund_vals = "stratified")
     ),
   
   

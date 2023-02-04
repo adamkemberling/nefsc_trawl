@@ -44,12 +44,11 @@ library(gt)
 library(knitr)
 library(tidyverse)
 library(ggstream)
-library(ggforce)
+# library(ggforce)
 library(bcp)
 library(scales)
 library(corrplot)
 library(readxl)
-library(ggforce)
 library(Hmisc)
 
 
@@ -178,14 +177,6 @@ The surface waters of the Northwest Atlantic Ocean are among the fastest warming
 
 # Introduction
 
-## Temperature & Ecology
-
-Temperature plays a critical role on biological life impacting many of the chemical reactions that underpin basic physiological function. Temperature has direct and indirect impacts on critical biological functions including the acquisition of biomass through feeding, the rates of biomass loss through metabolism, and the rates at which individuals mature and develop. Because of these relationships, most species have evolved thermal preferences around which these chemical reactions are optimized. Species that are unable to maintain their thermal preferences internally must be able to follow their thermal preference in the environment through locomotion or adapt to less-favorable conditions through changes in behavior or risk metabolic costs in failing to do so. In an era of anthropogenic climate change, there is an expectation that many species will be displaced from historic habitats in their efforts to follow their thermal preferences. Recent research in marine environments has shown evidence of this as species are now shifting to higher latitudes and to deeper depths in the pursuit of more favorable conditions (@kleisner2017; @pinsky2013). Others have suggested that temperature related impacts may not be seen through geographic distribution change, but through physiological changes, changes in seasonal phenology, or in dashed hopes of species recovery (@daan2005; @miller2018; @pershing2018; @meyer-gutbrod2021).
-
-**Need to connect temperature to size here**
-
-The potential for elevated temperatures to impact the size structure of an ecosystem has implications for the ecosystem resilience in the face of climate change, as well as the blue economies & natural resource systems that rely upon their good health.
-
 ## Size Spectra and Individual Size Distributions
 
 Size is a defining characteristic of species and mediates many ecological interactions and metabolic pathways (@brown2000) . Size is a big factor in determining the mobility of an organism. Mobility then impacts the ability to evade predation, foraging success, efforts to locate and follow essential habitats, geographic ranging, and the metabolic costs associated with each of these behaviors (@hillaert2018). Body size also mediates vulnerability to aspects the immediate environment such as temperature through heat exchange or the threat of desiccation in terrestrial species (@gillooly2001; @heatwole1969). Body size even informs life history features like life span and the trophic position an individual might occupy through its impact on metabolism and resource use (@white2007).
@@ -196,19 +187,21 @@ This relationship, between size and abundance, integrates multiple processes ope
 
 **How are they used in practice:**
 
-Size spectra condense the complexities of predator prey networks and their interactions into a handful of size-based indices. These indices capture the emergent properties of a system, and have become increasingly used as indicators of ecosystem health. Within the context of fisheries management, changes in specctrum slopes have been associated with fishing exploitation, primarily through the targeted removal of larger individuals (@bianchi2000; @shin2005). Numerical experiments have also linked changes in slope to environmental disturbances (@guiet2016). Biomass spectra have also been shown to express predictable relationships between ecosystems of similar productivity levels as well as from distinct temperatures (@guiet2016).
+Size spectra condense the complexities of predator prey networks and their interactions into a handful of size-based indices. These indices capture the emergent properties of a system, and have become increasingly used as indicators of ecosystem health. Within the context of fisheries management, changes in spectrum slopes have been associated with fishing exploitation, primarily through the targeted removal of larger individuals (@bianchi2000; @shin2005). Numerical experiments have also linked changes in slope to environmental disturbances (@guiet2016). Biomass spectra have also been shown to express predictable relationships between ecosystems of similar productivity levels as well as from distinct temperatures (@guiet2016).
+
+**Use Pomerantz paper & Edwards to extend into ISD**
+
+## Temperature & Ecology
+
+Temperature plays a critical role on biological life impacting many of the chemical reactions that underpin basic physiological function. Temperature has direct and indirect impacts on critical biological functions including the acquisition of biomass through feeding, the rates of biomass loss through metabolism, and the rates at which individuals mature and develop. Because of these relationships, most species have evolved thermal preferences around which these chemical reactions are optimized. Species that are unable to maintain their thermal preferences internally must be able to follow their thermal preference in the environment through locomotion or adapt to less-favorable conditions through changes in behavior or risk metabolic costs in failing to do so. In an era of anthropogenic climate change, there is an expectation that many species will be displaced from historic habitats in their efforts to follow their thermal preferences. Recent research in marine environments has shown evidence of this as species are now shifting to higher latitudes and to deeper depths in the pursuit of more favorable conditions (@kleisner2017; @pinsky2013). Others have suggested that temperature related impacts may not be seen through geographic distribution change, but through physiological changes, changes in seasonal phenology, or in dashed hopes of species recovery (@daan2005; @miller2018; @pershing2015; @meyer-gutbrod2021).
+
+**Need to connect temperature to size here**
 
 Direct quote from @guiet2016 , but nails the connection back to temp expectations:
 
 > Because it controls chemical reactions, temperature controls metabolic rates which underpin maintenance, growth or reproduction (Clarke and Johnston, 1999; Kooijman, 2010) as well as the functional responses to food density (Rall et al., 2012). Guiet et al. (2016)... In addition to the impact of temperature on communities' intercepts (heights), the impact of temperature on the speed of the energy flow within communities may affect other properties, such as their resilience to perturbations or the intensity of trophic cascades (Andersen and Pedersen, 2009).
 
-**Use Pomerantz paper & Edwards to extend into ISD**
-
-### Species Trends in the Northeast Atlantic Shelf
-
-The continental shelf groundfish community in Northwest Atlantic has changed dramatically over the last century. Stocks that supported international fishing effort collapsed, and recovery efforts fell short of their objectives. Research on Georges Bank estimated that biomass more than halved in the 1960's (pre-dating federal monitoring efforts), and noted a species replacement of commercial groundfish target species by skate and dogfish (@fogarty1998). Industrial fishing is inherently size-selective, with larger individuals selectively removed from the population. This has an immediate impact on the community size-distribution with additional impacts on the future population as well. Larger individuals have a greater impact on population recovery, capable of holding more (and often of higher quality) eggs. Size-based harvest in fisheries has been shown to create selective pressures that promote characteristics of early maturation at smaller sizes **add_citation**.
-
-**reference gb spectra early work**
+The potential for elevated temperatures to impact the size structure of an ecosystem has implications for the ecosystem resilience in the face of climate change, as well as the blue economies & natural resource systems that rely upon their good health.
 
 ### Temperature of the Gulf of Maine & NE Shelf
 
@@ -217,6 +210,16 @@ In addition to the ecological disturbances of industrial fisheries, the Northwes
 The rapid warming in the northwest Atlantic is a major factor in the redistribution of marine species along the US east coast. Species have responded by adjusting the timing and locations of their seasonal migrations and shifting their geographic ranges (@nye2009; @staudinger2019). There is evidence that warming has hampered fisheries recoveries as well. Adding a metabolic tax to physiological pathways like growth and metabolism. Species like Black Sea Bass, Atlantic shortfin squid, and Blue crab have been high-profile examples of species expanding their ranges to follow their thermal preferences. While species like the American lobster have shown declines at their southern range near Long Island Sound, with much doubt whether they will recover under the present temperature trends. The recent regime shift in the physical oceanography has also shown to be a catalyst for biological shifts as well (@meyer-gutbrod2021; @perretti2017).
 
 While these examples show that species can respond to changes in the physical environment around them through movement & behavior, research elsewhere suggests that physiological responses integrated across species will manifest as changes in community size structure.
+
+## Fishing Impacts on Size/Species Composition
+
+**NEED fishing impacts on size structure references**
+
+### Species Trends in the Northeast Atlantic Shelf
+
+The continental shelf groundfish community in Northwest Atlantic has changed dramatically over the last century. Stocks that supported international fishing effort collapsed, and recovery efforts fell short of their objectives. Research on Georges Bank estimated that biomass more than halved in the 1960's (pre-dating federal monitoring efforts), and noted a species replacement of commercial groundfish target species by skate and dogfish (@fogarty1998). Industrial fishing is inherently size-selective, with larger individuals selectively removed from the population. This has an immediate impact on the community size-distribution with additional impacts on the future population as well. Larger individuals have a greater impact on population recovery, capable of holding more (and often of higher quality) eggs. Size-based harvest in fisheries has been shown to create selective pressures that promote characteristics of early maturation at smaller sizes **add_citation**.
+
+**reference gb spectra early work**
 
 ### Purpose
 
@@ -228,10 +231,10 @@ This leads to our second hypothesis:
 
 # Methods
 
-## Groundfish Data
+## Fish Data Source and Processing
 
 ```{r}
-#| label: load survdat_data
+#| label: load-survdat
 
 # 1. Biological data used as input
 withr::with_dir(rprojroot::find_root('_targets.R'), 
@@ -244,7 +247,7 @@ catch_size_bins <- catch_1g_labelled
 n_species <- length(unique(catch_size_bins$comname))
 ```
 
-Fishery Independent data on was collected as part of the NEFSC's northeast trawl survey. This survey is conducted each year in the spring and in the fall, with sample locations determined following a stratified-random survey design with effort allocated in proportion to stratum area. Trawls are performed for a fixed duration at each station, reporting abundance at length and total biomass for all species caught. Trawl survey analyses incorporated data from both the Spring and Fall survey seasons, and for all years from 1970 to 2019. Correction factors were applied to total species abundance and aggregate species biomass to account for all changes in vessels, gear, and doors when appropriate as part of the survey program. However, abundance and biomass at length is not corrected for as part of the standard survey data protocol and needed to be estimated. To account for this, abundance at length for each species were adjusted to match the correction factors applied to total species abundance at each station, with allocations following the distributions of length caught at that station. Such that for each species: the sum of the resulting adjusted abundance numbers across each length is equal to the total abundance that was corrected for changes in vessels, gear, etc. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data was then area-stratified.
+Data on the biomass, abundance, and size of fish on the Northeast U.S. Shelf were collected as part of the Northeast Fisheries Science Center\'s bottom trawl survey ( @grosslein1969, @Azarovits1981, @politis2014 ) This survey is conducted from Cape Hatteras, North Carolina to the Gulf of Maine each year in the spring and in the fall.  The survey follows a stratified random sampling design, with strata defined based on depth, bottom habitat, and latitude. Trawls are performed for a fixed duration at each station, reporting aggregate abundance and biomass for all species caught, and measuring individual lengths and weights for the catch of each species or a sub-sample if that catch is large. Correction factors were applied to aggregate species abundance and biomass to account for changes in vessels, gear, and doors used in the survey over time ( @sissenwine1978, @byrne1991, @miller2010 ) However, abundance and biomass at length needed to be estimated after these aggregate corrections. As such, abundance at length for each species was adjusted to match the corrected aggregate species abundance at each station, such that for each species, the sum of the resulting estimated abundance numbers across each length is equal to the corrected aggregate abundance.
 
 ```{r}
 #| label: make region map
@@ -271,20 +274,14 @@ ggplot() +
   labs(title = "Groundfish Survey Regions")
 ```
 
-Data from the survey was grouped by strata to form geographically meaningful sub-regions: Gulf of Maine, Georges Bank, Southern New England, Mid-Atlantic Bight. For each region, we developed several time series indicators:
+### Community Composition & Functional Groups
 
-1.  Community Composition metrics (abundance and biomass by functional group, with body-size contributions)
-
-2.  Mean size of the aggregate community and key functional groups
-
-3.  Slope and intercept of the size spectrum
-
-## Community Composition
-
-Functional groups were assigned to each species based on life history and geography using the definitions of (@hare2010). Functional groups included were coastal, diadromous, elasmobranch, groundfish, pelagic, and reef species.
+Analyses were performed using 68 species. These species were selected based on the availability of published weight-at-length relationships (Wigley et al. 2003) and represented 98.98% of the total biomass caught in the survey. Each species was assigned to a functional group based on life history and geography using the definitions of (@hare2016). Functional groups included coastal fish, diadromous fish, elasmobranch, groundfish, and pelagic fish (@tbl-functional-groups). Six species with available length-weight details did not have a functional group designation, these species were designated as **reef species**. Exploratory analyses showed that the pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
 
 ```{r}
 #| label: biomass-group-summaries
+
+# This cell provides the group summaries for how much biomass exists in each size/functional group
 
 # The handmade weight and length bins
 # # Do some grouping by year survey area and functional group
@@ -293,7 +290,7 @@ Functional groups were assigned to each species based on life history and geogra
 # fgroup_all <- fgroup_all %>% map(~mutate(.x, survey_area = "Northeast Shelf, Full"))
 
 
-# Actual loog10 bins
+# Actual log10 bins
 # Do some grouping by year survey area and functional group
 fgroup_area <- log2_bin_summaries(
   data_in = catch_size_bins, Year, survey_area, hare_group)
@@ -306,9 +303,27 @@ fgroup_area <- map2(fgroup_area, fgroup_all, bind_rows)
 
 ```
 
-## Body Size Changes
+Published length-weight relationships ( Wigley et al. 2003 ) were used to convert from length data, available for all individuals, into their corresponding biomass-at-length. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data were area-stratified. Area-stratified biomass-at-length values were then computed as the product of area-stratified abundance-at-length and estimated weight-at-length. All analyses were performed using area-stratified abundances and their associated area-stratified biomass estimates, hereby referred to as simply abundance-at-length & biomass-at-length
 
-Abundance-weighted body length and body weight within each region and for each functional group were also estimated using the numbers-at-length and their estimated biomass-at-length information. Data for body size trends were not truncated using any minimum or maximum size. No area-stratification or other weighting was applied for body-size change estimates.
+<!--# Everything above here in methods describes the data source, and its pre-processing, Everything below details what is done with it -->
+
+### 
+
+## Community Composition Metrics
+
+Our analyses used all data collected during the spring and fall surveys from 1970-2019. Data were grouped using survey-design strata into four sub-regions: Gulf of Maine, Georges Bank, Southern New England, Mid-Atlantic Bight. These sub-regions have been widely used in regional ecological studies (e.g., ). For each region, we developed several time series indicators:
+
+1.  Community Composition Metrics (regional abundance and biomass by functional group)
+
+2.  Average length and weight of the aggregate community and each functional group
+
+3.  Exponent of the Individual Size Distribution Spectra
+
+### 
+
+### Body Size Changes
+
+The average body length (cm) and body weight (kg) was calculated for all catch for each region and within each functional group. These averages were weighted by abundance-at-length. Data for body size trends were not truncated using any minimum or maximum size and reflect all available catch data for the `r n_species`, for which biomass-at-length could be estimated.
 
 ```{r}
 #| label: body size data
@@ -333,9 +348,11 @@ functional_group_size <- mean_sizes_ss_groups %>%
 
 ```
 
-## Size Distribution Analyses
+## 
 
-Community size spectra relationships were estimated using the abundance-at-length data, and included `r n_species` species. These species were selected based on the availability of published weight-at-length relationships (Wigley et al. 2003) and represented 98.98% of the total biomass caught in the survey. Published length-weight relationships were used to convert length data available for all individuals into their corresponding biomass-at-length. These weight estimates were then used to get area-stratified weight-at-length values. A biomass complement to the abundances-at-length data which had been area stratified. These area-stratified biomass values were then used when estimating the biomass size spectra and exponents of individual size distributions for each region. Data for these analyses was truncated by body masses of a minimum 1g and a maximum 2^13g to account for poor gear selectivity at the smallest and largest size ranges effectively sampled by the gear. This was done to ensure that all size bins for the size body mass spectrum fitting were not empty in any years, and to establish minimum and maximum size bounds for the individual size distribution relationship that were supported by the data collected.
+### Body Mass Spectra
+
+Normalized biomass spectra were estimated following the LBNbiom methodology as described in @edwards2017. When fitting the normalized biomass size spectra, stratified biomass at length data was binned into equal spaced intervals on a (1) on a $log_{2}$ scale, with bodymass totaled across all species. To normalize the spectra, the stratified abundance within each bin was then divided by the bin-width to account for the increasing bin-widths, a consequence of the log scale. Normalized biomass spectra were fit for each year and for each region independently, and for each year across all strata, using a regression of log10( area-stratified abundance, normalized by log2 bin widths ) and the log10( body-size bin midpoints ).
 
 ```{r}
 #| label: load the size spectrum indices
@@ -353,13 +370,11 @@ region_indices <- size_spectrum_indices  %>%
 
 ```
 
-### Body Mass Spectra
+### 
 
-Normalized biomass spectra were estimated following the LBNbiom methodology as described in @edwards2017. When fitting the normalized biomass size spectra, stratified biomass at length data was binned into equal spaced intervals on a (1) on a $log_{2}$ scale, with bodymass totaled across all species. To normalize the spectra, the stratified abundance within each bin was then divided by the bin-width to account for the increasing bin-widths, a consequence of the log scale. Normalized biomass spectra were fit for each year and for each region independently, and for each year across all strata, using a regression of log10( area-stratified abundance, normalized by log2 bin widths ) and the log10( body-size binmidpoints ).
+### Individual Size Distribution Analysis
 
-### Individual Size Distribution
-
-Length for individuals in the catch data are measured to the nearest cm, with smaller specimens measured to the nearest millimeter. Because individual biomass is estimated from those length measurements, there is a range of possible bodymass that spans between the cm & mm measurement increments. The relationships between length and bodymass in fishes is exponential and taxon specific, so biases resulting from using only the lower or upper end of those ranges is different for each taxon and increases for larger taxa. To account for this and reduce biases, we used the extended likelihood method (MLEbin) of @edwards2020 . This method estimates the exponent of size spectra (b) for a bounded power law relationship between abundance and their length-estimated biomass.
+Length for individuals in the catch data are measured to the nearest cm, with smaller specimens measured to the nearest millimeter. Because individual biomass is estimated from those length measurements, there is a range of possible body mass values between the cm & mm increments. The relationship between length and mass in fishes is exponential and taxon specific, so biases resulting from using only the lower or upper end of those ranges is different for each taxon and increases for larger taxa. To account for this and reduce biases, we used the extended likelihood method (MLEbin) of @edwards2020.
 
 $$
 \begin{align*}
@@ -368,13 +383,39 @@ f(x) = \frac{ (\lambda + 1)x^{\lambda} }{ x^{\lambda+1}_{max} - x^{\lambda+1}_{m
 \\
 f(x) = \frac{1}{logx_{max} - logx_{min}}~~~~~~\lambda=1
 \end{align*}
-$$ {#eq-ISD-pdf}
+$$
 
-The individual size distribution relationship was estimated for each survey region and for all years from 1970 to 2019. A minimum biomass of 1g was used for the lower bound ($x_{min}$) and a maximum biomass of 10kg was used as an upper bound ($x_{max}$) for the ISD's bounded power law probability density function @eq-ISD-pdf, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits represents 97.83% of all estimated biomass used in these analyses and was chosen to eliminate sizes that were not well sampled by the survey gear. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
+The individual size distribution relationship was estimated for each survey region and for all years from 1970 to 2019. A minimum biomass of 1g was used for the lower bound ($x_{min}$) and a maximum biomass of 10kg was used as an upper bound ($x_{max}$) for the ISD's bounded power law probability density function @eq-ISD-pdf, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits constitutes 97.83% of all estimated biomass for the `r n_species` used in this study. This truncation accounts for poor gear selectivity at the smallest and largest size ranges and imposes shared limits to the size distribution we\'d expect to sample across these different areas. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
 
-## Sea Surface Temperatures
+## Drivers of Size Distribution Changes
 
-Global Sea surface temperature data was obtained via NOAA's optimally interpolated SST analysis (OISSTv2), providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at https://www.psl.noaa.gov.
+Changes in size spectra were correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential large-scale environmental drivers included regional SST anomalies & the larger-scale impact of the Gulf Stream Index (GSI). Fishing pressure represents the primary top-down anthropogenic driver in the region, and was investigated using the aggregate regional commercial landings data.
+
+### Gulf Stream Index
+
+Gulf stream index (GSI) values were obtained from the ecodata package in R (Bastille & Hardison 2018) . This package supplies GSI data at monthly intervals following the methodology of @pérez-hernández2014 and @joyce2019 , using as sea level height anomaly data from the Copernicus Marine Environment Monitoring Service
+
+```{r}
+#| label: gsi-data-prep
+#| eval: true
+####  2. Climate Drivers  ####
+
+# From ecodata:
+
+####  GSI
+
+# Gulf Stream Index
+gsi <- ecodata::gsi %>% 
+  mutate(
+    Time = str_pad(as.character(Time), width = 7, side = "right", pad = "0"),
+    year = as.numeric(str_sub(Time, 1, 4)),
+    month = str_sub(Time, -2, -1),
+    Time = as.Date(str_c(year, month, "01", sep = "-")))
+```
+
+### Sea Surface Temperature Data
+
+Global Sea surface temperature data was obtained via NOAA's optimally interpolated SST analysis (OISSTv2), providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at [https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.html](https://www.google.com/url?q=https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.html&sa=D&source=docs&ust=1675370947039361&usg=AOvVaw1ShFZYjArUTbnJyV_pkcaK).
 
 Sea surface temperature data was regionally averaged to match the survey regions from the age-at-length data. SST anomalies were averaged by year for each region and over the entire sampling region to produce daily time series. These time series were then processed into annual timeseries of surface temperatures and anomalies. All region-averaging was done with area-weighting of the latitude/longitude grid cells to account for differences in cell-size in the OISSTv2 data.
 
@@ -391,18 +432,19 @@ temp_regimes <- regional_oisst %>%
   filter(yr > 1981) %>% 
   mutate(
     regime = ifelse(sst_anom > 0, "hot", "cold"),
-    survey_area = ifelse(survey_area == "all", "Northeast Shelf, Full", survey_area),
+    survey_area = ifelse(
+      survey_area == "all", 
+      "Northeast Shelf, Full", 
+      survey_area),
     survey_area = factor(survey_area, levels = area_levels)) 
 
 
 
 ```
 
-## Drivers of Size Distribution Changes
+### Commercial Fishing
 
-The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential large-scale environmental drivers include sea surface temperature anomalies & the Gulf Stream Index (GSI). The primary top-down drivers include state and federal fisheries landings from the Greater Atlantic Regional Fisheries Office (GARFO), divided by reporting zones into aggregate regions to closely align with the survey areas we defined for the size spectra analyses.
-
-![](images/garfo_regions.png){fig-align="center" width="473"}
+Fishing pressure in the region was indexed using state and federal commercial fishing landings.  These data were obtained from the Greater Atlantic Regional Fisheries Office (GARFO) for statistical areas that are routinely used for fisheries reporting and management (Figure X).  Individual statistical areas were aggregated into regions that closely align with the survey areas we defined for the size spectra analyses (Figure X).
 
 ```{r}
 #| label: garfo-data-prep
@@ -443,20 +485,6 @@ stat_zones <- stat_zones %>%
     "Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight"))
   
 
-# # Map it out? - takes forever from Chesapeake bay
-# garfo_map <- ggplot(stat_zones) +
-#   geom_sf(aes(fill = survey_area), alpha = 0.8) +
-#   geom_sf(data = us_poly) +
-#   geom_sf(data = canada) +
-#   coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
-#   scale_fill_gmri() +
-#   theme_bw() +
-#   map_theme(legend.position = "bottom",
-#             legend.background = element_rect(fill = "white")) +
-#   guides(fill = guide_legend(title = "", nrow = 2)) +
-#   labs(title = "GARFO Region Assignments")
-# ggsave(garfo_map, filename = here::here("R/nmfs_size_spectra/images/garfo_regions.png"), bg = "white")
-
 
 # Add the labels into the landings data and remove what we don't need there:
 landings <- landings %>% 
@@ -493,27 +521,6 @@ landings_summ <- landings_summ %>%
   group_by(survey_area) %>% 
   mutate(total_wt_z = base::scale(total_weight_lb)) %>% 
   ungroup()
-```
-
-```{r}
-#| label: gsi-data-prep
-#| eval: true
-####  2. Climate Drivers  ####
-
-# From ecodata:
-
-####  GSI
-
-# Gulf Stream Index
-gsi <- ecodata::gsi %>% 
-  mutate(
-    Time = str_pad(as.character(Time), width = 7, side = "right", pad = "0"),
-    year = as.numeric(str_sub(Time, 1, 4)),
-    month = str_sub(Time, -2, -1),
-    Time = as.Date(str_c(year, month, "01", sep = "-")))
-
-
-
 ```
 
 ```{r}
@@ -606,7 +613,7 @@ all_drivers <- bind_rows(
 ####  Working Here  ####
 
 # Reshape Wide
-# Scale the columns
+# Scale the columns independently using the variance in all years
 drivers_scaled <- all_drivers %>% 
   mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
     select(-c(area, var)) %>% 
@@ -616,13 +623,11 @@ drivers_scaled <- all_drivers %>%
   as.data.frame()
   
 
-
 # Pull different years into a list
 driver_periods <- list(
   #"regime_1" = c(1982:2005),
   #"regime_2" = c(2006:2020),
-  "full"     = c(1954:2020)
-)
+  "full"     = c(1954:2020))
 
 
 # Split them out into a list that contains data for each period
@@ -633,150 +638,146 @@ driver_period_l <- map(driver_periods, function(yrs){
 
 ```
 
-```{r}
-#| label: period-correlations-processing
-
-
-# Run Correlations for Each period and for the entire period
-period_correlations <- map(driver_period_l, function(drivers){
-  
-  #------ debug copy-paste line
-  # Step 1.
-  # Get the correlation matrix (data is pre-scaled)
-  corr_matrix <- rcorr(as.matrix(drivers))
-  rho <- corr_matrix$r
-  
-  # Step 2. Significance
-  sig_mat <- corr_matrix$P
-  
-  
-  # Step 3. 
-  # Make correlation matrix & significance a dataframe for GGplot
-  
-  # Correlation Matrix
-  gg_rho <- as.data.frame(rho) %>%
-    rownames_to_column(var = "xvar") %>%
-    pivot_longer(cols = -xvar, 
-                 names_to = "yvar", 
-                 values_to = "r2")
-  
-  # Significance Dataframe
-  gg_sig <- as.data.frame(sig_mat) %>%
-    rownames_to_column(var = "xvar") %>%
-    pivot_longer(cols = -xvar, 
-                 names_to = "yvar", 
-                 values_to = "pval")
-  
-  
-  
-  
-  # Step 4.  
-  # Tidy it up, enhance the labels for plotting
-  # label the drivers and the responses specifically so we can group them
-  # in an orderly way
-  gg_rho_tidy <- left_join(gg_rho, gg_sig, by = c("xvar", "yvar")) %>% 
-    mutate(
-      # A. Slope and intercept are the only size spectra features
-      # and also
-      response_var = ifelse(str_detect(xvar, "slope"), T, F),
-      
-      # B.These are the drivers, use string detect to pull them out
-      driver_var = ifelse(str_detect(yvar, "landings|index|anom"), T, F),
-      
-      # C. Label Top down and Bottom Up Drivers
-      driver_type = case_when(
-        str_detect(yvar, "landings") ~ "Top-Down",
-        str_detect(yvar, "stream|anom") ~ "Bottom-Up"),
-      
-      # D. These are the areas associated with the Spectra Features
-      xvar_area = case_when(
-        str_detect(xvar, "All") ~ "All",
-        str_detect(xvar, "Georges") ~ "Georges Bank",
-        str_detect(xvar, "Gulf") ~ "Gulf of Maine",
-        str_detect(xvar, "Southern") ~ "Southern New England",
-        str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-      
-      # E. Set Factor Levels for plot
-      xvar_area = factor(
-        xvar_area, 
-        levels = c(
-          "All", 
-          "Gulf of Maine", 
-          "Georges Bank", 
-          "Southern New England", 
-          "Mid-Atlantic Bight")),
-      
-      # F. These are the areas of the drivers
-      yvar_area = case_when(
-        str_detect(yvar, "All") ~ "All",
-        str_detect(yvar, "Georges") ~ "Georges Bank",
-        str_detect(yvar, "Gulf") ~ "Gulf of Maine",
-        str_detect(yvar, "Southern") ~ "Southern New England",
-        str_detect(yvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-      yvar_area = factor(yvar_area, levels = c(
-        "All", 
-        "Gulf of Maine", 
-        "Georges Bank", 
-        "Southern New England", 
-        "Mid-Atlantic Bight")),
-      
-      # Shorthand for the Spectra Parameters
-      x_short = case_when(
-        str_detect(xvar, "isd") ~ "ISD Exponent",
-        str_detect(xvar, "slope") ~ "Spectra Slope"))
-  
-  
-  
-  
-  # Match SST and Landings to their areas:
-  # Rename landings and SST so they occupy the same plot space
-  # Do some filtering and string formatting:
-  only_driver_response <- gg_rho_tidy %>% 
-    filter( 
-      response_var,
-      driver_var) %>% 
-    mutate(area_match = xvar_area == yvar_area) %>% 
-    filter(area_match | !str_detect(yvar, "sst|landings")) %>% 
-    mutate(
-      yvar = ifelse(str_detect(yvar, "landings"), "Commercial_Landings", yvar),
-      yvar = ifelse(str_detect(yvar, "sst"), "SST_Anomalies", yvar),
-      yvar = ifelse(str_detect(yvar, "gulf_stream_index"), "Gulf Stream Index", yvar),
-      yvar = str_replace_all(yvar, "_", " "),
-      yvar = factor(yvar, levels = c(
-        "Gulf Stream Index",
-        "SST Anomalies",
-        "Commercial Landings"))
-      ) 
-  
-  
-  # Do some flagging for significance
-  only_driver_response <- only_driver_response %>% mutate(
-    signif = ifelse(pval < 0.05, "*", ""))
-  
-  #------- 
-
-  
-  # Spit out all the pieces in an organized list
-  correlation_details <- list(
-    "drivers_matrix"       = drivers,
-    "rho"                  = rho,
-    "pvals"                = sig_mat,
-    "ggrho"                = gg_rho,
-    "ggrho_tidy"           = gg_rho_tidy,
-    "only_driver_response" = only_driver_response
-  )
-  
-  
-})
-
-
-  
-
-```
-
 ## Driver Impacts
 
-Regression analyses were used to compare the impact of each driver over time.
+Cross correlation function estimates were used to look at correlation changes at one year intervals to investigate potential lag effects between the hypothesized drivers and the community's exponent of size spectra. CCF estimates were performed between the dependent variables of the size spectra slope, size spectra intercept, and individual size distribution exponent with the independent variables of the annual gulf stream index, and the corresponding regional commercial landings and sea surface temperature anomalies.
+
+```{r}
+#| label: ccf-data
+#| eval: true
+
+# Run CCF function to get lagged correlations,
+# Put that data in one table to plot in a better comparison form
+
+
+# Scale Everything Before CCF,
+# Add some organization columns
+
+# Drivers scaled is a matrix of all the different timeseries
+# Columns that end with slope or intercept are pulled out to get a column of the response variables (slope features)
+# Columns that don't contain "spectra" or "year" capture the remaining features
+# Next we pull out the region information for each
+
+driver_ccf_prep <- drivers_scaled %>% 
+  rownames_to_column(var = "year") %>% 
+  pivot_longer(names_to = "spectra_param", 
+               values_to = "spectra_values", 
+               cols = ends_with("slope") | ends_with("int")) %>% 
+  pivot_longer(names_to = "driver_var", 
+               values_to = "driver_values", 
+               cols = -matches("spectra|year")) %>% 
+  mutate(
+    # C. These are the areas associated with the Spectra Features
+    community_area = case_when(
+      str_detect(spectra_param, "All") ~ "All",
+      str_detect(spectra_param, "Georges") ~ "Georges Bank",
+      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
+      str_detect(spectra_param, "Southern") ~ "Southern New England",
+      str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    community_area = factor(community_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    
+    # D. These are the areas of the drivers
+    driver_area = case_when(
+      str_detect(driver_var, "All") ~ "All",
+      str_detect(driver_var, "Georges") ~ "Georges Bank",
+      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
+      str_detect(driver_var, "Southern") ~ "Southern New England",
+      str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    driver_area = factor(driver_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"))) 
+
+
+
+# Filter it out so there is only cases where the driver area matches
+driver_ccf_prep <- driver_ccf_prep %>% 
+  filter(driver_area == community_area | driver_area == "All") %>% 
+  arrange(year, driver_var)
+
+
+
+
+# function to grab the correlation data and lag data
+get_ccf_vector <- function(x,y){
+  ccf_data <- ccf(x,y,plot= F ,lag.max = 15)
+  data.frame(
+    "acf" = ccf_data$acf,
+    "lag" = ccf_data$lag
+  )
+}
+
+
+
+
+# Walk through each xvariable, and see how it correlates with each yvar
+# split on xvar
+# then split on yvars
+# make sure order is good
+ccf_relationships <- driver_ccf_prep %>% 
+  drop_na() %>% 
+  split(.$spectra_param) %>% 
+    map_dfr(function(x_param){
+      x_param %>% 
+        split(.$driver_var) %>% 
+          map_dfr(function(driver_y_data){
+            ccf_df <- get_ccf_vector(
+              x = driver_y_data$spectra_values,
+              y = driver_y_data$driver_values
+            )
+          }, .id = "driver_var")
+  }, .id = "spectra_param")
+
+
+
+
+# Build back out the labels for plotting
+ccf_plot_data <- ccf_relationships %>% 
+  mutate(
+    # Flag what the driver type was
+    driver_type = case_when(
+      str_detect(driver_var, "landings") ~ "Commercial Landings",
+      str_detect(driver_var, "sst") ~ "SST",
+      str_detect(driver_var, "index") ~ "GSI",
+      TRUE ~ "Missed Something"),
+    param_feature = case_when(
+      # Flag what the Size Distribution Parameter was
+      str_detect(spectra_param, "int") ~ "Spectra Intercept",
+      str_detect(spectra_param, "isd") ~ "ISD Exponent",
+      str_detect(spectra_param, "slope") ~ "Spectra Slope",
+      TRUE ~ "Missed Something"),
+    spectra_region = case_when(
+      # Flag what region the driver was coming from
+      str_detect(spectra_param, "All") ~ "All",
+      str_detect(spectra_param, "Georges") ~ "Georges Bank",
+      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
+      str_detect(spectra_param, "Southern") ~ "Southern New England",
+      str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    spectra_region = factor(spectra_region, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")))
+
+
+# Plot them
+ccf_plot_data %>% 
+  filter(param_feature == "ISD Exponent") %>% 
+  ggplot(aes(
+    x = lag, 
+    y = acf, 
+    group = driver_var, 
+    color = driver_type, 
+    fill = driver_type)) +
+  geom_col(alpha = 0.75, position = "dodge") +
+  geom_hline(yintercept = 0, color = "gray50", linewidth = 1) +
+  geom_vline(xintercept = 0, color = "black", linewidth = 1) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  facet_grid(spectra_region~driver_type*param_feature) +
+  scale_x_continuous(limits = c(-8, 1), 
+                     breaks = seq(from = -12, to = 12, by = 1)) +
+  theme(legend.position = "bottom") +
+  labs(x = "Driver Lag", y = "Correlation (CCF)", 
+       fill = "Driver Type", color = "Driver Type")
+
+  
+```
+
+Following exploratory analyses with CCF functions, regression analysis was performed using the most
 
 # Results
 
@@ -811,7 +812,7 @@ strat_abundance_plot <- fgroup_area$weight_bins %>%
   scale_x_continuous(expand = expansion(add = c(0,0))) +
   facet_wrap(~survey_area, ncol = 1, scales = "free") + 
   labs(y = "Abundance (millions)",  
-        title = "Estimated Abundance from\nArea-Stratified Catch Rates",
+       caption = "Estimated Abundance from\nArea-Stratified Catch Rates",
          x = "",
        fill = "Functional Group") +
   theme(legend.position = "bottom",
@@ -1079,6 +1080,147 @@ slope_timeline | isd_timeline
 **NOTE:** Correlation matrix is computed starting at the year where there are no NA values in any drivers. Currently with SST included that begins the matrix at 1982.
 
 ```{r}
+#| label: period-correlations-processing
+
+# Run Correlations for Each period and for the entire period
+period_correlations <- map(driver_period_l, function(drivers){
+  
+  #------ debug copy-paste line
+  # Step 1.
+  # Get the correlation matrix (data is pre-scaled)
+  corr_matrix <- rcorr(as.matrix(drivers))
+  rho <- corr_matrix$r
+  
+  # Step 2. Significance
+  sig_mat <- corr_matrix$P
+  
+   
+  # Step 3. 
+  # Make correlation matrix & significance a dataframe for GGplot
+  
+  # Correlation Matrix
+  gg_rho <- as.data.frame(rho) %>%
+    rownames_to_column(var = "xvar") %>%
+    pivot_longer(cols = -xvar, 
+                 names_to = "yvar", 
+                 values_to = "r2")
+  
+  # Significance Dataframe
+  gg_sig <- as.data.frame(sig_mat) %>%
+    rownames_to_column(var = "xvar") %>%
+    pivot_longer(cols = -xvar, 
+                 names_to = "yvar", 
+                 values_to = "pval")
+  
+  
+  
+  
+  # Step 4.  
+  # Tidy it up, enhance the labels for plotting
+  # label the drivers and the responses specifically so we can group them
+  # in an orderly way
+  # xvar and yvar are the order that they go into the corrrelation estimation
+  gg_rho_tidy <- left_join(gg_rho, gg_sig, by = c("xvar", "yvar")) %>% 
+    mutate(
+      # A. Slope and intercept are the only size spectra features
+      # and also
+      response_var = ifelse(str_detect(xvar, "slope"), T, F),
+      
+      # B.These are the drivers, use string detect to pull them out
+      driver_var = ifelse(str_detect(yvar, "landings|index|anom"), T, F),
+      
+      # C. Label Top down and Bottom Up Drivers
+      driver_type = case_when(
+        str_detect(yvar, "landings") ~ "Top-Down",
+        str_detect(yvar, "stream|anom") ~ "Bottom-Up"),
+      
+      # D. These are the areas associated with the Spectra Features
+      xvar_area = case_when(
+        str_detect(xvar, "All") ~ "All",
+        str_detect(xvar, "Georges") ~ "Georges Bank",
+        str_detect(xvar, "Gulf") ~ "Gulf of Maine",
+        str_detect(xvar, "Southern") ~ "Southern New England",
+        str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+      
+      # E. Set Factor Levels for plot
+      xvar_area = factor(
+        xvar_area, 
+        levels = c(
+          "All", 
+          "Gulf of Maine", 
+          "Georges Bank", 
+          "Southern New England", 
+          "Mid-Atlantic Bight")),
+      
+      # F. These are the areas of the drivers
+      yvar_area = case_when(
+        str_detect(yvar, "All") ~ "All",
+        str_detect(yvar, "Georges") ~ "Georges Bank",
+        str_detect(yvar, "Gulf") ~ "Gulf of Maine",
+        str_detect(yvar, "Southern") ~ "Southern New England",
+        str_detect(yvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+      yvar_area = factor(yvar_area, levels = c(
+        "All", 
+        "Gulf of Maine", 
+        "Georges Bank", 
+        "Southern New England", 
+        "Mid-Atlantic Bight")),
+      
+      # Shorthand for the Spectra Parameters
+      x_short = case_when(
+        str_detect(xvar, "isd") ~ "ISD Exponent",
+        str_detect(xvar, "slope") ~ "Spectra Slope"))
+  
+  
+  
+  
+  # Match SST and Landings to their areas:
+  # Rename landings and SST so they occupy the same plot space
+  # Do some filtering and string formatting:
+  only_driver_response <- gg_rho_tidy %>% 
+    filter( 
+      response_var,
+      driver_var) %>% 
+    mutate(area_match = xvar_area == yvar_area) %>% 
+    filter(area_match | !str_detect(yvar, "sst|landings")) %>% 
+    mutate(
+      yvar = ifelse(str_detect(yvar, "landings"), "Commercial_Landings", yvar),
+      yvar = ifelse(str_detect(yvar, "sst"), "SST_Anomalies", yvar),
+      yvar = ifelse(str_detect(yvar, "gulf_stream_index"), "Gulf Stream Index", yvar),
+      yvar = str_replace_all(yvar, "_", " "),
+      yvar = factor(yvar, levels = c(
+        "Gulf Stream Index",
+        "SST Anomalies",
+        "Commercial Landings"))
+      ) 
+  
+  
+  # Do some flagging for significance
+  only_driver_response <- only_driver_response %>% mutate(
+    signif = ifelse(pval < 0.05, "*", ""))
+  
+  #------- 
+
+  
+  # Spit out all the pieces in an organized list
+  correlation_details <- list(
+    "drivers_matrix"       = drivers,
+    "rho"                  = rho,
+    "pvals"                = sig_mat,
+    "ggrho"                = gg_rho,
+    "ggrho_tidy"           = gg_rho_tidy,
+    "only_driver_response" = only_driver_response
+  )
+  
+  
+})
+
+
+  
+
+```
+
+```{r}
 #| label: ggcorr-drivers-full
 #| fig-height: 6
 #| fig-width: 8
@@ -1208,56 +1350,28 @@ clim_drivers %>%
 ```
 :::
 
-## Index of What
-
-Our ability to make statements on community size-structure change in this study is limited by the community that is effectively sampled as part of the groundfish survey, and of species with available weight-at-length information. When looking at the species compositions in each region it is clear that in SNE and MAB a larger proportion of the community biomass was held within a relatively small number of species, primarily the elasmobranchs. Whether or not this is incomplete representation of the community due to the sampling gear, or an accurate representation of the entire community is unclear. In these two regions the biomass spectra information is largely that of the elasmobranch community. Whether or not this is a sufficient fraction of the broader community, what key community members are absent, and what the ecological implications of this are remain unclear.
-
-```{r}
-#| label: proportion-of-fgroup
-#| fig-height: 8
-
-# panel plot the biomass by body size
-fgroup_area$weight_bins %>% 
-  mutate(
-    survey_area = factor(survey_area, levels = area_levels),
-    strat_lwbio_mill = wtbin_strat_lw_bio / 1e6) %>% 
-  group_by(Year, survey_area, hare_group) %>% 
-  summarise(total_lwbio_mill = sum(strat_lwbio_mill, na.rm = T),
-            .groups = "drop") %>% 
-  ggplot(aes(Year, total_lwbio_mill, fill = hare_group)) +
-  geom_col(position = "fill") +
-  facet_wrap(~survey_area, ncol = 1) +
-  scale_fill_gmri() +
-  scale_y_continuous(labels = percent_format()) +
-  labs(y = "Fraction of Stratified Biomass",  
-       title = "Biomass Allocation by Functional Group",
-       x = "", 
-       fill = "Functional Group") +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
-
-Looking at both the level of noise in the body-size trends and the size spectra parameters, the Gulf of Maine and Georges Bank seem to have the clearest signals coming through. It is likely not coincidental that these two regions also have large proportions of their sampled biomass represented by groundfish and demersal species, functional groups that are best sampled by a bottom trawl survey. Looking specifically at these two regions only, we see two parallel trends of declining body size (length and weight) among the community as a whole. We also simultaneously see a steepening of the size spectra slope. Both of these trends are slightly more severe in the Gulf of Maine.
-
 # Supplemental Materials
 
 ::: panel-tabset
 ## Species Functional Groups
 
 ```{r}
-#| label: functional-group-table
+#| label: tbl-functional-groups
+#| tbl-cap: "Common and scientific names for the species that constitute each functional group used in our analyses. X markers are used to indicate which regions each species has been caught in the data."
 
 
 # Tidy up a key of what is labeled what
 spec_key <- catch_size_bins %>% 
-  distinct(comname, hare_group) %>% 
+  distinct(comname, scientific_name, hare_group) %>% 
   mutate(
+    hare_group = ifelse(hare_group %in% c("elasmobranch", "groundfish"), hare_group, str_c(hare_group)),
     hare_group = ifelse(is.na(hare_group), "Not Classified", hare_group),
     hare_group = str_to_title(hare_group),
     hare_group = fct_drop(hare_group),
-    hare_group = factor(hare_group, levels = c("Coastal", "Demersal", "Elasmobranch", "Groundfish",  "Pelagic", "Reef", "Not Classified"))
-  )
+    hare_group = factor(hare_group, levels = c("Coastal", "Diadromous", "Elasmobranch", "Groundfish",  "Pelagic", "Reef", "Not Classified"))) %>% 
+  group_by(hare_group) %>% 
+  mutate(n = str_c("(",n(),")")) %>% 
+  ungroup()
 
 
 # Reformat the data to check presence absence
@@ -1270,15 +1384,16 @@ catch_size_bins %>%
          Presence = ifelse(is.na(Presence) == FALSE, "X", ""),
          Presence = ifelse(is.na(Presence) == TRUE, "", Presence)) %>% 
   left_join(area_df, by = "survey_area") %>% 
-  select(hare_group, comname, area, Presence) %>% 
+  select(hare_group, n, comname, scientific_name, area, Presence) %>% 
   pivot_wider(names_from = area, values_from = Presence) %>% 
   arrange(hare_group, comname) %>% 
-  group_by(hare_group) %>% 
+  group_by(hare_group,n) %>% 
   gt()  %>% 
   gt::tab_header(title = md("**Functional Group Assignments and Regional Presence/Absence**")) %>% 
   tab_stubhead(label = md("**Functional Group**")) %>% 
   cols_label(
     comname = md("*Common Name*"),
+    scientific_name = md("*Scientific Name*"),
     `Gulf of Maine` = md("*Gulf of Maine*"),
     `Georges Bank` = md("*Georges Bank*"),
     `Southern New England` = md("*Southern New England*"),
@@ -1286,8 +1401,7 @@ catch_size_bins %>%
     ) %>%
   tab_style(
     style = list(cell_text(weight = "bold")),
-    locations = cells_row_groups()
-  ) %>% 
+    locations = cells_row_groups()) %>% 
   gt::tab_source_note(source_note = md("*Functional group assignments adapted from Hare et al. 2010*"))
 
 ```
@@ -1334,113 +1448,28 @@ landings %>%
 ```
 :::
 
+### GARFO Regions
+
 ```{r}
-#| label: ccf-data
+#| label: GARFO-map
 #| eval: false
 
-# Run CCF function to get lagged correlations,
-# Put that data in one table to plot in a better comparison form
+
+# Map it out? - takes forever from Chesapeake bay
+garfo_map <- ggplot(stat_zones) +
+  geom_sf(aes(fill = survey_area), alpha = 0.8) +
+  geom_sf(data = us_poly) +
+  geom_sf(data = canada) +
+  coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
+  scale_fill_gmri() +
+  theme_bw() +
+  map_theme(legend.position = c(0.7, 0.25),
+            legend.background = element_rect(fill = "white")) +
+  guides(fill = guide_legend(title = "", nrow = 2)) +
+  labs(caption = "Map of the allocation of GARFO statistical zones into the four regions used in this study.")
+# ggsave(garfo_map, filename = here::here("R/nmfs_size_spectra/images/garfo_regions.png"), bg = "white")
 
 
-# Scale Everything Before CCF,
-# Add some organization columns
-driver_ccf_prep <- driver_matrix %>% 
-  scale() %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var = "year") %>% 
-  pivot_longer(names_to = "spectra_param", 
-               values_to = "spectra_values", 
-               cols = ends_with("slope") | ends_with("int")) %>% 
-  pivot_longer(names_to = "driver_var", 
-               values_to = "driver_values", 
-               cols = -matches("spectra|year")) %>% 
-  mutate(
-    # C. These are the areas associated with the Spectra Features
-    xvar_area = case_when(
-      str_detect(spectra_param, "All") ~ "All",
-      str_detect(spectra_param, "Georges") ~ "Georges Bank",
-      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
-      str_detect(spectra_param, "Southern") ~ "Southern New England",
-      str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    xvar_area = factor(xvar_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-    
-    # D. These are the areas of the drivers
-    yvar_area = case_when(
-      str_detect(driver_var, "All") ~ "All",
-      str_detect(driver_var, "Georges") ~ "Georges Bank",
-      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
-      str_detect(driver_var, "Southern") ~ "Southern New England",
-      str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    yvar_area = factor(yvar_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"))) %>% 
-  filter(yvar_area == xvar_area | str_detect(yvar_area, "All")) %>% 
-  arrange(year, driver_var)
-
-
-
-
-# function to grab the correlation data and lag data
-get_ccf_vector <- function(x,y){
-  ccf_data <- ccf(x,y,plot= F)
-  data.frame(
-    "acf" = ccf_data$acf,
-    "lag" = ccf_data$lag
-  )
-}
-
-
-
-
-# Walk through each xvariable, and see how it correlates with each yvar
-# split on xvar
-# then split on yvars
-# make sure order is good
-ccf_relationships <- driver_ccf_prep %>% 
-  split(.$spectra_param) %>% 
-    map_dfr(function(x_param){
-      x_param %>% 
-        split(.$driver_var) %>% 
-          map_dfr(function(driver_y_data){
-            ccf_df <- get_ccf_vector(
-              x = driver_y_data$spectra_values,
-              y = driver_y_data$driver_values
-            )
-          }, .id = "driver_var")
-  }, .id = "spectra_param")
-
-
-# Plot them
-ccf_relationships %>% 
-  mutate(
-    driver_type = ifelse(
-      str_detect(driver_var, "landings"),
-      "Top-Down",
-      "Bottom Up"),
-    param_feature = ifelse(
-      str_detect(spectra_param, "int"),
-        "Intercept",
-        "Slope"),
-    region = case_when(
-      str_detect(driver_var, "All") ~ "All",
-      str_detect(driver_var, "Georges") ~ "Georges Bank",
-      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
-      str_detect(driver_var, "Southern") ~ "Southern New England",
-      str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    region = factor(region, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"))) %>% 
-  ggplot(aes(lag, acf, group = driver_var, 
-             color = driver_type, fill = driver_type)) +
-    geom_col(alpha = 0.5, position = "dodge") +
-    # geom_line(alpha = 0.5, linewidth = 1) +
-    geom_hline(yintercept = 0, color = "gray50", linewidth = 1) +
-    geom_vline(xintercept = 0, color = "black", linewidth = 1) +
-    facet_grid(region~param_feature) +
-    scale_x_continuous(limits = c(-12, 12), 
-                       breaks = seq(from = -12, to = 12, by = 1)) +
-    theme(legend.position = "bottom") 
-
-
-
-ccf(driver_matrix$Gulf_of_Maine_landings, driver_matrix$Gulf_of_Maine_spectra_slope)
-  
 ```
 
 # References

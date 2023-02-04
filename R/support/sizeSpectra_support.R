@@ -162,7 +162,7 @@ fill_func_groups <- function(species_dat){
         TRUE ~ spec_class),
       hare_group = case_when(
         str_detect(comname, "flounder")       ~ "groundfish",
-        str_detect(comname, "scup")           ~ "reef",
+        #str_detect(comname, "scup")           ~ "reef",
         str_detect(comname, "thread herring") ~ "coastal",
         str_detect(comname, "dory")           ~ "pelagic",
         str_detect(comname, "sturgeon")       ~ "diadromous",
@@ -2069,15 +2069,17 @@ group_size_metrics <- function(
     split(.$group_var) %>% 
     imap_dfr(function(group_data, group_name){
       
-      # lengths
+      # Length (measured for all)
       mean_len    <- weighted.mean(group_data[, "length_cm"], group_data[, weighting_col], na.rm = T)
       min_len     <- min(group_data[, "length_cm"], na.rm = T)
       max_len     <- max(group_data[, "length_cm"], na.rm = T)
       
-      # weights
+      # Weights (derived from length)
       mean_weight <- weighted.mean(group_data[,"ind_weight_kg"], group_data[, weighting_col], na.rm = T)
       min_weight  <- min(group_data[, "ind_weight_kg"], na.rm = T)
       max_weight  <- max(group_data[, "ind_weight_kg"], na.rm = T)
+      
+      # Abundance
       total_abund <- sum(group_data[, "numlen_adj"], na.rm = T)
       
       # number of species
