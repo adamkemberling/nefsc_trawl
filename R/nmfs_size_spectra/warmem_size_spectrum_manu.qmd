@@ -868,7 +868,7 @@ ccf_plot_data %>%
     aes(lag, acf, fill = driver_type,  group = driver_var), color = "black") +
   geom_text(
     data = filter(ccf_plot_data, sig_flag),
-    aes(lag, y = acf, label = lag, vjust = ifelse(acf < 0, 1,-1)), color = "black") +
+    aes(lag, y = 0, label = lag, vjust = ifelse(acf < 0, 1.5,-1.5)), color = "black") +
   geom_line(aes(x = lag, y = sigpos), linetype = 2, color = "gray25") +
   geom_line(aes(x = lag, y = signeg), linetype = 2, color = "gray25") +
   geom_hline(yintercept = 0, color = "gray25", linewidth = 1) +
