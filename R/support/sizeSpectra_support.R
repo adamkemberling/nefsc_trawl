@@ -162,7 +162,7 @@ fill_func_groups <- function(species_dat){
         TRUE ~ spec_class),
       hare_group = case_when(
         str_detect(comname, "flounder")       ~ "groundfish",
-        #str_detect(comname, "scup")           ~ "reef",
+        str_detect(comname, "scup")           ~ "coastal",
         str_detect(comname, "thread herring") ~ "coastal",
         str_detect(comname, "dory")           ~ "pelagic",
         str_detect(comname, "sturgeon")       ~ "diadromous",
@@ -2143,78 +2143,23 @@ mean_sizes_all_groups <- function(size_data,
   
   
   # 2. Set up the factor groupings we want to compare : 
+
   
-  #####__ 1.  All years, every region 
-  message("Processing body size change for: All Data")
-  g1_res <- group_size_data %>% 
-    mutate(group_var = "all_data") %>% 
-    group_size_metrics(.group_cols = c("group_var"),
-                       abund_vals = abund_vals) 
-  
-  
-  #####__ 2. All Years, each season 
-  message("Processing body size change for: Each season")
-  g2_res <- group_size_data %>% 
-    group_size_metrics(.group_cols = c("season"),
-                       abund_vals = abund_vals) 
-  
-  
-  #####__ 3. All Years, regions  
-  message("Processing body size change for: Each region")
-  g3_res <- group_size_data  %>% 
-    group_size_metrics(.group_cols = c("survey_area"),
-                       abund_vals = abund_vals)
-  
-  
-  #####__ 4. All Years, seasons * regions
-  message("Processing body size change for: Each Season * region")
-  g4_res <- group_size_data %>% 
-    group_size_metrics(.group_cols = c("season", "survey_area"),
-                       abund_vals = abund_vals)
-  
-  #####__ 5. Every year, entire survey
+  #####__ 1. Every year, entire survey
   message("Processing body size change for: Each year")
-  g5_res <- group_size_data  %>% 
+  g1_res <- group_size_data  %>% 
     group_size_metrics(.group_cols = c("Year"),
                        abund_vals = abund_vals) 
   
-  #####__ 6. every year, every region
+  #####__ 2. every year, every region
   message("Processing body size change for: Each year in each region")
-  g6_res <- group_size_data  %>% 
+  g2_res <- group_size_data  %>% 
     group_size_metrics(.group_cols = c("Year", "survey_area"),
                        abund_vals = abund_vals) 
   
-  #####__ 7. every year, only seasons
-  message("Processing body size change for: Each year in each season")
-  g7_res <- group_size_data %>% 
-    group_size_metrics(.group_cols = c("Year", "season"),
-                       abund_vals = abund_vals)
-  
-  
-  #####__ 8. every year, region * season
-  message("Processing body size change for: Each year in each region, for every season")
-  g8_res <- group_size_data %>% 
-    group_size_metrics(.group_cols = c("Year", "season", "survey_area"),
-                       abund_vals = abund_vals) 
-  
-  
-  # ####__ 9. decades
-  # message("Processing body size change for: Each decade")
-  # g9_res <- group_size_data %>% 
-  #   group_size_metrics(.group_cols = c("decade"),
-  #                      abund_vals = abund_vals) 
-  # 
-  # 
-  # ####__ 10. decades and area
-  # message("Processing body size change for: Each decade in each area")
-  # g10_res <- group_size_data %>% 
-  #   group_size_metrics(.group_cols = c("decade", "survey_area"),
-  #                      abund_vals = abund_vals) 
-  
-  
-  ####__11. Year * Region * Functional Group
+  ####__3. Year * Region * Functional Group
   message("Processing body size change for: Each Year in each area, for each functional group")
-  g11_res <- group_size_data %>% 
+  g3_res <- group_size_data %>% 
     group_size_metrics(.group_cols = c("Year", "survey_area", "hare_group"),
                        abund_vals = abund_vals) 
   
@@ -2222,17 +2167,9 @@ mean_sizes_all_groups <- function(size_data,
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "Overall"                        = g1_res,
-      "only seasons"                   = g2_res,
-      "only regions"                   = g3_res,
-      "region * seasons"               = g4_res,
-      "single years"                   = g5_res,
-      "single years * region"          = g6_res,
-      "single years * season"          = g7_res,
-      "single years * season * region" = g8_res,
-      # "decades"                        = g9_res,
-      # "decades * region"               = g10_res,
-      "single years * region * functional group" = g11_res), 
+      "single years"                             = g1_res,
+      "single years * region"                    = g2_res,
+      "single years * region * functional group" = g3_res), 
     .id = "group ID")
   
   # Return the summary table

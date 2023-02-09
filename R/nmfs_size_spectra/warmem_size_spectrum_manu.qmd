@@ -23,7 +23,7 @@ execute:
   warning: false
   message: false
   fig.height: 6
-  fig.width: 6
+  fig.width: 7
   fig.align: center
   comment: ""
 bibliography: references.bib
@@ -44,6 +44,7 @@ library(gt)
 library(knitr)
 library(tidyverse)
 library(ggstream)
+library(broom)
 # library(ggforce)
 library(bcp)
 library(scales)
@@ -77,7 +78,7 @@ area_levels_long <- c("Northeast Shelf, Full", "Gulf of Maine", "Georges Bank", 
 ```
 
 ```{r}
-#| label: group-size-summaries
+#| label: functions-cell
 
 # Function to process summaries for various factor combinations
 get_group_summaries <- function(data_in, ...){
@@ -127,11 +128,6 @@ return(list("length_bins" = drop_na(group_lengths),
 
 
 
-
-
-
-
-
 # Function to process summaries for various factor combinations
 log2_bin_summaries <- function(data_in, ...){
   
@@ -164,6 +160,50 @@ return(list("weight_bins" = drop_na(group_weights)))
 }
 
 
+
+
+# Function to grab the correlation data and lag data
+get_ccf_vector <- function(x,y){
+  
+  # Run the ccf
+  ccf_data <- ccf(x,y,plot= F , lag.max = 15)
+  
+  # Get the signif:
+  # https://www.squaregoldfish.co.uk/programming/r_acf_significance.md/
+  # Not 100% sure n is the same for ccf as it is for acf, but...
+  significance_level <- qnorm((1 + 0.95)/2)/sqrt(sum(!is.na(x)))
+  
+  data.frame(
+    "acf" = ccf_data$acf,
+    "lag" = ccf_data$lag,
+    "sigpos" = significance_level,
+    "signeg" = significance_level*-1
+  )
+}
+
+
+# Plotting the correlation matrix over a specific decade
+plot_period_correlations <- function(x, label) {
+  x %>% 
+  ggplot(aes(var1, response_short, fill = r2)) +
+  geom_tile() +
+  geom_text(aes(label = signif)) +
+  facet_grid(response_area ~ driver_type, scales = "free_x", space = "free") +
+  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        strip.text.y = element_text(angle = 0),
+        legend.position = c(1.205, -.25),
+        legend.title = element_text(vjust = 0.75),
+        plot.caption = element_text(hjust = 0)) +
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
+  labs(x = "Correlated Feature", y = "Bodymass Spectra Coefficient",
+       fill = "Correlation Coefficient",
+       title = str_c(label, " | Correlation of Size Spectra to Hypothesized Drivers"),
+       subtitle = "Correlation coefficients shown display same-year correlations.",
+       caption = md("* Symbol signals a significant correlation at an alpha =  0.05"))
+  
+}
 
 ```
 
@@ -247,7 +287,7 @@ catch_size_bins <- catch_1g_labelled
 n_species <- length(unique(catch_size_bins$comname))
 ```
 
-Data on the biomass, abundance, and size of fish on the Northeast U.S. Shelf were collected as part of the Northeast Fisheries Science Center\'s bottom trawl survey ( @grosslein1969, @Azarovits1981, @politis2014 ) This survey is conducted from Cape Hatteras, North Carolina to the Gulf of Maine each year in the spring and in the fall.  The survey follows a stratified random sampling design, with strata defined based on depth, bottom habitat, and latitude. Trawls are performed for a fixed duration at each station, reporting aggregate abundance and biomass for all species caught, and measuring individual lengths and weights for the catch of each species or a sub-sample if that catch is large. Correction factors were applied to aggregate species abundance and biomass to account for changes in vessels, gear, and doors used in the survey over time ( @sissenwine1978, @byrne1991, @miller2010 ) However, abundance and biomass at length needed to be estimated after these aggregate corrections. As such, abundance at length for each species was adjusted to match the corrected aggregate species abundance at each station, such that for each species, the sum of the resulting estimated abundance numbers across each length is equal to the corrected aggregate abundance.
+Data on the biomass, abundance, and size of fish on the Northeast U.S. Shelf were collected as part of the Northeast Fisheries Science Center's bottom trawl survey ( @grosslein1969, @Azarovits1981, @politis2014 ) This survey is conducted from Cape Hatteras, North Carolina to the Gulf of Maine each year in the spring and in the fall.  The survey follows a stratified random sampling design, with strata defined based on depth, bottom habitat, and latitude. Trawls are performed for a fixed duration at each station, reporting aggregate abundance and biomass for all species caught, and measuring individual lengths and weights for the catch of each species or a sub-sample if that catch is large. Correction factors were applied to aggregate species abundance and biomass to account for changes in vessels, gear, and doors used in the survey over time ( @sissenwine1978, @byrne1991, @miller2010 ) However, abundance and biomass at length needed to be estimated after these aggregate corrections. As such, abundance at length for each species was adjusted to match the corrected aggregate species abundance at each station, such that for each species, the sum of the resulting estimated abundance numbers across each length is equal to the corrected aggregate abundance.
 
 ```{r}
 #| label: make region map
@@ -268,10 +308,10 @@ ggplot() +
   coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
   scale_fill_gmri() +
   theme_bw() +
-  map_theme(legend.position = "bottom", 
+  map_theme(legend.position = c(0.6, 0.125), 
             legend.background = element_rect(fill = "white")) +
   guides(fill = guide_legend(title = "", nrow = 2)) +
-  labs(title = "Groundfish Survey Regions")
+  labs(caption = "Regions assigned to individual survey strata.")
 ```
 
 ### Community Composition & Functional Groups
@@ -348,7 +388,7 @@ functional_group_size <- mean_sizes_ss_groups %>%
 
 ```
 
-## 
+
 
 ### Body Mass Spectra
 
@@ -385,7 +425,7 @@ f(x) = \frac{1}{logx_{max} - logx_{min}}~~~~~~\lambda=1
 \end{align*}
 $$
 
-The individual size distribution relationship was estimated for each survey region and for all years from 1970 to 2019. A minimum biomass of 1g was used for the lower bound ($x_{min}$) and a maximum biomass of 10kg was used as an upper bound ($x_{max}$) for the ISD's bounded power law probability density function @eq-ISD-pdf, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits constitutes 97.83% of all estimated biomass for the `r n_species` used in this study. This truncation accounts for poor gear selectivity at the smallest and largest size ranges and imposes shared limits to the size distribution we\'d expect to sample across these different areas. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
+The individual size distribution relationship was estimated for each survey region and for all years from 1970 to 2019. A minimum biomass of 1g was used for the lower bound ($x_{min}$) and a maximum biomass of 10kg was used as an upper bound ($x_{max}$) for the ISD's bounded power law probability density function @eq-ISD-pdf, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits constitutes 97.83% of all estimated biomass for the `r n_species` used in this study. This truncation accounts for poor gear selectivity at the smallest and largest size ranges and imposes shared limits to the size distribution we'd expect to sample across these different areas. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
 
 ## Drivers of Size Distribution Changes
 
@@ -534,13 +574,15 @@ landings_summ <- landings_summ %>%
 # table to join for swapping shorthand for long-hand names
 area_df <- data.frame(
   area = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
-  survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Full Region"))
+  survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Northeast Shelf, Full"))
 
 
 
 #--------------------
-# 1.Climate Features
+#### Reshape all the inputs so that we can bind them together in one dataframe
 
+
+# 1.Climate Features
 
 # Join the climate modes together
 clim_drivers <- bind_rows(
@@ -571,9 +613,6 @@ sst_idx <- temp_regimes %>%
   left_join(area_df, by = "survey_area") %>% 
   select(year = yr, area, value = sst_anom) %>% 
   mutate(var = "sst_anom")
-
-
-
 
 
 #--------------------
@@ -607,34 +646,94 @@ all_drivers <- bind_rows(
 
 ```
 
+
 ```{r}
-#| label: set-driver-periods
+#| label: driver-scaling
 
-####  Working Here  ####
+# In this chunk the drivers get reshaped to scale
+# Scaling should cover the period of analysis 1982-2019
+# SST and GSI (all index/anomaly fields) are not scaled
 
-# Reshape Wide
-# Scale the columns independently using the variance in all years
-drivers_scaled <- all_drivers %>% 
+
+# # Reshape the Drivers Wide to allow independent scaling
+# # Scale the columns independently using the variance in all years of data
+# drivers_scaled <- all_drivers %>% 
+#   mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
+#     select(-c(area, var)) %>% 
+#     pivot_wider(names_from = id, values_from = value) %>% 
+#   column_to_rownames(var = "year") %>% 
+#   scale() %>% 
+#   as.data.frame()
+
+# Put the data in a wide form for scaling:
+drivers_wide <- all_drivers %>% 
+  filter(year >= 1982,
+         year <= 2019) %>% 
   mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
     select(-c(area, var)) %>% 
     pivot_wider(names_from = id, values_from = value) %>% 
+  column_to_rownames(var = "year")
+
+
+# Scale the landings, not SST or GSI
+to_scale   <- select(drivers_wide, ends_with("landings")) %>% scale() %>% as.data.frame()
+dont_scale <- select(drivers_wide, -ends_with("landings"))
+
+# Join back together
+drivers_scaled <- bind_cols(dont_scale, to_scale) %>% 
+  rownames_to_column(var = "year")
+
+
+
+# -------------------------------------------------
+# Idea: Add functional_group_sizes into the correlation chart:
+
+# Reshape the size information so we can combine it with the drivers:
+# Values are scaled here
+sizes_wide <- functional_group_size %>% 
+  select(year = Year, survey_area, hare_group, avg_length = mean_len_cm, avg_weight = mean_wt_kg) %>% 
+  pivot_longer(names_to = "var", 
+               values_to = "value", 
+               cols = c(avg_length, avg_weight)) %>% 
+  inner_join(area_df, by = "survey_area") %>% #distinct(area)
+  select(-survey_area) %>% 
+  mutate(id = str_replace_all(str_c(area, "_", hare_group, "_", var), " ", "_")) %>% 
+    select(-c(area, var, hare_group)) %>% 
+    pivot_wider(names_from = id, values_from = value, values_fn = {mean}
+                ) %>% 
   column_to_rownames(var = "year") %>% 
   scale() %>% 
   as.data.frame()
-  
+
+
+
+# Join regional size changes to the scaled drivers
+drivers_and_sizes <- drivers_scaled %>% 
+  left_join(rownames_to_column(sizes_wide, var = "year"), by = "year") %>%
+  column_to_rownames(var = "year")
+
+```
+
+
+```{r}
+#| label: set-driver-periods
+
 
 # Pull different years into a list
 driver_periods <- list(
-  #"regime_1" = c(1982:2005),
-  #"regime_2" = c(2006:2020),
-  "full"     = c(1954:2020))
+  "1980s" = c(1982:1989),
+  "1990s" = c(1990:1999),
+  "2000s" = c(2000:2009),
+  "2010s" = c(2010:2019),
+  "1982-2019" = c(1982:2019)
+  )
 
 
 # Split them out into a list that contains data for each period
-driver_period_l <- map(driver_periods, function(yrs){
-  period_matrix <- drivers_scaled[rownames(drivers_scaled) %in% yrs, ] %>% 
-    drop_na()
-})
+# Takes the years in driver_periods and pulls the rows that correspond
+driver_period_list <- map(driver_periods, function(yrs){
+  period_matrix <- drivers_and_sizes[rownames(drivers_and_sizes) %in% yrs, ] %>% drop_na()
+  })
 
 ```
 
@@ -644,22 +743,28 @@ Cross correlation function estimates were used to look at correlation changes at
 
 ```{r}
 #| label: ccf-data
-#| eval: true
+#| fig-height: 8
+#| fig-width: 8
 
 # Run CCF function to get lagged correlations,
 # Put that data in one table to plot in a better comparison form
 
 
+#------------ Processing Data for CCF. ------------------------
 # Scale Everything Before CCF,
-# Add some organization columns
+# Reshape the Drivers Wide to scale
+# Scale the columns independently using the variance in all years, but within an area
+# Are the columns scaling independently or together?
+# Confirmed independently scaling
 
-# Drivers scaled is a matrix of all the different timeseries
+
+# Drivers scaled trimmed is a matrix of all the different timeseries
 # Columns that end with slope or intercept are pulled out to get a column of the response variables (slope features)
 # Columns that don't contain "spectra" or "year" capture the remaining features
 # Next we pull out the region information for each
-
 driver_ccf_prep <- drivers_scaled %>% 
-  rownames_to_column(var = "year") %>% 
+  select(-All_sst_anom) %>% 
+  #rownames_to_column(var = "year") %>% 
   pivot_longer(names_to = "spectra_param", 
                values_to = "spectra_values", 
                cols = ends_with("slope") | ends_with("int")) %>% 
@@ -668,42 +773,31 @@ driver_ccf_prep <- drivers_scaled %>%
                cols = -matches("spectra|year")) %>% 
   mutate(
     # C. These are the areas associated with the Spectra Features
-    community_area = case_when(
-      str_detect(spectra_param, "All") ~ "All",
-      str_detect(spectra_param, "Georges") ~ "Georges Bank",
-      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
-      str_detect(spectra_param, "Southern") ~ "Southern New England",
+    spectra_area = case_when(
+      str_detect(spectra_param, "All")          ~ "All",
+      str_detect(spectra_param, "Georges")      ~ "Georges Bank",
+      str_detect(spectra_param, "Gulf")         ~ "Gulf of Maine",
+      str_detect(spectra_param, "Southern")     ~ "Southern New England",
       str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    community_area = factor(community_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    spectra_area = factor(spectra_area, 
+      levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
     
     # D. These are the areas of the drivers
     driver_area = case_when(
-      str_detect(driver_var, "All") ~ "All",
-      str_detect(driver_var, "Georges") ~ "Georges Bank",
-      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
-      str_detect(driver_var, "Southern") ~ "Southern New England",
+      str_detect(driver_var, "All")          ~ "All",
+      str_detect(driver_var, "Georges")      ~ "Georges Bank",
+      str_detect(driver_var, "Gulf")         ~ "Gulf of Maine",
+      str_detect(driver_var, "Southern")     ~ "Southern New England",
       str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    driver_area = factor(driver_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"))) 
+    driver_area = factor(driver_area, 
+      levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight"))) 
 
 
 
 # Filter it out so there is only cases where the driver area matches
 driver_ccf_prep <- driver_ccf_prep %>% 
-  filter(driver_area == community_area | driver_area == "All") %>% 
+  filter(driver_area == spectra_area | driver_area == "All") %>% 
   arrange(year, driver_var)
-
-
-
-
-# function to grab the correlation data and lag data
-get_ccf_vector <- function(x,y){
-  ccf_data <- ccf(x,y,plot= F ,lag.max = 15)
-  data.frame(
-    "acf" = ccf_data$acf,
-    "lag" = ccf_data$lag
-  )
-}
-
 
 
 
@@ -750,34 +844,166 @@ ccf_plot_data <- ccf_relationships %>%
       str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
       str_detect(spectra_param, "Southern") ~ "Southern New England",
       str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    # Flag when it crosses threshold
+    sig_flag = ifelse(acf < signeg | acf > sigpos, T, F),
+    # Set Factor Levels
     spectra_region = factor(spectra_region, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")))
+
+
+# Limit to one Response:
+ccf_plot_data <- filter(ccf_plot_data, param_feature == "ISD Exponent")
 
 
 # Plot them
 ccf_plot_data %>% 
-  filter(param_feature == "ISD Exponent") %>% 
   ggplot(aes(
     x = lag, 
     y = acf, 
     group = driver_var, 
     color = driver_type, 
     fill = driver_type)) +
-  geom_col(alpha = 0.75, position = "dodge") +
-  geom_hline(yintercept = 0, color = "gray50", linewidth = 1) +
+  geom_col(alpha = 0.65) +
+  geom_col(
+    data = filter(ccf_plot_data, sig_flag),
+    aes(lag, acf, fill = driver_type,  group = driver_var), color = "black") +
+  geom_text(
+    data = filter(ccf_plot_data, sig_flag),
+    aes(lag, y = acf, label = lag, vjust = ifelse(acf < 0, 1,-1)), color = "black") +
+  geom_line(aes(x = lag, y = sigpos), linetype = 2, color = "gray25") +
+  geom_line(aes(x = lag, y = signeg), linetype = 2, color = "gray25") +
+  geom_hline(yintercept = 0, color = "gray25", linewidth = 1) +
   geom_vline(xintercept = 0, color = "black", linewidth = 1) +
   scale_color_gmri() +
   scale_fill_gmri() +
   facet_grid(spectra_region~driver_type*param_feature) +
-  scale_x_continuous(limits = c(-8, 1), 
-                     breaks = seq(from = -12, to = 12, by = 1)) +
-  theme(legend.position = "bottom") +
+  scale_x_continuous(limits = c(-15, 15), breaks = seq(from = -15, to = 12, by = 1)) +
+  theme(legend.position = "bottom",
+        axis.text = element_text(size = 8)) +
   labs(x = "Driver Lag", y = "Correlation (CCF)", 
-       fill = "Driver Type", color = "Driver Type")
+       fill = "Driver Type:", color = "Driver Type:",
+       caption = "All predictors scaled over year range of 1982-2019. Lags exceeding significance threshold outlined and numbered.")
 
-  
 ```
 
-Following exploratory analyses with CCF functions, regression analysis was performed using the most
+Following exploratory analyses with CCF functions, regression analyses were performed independently for each region. Candidate models were evaluated using AIC to determine the most parsimonious models for each regional system. Potential drivers included in the models were the annual Gulf Stream Index, the annual regionally averaged SST anomaly value, and the scaled annual commercial landings from that region. Gulf stream index and SST anomalies were not standardized prior to use in model fitting and evaluation as the former is already an index value and the latter is scaled to a thirty-year climatological reference period.
+
+```{r}
+#| label: regression-analysis
+
+# Get the drivers organized, only use data from 1982 onward
+
+
+# Put the data in a wide form for scaling:
+drivers_wide <- all_drivers %>% 
+  filter(year >= 1982,
+         year <= 2019) %>% 
+  mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
+    select(-c(area, var)) %>% 
+    pivot_wider(names_from = id, values_from = value) %>% 
+  column_to_rownames(var = "year")
+
+
+# Scale the landings, not SST or GSI
+to_scale   <- select(drivers_wide, ends_with("landings")) %>% scale() %>% as.data.frame()
+dont_scale <- select(drivers_wide, -ends_with("landings"))
+
+# Join back together
+regression_df <- bind_cols(dont_scale, to_scale) 
+
+# Build back out the metadata:
+# Identify what region is associated with both: spectrum values & driver values
+regression_df <- regression_df %>% 
+  rownames_to_column(var = "year") %>% 
+  pivot_longer(names_to = "spectra_param", 
+               values_to = "spectra_values", 
+               cols = ends_with("slope") | ends_with("int")) %>% 
+  pivot_longer(names_to = "driver_var", 
+               values_to = "driver_values", 
+               cols = -matches("spectra|year")) %>% 
+  mutate(
+    year = as.numeric(year),
+    # A. Flag what the driver type was
+    driver_type = case_when(
+      str_detect(driver_var, "landings") ~ "Commercial Landings",
+      str_detect(driver_var, "sst") ~ "SST",
+      str_detect(driver_var, "index") ~ "GSI",
+      TRUE ~ "Missed Something"),
+    # B. Flag what the spectrum feature was
+    param_feature = case_when(
+      # Flag what the Size Distribution Parameter was
+      str_detect(spectra_param, "int") ~ "Spectra Intercept",
+      str_detect(spectra_param, "isd") ~ "ISD Exponent",
+      str_detect(spectra_param, "slope") ~ "Spectra Slope",
+      TRUE ~ "Missed Something"),
+    # C. These are the areas associated with the Spectra Features
+    spectra_area = case_when(
+      str_detect(spectra_param, "All") ~ "All",
+      str_detect(spectra_param, "Georges") ~ "Georges Bank",
+      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
+      str_detect(spectra_param, "Southern") ~ "Southern New England",
+      str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    spectra_area = factor(spectra_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    
+    # D. These are the areas of the drivers
+    driver_area = case_when(
+      str_detect(driver_var, "All") ~ "All",
+      str_detect(driver_var, "Georges") ~ "Georges Bank",
+      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
+      str_detect(driver_var, "Southern") ~ "Southern New England",
+      str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    driver_area = factor(driver_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    
+    # E. Add Decade in
+    decade = floor_decade(year)) 
+
+
+# Filter it so predictors are only within matching regions, 
+# or just overarching (GSI)
+regression_df <- regression_df %>% 
+  filter(driver_area == spectra_area | driver_type == "GSI") %>% 
+  arrange(year, driver_var)
+
+
+
+
+# Last wrangling:
+# columns for: year, slope, isd, spectra region, drver_region, GSI, sst_anom, landings
+# GSI is so annoying here, just rejoin it without the area column
+regression_df <- regression_df %>% 
+  select(-c(spectra_param, driver_var)) %>% 
+  pivot_wider(names_from = "driver_type", values_from = "driver_values") %>% 
+  pivot_wider(names_from = "param_feature", values_from = "spectra_values") %>% 
+  select(-GSI) %>% 
+  filter(driver_area != "All") %>% 
+  left_join( select(clim_idx, year, GSI = value), by = c("year") ) %>% 
+  mutate(spectra_area = fct_drop(spectra_area))
+
+
+
+
+```
+
+```{r}
+#| label: regression-trees
+#| eval: false
+
+library(gbm)
+set.seed(123)
+
+
+#Not enough data
+gbm.fit <- gbm(
+  formula = `ISD Exponent` ~ SST + decade + `Commercial Landings` + GSI + driver_area,
+  distribution = "gaussian",
+  data = regression_df,
+  interaction.depth = 1,
+  shrinkage = 0.001,
+  cv.folds = 5,
+  n.cores = NULL, # will use all cores by default
+  verbose = FALSE
+)
+
+```
 
 # Results
 
@@ -812,7 +1038,7 @@ strat_abundance_plot <- fgroup_area$weight_bins %>%
   scale_x_continuous(expand = expansion(add = c(0,0))) +
   facet_wrap(~survey_area, ncol = 1, scales = "free") + 
   labs(y = "Abundance (millions)",  
-       caption = "Estimated Abundance from\nArea-Stratified Catch Rates",
+       caption = "Estimated Abundance from Area-Stratified Catch Rates",
          x = "",
        fill = "Functional Group") +
   theme(legend.position = "bottom",
@@ -831,8 +1057,8 @@ strat_biomass_plot <- fgroup_area$weight_bins %>%
   scale_x_continuous(expand = expansion(add = c(0,0))) +
   facet_wrap(~survey_area, ncol = 1, scales = "free") + 
   labs(y = "Biomass (million kg)",  
-        title = "Estimated Biomass from\nArea-Stratified Catch Rates",
-         x = "",
+       caption = "Estimated Biomass from Area-Stratified Catch Rates",
+       x = "",
        fill = "Functional Group") +
   theme(legend.position = "bottom",
         panel.background = element_rect(colour = "black", size=2, fill = NA))
@@ -862,7 +1088,7 @@ fgroup_area$weight_bins %>%
     scale_fill_gmri() +
     scale_y_continuous(labels = comma_format()) +
     labs(y = "Stratified Abundance (millions)",  
-         title = "Abundance Allocation by Weight",
+         caption = "Stratified abundances of all functional groups and across regions, with fill colored by individual bodymass.",
          x = "", 
          fill = "Minimum Individual Weight 10^x (g)") +
     theme(legend.position = "bottom",
@@ -889,7 +1115,7 @@ fgroup_area$weight_bins %>%
     scale_fill_gmri() +
     scale_y_continuous(labels = comma_format()) +
     labs(y = "Stratified Total Biomass (million kg)",  
-         title = "Biomass Allocation by Weight",
+         caption = "Stratified abundances of all functional groups and across regions, with fill colored by individual bodymass.",
          x = "", 
          fill = "Minimum Individual Weight 10^x (g)") +
     theme(legend.position = "bottom",
@@ -927,9 +1153,7 @@ avg_len_p <-  regional_size %>%
     geom_line(data = select(regional_size, -survey_area),
               aes(group = area_copy),
               alpha = 0.2, linewidth = 0.5) + 
-    geom_line(aes(group = survey_area#,
-                  #color = area_copy
-                  ), 
+    geom_line(aes(group = survey_area), 
               linewidth = 1,
               show.legend = F) + 
     scale_color_gmri() +
@@ -957,7 +1181,7 @@ avg_wt_p <- regional_size %>%
        color = "Region")
   
 # Plot side by side
-(avg_len_p | avg_wt_p) 
+(avg_len_p | avg_wt_p) + plot_annotation(caption = "Changes in the average length and bodymass of fishes in each of the study regions.")
 
 ```
 
@@ -965,7 +1189,7 @@ avg_wt_p <- regional_size %>%
 
 ```{r}
 #| label: functional-group-length-trends
-#| fig.width: 10
+#| fig.width: 8
 #| fig-height: 8
 
 
@@ -983,7 +1207,9 @@ functional_group_size %>%
                   ), 
               linewidth = 1,
               show.legend = F) + 
+    geom_smooth(color = "orange", method = "loess", linewidth = 1) +
     facet_grid(hare_group~survey_area, scales = "free_y") + 
+    theme(axis.text = element_text(size = 8)) +
     labs(title = "Average Length",
          y = "Length (cm)",
          color = "Region")
@@ -995,7 +1221,7 @@ functional_group_size %>%
 
 ```{r}
 #| label: functional-group-weight-trends
-#| fig.width: 10
+#| fig.width: 8
 #| fig-height: 8
 
 
@@ -1005,7 +1231,9 @@ functional_group_size %>%
   geom_line(aes(group = survey_area), 
               linewidth = 1,
               show.legend = F) + 
+    geom_smooth(color = "orange", method = "loess", linewidth = 1) +
     facet_grid(hare_group~survey_area, scales = "free_y") + 
+    theme(axis.text = element_text(size = 8)) +
     labs(title = "Average Weight",
          y = "Weight (kg)",
          color = "Region")
@@ -1017,10 +1245,12 @@ functional_group_size %>%
 
 At the start of our time series, back in the 1970's, there was a clear difference in the relative positions of spectra parameters among the different regions. Gulf of Maine and Georges Bank showed the least steep spectra slopes in the earlier time periods with slopes around -1 & -1.1 respectively. The relatively flat slopes in these regions both steepened over time, settling near -1.3 (GoM) and -1.5 (GB). Gulf of Maine experienced much of its decline during the 1980's and 1990's. There was a brief reversal in this trend during the 2000's, but slopes continued to steepen by 2010 and remained steep through 2019. Georges Bank did not experience as rapid of a decline, but experienced a similar long-term steepening. In contrast to the northern regions, SNE and MAB had steeper slopes in the -1.2 to -1.5 territory. The long term pattern for SNE was one of increasing volatility, but not so much a decline. The spectra slope for the MAB was less volatile, but similarly maintained a relatively stable wander around -1.4. By the end of the study period all regions had slopes that were at or near a similar level.
 
+
+
+
 ```{r}
 #| label: size spectra results
-#| fig.height: 8
-#| fig.weight: 8
+
 
 # Make a copy so we can gray out the lines
 region_indices <- mutate(region_indices, area_copy = survey_area)
@@ -1034,23 +1264,9 @@ slope_timeline <- region_indices %>%
             alpha = 0.2, linewidth = 0.5) +
   geom_line(aes(group = survey_area), linewidth = 1) +
   scale_color_gmri() +
-  facet_wrap(~survey_area, ncol = 1) +
-  # theme_minimal() +
+  facet_wrap(~survey_area, ncol = 1)  +
   labs(x = "Year", y = "Slope", title = "Normalized Biomass Spectra") 
 
-# # Plot the Regional Intercepts
-# int_timeline <- ggplot(region_indices, aes(yr, log2_int_strat, group = survey_area)) +
-#   geom_line(data = select(region_indices, -survey_area),
-#             aes(group = area_copy),
-#             alpha = 0.2, linewidth = 0.5) +
-#   geom_line(aes(group = survey_area), linewidth = 1) +
-#   facet_wrap(~survey_area, ncol = 1) +
-#   # theme_minimal() +
-#   labs(x = "Year", y = "Intercept") 
-# 
-# 
-# # Assemble Slope and Intercept
-# slope_timeline | int_timeline 
 
 
 
@@ -1064,87 +1280,117 @@ isd_timeline <- region_indices %>%
   #geom_pointrange(aes(group = survey_area, ymin = confMin, ymax = confMax), size = 0.1) +
   scale_color_gmri() +
   facet_wrap(~survey_area, ncol = 1) +
-  labs(x = "Year", y = "b", title = "Exponent of ISD") 
+  labs(x = "Year", y = "b", title = "Exponent of ISD")
+```
 
 
+::: panel-tabset
 
+#### Exponent of Size Spectra
+
+```{r}
+#| fig.height: 8
+#| fig.weight: 8
+
+isd_timeline + geom_smooth(color = "orange")
+```
+
+#### Binned Size Spectra
+
+```{r}
+#| fig.height: 8
+#| fig.weight: 8
+
+slope_timeline + geom_smooth(color = "orange")
+```
+
+#### Contrast
+
+```{r}
+#| fig.height: 8
+#| fig.weight: 8
 
 # Assemble the figure
-slope_timeline | isd_timeline 
+slope_timeline +
+  scale_y_continuous(limits = c(-1.35, -0.4))  | isd_timeline +
+  scale_y_continuous(limits = c(-1.35, -0.4)) 
+
+
 ```
+
+:::
+
+
 
 ## Size Spectra Drivers
 
-### Driver Correlations
+### Drivers of Spectra Shape
 
 **NOTE:** Correlation matrix is computed starting at the year where there are no NA values in any drivers. Currently with SST included that begins the matrix at 1982.
+
+
 
 ```{r}
 #| label: period-correlations-processing
 
 # Run Correlations for Each period and for the entire period
-period_correlations <- map(driver_period_l, function(drivers){
+driver_period_correlations <- map(driver_period_list, function(drivers){
   
   #------ debug copy-paste line
-  # Step 1.
-  # Get the correlation matrix (data is pre-scaled)
-  corr_matrix <- rcorr(as.matrix(drivers))
-  rho <- corr_matrix$r
-  
-  # Step 2. Significance
-  sig_mat <- corr_matrix$P
-  
-   
-  # Step 3. 
-  # Make correlation matrix & significance a dataframe for GGplot
-  
-  # Correlation Matrix
-  gg_rho <- as.data.frame(rho) %>%
-    rownames_to_column(var = "xvar") %>%
-    pivot_longer(cols = -xvar, 
-                 names_to = "yvar", 
-                 values_to = "r2")
-  
-  # Significance Dataframe
-  gg_sig <- as.data.frame(sig_mat) %>%
-    rownames_to_column(var = "xvar") %>%
-    pivot_longer(cols = -xvar, 
-                 names_to = "yvar", 
-                 values_to = "pval")
-  
-  
-  
-  
-  # Step 4.  
-  # Tidy it up, enhance the labels for plotting
-  # label the drivers and the responses specifically so we can group them
-  # in an orderly way
-  # xvar and yvar are the order that they go into the corrrelation estimation
-  gg_rho_tidy <- left_join(gg_rho, gg_sig, by = c("xvar", "yvar")) %>% 
-    mutate(
-      # A. Slope and intercept are the only size spectra features
-      # and also
-      response_var = ifelse(str_detect(xvar, "slope"), T, F),
-      
-      # B.These are the drivers, use string detect to pull them out
-      driver_var = ifelse(str_detect(yvar, "landings|index|anom"), T, F),
-      
-      # C. Label Top down and Bottom Up Drivers
-      driver_type = case_when(
-        str_detect(yvar, "landings") ~ "Top-Down",
-        str_detect(yvar, "stream|anom") ~ "Bottom-Up"),
-      
-      # D. These are the areas associated with the Spectra Features
-      xvar_area = case_when(
-        str_detect(xvar, "All") ~ "All",
-        str_detect(xvar, "Georges") ~ "Georges Bank",
-        str_detect(xvar, "Gulf") ~ "Gulf of Maine",
-        str_detect(xvar, "Southern") ~ "Southern New England",
-        str_detect(xvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-      
-      # E. Set Factor Levels for plot
-      xvar_area = factor(
-        xvar_area, 
+  # Step 1. Get the correlation matrix (data is pre-scaled)
+corr_matrix <- rcorr(as.matrix(drivers))
+
+# R-squares
+rho_df <- as.data.frame(corr_matrix$r) %>%
+  rownames_to_column(var = "var1") %>%
+  pivot_longer(cols = -var1, 
+               names_to = "var2", 
+               values_to = "r2")
+
+# Significance Dataframe
+sig_df <- as.data.frame(corr_matrix$P) %>%
+  rownames_to_column(var = "var1") %>%
+  pivot_longer(cols = -var1, 
+               names_to = "var2", 
+               values_to = "pval")
+
+# Join
+corr_both <- left_join(rho_df, sig_df, by = c("var1", "var2")) 
+
+
+# Step 2. Tidy Up for ggplot
+# Make correlation matrix & significance a dataframe for GGplot
+# Goal: Flag the different Functional Group size changes somehow
+
+
+# Mega Cleanup Code Chunk
+# This first step adds metadata, but mostly creates a way to filter out correlations to be in the direction we want. no sst as response variables for example
+# GOAL: All the drivers in one column, and all the responses in another, order doesn't matter
+corr_tidy <- corr_both %>% 
+  mutate(
+    
+    # 1.These flag whether or not the matrix variables in each column are the independent or dependent variables
+    is_var1_driver   = ifelse(str_detect(var1, "landings|index|anom|avg"), T, F),
+    is_var2_response = ifelse(str_detect(var2, "slope|int"), T, F),
+    
+    # 2. Column to Flag what type of driver it is:
+    driver_type = case_when(
+        str_detect(var1, "landings")    ~ "Top-Down",
+        str_detect(var1, "stream|anom") ~ "Bottom-Up",
+        str_detect(var1, "length")      ~ "Avg. Length",
+        str_detect(var1, "weight")      ~ "Avg. Weight"),
+    
+    # 3. Column to Flag what area the driver data is from
+    driver_area = case_when(
+        str_detect(var1, "All")          ~ "All",
+        str_detect(var1, "Georges")      ~ "Georges Bank",
+        str_detect(var1, "Gulf")         ~ "Gulf of Maine",
+        str_detect(var1, "Southern")     ~ "Southern New England",
+        str_detect(var1, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    
+    # 4. Set Factor Levels for plot
+      driver_area = factor(
+        driver_area, 
         levels = c(
           "All", 
           "Gulf of Maine", 
@@ -1152,101 +1398,230 @@ period_correlations <- map(driver_period_l, function(drivers){
           "Southern New England", 
           "Mid-Atlantic Bight")),
       
-      # F. These are the areas of the drivers
-      yvar_area = case_when(
-        str_detect(yvar, "All") ~ "All",
-        str_detect(yvar, "Georges") ~ "Georges Bank",
-        str_detect(yvar, "Gulf") ~ "Gulf of Maine",
-        str_detect(yvar, "Southern") ~ "Southern New England",
-        str_detect(yvar, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-      yvar_area = factor(yvar_area, levels = c(
+    
+    # 5. Shorthand Names for the Spectra Parameters - Response
+    response_short = case_when(
+      str_detect(var2, "int")   ~ "Spectra Intercept",
+      str_detect(var2, "isd")   ~ "ISD Exponent",
+      str_detect(var2, "slope") ~ "Spectra Slope"),
+    
+    
+    # 6. These are the areas of the drivers
+    response_area = case_when(
+      str_detect(var2, "All")          ~ "All",
+      str_detect(var2, "Georges")      ~ "Georges Bank",
+      str_detect(var2, "Gulf")         ~ "Gulf of Maine",
+      str_detect(var2, "Southern")     ~ "Southern New England",
+      str_detect(var2, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    
+    
+    # 7. Set levels for the driver areas
+    response_area = factor(
+      response_area, 
+      levels = c(
         "All", 
         "Gulf of Maine", 
         "Georges Bank", 
         "Southern New England", 
         "Mid-Atlantic Bight")),
+    
+    # 8. Flag when the areas are the same or not:
+    area_match = driver_area == response_area
+  )
+  
+
+# Now we filter rows out to focus in on:
+# 1. one direction driver & response
+# 2. response and driver in same area, unless its GSI
+corr_tidy_pairs <- corr_tidy %>% 
+  filter( 
+      is_var2_response,
+      is_var1_driver,
+      area_match | str_detect(var1, "index")) 
+  
+  
+# From here it is just text formatting for plots:
+# Because we are faceting we can have repeated names to simplify things
+corr_tidy_pairs <- corr_tidy_pairs %>% 
+  mutate(
+      var1 = ifelse(str_detect(var1, "landings"), "Commercial_Landings", var1),
+      var1 = ifelse(str_detect(var1, "sst"), "SST_Anomalies", var1),
+      var1 = ifelse(str_detect(var1, "gulf_stream_index"), "Gulf Stream Index", var1),
+      var1 = str_replace_all(var1, "_", " "),
       
-      # Shorthand for the Spectra Parameters
-      x_short = case_when(
-        str_detect(xvar, "isd") ~ "ISD Exponent",
-        str_detect(xvar, "slope") ~ "Spectra Slope"))
-  
-  
-  
-  
-  # Match SST and Landings to their areas:
-  # Rename landings and SST so they occupy the same plot space
-  # Do some filtering and string formatting:
-  only_driver_response <- gg_rho_tidy %>% 
-    filter( 
-      response_var,
-      driver_var) %>% 
-    mutate(area_match = xvar_area == yvar_area) %>% 
-    filter(area_match | !str_detect(yvar, "sst|landings")) %>% 
-    mutate(
-      yvar = ifelse(str_detect(yvar, "landings"), "Commercial_Landings", yvar),
-      yvar = ifelse(str_detect(yvar, "sst"), "SST_Anomalies", yvar),
-      yvar = ifelse(str_detect(yvar, "gulf_stream_index"), "Gulf Stream Index", yvar),
-      yvar = str_replace_all(yvar, "_", " "),
-      yvar = factor(yvar, levels = c(
-        "Gulf Stream Index",
-        "SST Anomalies",
-        "Commercial Landings"))
-      ) 
-  
-  
-  # Do some flagging for significance
-  only_driver_response <- only_driver_response %>% mutate(
-    signif = ifelse(pval < 0.05, "*", ""))
+      # Make a functional group column
+      hare_group = case_when(
+        str_detect(var1, "elasmobranch") ~ "Elasmobranch",
+        str_detect(var1, "pelagic")      ~ "Pelagic",
+        str_detect(var1, "coastal")      ~ "Coastal",
+        str_detect(var1, "diadromous")   ~ "Diadromous",
+        str_detect(var1, "groundfish")   ~ "Groundfish",
+        str_detect(var1, "reef")         ~ "Reef",
+        TRUE ~ ""),
+      # Add the functional group column ahead of the average length and weight columns
+      var1 = ifelse(str_detect(var1, "avg"), hare_group, var1),
+      
+      # Set The Factor Levels groups
+      var1 = factor(
+        var1,
+        levels = c(
+          "Gulf Stream Index",
+          "SST Anomalies",
+          "Groundfish",
+          "Elasmobranch",
+          "Coastal",
+          "Diadromous",
+          "Pelagic",
+          "Reef",
+          "Commercial Landings")),
+      
+      # Flag Significance Levels
+      signif = ifelse(pval < 0.05, "*", ""))
+
+  return(corr_tidy_pairs)
   
   #------- 
 
   
-  # Spit out all the pieces in an organized list
-  correlation_details <- list(
-    "drivers_matrix"       = drivers,
-    "rho"                  = rho,
-    "pvals"                = sig_mat,
-    "ggrho"                = gg_rho,
-    "ggrho_tidy"           = gg_rho_tidy,
-    "only_driver_response" = only_driver_response
-  )
   
   
 })
 
-
-  
-
 ```
 
+
+
+::: panel-tabset
+
+#### All Years
+
 ```{r}
-#| label: ggcorr-drivers-full
+#| label: correlations-all
 #| fig-height: 6
 #| fig-width: 8
 
+period <- "1982-2019"
+plot_period_correlations(driver_period_correlations[[period]], period)
+```
 
-# Plot the convoluted thing:
-period_correlations$full$only_driver_response %>% 
-  ggplot(aes(yvar, x_short, fill = r2)) +
-  geom_tile() +
-  geom_text(aes(label = signif)) +
-  facet_grid(xvar_area~driver_type, scales = "free_x", space = "free") +
-  scale_fill_distiller(palette = "RdBu", limits = c(-1, 1), breaks = c(-1,0,1)) +
-  coord_cartesian(clip = "off") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-        strip.text.y = element_text(angle = 0),
-        legend.position = c(1.205, -.25),
-        legend.title = element_text(vjust = 0.75),
-        plot.caption = element_text(hjust = 0)) +
-  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5)) +
-  labs(x = "Hypothesized Driver", y = "Bodymass Spectra Coefficient",
-       fill = "Correlation Coefficient",
-       title = "Correlation of Size Spectra to Hypothesized Drivers | All Years",
-       subtitle = "Correlation coefficients shown display same-year correlations.",
-       caption = md("* Symbol signals a significant correlation at an alpha =  0.05"))
+
+
+#### 1980s
+
+```{r}
+#| label: correlations-80s
+#| fig-height: 6
+#| fig-width: 8
+
+period <- "1980s"
+plot_period_correlations(driver_period_correlations[[period]], period)
+```
+
+
+#### 1990's
+
+```{r}
+#| label: correlations-90s
+#| fig-height: 6
+#| fig-width: 8
+
+period <- "1990s"
+plot_period_correlations(driver_period_correlations[[period]], period)
+```
+
+
+#### 2000's
+
+```{r}
+#| label: correlations-20s
+#| fig-height: 6
+#| fig-width: 8
+
+period <- "2000s"
+plot_period_correlations(driver_period_correlations[[period]], period)
+```
+
+
+#### 2010's
+
+```{r}
+#| label: correlations-21s
+#| fig-height: 6
+#| fig-width: 8
+
+period <- "2010s"
+plot_period_correlations(driver_period_correlations[[period]], period)
 
 ```
+
+
+
+:::
+
+
+# WORKING HERE
+
+
+## Exponent of Size Distribution Regressions
+
+```{r}
+#| label: isd-regression-models
+
+
+
+
+
+# Run regressions for each region
+isd_area_mods <- regression_df %>% 
+  split(.$spectra_area) %>% 
+  map(function(area_df){
+    
+    # Define the models here
+    area_lm <- lm(`ISD Exponent` ~ SST * `Commercial Landings` * GSI, 
+    # area_lm <- lm(`Spectra Slope` ~ SST * `Commercial Landings` * GSI, 
+                  data = area_df )
+    
+    return(
+      list(
+        "data" = augment(area_lm, drop_na(area_df), interval = "confidence"),
+        "params" = tidy(area_lm),
+        "summary" = glance(area_lm)
+      )
+      
+    )
+    
+  })
+
+
+# Pull them into their own dataframes:
+isd_data <- map_dfr(isd_area_mods, pluck, "data", .id = "survey_area")
+isd_params <- map_dfr(isd_area_mods, pluck, "params", .id = "survey_area")
+isd_summs <- map_dfr(isd_area_mods, pluck, "summary", .id = "survey_area")
+```
+
+
+```{r}
+#| label: isd-model-results
+# Do a conditional table
+isd_params %>% 
+  mutate(across(where(is.numeric), round, 3)) %>% 
+  group_by(survey_area) %>% 
+  gt(rowname_col = "term") %>% 
+  gt::tab_header(title = "Regressions Summary", subtitle = "Independent Regional Models, interactions between predictors.") %>% 
+  gt::tab_style(
+    style = list(
+      cell_fill(color = "#F9E3D6"),
+      cell_text(color = "black")),
+    locations = cells_body(rows = p.value < 0.05))
+
+
+```
+
+
+
+## Normalized Body Mass Spectra Regressions
+
+
 
 # Discussion
 
@@ -1269,6 +1644,8 @@ The data used for this analysis was collected as part of a survey program which 
 This begs the question of why larger adult numbers never began to recover in these regions. Looking at abundance and biomass information from the survey there was evidence of strong recruitment among smaller individuals \< 1kg, but there has since not been a recovery in fishes larger than 1kg outside of the elasmobranchs. Work by [@pershing2015] suggested this prolonged recovery period may be due to a lack of accounting for temperature change in fisheries management. At the time of that research, the regional temperatures had only begun rising, and could have been considered at that time an acute stressor. Since that time the region has experienced nearly a decade of sustained above-average temperatures. There are signs that the success seen in recruitment and survival of even the smaller size classes is declining. While temperature change has been associated with changes in growth rates and size-at-age, so too have size-selective fishing practices, making it difficult to disentangle the importance of exploitation & temperature on the overall community size structure when body size integrates these two forces [@shackell2007].
 
 ### Potential Drivers Timeseries:
+
+The following panels show the historical changes in each of the drivers. Landings have been scaled by average total landings within each region across all years. SST and GSI have not been scaled. This is different from how they are implemented in the regression analyses, when the landings were scaled over the 1982-2019 period.
 
 ::: panel-tabset
 #### Surface Temperature Anomalies
@@ -1463,7 +1840,7 @@ garfo_map <- ggplot(stat_zones) +
   coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
   scale_fill_gmri() +
   theme_bw() +
-  map_theme(legend.position = c(0.7, 0.25),
+  map_theme(legend.position = c(0.6, 0.125),
             legend.background = element_rect(fill = "white")) +
   guides(fill = guide_legend(title = "", nrow = 2)) +
   labs(caption = "Map of the allocation of GARFO statistical zones into the four regions used in this study.")
