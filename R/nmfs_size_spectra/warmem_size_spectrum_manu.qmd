@@ -1641,11 +1641,13 @@ tbl1
 #### VIF
 
 ```{r}
-vif(all_parms, type = "predictor") %>% 
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, 
+                data = gom_df)
+vif(all_parms) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
   gt() 
-
 
 ```
 
@@ -1724,9 +1726,12 @@ tbl1
 #### VIF
 
 ```{r}
-vif(all_parms, type = "predictor") %>% 
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, 
+                data = gb_df)
+vif(all_parms) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
   gt() 
 
 ```
@@ -1800,9 +1805,12 @@ tbl1
 #### VIF
 
 ```{r}
-vif(all_parms, type = "predictor") %>% 
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, 
+                data = sne_df)
+vif(all_parms) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
   gt() 
 
 ```
@@ -1876,9 +1884,12 @@ tbl1
 #### VIF
 
 ```{r}
-vif(all_parms, type = "predictor") %>% 
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, 
+                data = mab_df)
+vif(all_parms) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
   gt() 
 
 ```
