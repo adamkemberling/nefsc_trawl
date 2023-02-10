@@ -1574,47 +1574,109 @@ plot_period_correlations(driver_period_correlations[[period]], period)
 library(MuMIn)
 library(gtsummary)
 library(broom.helpers)
+library(car)
 
 # change na. action
 options(na.action = "na.fail")
 
 # Pull GOM to test:
-gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") %>% 
-  mutate(regime = ifelse(year < 2010, "regime_1", "regime_2" ))
+gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") 
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade  + regime, 
-                 data = gom_df)
+all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = gom_df)
 
-
-# the dredge function fits all combinations
-# of the variables in the all.parms model fit above
-
-
-# Refine the dredge
-
-# only allow a maximum of 3 and minimum of 1 parameters in each model
-# fit all models but do not include models with both regime and decade
-# results <- dredge(all_parms, subset= !(regime && decade), m.lim = c(1,3), fixed = c("(Intercept)"))
-
-# grab best supported models
-# subset(results, delta <5)
-
-#grab best model
+# # Refine the dredge
+# # the dredge function fits all combinations
+# # of the variables in the all.parms model fit above
+# # only allow a maximum of 3 and minimum of 1 parameters in each model
+# # fit all models but do not include models with both regime and decade
+# # grab best model
+results <- dredge(all_parms,# subset= !(regime && decade), 
+                  m.lim = c(1,3), fixed = c("(Intercept)"))
 # subset(results, delta == 0)
-bmod <- glm(`ISD Exponent` ~ decade + `Commercial Landings`, data = gom_df)
-# plot(residuals(bmod),type="b"); abline(h=0,lty=3)
-# acf(residuals(bmod))
+
+# The "best" model
+bmod <- lm(`ISD Exponent` ~ decade + `Commercial Landings`, data = gom_df)
+
+# A model that makes sense
+no_decade_mod <- lm(`ISD Exponent` ~ `Commercial Landings` +  GSI, data = gom_df)
 
 
-# Use Model Selection Manually
-# model.sel(mdl,mdl.ac)
+# Use Model Selection Manually with MuMIn
+# model.sel(bmod, no_decade_mod)
 
-# output summary - brrom.helpers and gtsummary
-bmod %>% 
-  tbl_regression() %>% 
-  bold_labels()
+
 ```
+
+::: panel-tabset
+
+#### Model Summary
+
+```{r}
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+# To compare two models:
+
+# # What I would guess to be better
+# tbl2 <- no_decade_mod %>% 
+#   tbl_regression() %>% 
+#   add_glance_table() %>% 
+#   bold_labels()
+  
+  
+# tbl_merge(list(tbl1, tbl2)) %>%
+#   modify_table_body(~.x %>% arrange(row_type == "glance_statistic"))
+```
+
+
+
+#### VIF
+
+```{r}
+vif(all_parms, type = "predictor") %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  gt() 
+
+
+```
+
+
+#### Actual vs. Fitted
+
+```{r}
+augment(bmod, gom_df ) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color")
+```
+
+
+
+#### Residual Autocorrelation
+
+```{r}
+plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
+```
+ 
+
+:::
+
+
+
+
+
+
 
 ### Georges Bank
 
@@ -1624,27 +1686,73 @@ gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade  + regime, 
-                 data = gb_df)
+all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = gb_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
 # fit all models but do not include models with both regime and decade
-results <- dredge(all_parms, subset= !(regime && decade), 
+results <- dredge(all_parms, #subset= !(regime && decade), 
                   m.lim = c(1,3), 
                   fixed = c("(Intercept)"))
 
 #grab best model
 # subset(results, delta == 0)
 bmod <- glm(`ISD Exponent` ~ GSI, data = gb_df)
-# plot(residuals(bmod),type="b"); abline(h=0,lty=3)
 
-# output summary - brrom.helpers and gtsummary
-bmod %>% 
-  tbl_regression() %>% 
-  bold_labels()
 ```
 
+
+::: panel-tabset
+
+#### Model Summary
+
+```{r}
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+
+
+#### VIF
+
+```{r}
+vif(all_parms, type = "predictor") %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  gt() 
+
+```
+
+
+#### Actual vs. Fitted
+
+```{r}
+augment(bmod, drop_na(gb_df)) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color")
+```
+
+
+
+#### Residual Autocorrelation
+
+```{r}
+plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
+```
+ 
+
+:::
 
 ### Southern New England
 
@@ -1654,26 +1762,73 @@ sne_df <- filter(regression_df, spectra_area == "Southern New England") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade  + regime, 
-                 data = sne_df)
+all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = sne_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
 # fit all models but do not include models with both regime and decade
-results <- dredge(all_parms, subset= !(regime && decade), 
+results <- dredge(all_parms, #subset= !(regime && decade), 
                   m.lim = c(1,3), 
                   fixed = c("(Intercept)"))
 
 #grab best model
 # subset(results, delta == 0)
 bmod <- glm(`ISD Exponent` ~ `Commercial Landings`, data = sne_df)
-# plot(residuals(bmod),type="b"); abline(h=0,lty=3)
 
-# output summary - brrom.helpers and gtsummary
-bmod %>% 
-  tbl_regression() %>% 
-  bold_labels()
 ```
+
+
+::: panel-tabset
+
+#### Model Summary
+
+```{r}
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+
+
+#### VIF
+
+```{r}
+vif(all_parms, type = "predictor") %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  gt() 
+
+```
+
+
+#### Actual vs. Fitted
+
+```{r}
+augment(bmod, sne_df ) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color")
+```
+
+
+
+#### Residual Autocorrelation
+
+```{r}
+plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
+```
+ 
+
+:::
 
 ### Mid-Atlantic Bight
 
@@ -1683,28 +1838,111 @@ mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade  + regime, 
-                 data = mab_df)
+all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = mab_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
 # fit all models but do not include models with both regime and decade
-results <- dredge(all_parms, subset= !(regime && decade), 
+results <- dredge(all_parms, #subset= !(regime && decade), 
                   m.lim = c(1,3), 
                   fixed = c("(Intercept)"))
 
 #grab best model
 # subset(results, delta == 0)
 bmod <- glm(`ISD Exponent` ~ regime, data = mab_df)
-# plot(residuals(bmod),type="b"); abline(h=0,lty=3)
 
-# output summary - brrom.helpers and gtsummary
-bmod %>% 
-  tbl_regression() %>% 
-  bold_labels()
 ```
 
+
+::: panel-tabset
+
+#### Model Summary
+
+```{r}
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+
+
+#### VIF
+
+```{r}
+vif(all_parms, type = "predictor") %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  gt() 
+
+```
+
+
+#### Actual vs. Fitted
+
+```{r}
+augment(bmod, mab_df ) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color")
+```
+
+
+
+#### Residual Autocorrelation
+
+```{r}
+plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
+```
+ 
+
 :::
+
+
+:::
+
+
+
+### Binned Spectra Summaries
+
+Exploring the same model evaluation steps with AIC gives these important predictors in each area:
+ * Gulf of Maine: Landings & Decades.  
+ * Georges Bank: GSI & Regime.  
+ * Southern New England: SST & Decades.  
+ * Mid-Atlantic Bight: Decades.  
+
+```{r}
+#| eval: false
+
+
+# Pull GOM to test:
+slope_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_na()
+
+# fit model with all parameters
+all_parms_binned <- lm(`Spectra Slope` ~ SST * GSI + `Commercial Landings` + decade  + regime, 
+                       data = slope_df)
+results <- dredge(all_parms_binned, 
+                  #subset= !(regime && decade), 
+                  m.lim = c(1,3), 
+                  fixed = c("(Intercept)"))
+
+#grab best model
+subset(results, delta == 0)
+slope_bmod <- lm(`Spectra Slope` ~ decade + `Commercial Landings`, data = slope_df)
+
+```
+
+
+
+
 
 
 
