@@ -1583,7 +1583,7 @@ options(na.action = "na.fail")
 gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") 
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = gom_df)
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, data = gom_df)
 
 # # Refine the dredge
 # # the dredge function fits all combinations
@@ -1592,11 +1592,12 @@ all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, dat
 # # fit all models but do not include models with both regime and decade
 # # grab best model
 results <- dredge(all_parms,# subset= !(regime && decade), 
-                  m.lim = c(1,3), fixed = c("(Intercept)"))
+                  m.lim = c(1,4), fixed = c("(Intercept)"))
+# subset
 # subset(results, delta == 0)
 
 # The "best" model
-bmod <- lm(`ISD Exponent` ~ decade + `Commercial Landings`, data = gom_df)
+bmod <- lm(`ISD Exponent` ~ `Commercial Landings`, data = gom_df)
 
 # A model that makes sense
 no_decade_mod <- lm(`ISD Exponent` ~ `Commercial Landings` +  GSI, data = gom_df)
@@ -1688,7 +1689,7 @@ gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = gb_df)
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, data = gb_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
@@ -1767,7 +1768,7 @@ sne_df <- filter(regression_df, spectra_area == "Southern New England") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = sne_df)
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + decade, data = sne_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
@@ -1846,7 +1847,7 @@ mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = mab_df)
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, data = mab_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
@@ -1938,7 +1939,7 @@ Exploring the same model evaluation steps with AIC gives these important predict
 slope_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_na()
 
 # fit model with all parameters
-all_parms_binned <- lm(`Spectra Slope` ~ SST * GSI + `Commercial Landings` + decade  + regime, 
+all_parms_binned <- lm(`Spectra Slope` ~ SST * GSI + `Commercial Landings`  + regime, 
                        data = slope_df)
 results <- dredge(all_parms_binned, 
                   #subset= !(regime && decade), 
