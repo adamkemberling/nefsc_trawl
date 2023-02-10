@@ -550,8 +550,8 @@ landings_summ <- landings %>%
   summarise( 
     across(
       .cols = c(value, weight_lb, live_lb), 
-      .fns = list(mean = mean, 
-                  total = sum), 
+      .fns = list(mean = ~mean(.x , na.rm = T), 
+                  total = ~sum(.x , na.rm = T)), 
       .names = "{.fn}_{.col}"), 
     .groups = "drop")  
 
@@ -1648,6 +1648,7 @@ vif(all_parms) %>%
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
   rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
   gt() 
 
 ```
@@ -1733,6 +1734,7 @@ vif(all_parms) %>%
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
   rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
   gt() 
 
 ```
@@ -1812,6 +1814,8 @@ vif(all_parms) %>%
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
   rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
+  arrange(VIF) %>% 
   gt() 
 
 ```
@@ -1891,6 +1895,7 @@ vif(all_parms) %>%
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
   rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
   gt() 
 
 ```
@@ -2067,6 +2072,10 @@ clim_drivers %>%
        title = "Environmental Drivers") +
   guides(fill = "none")
 ```
+
+
+
+
 :::
 
 # Supplemental Materials
