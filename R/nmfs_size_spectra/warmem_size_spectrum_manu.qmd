@@ -1686,7 +1686,7 @@ gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = gb_df)
+all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = gb_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
@@ -1697,7 +1697,7 @@ results <- dredge(all_parms, #subset= !(regime && decade),
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- glm(`ISD Exponent` ~ GSI, data = gb_df)
+bmod <- lm(`ISD Exponent` ~ GSI, data = gb_df)
 
 ```
 
@@ -1762,7 +1762,7 @@ sne_df <- filter(regression_df, spectra_area == "Southern New England") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = sne_df)
+all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = sne_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
@@ -1773,7 +1773,7 @@ results <- dredge(all_parms, #subset= !(regime && decade),
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- glm(`ISD Exponent` ~ `Commercial Landings`, data = sne_df)
+bmod <- lm(`ISD Exponent` ~ `Commercial Landings`, data = sne_df)
 
 ```
 
@@ -1838,7 +1838,7 @@ mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>%
   drop_na()
 
 # fit model with all parameters
-all_parms <- glm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = mab_df)
+all_parms <- lm(`ISD Exponent` ~ SST * GSI + `Commercial Landings` + decade, data = mab_df)
 
 # Refine the dredge
 # only allow a maximum of 3 and minimum of 1 parameters in each model
@@ -1849,7 +1849,7 @@ results <- dredge(all_parms, #subset= !(regime && decade),
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- glm(`ISD Exponent` ~ regime, data = mab_df)
+bmod <- lm(`ISD Exponent` ~ regime, data = mab_df)
 
 ```
 
