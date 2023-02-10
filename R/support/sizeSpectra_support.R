@@ -1343,12 +1343,23 @@ group_log2_spectra <- function(wmin_grams,
       
       # Abundance from area-stratification
       # Will throw an error if norm_strat_abund = 0
-      lm_abund_strat <- lm(log10(norm_strat_abund) ~ log10(bin_midpoint), data = log2_prepped)
+      
+      # If the response is abundance then its a normalized abundance spectra
+      # If the response were biomass that would be normalized biomass spectra
+      lm_abund_strat <- lm(log2(norm_strat_abund) ~ log2(bin_midpoint), data = log2_prepped)
+      
       
       #  Pull Slope
       # See edwards et al 2016 methodology Table 2.
       # Really not sure whether to add or subtract values:
-      lm_b_strat <- lm_abund_strat$coeff[2] #+ 1 
+      # Depends on what you are comparing to, 
+      # the normalized biomass spectra slope is
+      # proportional to the abundance spectra (lambda) 
+      # as lambda + 1, so we can subtract one to get a comparable value
+      
+      
+      # We fit the normalized abundance spectra, so no adjustment
+      lm_b_strat <- lm_abund_strat$coeff[2]
       
       # Pull intercept  
       lm_int_strat <- lm_abund_strat$coeff[1] 
@@ -1756,8 +1767,14 @@ group_l10_spectra <- function(wmin_grams,
       #  Pull Slope
       # See edwards et al 2016 methodology Table 2.
       # Really not sure whether to add or subtract values:
+      # Depends on what you are comparing to, 
+      # the normalized biomass spectra slope is
+      # proportional to the abundance spectra (lambda) 
+      # as lambda + 1, so we can subtract one to get a comparable value
       
-      lm_b_strat <- lm_abund_strat$coeff[2] #+ 1 
+      
+      # We fit the normalized abundance spectra, so no adjustment
+      lm_b_strat <- lm_abund_strat$coeff[2]
       
       # Pull intercept  
       lm_int_strat <- lm_abund_strat$coeff[1] 
