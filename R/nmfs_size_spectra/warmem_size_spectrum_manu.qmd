@@ -655,16 +655,6 @@ all_drivers <- bind_rows(
 # SST and GSI (all index/anomaly fields) are not scaled
 
 
-# # Reshape the Drivers Wide to allow independent scaling
-# # Scale the columns independently using the variance in all years of data
-# drivers_scaled <- all_drivers %>% 
-#   mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
-#     select(-c(area, var)) %>% 
-#     pivot_wider(names_from = id, values_from = value) %>% 
-#   column_to_rownames(var = "year") %>% 
-#   scale() %>% 
-#   as.data.frame()
-
 # Put the data in a wide form for scaling:
 drivers_wide <- all_drivers %>% 
   filter(year >= 1982,
@@ -691,11 +681,15 @@ drivers_scaled <- bind_cols(dont_scale, to_scale) %>%
 # Reshape the size information so we can combine it with the drivers:
 # Values are scaled here
 sizes_wide <- functional_group_size %>% 
-  select(year = Year, survey_area, hare_group, avg_length = mean_len_cm, avg_weight = mean_wt_kg) %>% 
+  select(year = Year, 
+         survey_area, 
+         hare_group, #avg_length = mean_len_cm, 
+         avg_weight = mean_wt_kg) %>% 
   pivot_longer(names_to = "var", 
                values_to = "value", 
-               cols = c(avg_length, avg_weight)) %>% 
-  inner_join(area_df, by = "survey_area") %>% #distinct(area)
+               cols = c(avg_weight)# ,avg_length)
+               ) %>% 
+  inner_join(area_df, by = "survey_area") %>% 
   select(-survey_area) %>% 
   mutate(id = str_replace_all(str_c(area, "_", hare_group, "_", var), " ", "_")) %>% 
     select(-c(area, var, hare_group)) %>% 
