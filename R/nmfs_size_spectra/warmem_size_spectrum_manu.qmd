@@ -1563,6 +1563,94 @@ plot_period_correlations(driver_period_correlations[[period]], period)
 # WORKING HERE
 
 
+### Predictor Multi-Collinearity
+
+::: panel-tabset
+
+#### Continuous Variables
+
+::: panel-tabset
+
+##### SST x Landings
+
+```{r}
+#| eval: true
+#| label: predictor-relationships
+
+# Do predictor evaluations against one another
+# SST x Landings
+ggplot(regression_df, aes(SST, `Commercial Landings`, color = decade)) +
+  geom_point() + facet_wrap(~spectra_area) +
+  scale_color_gmri() +
+  labs(title = "SST x Commercial Landings")
+```
+
+##### SST x GSI
+
+```{r}
+# SST x GSI
+ggplot(regression_df, aes(SST, GSI, color = decade)) +
+  geom_point() + facet_wrap(~spectra_area) +
+  scale_color_gmri() +
+  labs(title = "SST x Gulf Stream Index")
+```
+
+##### GSI x Landings
+
+```{r}
+# GSI x Landings
+ggplot(regression_df, aes(GSI, `Commercial Landings`, color = decade)) +
+  geom_point() + facet_wrap(~spectra_area) +
+  scale_color_gmri() +
+  labs(title = "Gulf Stream Index x Commercial Landings")
+```
+
+:::
+
+
+
+#### Decadal Differences
+
+::: panel-tabset
+
+##### SST
+
+```{r}
+#| label: decade-relationships
+#| eval: true
+#------  Decade. --------
+
+# SST x Decade
+ggplot(regression_df, aes(decade, SST)) +
+  geom_boxplot()  + facet_wrap(~spectra_area) +
+  labs(title = "Decade x SST")
+```
+
+##### GSI
+
+```{r}
+# GSI x Decade
+ggplot(regression_df, aes(decade, GSI)) +
+  geom_boxplot()  + facet_wrap(~spectra_area) +
+  labs(title = "Decade x Gulf Stream Index")
+```
+
+
+##### Landings
+
+```{r}
+# Landings x Decade
+ggplot(regression_df, aes(decade, `Commercial Landings`)) +
+  geom_boxplot() + facet_wrap(~spectra_area) +
+  labs(title = "Decade x Commercial Landings")
+
+
+```
+
+:::
+
+:::
+
 ## Exponent of Size Distribution Regressions
 
 
@@ -1608,6 +1696,8 @@ no_decade_mod <- lm(`ISD Exponent` ~ `Commercial Landings` +  GSI, data = gom_df
 
 
 ```
+
+
 
 ::: panel-tabset
 
