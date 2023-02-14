@@ -1313,6 +1313,23 @@ slope_timeline +
 
 ```
 
+
+#### Method Correlation
+
+```{r}
+#| fig.height: 8
+#| fig.weight: 8
+
+
+region_indices %>% 
+  ggplot(aes(log2_slope_strat, b)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y~x, color = "orange") +
+  facet_wrap(~survey_area, ncol = 1) +
+  labs(x = "Normalized Abundance Spectra Slope", y = "Individual Size Distribution Exponent (b)", title = "Method Correlation")
+```
+
+
 :::
 
 
