@@ -281,7 +281,8 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
                 tar_load(catch_1g_labelled))   
 
 # rename and format
-catch_size_bins <- catch_1g_labelled
+catch_size_bins <- catch_1g_labelled %>% 
+  fill_func_groups()
 
 # Get total number of species
 n_species <- length(unique(catch_size_bins$comname))
@@ -322,13 +323,6 @@ Analyses were performed using 68 species. These species were selected based on t
 #| label: biomass-group-summaries
 
 # This cell provides the group summaries for how much biomass exists in each size/functional group
-
-# The handmade weight and length bins
-# # Do some grouping by year survey area and functional group
-# fgroup_area <- get_group_summaries(data_in = catch_size_bins, Year, survey_area, hare_group)
-# fgroup_all <- get_group_summaries(data_in = catch_size_bins, Year, hare_group)
-# fgroup_all <- fgroup_all %>% map(~mutate(.x, survey_area = "Northeast Shelf, Full"))
-
 
 # Actual log10 bins
 # Do some grouping by year survey area and functional group
@@ -388,11 +382,7 @@ functional_group_size <- mean_sizes_ss_groups %>%
 
 ```
 
-
-
-### Normalized Abundance Spectra
-
-Normalized abundance spectra were estimated following the methodology as described in @sprules. When fitting the normalized size spectra, biomass at length data was binned into equal spaced intervals (1) on a $log_{2}$ scale, with abundances totaled across all species. To normalize the spectra, the stratified abundance within each bin was then divided by the bin-width to account for the increasing bin-widths, a consequence of the log scale. Normalized abundance spectra were fit for each year and for each region independently, and for each year across all strata, using a regression of log2( area-stratified abundance, normalized by log2 bin widths ) and the log2( body-size bin midpoints ).
+### Individual Size Distribution Analysis
 
 ```{r}
 #| label: load the size spectrum indices
@@ -410,11 +400,9 @@ region_indices <- size_spectrum_indices  %>%
 
 ```
 
-### 
+Lengths of individuals in the catch data are measured to the nearest cm, with smaller specimens measured to the nearest millimeter. Because individual biomass is estimated from those length measurements, there is a range of possible body mass values between the cm & mm increments. The relationship between length and mass in fishes is exponential and taxon specific, so biases resulting from using only the lower or upper end of those ranges is different for each taxon and increases for larger taxa. To account for this and reduce biases, we used the extended likelihood method (MLEbin) of @edwards2020. This method estimates the exponent of size spectra (b) for a bounded power law relationship between abundance and our length-derived estimates of individual biomass.
 
-### Individual Size Distribution Analysis
-
-Length for individuals in the catch data are measured to the nearest cm, with smaller specimens measured to the nearest millimeter. Because individual biomass is estimated from those length measurements, there is a range of possible body mass values between the cm & mm increments. The relationship between length and mass in fishes is exponential and taxon specific, so biases resulting from using only the lower or upper end of those ranges is different for each taxon and increases for larger taxa. To account for this and reduce biases, we used the extended likelihood method (MLEbin) of @edwards2020.
+The exponent of this relationship is analogous to slope estimates from linear regression on logarithmic axes, with a steeper slope (i.e. a more negative b) indicating fewer large-bodied individuals and/or more small-bodied fishes @carvalho2021. This method has been shown to be the most accurate for estimating the exponent of size spectra when tested against alternative methods that require arbitrary decisions around binning the data (@white2008; @sprules2016; @edwards2017 ).
 
 $$
 \begin{align*}
@@ -425,11 +413,11 @@ f(x) = \frac{1}{logx_{max} - logx_{min}}~~~~~~\lambda=1
 \end{align*}
 $$
 
-The individual size distribution relationship was estimated for each survey region and for all years from 1970 to 2019. A minimum biomass of 1g was used for the lower bound ($x_{min}$) and a maximum biomass of 10kg was used as an upper bound ($x_{max}$) for the ISD's bounded power law probability density function @eq-ISD-pdf, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits constitutes 97.83% of all estimated biomass for the `r n_species` used in this study. This truncation accounts for poor gear selectivity at the smallest and largest size ranges and imposes shared limits to the size distribution we'd expect to sample across these different areas. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
+Using this method, the size spectra exponent (b) was estimated for each survey region from 1970 to 2019. A minimum biomass of 1g was used for the lower limit and a maximum biomass of 10kg was used as an upper limit for the ISD's bounded power law probability density function @eq-ISD-pdf, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits constitutes 97.83% of all estimated biomass for the `r n_species` used in this study. This truncation accounts for poor gear selectivity at the smallest and largest size ranges and imposes shared limits to the size distribution we'd expect to sample across these different areas. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
 
 ## Drivers of Size Distribution Changes
 
-Changes in size spectra were correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential large-scale environmental drivers included regional SST anomalies & the larger-scale impact of the Gulf Stream Index (GSI). Fishing pressure represents the primary top-down anthropogenic driver in the region, and was investigated using the aggregate regional commercial landings data.
+The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential large-scale environmental drivers include regional SST anomalies & the larger-scale impact of the Gulf Stream Index (GSI). Fishing pressure represents the primary top-down anthropogenic driver in the region, and was investigated using the aggregate regional commercial landings data. 
 
 ### Gulf Stream Index
 
@@ -646,7 +634,6 @@ all_drivers <- bind_rows(
 
 ```
 
-
 ```{r}
 #| label: driver-scaling
 
@@ -707,7 +694,6 @@ drivers_and_sizes <- drivers_scaled %>%
   column_to_rownames(var = "year")
 
 ```
-
 
 ```{r}
 #| label: set-driver-periods
@@ -1240,9 +1226,6 @@ functional_group_size %>%
 
 At the start of our time series, back in the 1970's, there was a clear difference in the relative positions of spectra parameters among the different regions. Gulf of Maine and Georges Bank showed the least steep spectra slopes in the earlier time periods with slopes around -1 & -1.1 respectively. The relatively flat slopes in these regions both steepened over time, settling near -1.3 (GoM) and -1.5 (GB). Gulf of Maine experienced much of its decline during the 1980's and 1990's. There was a brief reversal in this trend during the 2000's, but slopes continued to steepen by 2010 and remained steep through 2019. Georges Bank did not experience as rapid of a decline, but experienced a similar long-term steepening. In contrast to the northern regions, SNE and MAB had steeper slopes in the -1.2 to -1.5 territory. The long term pattern for SNE was one of increasing volatility, but not so much a decline. The spectra slope for the MAB was less volatile, but similarly maintained a relatively stable wander around -1.4. By the end of the study period all regions had slopes that were at or near a similar level.
 
-
-
-
 ```{r}
 #| label: size spectra results
 
@@ -1278,9 +1261,7 @@ isd_timeline <- region_indices %>%
   labs(x = "Year", y = "b", title = "Exponent of ISD")
 ```
 
-
 ::: panel-tabset
-
 #### Exponent of Size Spectra
 
 ```{r}
@@ -1313,7 +1294,6 @@ slope_timeline +
 
 ```
 
-
 #### Method Correlation
 
 ```{r}
@@ -1328,19 +1308,13 @@ region_indices %>%
   facet_wrap(~survey_area, ncol = 1) +
   labs(x = "Normalized Abundance Spectra Slope", y = "Individual Size Distribution Exponent (b)", title = "Method Correlation")
 ```
-
-
 :::
-
-
 
 ## Size Spectra Drivers
 
 ### Drivers of Spectra Shape
 
 **NOTE:** Correlation matrix is computed starting at the year where there are no NA values in any drivers. Currently with SST included that begins the matrix at 1982.
-
-
 
 ```{r}
 #| label: period-correlations-processing
@@ -1501,10 +1475,7 @@ corr_tidy_pairs <- corr_tidy_pairs %>%
 
 ```
 
-
-
 ::: panel-tabset
-
 #### All Years
 
 ```{r}
@@ -1515,8 +1486,6 @@ corr_tidy_pairs <- corr_tidy_pairs %>%
 period <- "1982-2019"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
-
-
 
 #### 1980s
 
@@ -1529,7 +1498,6 @@ period <- "1980s"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
-
 #### 1990's
 
 ```{r}
@@ -1540,7 +1508,6 @@ plot_period_correlations(driver_period_correlations[[period]], period)
 period <- "1990s"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
-
 
 #### 2000's
 
@@ -1553,7 +1520,6 @@ period <- "2000s"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
-
 #### 2010's
 
 ```{r}
@@ -1565,23 +1531,16 @@ period <- "2010s"
 plot_period_correlations(driver_period_correlations[[period]], period)
 
 ```
-
-
-
 :::
 
-
 # WORKING HERE
-
 
 ### Predictor Multi-Collinearity
 
 ::: panel-tabset
-
 #### Continuous Variables
 
 ::: panel-tabset
-
 ##### SST x Landings
 
 ```{r}
@@ -1615,15 +1574,11 @@ ggplot(regression_df, aes(GSI, `Commercial Landings`, color = decade)) +
   scale_color_gmri() +
   labs(title = "Gulf Stream Index x Commercial Landings")
 ```
-
 :::
-
-
 
 #### Decadal Differences
 
 ::: panel-tabset
-
 ##### SST
 
 ```{r}
@@ -1646,7 +1601,6 @@ ggplot(regression_df, aes(decade, GSI)) +
   labs(title = "Decade x Gulf Stream Index")
 ```
 
-
 ##### Landings
 
 ```{r}
@@ -1657,16 +1611,12 @@ ggplot(regression_df, aes(decade, `Commercial Landings`)) +
 
 
 ```
-
 :::
-
 :::
 
 ## Exponent of Size Distribution Regressions
 
-
 ::: panel-tabset
-
 ### Gulf of Maine
 
 ```{r}
@@ -1708,10 +1658,7 @@ no_decade_mod <- lm(`ISD Exponent` ~ `Commercial Landings` +  GSI, data = gom_df
 
 ```
 
-
-
 ::: panel-tabset
-
 #### Model Summary
 
 ```{r}
@@ -1738,8 +1685,6 @@ tbl1
 #   modify_table_body(~.x %>% arrange(row_type == "glance_statistic"))
 ```
 
-
-
 #### VIF
 
 ```{r}
@@ -1754,7 +1699,6 @@ vif(all_parms) %>%
 
 ```
 
-
 #### Actual vs. Fitted
 
 ```{r}
@@ -1766,22 +1710,12 @@ augment(bmod, gom_df ) %>%
   labs(color = "Color")
 ```
 
-
-
 #### Residual Autocorrelation
 
 ```{r}
 plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
 ```
- 
-
 :::
-
-
-
-
-
-
 
 ### Georges Bank
 
@@ -1806,9 +1740,7 @@ bmod <- lm(`ISD Exponent` ~ GSI, data = gb_df)
 
 ```
 
-
 ::: panel-tabset
-
 #### Model Summary
 
 ```{r}
@@ -1824,8 +1756,6 @@ tbl1
 
 ```
 
-
-
 #### VIF
 
 ```{r}
@@ -1840,7 +1770,6 @@ vif(all_parms) %>%
 
 ```
 
-
 #### Actual vs. Fitted
 
 ```{r}
@@ -1852,15 +1781,11 @@ augment(bmod, drop_na(gb_df)) %>%
   labs(color = "Color")
 ```
 
-
-
 #### Residual Autocorrelation
 
 ```{r}
 plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
 ```
- 
-
 :::
 
 ### Southern New England
@@ -1886,9 +1811,7 @@ bmod <- lm(`ISD Exponent` ~ `Commercial Landings`, data = sne_df)
 
 ```
 
-
 ::: panel-tabset
-
 #### Model Summary
 
 ```{r}
@@ -1903,8 +1826,6 @@ tbl1 <- bmod %>%
 tbl1
 
 ```
-
-
 
 #### VIF
 
@@ -1921,7 +1842,6 @@ vif(all_parms) %>%
 
 ```
 
-
 #### Actual vs. Fitted
 
 ```{r}
@@ -1933,15 +1853,11 @@ augment(bmod, sne_df ) %>%
   labs(color = "Color")
 ```
 
-
-
 #### Residual Autocorrelation
 
 ```{r}
 plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
 ```
- 
-
 :::
 
 ### Mid-Atlantic Bight
@@ -1967,9 +1883,7 @@ bmod <- lm(`ISD Exponent` ~ regime, data = mab_df)
 
 ```
 
-
 ::: panel-tabset
-
 #### Model Summary
 
 ```{r}
@@ -1985,8 +1899,6 @@ tbl1
 
 ```
 
-
-
 #### VIF
 
 ```{r}
@@ -2001,7 +1913,6 @@ vif(all_parms) %>%
 
 ```
 
-
 #### Actual vs. Fitted
 
 ```{r}
@@ -2013,29 +1924,20 @@ augment(bmod, mab_df ) %>%
   labs(color = "Color")
 ```
 
-
-
 #### Residual Autocorrelation
 
 ```{r}
 plot(residuals(bmod),type="b", main = "Gulf of Maine Residuals"); abline(h=0,lty=3) 
 ```
- 
-
 :::
-
-
 :::
-
-
 
 ### Binned Spectra Summaries
 
-Exploring the same model evaluation steps with AIC gives these important predictors in each area:
- * Gulf of Maine: Landings & Decades.  
- * Georges Bank: GSI & Regime.  
- * Southern New England: SST & Decades.  
- * Mid-Atlantic Bight: Decades.  
+Exploring the same model evaluation steps with AIC gives these important predictors in each area: \* Gulf of Maine: Landings & Decades.\
+\* Georges Bank: GSI & Regime.\
+\* Southern New England: SST & Decades.\
+\* Mid-Atlantic Bight: Decades.
 
 ```{r}
 #| eval: false
@@ -2058,18 +1960,7 @@ slope_bmod <- lm(`Spectra Slope` ~ decade + `Commercial Landings`, data = slope_
 
 ```
 
-
-
-
-
-
-
-
-
-
 ## Normalized Size Spectra Regressions
-
-
 
 # Discussion
 
@@ -2173,10 +2064,6 @@ clim_drivers %>%
        title = "Environmental Drivers") +
   guides(fill = "none")
 ```
-
-
-
-
 :::
 
 # Supplemental Materials

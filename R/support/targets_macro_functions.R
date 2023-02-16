@@ -24,7 +24,7 @@ import_and_tidy_catch <- function(box_location){
                 box_location = box_location) %>% 
     add_area_stratification(include_epu = F, 
                             box_location = box_location) %>% 
-    fill_func_groups() 
+    fill_func_groups(species_dat = .) 
   return(catch_data)
 }
     

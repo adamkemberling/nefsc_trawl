@@ -162,7 +162,7 @@ fill_func_groups <- function(species_dat){
         TRUE ~ spec_class),
       hare_group = case_when(
         str_detect(comname, "flounder")       ~ "groundfish",
-        str_detect(comname, "scup")           ~ "coastal",
+        str_detect(comname, "scup|bass|amberjack|spadefish|rosefish|cunner")    ~ "coastal",
         str_detect(comname, "thread herring") ~ "coastal",
         str_detect(comname, "dory")           ~ "pelagic",
         str_detect(comname, "sturgeon")       ~ "diadromous",

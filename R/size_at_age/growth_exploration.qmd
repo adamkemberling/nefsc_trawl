@@ -1,0 +1,42 @@
+---
+title: "Size at Age Differences"
+format: html
+editor: visual
+---
+
+## Decadal Variability in Growth Model Exploration
+
+\--I noticed that some species have been cut from the VB curves in your RMD file compared to those that were available when I gave this presentation at the symposium last June: Atlantic mackerel, black sea bass, red hake, white hake, and witch flounder.  Do you remember why you took these out?
+
+\--It would be good to have a better sense of numbers of observations behind some of these measurements.  I know you pulled this together at some point, but it would be really helpful to see a table of counts of aged fish by age and year (e.g., year in rows, age in cols, counts in cells) for each species.  Could you pull this together?  I\'m thinking we may need to truncate some of the older ages with very few observations.
+
+ 
+
+\--Given that we can\'t really construct meaningful VB curves for cohorts with a 10-year window of interest, we need to consider an alternative way of putting some statistics behind our numbers to assess significance.  I think looking at differences in LAA and WAA over periods of interest will be helpful.  I think a useful example to emulate is Fig 3 and Table 1 in the attached Neuheimer and Gronkjaer paper. However, instead of using trend lines and slopes, it would be better to do an ANOVA comparing 1970-2009 to 2010-2019 (and plotting means for those periods in the figure).  I\'m also still debating whether to use 1970-2009 as the comparison or whether to do just the preceding decade, so seeing ANOVA results for 2000-2009 and 2010-2019 would be helpful too.  The results table could be structured as species, age, mean1970-2009, mean2010-2019, pvalue (1970-2009 vs 2010-2019 comparison), mean2000-2009 pvalue(2000-2009 vs 2010-2019 comparison).  [Please truncate output values to no more than 3 decimal places so it\'s easier to look at.]{.underline} (We\'ll want to pull other stats out of the ANOVA for the paper, but for shaping the paper, I\'d prefer to see less right now.) 
+
+ 
+
+\*\*Tagging Carly in cc because she just put together an analogous analysis and is working on a table of output for the distribution changes, so it would be good for you both to work from the same code to be sure the anovas are done in the same way.  Carly, could you share your code with Adam...and Adam, have a look at it to think about whether anything needs to be done differently for the growth data.
+
+\--In addition, I think it would be helpful to look at figures like Fig 2A in Andy\'s paper attached:
+
+![](images/image-1060308654.png)
+
+---which is structured by cohort.  Having this type of figure for LAA and WAA for each species might be a better way of presenting a graphical summary of all this info.  But the core results will come from the items in the previous bullet, so those would be the first priority.    
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).

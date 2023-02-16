@@ -113,13 +113,19 @@ display_species <- sort(c(
   "american plaice",
   "atlantic cod",
   "atlantic herring",
+  "atlantic mackerel",
+  "black sea bass",
   "butterfish",
   "haddock", 
   "pollock",
+  "red hake",
   "scup",
   "silver hake",
   "summer flounder",
+  "white hake",
+  "windowpane",
   "winter flounder",
+  "witch flounder",
   "yellowtail flounder"
 ))
 
