@@ -6,7 +6,7 @@ author:
     url: https://github.com/adamkemberling
     affiliation: Gulf of Maine Research Institute
 description: | 
-  Results from a Size Spectrum Analysis of the Northeast US Groundfish Community
+  Size at Age Analysis of the Northeast US Groundfish Community
 date: "`r Sys.Date()`"
 # format: docx
 format:

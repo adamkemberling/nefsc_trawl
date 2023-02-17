@@ -1,42 +1,493 @@
 ---
-title: "Size at Age Differences"
-format: html
-editor: visual
+title: "Growth Changes in NE Shelf Species"
+author: 
+    name: "Adam A. Kemberling"
+    title: "Quantitative Research Associate"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+ Changes in Size and Weight at Age Across Cohorts
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+    df-print: kable
+    toc: true
+    toc-depth: 2
+execute: 
+  echo: false
+  warning: false
+  message: false
+  eval: true
+  fig.height: 6
+  fig.width: 6
+  fig.align: center
+  comment: ""
 ---
+
+```{r}
+
+####  Packages  ####
+{
+  library(car)
+  library(scales)
+  library(patchwork)
+  library(directlabels)
+  library(xaringanExtra)
+  library(ggforce)
+  library(colorspace)
+  library(gt)
+  library(tidyverse)
+  library(gmRi)
+  library(targets)
+  library(ggrepel)
+}
+
+
+# Set seed
+set.seed(3905)
+
+# Set theme
+theme_set(theme_gmri())
+
+# Celsius symbol
+deg_c <- "\u00b0C"
+
+# Acitvate panelset
+xaringanExtra::use_panelset()
+
+# Function to generate panels using a key word and a plot function
+plot_panelset <- function(spec, plot_fun, ...) {
+  
+  # Open panel
+  cat("::: {.panel}\n")
+  
+  # Create header for panel name
+  cat("##", spec, "{.panel-name}\n")
+
+  # # Text as a plot description
+  # cat("Plot of", spec, "\n")
+
+  # Make plot
+  p <- plot_fun(spec, ...)
+  print(p)
+
+  # Add linebreak
+  cat("\n")
+
+  # Close panel
+  cat(":::\n")
+}
+```
 
 ## Decadal Variability in Growth Model Exploration
 
-\--I noticed that some species have been cut from the VB curves in your RMD file compared to those that were available when I gave this presentation at the symposium last June: Atlantic mackerel, black sea bass, red hake, white hake, and witch flounder.  Do you remember why you took these out?
-
-\--It would be good to have a better sense of numbers of observations behind some of these measurements.  I know you pulled this together at some point, but it would be really helpful to see a table of counts of aged fish by age and year (e.g., year in rows, age in cols, counts in cells) for each species.  Could you pull this together?  I\'m thinking we may need to truncate some of the older ages with very few observations.
-
- 
-
-\--Given that we can\'t really construct meaningful VB curves for cohorts with a 10-year window of interest, we need to consider an alternative way of putting some statistics behind our numbers to assess significance.  I think looking at differences in LAA and WAA over periods of interest will be helpful.  I think a useful example to emulate is Fig 3 and Table 1 in the attached Neuheimer and Gronkjaer paper. However, instead of using trend lines and slopes, it would be better to do an ANOVA comparing 1970-2009 to 2010-2019 (and plotting means for those periods in the figure).  I\'m also still debating whether to use 1970-2009 as the comparison or whether to do just the preceding decade, so seeing ANOVA results for 2000-2009 and 2010-2019 would be helpful too.  The results table could be structured as species, age, mean1970-2009, mean2010-2019, pvalue (1970-2009 vs 2010-2019 comparison), mean2000-2009 pvalue(2000-2009 vs 2010-2019 comparison).  [Please truncate output values to no more than 3 decimal places so it\'s easier to look at.]{.underline} (We\'ll want to pull other stats out of the ANOVA for the paper, but for shaping the paper, I\'d prefer to see less right now.) 
-
- 
-
-\*\*Tagging Carly in cc because she just put together an analogous analysis and is working on a table of output for the distribution changes, so it would be good for you both to work from the same code to be sure the anovas are done in the same way.  Carly, could you share your code with Adam...and Adam, have a look at it to think about whether anything needs to be done differently for the growth data.
-
-\--In addition, I think it would be helpful to look at figures like Fig 2A in Andy\'s paper attached:
-
-![](images/image-1060308654.png)
-
----which is structured by cohort.  Having this type of figure for LAA and WAA for each species might be a better way of presenting a graphical summary of all this info.  But the core results will come from the items in the previous bullet, so those would be the first priority.    
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+#| label: add-css
+#| results: asis
+#| 
+gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
+
 ```
 
-You can add options to executable code like this
-
 ```{r}
-#| echo: false
-2 * 2
+#| label: species-list
+
+# Seasons to include in center of biomass
+season_filter <- list(
+  "cob" = c("Spring", "Fall"),
+  "age" = c("Spring", "Fall")
+)
+
+#. Species that have center of biomass south of Gulf of Maine
+southern_species <- c("atlantic mackerel", "scup", "black sea bass", "butterfish")
+
+# Species to display with their own panels
+vb_species <- sort(c(
+  "acadian redfish",
+  "american plaice",
+  "atlantic cod",
+  "atlantic herring",
+  "atlantic mackerel",
+  "black sea bass",
+  "butterfish",
+  "haddock", 
+  "pollock",
+  "red hake",
+  "scup",
+  "silver hake",
+  "summer flounder",
+  "white hake",
+  "windowpane",
+  "winter flounder",
+  "witch flounder",
+  "yellowtail flounder"
+))
+
+
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+#| label: growth-data-prep
+
+# Access Biological Data with {targets}
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(survdat_biological))
+
+# 1. Prepare Bio Data for Age analysis for regimes:
+
+# Drop NA age data, restrict to both summer and fall
+bio_data <- survdat_biological %>%
+  filter(is.na(age) == FALSE,
+         season %in% season_filter$age) %>% 
+      as.data.frame()
+  
+
+# Supplement
+# Add regime and decade labels
+# Add residence info
+# Add condition Facotr: Fulton's condition factor
+bio_data <- bio_data %>% 
+  mutate(
+    yearclass = est_year - (age-1),
+    regime = ifelse(est_year < 2010, "Early Regime", "Warm Regime"),
+    decade = floor_decade(est_year),
+    residence = ifelse(
+           comname %in% southern_species,
+           "Southern\nResident", 
+           "Gulf of Maine\nResident"),
+    # Fultons condition factor:
+    fK = (100 * indwt*1000) / length_cm^3) 
+
+rm(survdat_biological)
+
+
+####  Growth Data Prep  #### 
+
+# Filter to just the data for the two regimes
+bio_regimes <- bio_data %>% 
+  filter(est_year >= 1970, est_year <= 2019)
+
+# tidy up
+rm(bio_data)
+```
+
+It would be good to have a better sense of numbers of observations behind some of these measurements. I know you pulled this together at some point, but it would be really helpful to see a table of counts of aged fish by age and year (e.g., year in rows, age in cols, counts in cells) for each species. Could you pull this together? I'm thinking we may need to truncate some of the older ages with very few observations.
+
+```{r}
+#| label: Age-Observations
+
+# Prep data separately for table
+age_truncated <- bio_regimes %>% 
+    filter(comname %in% vb_species) %>% 
+    complete(comname, est_year) %>% 
+    mutate(regime = ifelse(est_year < 2010, "Early Regime", "Warm Regime"),
+           age = ifelse(age>10, ">10", age)) %>% 
+    mutate(age = fct_drop(age),
+           age_tally = ifelse(!is.na(age), 1, 0))
+
+
+# Don't have time for this
+# # Function to fill Cells by columns: 
+# https://stackoverflow.com/questions/63944953/how-to-conditionally-format-a-cell-in-a-gt-table-based-on-the-value-of-the-cel
+# leaflet::colorNumeric(palette = "YlOrRd",
+#                                       domain = sp500.range$value)
+# fill_column <- function(gtobj, column){
+#   ht_values <- heat_palette(jan08 %>% pull(sym(column)))
+#   for(i in seq_along(jan08 %>% pull(sym(column)))){
+#     gtobj <- gtobj %>%
+#       tab_style(style = cell_fill(color = ht_values[i]),
+#                 locations = cells_body(columns = column, rows = i))
+#   }
+#   gtobj
+# }
+
+
+# Function to make a table
+species_table <- function(x){
+  age_truncated %>% 
+    filter(comname == x) %>% 
+    group_by(regime, comname, est_year, age) %>% 
+    summarise(n_aged = sum(age_tally), .groups = "drop") %>% 
+    mutate(age = factor(age, levels = c(as.character(1:10), ">10"))) %>% 
+    arrange(age) %>% 
+    #filter(!is.na(age)) %>% 
+    mutate(age = fct_drop(age)) %>% 
+    pivot_wider(names_from = "age", values_from = n_aged) %>% 
+    select(-c("NA")) %>% 
+    group_by(regime, comname) %>% 
+    arrange(est_year) %>% 
+    gt(rowname_col = "est_year") %>% 
+    tab_header(title = str_c(str_to_title(x) , " - Individuals Aged by Common Name"), 
+               subtitle = "Numbers Combined from Spring and Fall Surveys") %>% 
+    sub_missing(missing_text = "") %>% 
+    gt::cols_label("est_year" = "Age:") %>% 
+    as_raw_html()
+  
+  
+}
+
+  
+```
+
+::: panelset
+```{r, results="asis"}
+#| label: age-tables
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = species_table)
+
+```
+:::
+
+# Length at Age Anovas
+
+Given that we can't really construct meaningful VB curves for cohorts with a 10-year window of interest, we need to consider an alternative way of putting some statistics behind our numbers to assess significance.
+
+I think looking at differences in LAA and WAA over periods of interest will be helpful. I think a useful example to emulate is Fig 3 and Table 1 in the attached Neuheimer and Gronkjaer paper. However, instead of using trend lines and slopes, it would be better to do an ANOVA comparing 1970-2009 to 2010-2019 (and plotting means for those periods in the figure).
+
+I'm also still debating whether to use 1970-2009 as the comparison or whether to do just the preceding decade, so seeing ANOVA results for 2000-2009 and 2010-2019 would be helpful too.
+
+Please truncate output values to no more than 3 decimal places so it's easier to look at. (We'll want to pull other stats out of the ANOVA for the paper, but for shaping the paper, I'd prefer to see less right now.)
+
+These are the methods to use for the tests and for testing assumptions:
+
+Regular ANOVA
+
+Kruskall / Bartletts Variance - Test of Equal Variance
+
+Welch's ANOVA
+
+```{r}
+# Run one length at age thing:
+
+
+# Group on common name and time periods and age
+
+# Get the groups we want to compare
+year_groups <- list("1970-2009" = c(1970:2009),
+                    "2000-2009" = c(2000:2009),
+                    "2010-2019" = c(2010:2019))
+
+
+
+# Get data into each group, calculate the means?
+period_groups <- map(year_groups, function(period){
+  
+  # filter years:
+  period_dat <- age_truncated %>% 
+    filter(est_year %in% period)
+  
+  return(period_dat)
+  
+  })
+
+
+
+# Now Group the species and compute means
+period_means <- map(period_groups, function(period_dat){
+  
+  # Get the mean for each age
+  period_dat %>% 
+    filter(!is.na(age)) %>% 
+    group_by(comname, age) %>% 
+    summarise(
+      n_lengths = sum(!is.na(length_cm)),
+      mean_LAA  = mean(length_cm, na.rm = T),
+      n_weights = sum(!is.na(length_cm)),
+      mean_WAA  = mean(indwt, na.rm = T),
+      .groups = "drop"
+    )
+  
+})
+
+
+
+# Now do the ANOVAs and the other tests comparing sizes at age:
+
+
+
+####. WORKING HERE. #####
+# Look at curves and pick ranges that work
+
+
+# Set the Age ranges for each species:
+ages_to_test <- list(
+  "acadian redfish"     = c(1:15),
+  "american plaice"     = c(1:12),
+  "atlantic cod"        = c(1:12),
+  "atlantic herring"    = c(1:10),
+  "atlantic mackerel"   = c(1:10),
+  "black sea bass"      = c(1:10),
+  "butterfish"          = c(1:6),
+  "haddock"             = c(1:10),
+  "pollock"             = c(1:14),
+  "red hake"            = c(1:10),
+  "scup"                = c(1:12),
+  "silver hake"         = c(1:8),
+  "summer flounder"     = c(1:12),
+  "white hake"          = c(1:12),
+  "windowpane"          = c(1:8),
+  "winter flounder"     = c(1:14),
+  "witch flounder"      = c(1:14),
+  "yellowtail flounder" = c(1:8)
+)
+
+
+
+
+# -------------  Running one Length Comparison. ---------
+
+
+library(broom)
+
+# One species and one age
+test_set <- bind_rows(
+    list("regime1970-2009" = filter(period_groups[["1970-2009"]], comname == "haddock") %>% drop_na(age, length_cm),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == "haddock") %>% drop_na(age, length_cm)),
+    .id = "comparison_period")
+
+
+
+
+
+#-----------  Running All Length Comparisons. ----------------
+
+
+# Perform Length at Age Anovas and Tests
+length_age_tests <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
+  
+  
+  # Period Comparison 1: 1970-2009 vs. 2010-2019
+  
+  # Grab data
+  compare_1 <- bind_rows(
+    list("regime1970-2009" = filter(period_groups[["1970-2009"]], comname == comname_x) %>% drop_na(age, length_cm),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == comname_x) %>% drop_na(age, length_cm)),
+    .id = "comparison_period")
+  
+  
+  # Perform Anova for each age: length ~ comparison period
+  map_dfr(ages_to_test[[comname_x]], possibly(function(age_x){
+    
+    # Subset the age
+    age_subset <- dplyr::filter(compare_1, age == age_x)
+    
+    tidy_t <- tidy(t.test(length_cm ~ comparison_period, data = age_subset)) %>% 
+    select("mean1970_2009" = estimate1, 
+           "mean2010_2019" = estimate2,
+           method, p.value)
+
+  tidy_b <- tidy(bartlett.test(length_cm ~ comparison_period, data = age_subset)) %>% 
+    select(variance_test = method, 
+           bartlett_p =  p.value)
+
+  # Make an output table
+  bind_cols(
+    list(
+      data.frame("statistical_test" = "two sample t.test"),
+      tidy_t,
+      tidy_b))
+    }, 
+  # Make a fail state that lets some ages through
+  otherwise = 
+    data.frame(
+      "statistical_test" = "two sample t.test", 
+      "mean1970_2009" = NA,    
+      "mean2010_2019" = NA,    
+      "method" = NA,           
+      "p.value" = NA,          
+      "variance_test" = NA,    
+      "bartlett_p" = NA)), 
+  
+  # Join them under the id column "age"
+  .id = "age")
+  }, 
+  
+  # Make a fail state that lets species through:
+  otherwise = data.frame(
+        "age" = NA,
+        "statistical_test" = "two sample t.test", 
+        "mean1970_2009" = NA,    
+        "mean2010_2019" = NA,   
+        "method" = NA,         
+        "p.value" = NA,          
+        "variance_test" = NA,    
+        "bartlett_p" = NA)),
+
+  # Join them under the id column "comname"
+  .id = "comname"
+)
+
+
+# How crazy does this look lol
+
+
+
+length_age_tests %>% 
+  select(-c(statistical_test, variance_test)) %>% 
+  mutate(across(where(is.numeric), round, 3)) %>% 
+  group_by(comname) %>% 
+  gt(rowname_col = "age") %>% 
+  sub_missing(missing_text = "") %>% 
+  tab_header(title = "Length at Age - Two-Sample Test", subtitle = "Comparison of 1970-2009 & 2009-2019 Data")
+
+```
+
+
+
+# Weight at Age Anovas
+
+```{r}
+#| eval: false
+
+# Run some weight at age
+
+
+wt_at_age_anovas <- map(vb_species, function(comname_x){
+  
+  
+  # Period Comparison 1: 1970-2009 vs. 2010-2019
+  
+  # Grab data
+  compare_1 <- bind_rows(
+    list("regime1970-2009" = filter(period_groups$`1970-2009`, comname == comname_x),
+         "regime2010-2019" = filter(period_groups$`2010-2019`, comname == comname_x),
+    .id = "comparison_period"))
+  
+  
+  
+  
+  # Perform Anova for each age
+  aov_1     <- aov(indwt ~ comparison_period, data = compare_1)
+  
+  
+  # Check Variance Assumption
+  bart_1 <- bartlett.test(indwt ~ comparison_period, data = compare_1)
+  
+  # Perform the Welchs
+  
+  
+  
+  # # Period Comparison 2: 2000-2009 vs. 2010-2019
+  # compare_2 <- bind_rows(
+  #   list("regime1970-2009" = filter(period_groups$`1970-2009`, comname == comname_x),
+  #        "regime2010-2019" = filter(period_groups$`2010-2019`, comname == comname_x),
+  #   .id = "comparison_period"))
+  
+  
+})
+  
+  
+  
+
+```
+
+| Species | Age | Mean 1970-2009 | mean 2010-2019 | pval | mean 2000-2009 | pval |
+|---------|-----|----------------|----------------|------|----------------|------|
+|         |     |                |                |      |                |      |
+|         |     |                |                |      |                |      |
+
+
