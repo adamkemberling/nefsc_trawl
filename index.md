@@ -66,7 +66,7 @@ This report digs into what the outcomes of the size spectrum estimations look li
 
 [Center of Biomass Changes Under Two Thermal Regimes](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/encounter_temperatures.html)
 
-[Length and Weight at Age Trends](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/growth_exploration.html))
+[Length and Weight at Age Trends](https://adamkemberling.github.io/nefsc_trawl/R/size_at_age/growth_exploration.html)
 
 ### Manuscript:
 

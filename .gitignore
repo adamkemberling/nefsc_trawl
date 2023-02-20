@@ -12,6 +12,7 @@ R/qaqc_reports/09_ss_sensitivity_cache/
 R/qaqc_reports/09_ss_sensitivity_files/
 R/survdat_pull_check_files/
 R/map30challenge/
+R/size_at_age/size_at_age_local_data/
 
 # Ignore _targets files
 _targets*/

@@ -41,6 +41,7 @@ execute:
   library(gmRi)
   library(targets)
   library(ggrepel)
+  library(broom)
 }
 
 
@@ -179,7 +180,8 @@ It would be good to have a better sense of numbers of observations behind some o
 
 # Prep data separately for table
 age_truncated <- bio_regimes %>% 
-    filter(comname %in% vb_species) %>% 
+    filter(comname %in% vb_species,
+           age > 0) %>% 
     complete(comname, est_year) %>% 
     mutate(regime = ifelse(est_year < 2010, "Early Regime", "Warm Regime"),
            age = ifelse(age>10, ">10", age)) %>% 
@@ -211,10 +213,9 @@ species_table <- function(x){
     summarise(n_aged = sum(age_tally), .groups = "drop") %>% 
     mutate(age = factor(age, levels = c(as.character(1:10), ">10"))) %>% 
     arrange(age) %>% 
-    #filter(!is.na(age)) %>% 
     mutate(age = fct_drop(age)) %>% 
     pivot_wider(names_from = "age", values_from = n_aged) %>% 
-    select(-c("NA")) %>% 
+    select(-one_of("NA")) %>% 
     group_by(regime, comname) %>% 
     arrange(est_year) %>% 
     gt(rowname_col = "est_year") %>% 
@@ -242,7 +243,7 @@ walk(vb_species,
 ```
 :::
 
-# Length at Age Anovas
+# Size at Age Comparisons
 
 Given that we can't really construct meaningful VB curves for cohorts with a 10-year window of interest, we need to consider an alternative way of putting some statistics behind our numbers to assess significance.
 
@@ -254,16 +255,14 @@ Please truncate output values to no more than 3 decimal places so it's easier to
 
 These are the methods to use for the tests and for testing assumptions:
 
-Regular ANOVA
+**Welch's Two-Sample T-Test**
 
-Kruskall / Bartletts Variance - Test of Equal Variance
+**Bartletts Two-Sample Test**
 
-Welch's ANOVA
+# Length at Age
 
 ```{r}
-# Run one length at age thing:
-
-
+#| label: prep-comparison-periods
 # Group on common name and time periods and age
 
 # Get the groups we want to compare
@@ -284,33 +283,6 @@ period_groups <- map(year_groups, function(period){
   
   })
 
-
-
-# Now Group the species and compute means
-period_means <- map(period_groups, function(period_dat){
-  
-  # Get the mean for each age
-  period_dat %>% 
-    filter(!is.na(age)) %>% 
-    group_by(comname, age) %>% 
-    summarise(
-      n_lengths = sum(!is.na(length_cm)),
-      mean_LAA  = mean(length_cm, na.rm = T),
-      n_weights = sum(!is.na(length_cm)),
-      mean_WAA  = mean(indwt, na.rm = T),
-      .groups = "drop"
-    )
-  
-})
-
-
-
-# Now do the ANOVAs and the other tests comparing sizes at age:
-
-
-
-####. WORKING HERE. #####
-# Look at curves and pick ranges that work
 
 
 # Set the Age ranges for each species:
@@ -336,12 +308,49 @@ ages_to_test <- list(
 )
 
 
+```
+
+
+
+
+```{r}
+#| label: get-period-means
+
+
+# Now Group the species and compute means
+period_means <- map_dfr(period_groups, function(period_dat){
+  
+  # Get the mean for each age
+  period_dat %>% 
+    filter(!is.na(age)) %>% 
+    group_by(comname, age) %>% 
+    summarise(
+      n_lengths = sum(!is.na(length_cm)),
+      mean_LAA  = mean(length_cm, na.rm = T),
+      n_weights = sum(!is.na(indwt)),
+      mean_WAA  = mean(indwt, na.rm = T),
+      .groups = "drop"
+    )
+  
+}, .id = "comparison_period") %>% 
+  mutate(age = factor(age, levels = c(1:10, ">10"))) %>% 
+  arrange(comparison_period, comname, age)
+```
+
+
+
+
+
+```{r}
+#| label: length-at-age-comparisons
+
+
+# Now do the ANOVAs and the other tests comparing sizes at age:
 
 
 # -------------  Running one Length Comparison. ---------
 
 
-library(broom)
 
 # One species and one age
 test_set <- bind_rows(
@@ -356,8 +365,18 @@ test_set <- bind_rows(
 #-----------  Running All Length Comparisons. ----------------
 
 
+
+
+```
+
+
+::: panel-tabset
+
+### 1970-2009 & 2010 - 2019
+
+```{r}
 # Perform Length at Age Anovas and Tests
-length_age_tests <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
+laa_tests_1 <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
   
   
   # Period Comparison 1: 1970-2009 vs. 2010-2019
@@ -420,74 +439,765 @@ length_age_tests <- map_dfr(setNames(vb_species, vb_species), possibly(function(
   # Join them under the id column "comname"
   .id = "comname"
 )
+```
 
 
-# How crazy does this look lol
+```{r}
+# Make Tables for Each Species to Reduce Length
 
+laa_table_1 <- function(comname_x, period_1 = "1970-2009", period_2 = "2010-2019"){
+  
+  laa_tests_1 %>% 
+    filter(comname == comname_x) %>% 
+    select(-c(statistical_test, variance_test)) %>% 
+    mutate(across(where(is.numeric), round, 3)) %>% 
+    group_by(comname) %>% 
+    gt(rowname_col = "age") %>% 
+    sub_missing(missing_text = "") %>% 
+    tab_header(title = str_c(str_to_title(comname_x), " Length at Age - Two-Sample Test"), 
+               subtitle = str_c("Comparison of ", period_1, " & ", period_2, " Data")) %>% 
+    tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(
+        columns = mean1970_2009, 
+        rows = p.value < 0.05 & mean1970_2009 > mean2010_2019)) %>% 
+    tab_style(
+      style = list(cell_fill(color = "#F9E3D6")),
+      locations = cells_body(
+        columns = mean1970_2009, 
+        rows = p.value < 0.05 & mean1970_2009 < mean2010_2019)) %>% 
+    tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(
+        columns = mean2010_2019, 
+        rows = p.value < 0.05 & mean1970_2009 < mean2010_2019)) %>% 
+    tab_style(
+      style = list(cell_fill(color = "#F9E3D6")),
+      locations = cells_body(
+        columns = mean2010_2019, 
+        rows = p.value < 0.05 & mean1970_2009 > mean2010_2019)) %>% 
+    tab_style(
+        style = list(cell_fill(color = "#A4D1A2")),
+        locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
+    as_raw_html()
+  
+  
+  
+}
 
-
-length_age_tests %>% 
-  select(-c(statistical_test, variance_test)) %>% 
-  mutate(across(where(is.numeric), round, 3)) %>% 
-  group_by(comname) %>% 
-  gt(rowname_col = "age") %>% 
-  sub_missing(missing_text = "") %>% 
-  tab_header(title = "Length at Age - Two-Sample Test", subtitle = "Comparison of 1970-2009 & 2009-2019 Data")
 
 ```
 
 
 
-# Weight at Age Anovas
+::: panelset
+```{r, results="asis"}
+#| label: laa-tables-1
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = laa_table_1)
+
+```
+:::
+
+
+
+### 2000-2009 & 2010-2019
 
 ```{r}
-#| eval: false
+# Perform Length at Age Anovas and Tests
+laa_tests_2 <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
+  
+  
+  # Period Comparison 1: 2000-2009 vs. 2010-2019
+  
+  # Grab data
+  compare_1 <- bind_rows(
+    list("regime2000-2009" = filter(period_groups[["2000-2009"]], comname == comname_x) %>% drop_na(age, length_cm),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == comname_x) %>% drop_na(age, length_cm)),
+    .id = "comparison_period")
+  
+  
+  # Perform Anova for each age: length ~ comparison period
+  map_dfr(ages_to_test[[comname_x]], possibly(function(age_x){
+    
+    # Subset the age
+    age_subset <- dplyr::filter(compare_1, age == age_x)
+    
+    tidy_t <- tidy(t.test(length_cm ~ comparison_period, data = age_subset)) %>% 
+    select("mean2000_2009" = estimate1, 
+           "mean2010_2019" = estimate2,
+           method, p.value)
 
-# Run some weight at age
+  tidy_b <- tidy(bartlett.test(length_cm ~ comparison_period, data = age_subset)) %>% 
+    select(variance_test = method, 
+           bartlett_p =  p.value)
+
+  # Make an output table
+  bind_cols(
+    list(
+      data.frame("statistical_test" = "two sample t.test"),
+      tidy_t,
+      tidy_b))
+    }, 
+  # Make a fail state that lets some ages through
+  otherwise = 
+    data.frame(
+      "statistical_test" = "two sample t.test", 
+      "mean2000_2009" = NA,    
+      "mean2010_2019" = NA,    
+      "method" = NA,           
+      "p.value" = NA,          
+      "variance_test" = NA,    
+      "bartlett_p" = NA)), 
+  
+  # Join them under the id column "age"
+  .id = "age")
+  }, 
+  
+  # Make a fail state that lets species through:
+  otherwise = data.frame(
+        "age" = NA,
+        "statistical_test" = "two sample t.test", 
+        "mean1970_2009" = NA,    
+        "mean2010_2019" = NA,   
+        "method" = NA,         
+        "p.value" = NA,          
+        "variance_test" = NA,    
+        "bartlett_p" = NA)),
+
+  # Join them under the id column "comname"
+  .id = "comname"
+)
 
 
-wt_at_age_anovas <- map(vb_species, function(comname_x){
+
+```
+
+
+```{r}
+# Make Tables for Each Species to Reduce Length
+
+laa_table_2 <- function(comname_x, period_1 = "1970-2009", period_2 = "2010-2019"){
+  
+  laa_tests_2 %>% 
+    filter(comname == comname_x) %>% 
+    select(-c(statistical_test, variance_test)) %>% 
+    mutate(across(where(is.numeric), round, 3)) %>% 
+    group_by(comname) %>% 
+    gt(rowname_col = "age") %>% 
+    sub_missing(missing_text = "") %>% 
+    tab_header(title = str_c(str_to_title(comname_x), " Length at Age - Two-Sample Test"), 
+               subtitle = str_c("Comparison of ", period_1, " & ", period_2, " Data")) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2000_2009, 
+      rows = p.value < 0.05 & mean2000_2009 > mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2000_2009, 
+      rows = p.value < 0.05 & mean2000_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean2000_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean2000_2009 > mean2010_2019)) %>% 
+  tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
+    as_raw_html() 
+  
+}
+```
+
+
+
+::: panelset
+```{r, results="asis"}
+#| label: laa-tables-2
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = laa_table_2)
+
+```
+:::
+
+
+
+:::
+
+
+
+# Weight at Age
+
+::: panel-tabset
+
+### 1970-2009 & 2010 - 2019
+
+```{r}
+# Perform Length at Age Anovas and Tests
+waa_tests_1 <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
   
   
   # Period Comparison 1: 1970-2009 vs. 2010-2019
   
   # Grab data
   compare_1 <- bind_rows(
-    list("regime1970-2009" = filter(period_groups$`1970-2009`, comname == comname_x),
-         "regime2010-2019" = filter(period_groups$`2010-2019`, comname == comname_x),
-    .id = "comparison_period"))
+    list("regime1970-2009" = filter(period_groups[["1970-2009"]], comname == comname_x) %>% drop_na(age, indwt),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == comname_x) %>% drop_na(age, indwt)),
+    .id = "comparison_period")
   
   
+  # Perform Anova for each age: length ~ comparison period
+  map_dfr(ages_to_test[[comname_x]], possibly(function(age_x){
+    
+    # Subset the age
+    age_subset <- dplyr::filter(compare_1, age == age_x)
+    
+    tidy_t <- tidy(t.test(indwt ~ comparison_period, data = age_subset)) %>% 
+    select("mean1970_2009" = estimate1, 
+           "mean2010_2019" = estimate2,
+           method, p.value)
+
+  tidy_b <- tidy(bartlett.test(indwt ~ comparison_period, data = age_subset)) %>% 
+    select(variance_test = method, 
+           bartlett_p =  p.value)
+
+  # Make an output table
+  bind_cols(
+    list(
+      data.frame("statistical_test" = "two sample t.test"),
+      tidy_t,
+      tidy_b))
+    }, 
+  # Make a fail state that lets some ages through
+  otherwise = 
+    data.frame(
+      "statistical_test" = "two sample t.test", 
+      "mean1970_2009" = NA,    
+      "mean2010_2019" = NA,    
+      "method" = NA,           
+      "p.value" = NA,          
+      "variance_test" = NA,    
+      "bartlett_p" = NA)), 
   
+  # Join them under the id column "age"
+  .id = "age")
+  }, 
   
-  # Perform Anova for each age
-  aov_1     <- aov(indwt ~ comparison_period, data = compare_1)
-  
-  
-  # Check Variance Assumption
-  bart_1 <- bartlett.test(indwt ~ comparison_period, data = compare_1)
-  
-  # Perform the Welchs
-  
-  
-  
-  # # Period Comparison 2: 2000-2009 vs. 2010-2019
-  # compare_2 <- bind_rows(
-  #   list("regime1970-2009" = filter(period_groups$`1970-2009`, comname == comname_x),
-  #        "regime2010-2019" = filter(period_groups$`2010-2019`, comname == comname_x),
-  #   .id = "comparison_period"))
-  
-  
-})
-  
-  
-  
+  # Make a fail state that lets species through:
+  otherwise = data.frame(
+        "age" = NA,
+        "statistical_test" = "two sample t.test", 
+        "mean1970_2009" = NA,    
+        "mean2010_2019" = NA,   
+        "method" = NA,         
+        "p.value" = NA,          
+        "variance_test" = NA,    
+        "bartlett_p" = NA)),
+
+  # Join them under the id column "comname"
+  .id = "comname"
+)
+
 
 ```
 
-| Species | Age | Mean 1970-2009 | mean 2010-2019 | pval | mean 2000-2009 | pval |
-|---------|-----|----------------|----------------|------|----------------|------|
-|         |     |                |                |      |                |      |
-|         |     |                |                |      |                |      |
 
+
+```{r}
+# Make Tables for Each Species to Reduce Length
+
+waa_table_1 <- function(comname_x, period_1 = "1970-2009", period_2 = "2010-2019"){
+  
+  waa_tests_1 %>% 
+    filter(comname == comname_x) %>% 
+    select(-c(statistical_test, variance_test)) %>% 
+    mutate(across(where(is.numeric), round, 3)) %>% 
+    group_by(comname) %>% 
+    gt(rowname_col = "age") %>% 
+    sub_missing(missing_text = "") %>% 
+    tab_header(title = str_c(str_to_title(comname_x), " Weight at Age - Two-Sample Test"), 
+               subtitle = str_c("Comparison of ", period_1, " & ", period_2, " Data")) %>% 
+    tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean1970_2009, 
+      rows = p.value < 0.05 & mean1970_2009 > mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean1970_2009, 
+      rows = p.value < 0.05 & mean1970_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean1970_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean1970_2009 > mean2010_2019)) %>% 
+  tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
+    as_raw_html()
+  
+}
+
+
+```
+
+
+
+::: panelset
+```{r, results="asis"}
+#| label: waa-tables-1
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = waa_table_1)
+
+```
+:::
+
+
+### 2000-2009 & 2010-2019
+
+
+```{r}
+# Perform Length at Age Anovas and Tests
+waa_tests_2 <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
+  
+  
+  # Period Comparison 1: 2000-2009 vs. 2010-2019
+  
+  # Grab data
+  compare_1 <- bind_rows(
+    list("regime2000-2009" = filter(period_groups[["2000-2009"]], comname == comname_x) %>% drop_na(age, indwt),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == comname_x) %>% drop_na(age, indwt)),
+    .id = "comparison_period")
+  
+  
+  # Perform Anova for each age: length ~ comparison period
+  map_dfr(ages_to_test[[comname_x]], possibly(function(age_x){
+    
+    # Subset the age
+    age_subset <- dplyr::filter(compare_1, age == age_x)
+    
+    tidy_t <- tidy(t.test(indwt ~ comparison_period, data = age_subset)) %>% 
+    select("mean2000_2009" = estimate1, 
+           "mean2010_2019" = estimate2,
+           method, p.value)
+
+  tidy_b <- tidy(bartlett.test(indwt ~ comparison_period, data = age_subset)) %>% 
+    select(variance_test = method, 
+           bartlett_p =  p.value)
+
+  # Make an output table
+  bind_cols(
+    list(
+      data.frame("statistical_test" = "two sample t.test"),
+      tidy_t,
+      tidy_b))
+    }, 
+  # Make a fail state that lets some ages through
+  otherwise = 
+    data.frame(
+      "statistical_test" = "two sample t.test", 
+      "mean2000_2009" = NA,    
+      "mean2010_2019" = NA,    
+      "method" = NA,           
+      "p.value" = NA,          
+      "variance_test" = NA,    
+      "bartlett_p" = NA)), 
+  
+  # Join them under the id column "age"
+  .id = "age")
+  }, 
+  
+  # Make a fail state that lets species through:
+  otherwise = data.frame(
+        "age" = NA,
+        "statistical_test" = "two sample t.test", 
+        "mean2000_2009" = NA,    
+        "mean2010_2019" = NA,   
+        "method" = NA,         
+        "p.value" = NA,          
+        "variance_test" = NA,    
+        "bartlett_p" = NA)),
+
+  # Join them under the id column "comname"
+  .id = "comname"
+)
+
+
+```
+
+
+
+```{r}
+# Make Tables for Each Species to Reduce Length
+
+waa_table_2 <- function(comname_x, period_1 = "2000-2009", period_2 = "2010-2019"){
+  
+  waa_tests_2 %>% 
+    filter(comname == comname_x) %>% 
+    select(-c(statistical_test, variance_test)) %>% 
+    mutate(across(where(is.numeric), round, 3)) %>% 
+    group_by(comname) %>% 
+    gt(rowname_col = "age") %>% 
+    sub_missing(missing_text = "") %>% 
+    tab_header(title = str_c(str_to_title(comname_x), " Weight at Age - Two-Sample Test"), 
+               subtitle = str_c("Comparison of ", period_1, " & ", period_2, " Data")) %>% 
+    tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2000_2009, 
+      rows = p.value < 0.05 & mean2000_2009 > mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2000_2009, 
+      rows = p.value < 0.05 & mean2000_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean2000_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean2000_2009 > mean2010_2019)) %>% 
+  tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
+    as_raw_html()
+  
+}
+
+
+```
+
+
+
+::: panelset
+```{r, results="asis"}
+#| label: waa-tables-2
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = waa_table_2)
+
+```
+:::
+
+:::
+
+
+
+## Condition Factor at Age
+
+::: panel-tabset
+
+### 1970-2009 & 2010 - 2019
+
+```{r}
+# Perform Length at Age Anovas and Tests
+condition_tests_1 <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
+  
+  
+  # Period Comparison 1: 1970-2009 vs. 2010-2019
+  
+  # Grab data
+  compare_1 <- bind_rows(
+    list("regime1970-2009" = filter(period_groups[["1970-2009"]], comname == comname_x) %>% drop_na(age, fK),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == comname_x) %>% drop_na(age, fK)),
+    .id = "comparison_period")
+  
+  
+  # Perform Anova for each age: length ~ comparison period
+  map_dfr(ages_to_test[[comname_x]], possibly(function(age_x){
+    
+    # Subset the age
+    age_subset <- dplyr::filter(compare_1, age == age_x)
+    
+    tidy_t <- tidy(t.test(fK ~ comparison_period, data = age_subset)) %>% 
+    select("mean1970_2009" = estimate1, 
+           "mean2010_2019" = estimate2,
+           method, p.value)
+
+  tidy_b <- tidy(bartlett.test(fK ~ comparison_period, data = age_subset)) %>% 
+    select(variance_test = method, 
+           bartlett_p =  p.value)
+
+  # Make an output table
+  bind_cols(
+    list(
+      data.frame("statistical_test" = "two sample t.test"),
+      tidy_t,
+      tidy_b))
+    }, 
+  # Make a fail state that lets some ages through
+  otherwise = 
+    data.frame(
+      "statistical_test" = "two sample t.test", 
+      "mean1970_2009" = NA,    
+      "mean2010_2019" = NA,    
+      "method" = NA,           
+      "p.value" = NA,          
+      "variance_test" = NA,    
+      "bartlett_p" = NA)), 
+  
+  # Join them under the id column "age"
+  .id = "age")
+  }, 
+  
+  # Make a fail state that lets species through:
+  otherwise = data.frame(
+        "age" = NA,
+        "statistical_test" = "two sample t.test", 
+        "mean1970_2009" = NA,    
+        "mean2010_2019" = NA,   
+        "method" = NA,         
+        "p.value" = NA,          
+        "variance_test" = NA,    
+        "bartlett_p" = NA)),
+
+  # Join them under the id column "comname"
+  .id = "comname"
+)
+
+
+```
+
+
+
+```{r}
+# Make Tables for Each Species to Reduce Length
+
+condition_table_1 <- function(comname_x, period_1 = "1970-2009", period_2 = "2010-2019"){
+  
+  condition_tests_1 %>% 
+    filter(comname == comname_x) %>% 
+    select(-c(statistical_test, variance_test)) %>% 
+    mutate(across(where(is.numeric), round, 3)) %>% 
+    group_by(comname) %>% 
+    gt(rowname_col = "age") %>% 
+    sub_missing(missing_text = "") %>% 
+    tab_header(title = str_c(str_to_title(comname_x), " Fultons K - Two-Sample Test"), 
+               subtitle = str_c("Comparison of ", period_1, " & ", period_2, " Data")) %>% 
+    tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean1970_2009, 
+      rows = p.value < 0.05 & mean1970_2009 > mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean1970_2009, 
+      rows = p.value < 0.05 & mean1970_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean1970_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean1970_2009 > mean2010_2019)) %>% 
+  tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
+    as_raw_html()
+  
+}
+
+
+```
+
+
+
+::: panelset
+```{r, results="asis"}
+#| label: k-tables-1
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = condition_table_1)
+
+```
+:::
+
+
+### 2000-2009 & 2010-2019
+
+
+```{r}
+# Perform Length at Age Anovas and Tests
+condition_tests_2 <- map_dfr(setNames(vb_species, vb_species), possibly(function(comname_x){
+  
+  
+  # Period Comparison 1: 2000-2009 vs. 2010-2019
+  
+  # Grab data
+  compare_1 <- bind_rows(
+    list("regime2000-2009" = filter(period_groups[["2000-2009"]], comname == comname_x) %>% drop_na(age, fK),
+         "regime2010-2019" = filter(period_groups[["2010-2019"]], comname == comname_x) %>% drop_na(age, fK)),
+    .id = "comparison_period")
+  
+  
+  # Perform Anova for each age: length ~ comparison period
+  map_dfr(ages_to_test[[comname_x]], possibly(function(age_x){
+    
+    # Subset the age
+    age_subset <- dplyr::filter(compare_1, age == age_x)
+    
+    tidy_t <- tidy(t.test(fK ~ comparison_period, data = age_subset)) %>% 
+    select("mean2000_2009" = estimate1, 
+           "mean2010_2019" = estimate2,
+           method, p.value)
+
+  tidy_b <- tidy(bartlett.test(fK ~ comparison_period, data = age_subset)) %>% 
+    select(variance_test = method, 
+           bartlett_p =  p.value)
+
+  # Make an output table
+  bind_cols(
+    list(
+      data.frame("statistical_test" = "two sample t.test"),
+      tidy_t,
+      tidy_b))
+    }, 
+  # Make a fail state that lets some ages through
+  otherwise = 
+    data.frame(
+      "statistical_test" = "two sample t.test", 
+      "mean2000_2009" = NA,    
+      "mean2010_2019" = NA,    
+      "method" = NA,           
+      "p.value" = NA,          
+      "variance_test" = NA,    
+      "bartlett_p" = NA)), 
+  
+  # Join them under the id column "age"
+  .id = "age")
+  }, 
+  
+  # Make a fail state that lets species through:
+  otherwise = data.frame(
+        "age" = NA,
+        "statistical_test" = "two sample t.test", 
+        "mean2000_2009" = NA,    
+        "mean2010_2019" = NA,   
+        "method" = NA,         
+        "p.value" = NA,          
+        "variance_test" = NA,    
+        "bartlett_p" = NA)),
+
+  # Join them under the id column "comname"
+  .id = "comname"
+)
+
+
+```
+
+
+
+```{r}
+# Make Tables for Each Species to Reduce Length
+
+condition_table_2 <- function(comname_x, period_1 = "2000-2009", period_2 = "2010-2019"){
+  
+  condition_tests_2 %>% 
+    filter(comname == comname_x) %>% 
+    select(-c(statistical_test, variance_test)) %>% 
+    mutate(across(where(is.numeric), round, 3)) %>% 
+    group_by(comname) %>% 
+    gt(rowname_col = "age") %>% 
+    sub_missing(missing_text = "") %>% 
+    tab_header(title = str_c(str_to_title(comname_x), " Fultons K - Two-Sample Test"), 
+               subtitle = str_c("Comparison of ", period_1, " & ", period_2, " Data")) %>% 
+    tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2000_2009, 
+      rows = p.value < 0.05 & mean2000_2009 > mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2000_2009, 
+      rows = p.value < 0.05 & mean2000_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#A4D1A2")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean2000_2009 < mean2010_2019)) %>% 
+  tab_style(
+    style = list(cell_fill(color = "#F9E3D6")),
+    locations = cells_body(
+      columns = mean2010_2019, 
+      rows = p.value < 0.05 & mean2000_2009 > mean2010_2019)) %>% 
+  tab_style(
+      style = list(cell_fill(color = "#A4D1A2")),
+      locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
+    as_raw_html()
+  
+}
+
+
+```
+
+
+
+::: panelset
+```{r, results="asis"}
+#| label: k-tables-2
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = condition_table_2)
+
+```
+:::
+
+:::
+
+
+
+```{r}
+#| eval: false
+# Export the data for Kathy
+
+all_results <- bind_rows(
+  list(
+    "length-at-age-groups-1" = laa_tests_1,  
+    "length-at-age-groups-2" = laa_tests_2,
+    "weight-at-age-groups-1" = waa_tests_1,  
+    "weight-at-age-groups-2" = waa_tests_2,
+    "condition-at-aage-groups-1" = condition_tests_1,  
+    "condition-at-aage-groups-2" = condition_tests_2
+  ), .id = "comparison variable"
+  
+) %>% relocate(mean2000_2009, .before = "method") %>% 
+  write_csv(here::here("R/size_at_age/size_at_age_local_data/size_at_age_two_sample_tests.csv"))
+```
 
