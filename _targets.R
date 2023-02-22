@@ -99,7 +99,8 @@ list(
     name = survdat_clean,
     command = gmri_survdat_prep(survdat = NULL,
                                 survdat_source = "most recent",
-                                box_location = boxdata_location)),
+                                box_location = boxdata_location) %>% 
+      filter(est_year %in% c(1970:2019, season %in% c("Spring", "Fall")))),
   
   
   # Run all the import and tidying for catch data to use for the pipeline
