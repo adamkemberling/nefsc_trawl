@@ -205,6 +205,8 @@ Through the lens of an environmental regime change we will assess changes to bod
 Global Sea surface temperature data was obtained via NOAA's optimally interpolated SST analysis (OISSTv2), providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution [@reynolds2007]. A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at https://psl.noaa.gov.
 
 ```{r}
+#| label: Load-sst-data
+
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(regional_oisst))
@@ -228,7 +230,6 @@ temp_regimes <- regional_oisst %>%
          ) %>% 
   ungroup()
 
-rm(regional_oisst)
 ```
 
 ### Temperature Study Region
@@ -242,6 +243,110 @@ Annual temperature anomalies were checked for a regime shift using the bayesian 
 ### Warming Trends
 
 We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the two time periods: all years before, and all years following the regime shift. Warming rates and long-term averages were estimated independently for each period.
+
+```{r}
+#| label: warming-trends-comparisons
+#| eval: false
+
+# Isolate the Shelf and Gulf of Maine
+
+# The Gulf of Maine Used:
+gom_oisst <- oisst_access_timeseries(
+      region_family = "nmfs trawl regions",
+      poly_name = "gulf of maine",
+      box_location = "cloudstorage" ) %>% 
+  mutate(year = lubridate::year(time)) %>% 
+  filter(between(year, 1982, 2022))
+
+# The all-areas shelf shapefile used:
+shelf_oisst <- oisst_access_timeseries(
+      region_family = "nmfs trawl regions",
+      poly_name = "inuse strata",
+      box_location = "cloudstorage" ) %>% 
+  mutate(year = lubridate::year(time)) %>% 
+  filter(between(year, 1982, 2022))
+
+# Load Global OISST:
+global_oisst <- read_csv(
+    paste0(cs_path("res", "OISST/oisst_mainstays"),   
+           "global_timeseries/global_anoms_1982to2011.csv"), 
+    guess_max = 1e6,
+    col_types = cols()) %>% 
+  mutate(year = lubridate::year(time)) %>% 
+  filter(between(year, 1982, 2022))
+
+
+
+# -------------  Plot 1 - Linear Trends ----------
+
+# Annual Trend Plot Prep:
+temp_details <- function(temp_dataset){
+  
+  
+  # Get the annual warming rates: 82-2021
+  annual_avgs <- temp_dataset %>% group_by(year) %>% summarise(sst = mean(area_wtd_sst), sst_anom = mean(area_wtd_anom))
+  rate_c <- as.numeric(coef(lm(sst~year, data = annual_avgs))[2])
+  rate_f <- as_fahrenheit(rate_c, data_type = "anomalies")
+  
+
+
+  # Get the mean temperatures for 82-2009 & 2010-2021
+  data_early <- annual_avgs %>% filter(year %in% c(1982:2009))
+  data_late <- annual_avgs %>% filter(year %in% c(2010:2022))
+  mean_early <- data_early %>% pull(sst) %>% mean()
+  mean_late <- data_late %>% pull(sst) %>% mean()
+  
+  # Return everything
+  return(
+    list(
+      "annual_avgs" = annual_avgs,
+      "annual_rate" = rate_c,
+      "rate_f" = rate_f,
+      "data_early" = data_early,
+      "data_late" = data_late,
+      "mean_early" = mean_early,
+      "mean_late" = mean_late
+    )
+  )
+  
+  return()
+  
+  
+}
+
+
+# Run it for the three areas
+area_summaries <- map(list("northeast shelf" = shelf_oisst, "Gulf of Maine" = gom_oisst, "Global Oceans" = global_oisst), temp_details)
+
+
+
+data_1 <- area_summaries$`northeast shelf`
+data_2 <- area_summaries$`Global Oceans`
+ggplot() +
+  geom_point(data = data_1$data_early, aes(year, sst), color = gmri_cols("blue")) +
+  stat_smooth(data = data_1$data_early, method = "lm", formula = y ~ x, aes(year, sst), color = gmri_cols("blue")) +
+  #geom_segment(aes(x = 1982, xend = 2009, y = data_1$mean_early, yend = data_1$mean_early), color = gmri_cols("blue"), linewidth = 1) +
+  geom_point(data = data_1$data_late, aes(year, sst), color = gmri_cols("orange")) +
+  #geom_segment(aes(x = 2010, xend = 2021, y = data_1$mean_late, yend = data_1$mean_late), color = gmri_cols("orange"), linewidth = 1) +
+  stat_smooth(data = data_1$data_late, method = "lm", formula = y ~ x, aes(year, sst), color = gmri_cols("orange")) +
+  labs(x = "Year", y = "SST", title = "Northeast Shelf SST Changes")
+
+
+```
+
+
+```{r}
+#| label: warming-trends-maps
+#| eval: false
+# -------------  Plot 2 - Map of Rates ----------
+
+# Load warming rates raster
+# # 1. Warming Rates and Rankings
+rates_path <- str_c(oisst_path, "warming_rates/annual_warming_rates1982to2022.nc")
+rates_nc <- stack(rates_path, varname = "annual_warming_rate")
+ranks_nc <- stack(rates_path, varname = "rate_percentile")
+```
+
 
 ## Data Collection
 
@@ -322,7 +427,7 @@ withr::with_dir(rprojroot::find_root('_targets.R'),
                 tar_load(survdat_clean))
 
 
-# Filter to Just spring? - its in methods for Janet
+# Filter to Just spring? - its in methods for Janet but settings are at top
 catch_data <- survdat_clean %>% 
   filter(season %in% season_filter$cob)
 
@@ -342,6 +447,36 @@ catch_station_totals <- catch_data %>%
 
 
 rm(survdat_clean)
+
+
+
+
+
+```
+
+
+```{r}
+#| eval: false
+#| label: im-stupid
+
+
+what_you_have <- tribble(
+  ~"station",  ~"comname", ~"depth", ~"biomass", ~"length", ~"numlen",
+  "station_1", "redfish",  10,       25,         12,        2,
+  "station_1", "redfish",  10,       25,         10,        1,
+  "station_2", "redfish",  12,       25,         10,        2 
+)
+
+
+what_the_funciton_expects <- tribble(
+  ~"station",  ~"comname", ~"depth", ~"biomass", ~"length", ~"numlen",
+  "station_1", "redfish",  10,       25,         12,        2,
+  #"station_1", "redfish",  10,       25,         10,        1,
+  "station_2", "redfish",  12,       25,         10,        2 
+)
+
+
+
 ```
 
 
@@ -1580,7 +1715,7 @@ This will produce lots of plots (one for each age increment), so let’s start w
 
 ```{r}
 #| label: ccf-plot
-#| fig-height: 6
+#| fig-height: 10
 
 # Pull growth increments and add sst for whole area:
 increment_temps <- vb_incs %>% 
@@ -1600,7 +1735,7 @@ age_increment_ccf <- increment_temps %>%
       split(.$diff_name) %>% 
       map_dfr(function(x) {
         split_ccf <- ccf(x$sst_anom, x$length_increment, 
-                         plot = FALSE, type = "correlation", lag.max = 6)
+                         plot = FALSE, type = "correlation", lag.max = 12)
         ccf_results <- data.frame(
           "lag" = split_ccf$lag %>% as.numeric(),
           "correlation" = split_ccf$acf %>% as.numeric())}, 
@@ -1615,13 +1750,13 @@ age_increment_ccf <- increment_temps %>%
 age_increment_ccf %>% 
   filter(`Age Increment` %in% c("0 - 1", "1 - 2", "2 - 3", "3 - 4",
                                 "4 - 5", "5 - 6"),
-         lag <= 0 ) %>% 
+         between(lag, -10, 10)) %>% 
   ggplot(aes(lag, y = comname, fill = correlation)) +
   geom_tile() +
-  scale_x_continuous(breaks = seq(-10,10,1)) +
+  scale_x_continuous(breaks = seq(-10,10,2)) +
   # scale_fill_distiller(palette = "RdBu", limits = c(-1,1)) +
   scale_fill_fermenter(palette = "RdBu", limits = c(-1,1), breaks = seq(-1,1, .2)) +
-  facet_wrap(`Age Increment`~., labeller = as_labeller(~str_c("Age Increment ", .x))) +
+  facet_wrap(`Age Increment`~., labeller = as_labeller(~str_c("Age Increment ", .x)), ncol = 1) +
   labs(x = "Year Lags on Predictor (SST Anomaly)",
        y = "Common Name",
        fill = "Correlation",

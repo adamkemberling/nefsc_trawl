@@ -12,6 +12,7 @@ format:
     code-fold: true
     code-tools: true
     df-print: kable
+    self-contained: true
 editor: source
 execute: 
   echo: true
@@ -116,7 +117,10 @@ test_signif <- function(filter_species, dependent_var){
 
 ```
 
-`r gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")`
+```{r}
+#| results: asis
+gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
+```
 
 ### Species Used:
 
@@ -174,11 +178,12 @@ trawldat <- trawldat %>%
 
 # 1. station_totals = biomass and abundance from each tow for all species
 # Totals up the abundance and biomass across sex*
-station_totals <- trawldat %>% 
-  group_by(est_year, survey_area, stratum, tow, est_towdate, avgdepth, bottemp, decdeg_beglat, decdeg_beglon, temp_regime, comname) %>% 
-  summarise(
-    biomass_kg = sum(biomass_kg, na.rm = T),
-    .groups = "drop")
+station_totals <- trawldat  %>% 
+  distinct(est_year, survey_area, stratum, tow, est_towdate, season, comname, catchsex, .keep_all = T) %>%
+  group_by(est_year, survey_area, stratum, tow, est_towdate, season, 
+           avgdepth, bottemp, decdeg_beglat, decdeg_beglon, comname) %>% 
+  summarise(biomass_kg = sum(biomass_kg, na.rm = T), .groups = "drop")  %>% 
+  mutate(temp_regime = ifelse(est_year < 2010, "Early Regime", "Warm Regime"))
 
 
 
@@ -246,7 +251,7 @@ Using OISST data for the region, and a 30-year climatology, we know that the reg
 
 ```{r}
 # What were temps doing over the whole region:
-oisst_all <- oisst_access_timeseries("nmfs_trawl_regions", poly_name = "inuse strata", mac_os = "mojave")
+oisst_all <- oisst_access_timeseries("nmfs_trawl_regions", poly_name = "inuse strata", box_location = "cloudstorage")
 
 # Make Yearly averages
 oisst_yrs <- oisst_all %>% 
