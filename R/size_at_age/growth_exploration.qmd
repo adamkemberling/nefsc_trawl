@@ -904,7 +904,7 @@ walk(vb_species,
 
 :::
 
-## Takeaways
+# Significant Growth Differences
 
 With the exception of silver hake, all species in these tests are significantly smaller at older ages. There are instances where species are larger at their earliest ages (1-4 years of age), but their growth then plateaus and they ultimately reach a smaller adult size. Black sea bass is another possible exception, showing some age-classes with smaller lengths and weights, but not in a consistent pattern with increasing age. 
 
@@ -1047,8 +1047,11 @@ winloss_results_2 %>%
   
 :::
 
-### Size at Age in Time
 
+
+# Size at Age in Time
+
+The following two sets of figures display what the average length or weight was each year for a given species. Means have been overlaid for the groups of years we are comparing above.
 
 ```{r}
 # Get the average ageclass size for all species:
@@ -1095,7 +1098,7 @@ size_at_age_means <- function(comname_x, test_var = avg_len, var_label = "Averag
   }, .id = "period")
   
   
-  # Make the plot
+  # Make the plot with means for periods
   ggplot(size_at_age_data, aes(year, {{test_var}})) +
     geom_line(aes(group = age), color = "gray70") +
     geom_segment(
@@ -1110,7 +1113,7 @@ size_at_age_means <- function(comname_x, test_var = avg_len, var_label = "Averag
 
 ```
 
-#### Length at Age
+## Length at Age
 
 
 ::: panelset
@@ -1127,7 +1130,7 @@ walk(vb_species,
 :::
 
 
-#### Weight at Age
+## Weight at Age
 
 
 ::: panelset
@@ -1139,6 +1142,80 @@ walk(vb_species,
      plot_fun = size_at_age_means,
      test_var = avg_wt,
      var_label = "Individual Weight (kg)")
+
+```
+:::
+
+
+## Cohort Decadal Growth Differences
+
+The following figures display what the average length or weight was for individuals **born** in a given decade. Means for each decade have been overlaid. No data for individuals born before 1970 were included here.
+
+```{r}
+# Display the lines for size at age starting at a 0 and extending out
+
+decadal_growth_lines <- function(test){
+  # Data to get averages
+  species_dat <- filter(age_truncated, comname == test)
+  
+  # Get the averages for each year, give labels for display groups
+  age_lines <- species_dat %>% 
+      filter(yearclass>= 1970) %>% 
+      group_by(comname, year = yearclass,  age) %>% 
+    summarise(
+      avg_len = mean(length_cm, na.rm =T),
+      avg_wt = mean(indwt, na.rm =T),
+      avg_condition = mean(fK, na.rm =T),
+      .groups = "drop") %>% 
+    mutate(decade = floor_decade(year),
+           age = factor(age, levels = c(1:10, ">10")))
+  
+  decade_lines <- species_dat %>%
+    filter(yearclass>= 1970) %>% 
+    mutate(decade = floor_decade(yearclass)) %>% 
+    group_by(comname, decade,  age) %>% 
+    summarise(
+      avg_len = mean(length_cm, na.rm =T),
+      avg_wt = mean(indwt, na.rm =T),
+      avg_condition = mean(fK, na.rm =T),
+      .groups = "drop")
+  
+  
+  # Average Length
+  len_plot <- ggplot(age_lines, aes(age, avg_len)) +
+    geom_line(aes(group = year, color = decade), alpha = 0.2, linewidth = 0.5) +
+    scale_color_gmri() +
+    geom_line(data = decade_lines, aes(group = decade, color = decade), linewidth = 1) +
+    geom_dl(data = decade_lines, aes(group = decade, color = decade, label = decade), method="last.points") +
+    scale_x_discrete(expand = expansion(add = c(0,1))) +
+    labs(title = test, y = "Average Length (cm)", x = "Age", color = "Decade of Birth")
+  
+  # Average Weight
+  wt_plot <- ggplot(age_lines, aes(age, avg_wt)) +
+    geom_line(aes(group = year, color = decade), alpha = 0.2, linewidth = 0.5) +
+    scale_color_gmri() +
+    geom_line(data = decade_lines, aes(group = decade, color = decade), linewidth = 1) +
+    geom_dl(data = decade_lines, aes(group = decade, color = decade, label = decade), method="last.points") +
+    scale_x_discrete(expand = expansion(add = c(0,1))) +
+    labs(y = "Average Weight (kg)", x = "Age", color = "Decade of Birth")
+  
+  both_p <- (len_plot / wt_plot) + plot_layout(guides = "collect")
+  return(both_p)
+}
+
+```
+
+
+
+
+::: panelset
+```{r, results="asis"}
+#| fig-height: 8
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = decadal_growth_lines)
 
 ```
 :::
