@@ -118,12 +118,12 @@ display_species <- sort(c(
   "butterfish",
   "haddock", 
   "pollock",
-  "red hake",
+  #"red hake",
   "scup",
   "silver hake",
-  "summer flounder",
+  #"summer flounder",
   "white hake",
-  "windowpane",
+  #"windowpane",
   "winter flounder",
   "witch flounder",
   "yellowtail flounder"
@@ -284,7 +284,9 @@ temp_details <- function(temp_dataset){
   
   
   # Get the annual warming rates: 82-2021
-  annual_avgs <- temp_dataset %>% group_by(year) %>% summarise(sst = mean(area_wtd_sst), sst_anom = mean(area_wtd_anom))
+  annual_avgs <- temp_dataset %>% group_by(year) %>% 
+    summarise(sst = mean(area_wtd_sst), 
+              sst_anom = mean(area_wtd_anom))
   rate_c <- as.numeric(coef(lm(sst~year, data = annual_avgs))[2])
   rate_f <- as_fahrenheit(rate_c, data_type = "anomalies")
   
@@ -294,7 +296,9 @@ temp_details <- function(temp_dataset){
   data_early <- annual_avgs %>% filter(year %in% c(1982:2009))
   data_late <- annual_avgs %>% filter(year %in% c(2010:2022))
   mean_early <- data_early %>% pull(sst) %>% mean()
+  mean_anom_early <- data_early %>% pull(sst_anom) %>% mean()
   mean_late <- data_late %>% pull(sst) %>% mean()
+  mean_anom_late <- data_late %>% pull(sst_anom) %>% mean()
   
   # Return everything
   return(
@@ -305,7 +309,9 @@ temp_details <- function(temp_dataset){
       "data_early" = data_early,
       "data_late" = data_late,
       "mean_early" = mean_early,
-      "mean_late" = mean_late
+      "mean_anom_early" = mean_anom_early,
+      "mean_late" = mean_late,
+      "mean_anom_late" = mean_anom_late
     )
   )
   
@@ -316,20 +322,34 @@ temp_details <- function(temp_dataset){
 
 
 # Run it for the three areas
-area_summaries <- map(list("northeast shelf" = shelf_oisst, "Gulf of Maine" = gom_oisst, "Global Oceans" = global_oisst), temp_details)
+area_summaries <- map(list("northeast shelf" = shelf_oisst, 
+                           "Gulf of Maine" = gom_oisst, 
+                           "Global Oceans" = global_oisst), temp_details)
 
 
 
 data_1 <- area_summaries$`northeast shelf`
 data_2 <- area_summaries$`Global Oceans`
 ggplot() +
-  geom_point(data = data_1$data_early, aes(year, sst), color = gmri_cols("blue")) +
-  stat_smooth(data = data_1$data_early, method = "lm", formula = y ~ x, aes(year, sst), color = gmri_cols("blue")) +
-  #geom_segment(aes(x = 1982, xend = 2009, y = data_1$mean_early, yend = data_1$mean_early), color = gmri_cols("blue"), linewidth = 1) +
-  geom_point(data = data_1$data_late, aes(year, sst), color = gmri_cols("orange")) +
-  #geom_segment(aes(x = 2010, xend = 2021, y = data_1$mean_late, yend = data_1$mean_late), color = gmri_cols("orange"), linewidth = 1) +
-  stat_smooth(data = data_1$data_late, method = "lm", formula = y ~ x, aes(year, sst), color = gmri_cols("orange")) +
-  labs(x = "Year", y = "SST", title = "Northeast Shelf SST Changes")
+  geom_point(data = data_1$data_early, aes(year, sst_anom), color = gmri_cols("blue"), alpha = 0.4) +
+  geom_point(data = data_1$data_late, aes(year, sst_anom), color = gmri_cols("orange"), alpha = 0.4) +
+  stat_smooth(data = data_2$annual_avgs, method = "lm", formula = y ~ x, 
+              aes(year, sst_anom), color = "gray30", se = FALSE, linetype = 5, linewidth = 1.2, alpha = 0.9) +
+  geom_segment(aes(x = 1982, xend = 2009, y = data_1$mean_anom_early, yend = data_1$mean_anom_early),
+               color = gmri_cols("blue"), linewidth = 1.2) +
+  geom_segment(aes(x = 2010, xend = 2021, y = data_1$mean_anom_late, yend = data_1$mean_anom_late),
+               color = gmri_cols("orange"), linewidth = 1.2) +
+  annotate(x = 1996, y = 0.5, geom = "text", label = "Shelf-Wide Average\n1982-2009", color = gmri_cols("blue"), fontface = "bold") +
+  annotate(x = 2016, y = 1.5, geom = "text", label = "Shelf-Wide Average\n2010-2021", color = gmri_cols("orange"), fontface = "bold") +
+  annotate(x = 2027, y = 0.4, geom = "text", label = "Global Rate\n1982-2021", color = "black", fontface = "bold") +
+  # stat_smooth(data = data_1$data_early, method = "lm", formula = y ~ x, aes(year, sst_anom),
+  #             color = gmri_cols("blue"), fill = "transparent") +
+  # stat_smooth(data = data_1$data_late, method = "lm", formula = y ~ x,
+  #             aes(year, sst_anom), color = gmri_cols("orange"),  se = FALSE) +
+  scale_y_continuous(labels = number_format(suffix = deg_c), 
+                     expand = expansion(add = c(0.5,0.5))) +
+  scale_x_continuous(expand = expansion(add = c(2,8))) +
+  labs(x = "Year", y = "SST Anomaly", title = "Northeast Shelf SST Regime Shift")
 
 
 ```
