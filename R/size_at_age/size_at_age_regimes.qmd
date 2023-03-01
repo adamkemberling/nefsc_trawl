@@ -49,7 +49,17 @@ bibliography: references.bib
   library(targets)
   library(bcp)
   library(ggrepel)
+  library(rnaturalearth)
+  library(terra)
+  library(tidyterra)
+  library(raster)
+  library(sf)
+  library(ggHoriPlot)
+ 
 }
+
+conflicted::conflict_prefer("select", "dplyr")
+conflicted::conflict_prefer("filter", "dplyr")
 
 
 # Set seed
@@ -207,53 +217,15 @@ Global Sea surface temperature data was obtained via NOAA's optimally interpolat
 ```{r}
 #| label: Load-sst-data
 
-# Load the regional temperatures from {targets}
-withr::with_dir(rprojroot::find_root('_targets.R'), 
-                tar_load(regional_oisst))
 
+#---------------------------
 
-# Get regional averages
-temp_regimes <- regional_oisst %>% 
-  filter(yr > 1981) %>% 
-  mutate(
-    regime = ifelse(yr < 2010, "1982-2009 Average", "2010-2021 Average"),
-    survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
-    survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB"))) %>% 
-  group_by(survey_area, regime) %>% 
-  mutate(
-    avg_temp_c = round(mean(sst), 2),
-    temp_label = str_c(avg_temp_c, "\u00b0C"),
-    avg_anom_c = mean(sst_anom),
-    #avg_anom_c = ifelse(regime == "1982-2009 Regime", 0, avg_anom_c),
-    x = ifelse(regime == "1982-2009 Average", 1981.5, 2009.5),
-    xend = ifelse(regime == "1982-2009 Average", 2009.5, 2021.5),
-         ) %>% 
-  ungroup()
+# Isolate the Shelf and Gulf of Maine EPU
 
-```
-
-### Temperature Study Region
-
-Temperature data was regionally averaged to match the sampling area for the fisheries independent survey program providing the age-at-length data. SST anomalies were averaged over the entire sampling region, consisting of continental shelf habitats from Cape Hatteras to Nova Scotia, to produce a daily time series. This time series was then processed into an annual timeseries of surface temperatures and anomalies. All area-averaging was done with area-weighting to account for differences in the relative areas of the latitude/longitude grid of the OISSTv2 data.
-
-### Temperature Regime Shift
-
-Annual temperature anomalies were checked for a regime shift using the bayesian change points package [@erdman2007] following the approach of [@Barry2012] implemented in the R statistical programming language.
-
-### Warming Trends
-
-We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the two time periods: all years before, and all years following the regime shift. Warming rates and long-term averages were estimated independently for each period.
-
-```{r}
-#| label: warming-trends-comparisons
-#| eval: false
-
-# Isolate the Shelf and Gulf of Maine
-
-# The Gulf of Maine Used:
+# The Gulf of Maine EPU:
 gom_oisst <- oisst_access_timeseries(
-      region_family = "nmfs trawl regions",
-      poly_name = "gulf of maine",
+      region_family = "epu",
+      poly_name = "gom",
       box_location = "cloudstorage" ) %>% 
   mutate(year = lubridate::year(time)) %>% 
   filter(between(year, 1982, 2022))
@@ -277,45 +249,127 @@ global_oisst <- read_csv(
 
 
 
+# ------------------
+
+# Make a joined dataset that can replace the targets one:
+regional_oisst <- bind_rows(
+  list("GoM" = gom_oisst, "all" = shelf_oisst), .id = "survey_area"
+) %>% 
+  select(survey_area, yr = year, sst = area_wtd_sst, sst_clim = area_wtd_clim, sst_anom = area_wtd_anom)
+
+
+# Get regional averages
+temp_regimes <- regional_oisst %>% 
+  filter(yr > 1981) %>% 
+  group_by(survey_area, yr) %>% 
+  summarise(
+    sst = mean(sst, na.rm = T),
+    sst_clim = mean(sst_clim, na.rm = T),
+    sst_anom = mean(sst_anom, na.rm = T),
+    .groups = "drop") %>% 
+  mutate(
+    decade = floor_decade(yr),
+    regime = ifelse(yr < 2010, "1982-2009 Average", "2010-2021 Average"),
+    survey_area = ifelse(survey_area == "all", "Full Region", survey_area)) %>% 
+  group_by(survey_area, regime) %>% 
+  mutate(
+    avg_temp_c = round(mean(sst), 2),
+    temp_label = str_c(avg_temp_c, "\u00b0C"),
+    avg_anom_c = mean(sst_anom),
+    x = ifelse(regime == "1982-2009 Average", 1981.5, 2009.5),
+    xend = ifelse(regime == "1982-2009 Average", 2009.5, 2021.5),
+         ) %>% 
+  ungroup()
+
+#--------------------------
+
+# Decision was made to use EPU for Gulf of Maine and the survey area for the shelf, this code was replaced
+
+# # Load the regional temperatures from {targets}
+# withr::with_dir(rprojroot::find_root('_targets.R'), 
+#                 tar_load(regional_oisst))
+# 
+# 
+# # Get regional averages
+# temp_regimes <- regional_oisst %>% 
+#   filter(yr > 1981) %>% 
+#   mutate(
+#     regime = ifelse(yr < 2010, "1982-2009 Average", "2010-2021 Average"),
+#     survey_area = ifelse(survey_area == "all", "Full Region", survey_area),
+#     survey_area = factor(survey_area, levels = c("Full Region", "GoM", "GB", "SNE", "MAB"))) %>% 
+#   group_by(survey_area, regime) %>% 
+#   mutate(
+#     avg_temp_c = round(mean(sst), 2),
+#     temp_label = str_c(avg_temp_c, "\u00b0C"),
+#     avg_anom_c = mean(sst_anom),
+#     #avg_anom_c = ifelse(regime == "1982-2009 Regime", 0, avg_anom_c),
+#     x = ifelse(regime == "1982-2009 Average", 1981.5, 2009.5),
+#     xend = ifelse(regime == "1982-2009 Average", 2009.5, 2021.5),
+#          ) %>% 
+#   ungroup()
+```
+
+### Temperature Study Region
+
+Temperature data was regionally averaged to match the sampling area for the fisheries independent survey program providing the age-at-length data. SST anomalies were averaged over the entire sampling region, consisting of continental shelf habitats from Cape Hatteras to Nova Scotia, to produce a daily time series. This time series was then processed into an annual timeseries of surface temperatures and anomalies. All area-averaging was done with area-weighting to account for differences in the relative areas of the latitude/longitude grid of the OISSTv2 data.
+
+### Temperature Regime Shift
+
+Annual temperature anomalies were checked for a regime shift using the bayesian change points package [@erdman2007] following the approach of [@Barry2012] implemented in the R statistical programming language.
+
+### Warming Trends
+
+We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time series using standard linear regression. We considered the two time periods: all years before, and all years following the regime shift. Warming rates and long-term averages were estimated independently for each period.
+
+```{r}
+#| label: warming-trends-comparisons
+#| eval: true
+
+
+
+
+
+
+
 # -------------  Plot 1 - Linear Trends ----------
 
 # Annual Trend Plot Prep:
 temp_details <- function(temp_dataset){
   
+    # Get the annual warming rates: 82-2021
+    annual_avgs <- temp_dataset %>% group_by(year) %>% 
+      summarise(
+        sst = mean(area_wtd_sst), 
+        sst_anom = mean(area_wtd_anom),
+        .groups = "drop")  %>% 
+      mutate(regime = ifelse(year<2010, gmri_cols("blue"), gmri_cols("orange")))
+    
   
-  # Get the annual warming rates: 82-2021
-  annual_avgs <- temp_dataset %>% group_by(year) %>% 
-    summarise(sst = mean(area_wtd_sst), 
-              sst_anom = mean(area_wtd_anom))
-  rate_c <- as.numeric(coef(lm(sst~year, data = annual_avgs))[2])
-  rate_f <- as_fahrenheit(rate_c, data_type = "anomalies")
-  
+    # What are the warming rates in c and F
+    rate_c <- as.numeric(coef(lm(sst~year, data = annual_avgs))[2])
+    rate_f <- as_fahrenheit(rate_c, data_type = "anomalies")
+    
 
-
-  # Get the mean temperatures for 82-2009 & 2010-2021
-  data_early <- annual_avgs %>% filter(year %in% c(1982:2009))
-  data_late <- annual_avgs %>% filter(year %in% c(2010:2022))
-  mean_early <- data_early %>% pull(sst) %>% mean()
-  mean_anom_early <- data_early %>% pull(sst_anom) %>% mean()
-  mean_late <- data_late %>% pull(sst) %>% mean()
-  mean_anom_late <- data_late %>% pull(sst_anom) %>% mean()
-  
-  # Return everything
-  return(
-    list(
-      "annual_avgs" = annual_avgs,
-      "annual_rate" = rate_c,
-      "rate_f" = rate_f,
-      "data_early" = data_early,
-      "data_late" = data_late,
-      "mean_early" = mean_early,
-      "mean_anom_early" = mean_anom_early,
-      "mean_late" = mean_late,
-      "mean_anom_late" = mean_anom_late
-    )
-  )
-  
-  return()
+    # Get the mean temperatures for 82-2009 & 2010-2021
+    data_early <- annual_avgs %>% filter(year %in% c(1982:2009))
+    data_late <- annual_avgs %>% filter(year %in% c(2010:2022))
+    mean_early <- data_early %>% pull(sst) %>% mean()
+    mean_anom_early <- data_early %>% pull(sst_anom) %>% mean()
+    mean_late <- data_late %>% pull(sst) %>% mean()
+    mean_anom_late <- data_late %>% pull(sst_anom) %>% mean()
+    
+    # Return everything
+    return(
+      list(
+        "annual_avgs" = annual_avgs,
+        "annual_rate" = rate_c,
+        "rate_f" = rate_f,
+        "data_early" = data_early,
+        "data_late" = data_late,
+        "mean_early" = mean_early,
+        "mean_anom_early" = mean_anom_early,
+        "mean_late" = mean_late,
+        "mean_anom_late" = mean_anom_late))
   
   
 }
@@ -325,47 +379,218 @@ temp_details <- function(temp_dataset){
 area_summaries <- map(list("northeast shelf" = shelf_oisst, 
                            "Gulf of Maine" = gom_oisst, 
                            "Global Oceans" = global_oisst), temp_details)
+```
 
 
+::: {.panel-tabset}
 
+### Northeast Shelf Regime Shift
+
+
+```{r}
+#| label: warming-rate-usshelf
+
+# Make a Plot comparing
 data_1 <- area_summaries$`northeast shelf`
 data_2 <- area_summaries$`Global Oceans`
 ggplot() +
-  geom_point(data = data_1$data_early, aes(year, sst_anom), color = gmri_cols("blue"), alpha = 0.4) +
-  geom_point(data = data_1$data_late, aes(year, sst_anom), color = gmri_cols("orange"), alpha = 0.4) +
+  geom_path(data = data_1$annual_avgs, aes(year, sst_anom, color = regime, group = 1), alpha = 0.5) +
+  scale_color_identity() +
+  geom_point(data = data_1$data_early, aes(year, sst_anom), color = gmri_cols("blue"), alpha = 0.5) +
+  geom_point(data = data_1$data_late, aes(year, sst_anom), color = gmri_cols("orange"), alpha = 0.5) +
+  stat_smooth(data = data_1$annual_avgs, method = "lm", formula = y ~ x, 
+              aes(year, sst_anom), color = "gray30", se = FALSE, linetype = 1, linewidth = 1.2, alpha = 0.9) +
   stat_smooth(data = data_2$annual_avgs, method = "lm", formula = y ~ x, 
               aes(year, sst_anom), color = "gray30", se = FALSE, linetype = 5, linewidth = 1.2, alpha = 0.9) +
-  geom_segment(aes(x = 1982, xend = 2009, y = data_1$mean_anom_early, yend = data_1$mean_anom_early),
-               color = gmri_cols("blue"), linewidth = 1.2) +
-  geom_segment(aes(x = 2010, xend = 2021, y = data_1$mean_anom_late, yend = data_1$mean_anom_late),
-               color = gmri_cols("orange"), linewidth = 1.2) +
-  annotate(x = 1996, y = 0.5, geom = "text", label = "Shelf-Wide Average\n1982-2009", color = gmri_cols("blue"), fontface = "bold") +
-  annotate(x = 2016, y = 1.5, geom = "text", label = "Shelf-Wide Average\n2010-2021", color = gmri_cols("orange"), fontface = "bold") +
-  annotate(x = 2027, y = 0.4, geom = "text", label = "Global Rate\n1982-2021", color = "black", fontface = "bold") +
-  # stat_smooth(data = data_1$data_early, method = "lm", formula = y ~ x, aes(year, sst_anom),
-  #             color = gmri_cols("blue"), fill = "transparent") +
-  # stat_smooth(data = data_1$data_late, method = "lm", formula = y ~ x,
-  #             aes(year, sst_anom), color = gmri_cols("orange"),  se = FALSE) +
+  geom_segment(aes(x = 1981.5, xend = 2009.5, y = data_1$mean_anom_early, yend = data_1$mean_anom_early),
+               color = gmri_cols("blue"), linewidth = 1.5) +
+  geom_segment(aes(x = 2009.5, xend = 2021.5, y = data_1$mean_anom_late, yend = data_1$mean_anom_late),
+               color = gmri_cols("orange"), linewidth = 1.5) +
+  annotate(x = 1996, y = 0.3, geom = "text", label = "1982-2009", color = gmri_cols("blue"), fontface = "bold") +
+  annotate(x = 2016, y = 1.6, geom = "text", label = "2010-2021", color = gmri_cols("orange"), fontface = "bold") +
+  annotate(x = 2026, y = 0.4, geom = "text", label = "Global", color = "black", fontface = "bold") +
+  annotate(x = 2026, y = 1.1, geom = "text", label = "Regional", color = "black", fontface = "bold") +
   scale_y_continuous(labels = number_format(suffix = deg_c), 
                      expand = expansion(add = c(0.5,0.5))) +
   scale_x_continuous(expand = expansion(add = c(2,8))) +
-  labs(x = "Year", y = "SST Anomaly", title = "Northeast Shelf SST Regime Shift")
+  labs(x = "Year", y = "SST Anomaly", title = "Northeast US Shelf SST Regime Shift")
 
 
 ```
+
+
+
+### Gulf of Maine Regime Shift
+
+
+```{r}
+#| label: warming-rate-gom
+
+# Make a Plot comparing
+data_1 <- area_summaries$`Gulf of Maine`
+data_2 <- area_summaries$`Global Oceans`
+ggplot() +
+  geom_path(data = data_1$annual_avgs, aes(year, sst_anom, color = regime, group = 1), alpha = 0.5) +
+  scale_color_identity() +
+  geom_point(data = data_1$data_early, aes(year, sst_anom), color = gmri_cols("blue"), alpha = 0.5) +
+  geom_point(data = data_1$data_late, aes(year, sst_anom), color = gmri_cols("orange"), alpha = 0.5) +
+  stat_smooth(data = data_1$annual_avgs, method = "lm", formula = y ~ x, 
+              aes(year, sst_anom), color = "gray30", se = FALSE, linetype = 1, linewidth = 1.2, alpha = 0.9) +
+  stat_smooth(data = data_2$annual_avgs, method = "lm", formula = y ~ x, 
+              aes(year, sst_anom), color = "gray30", se = FALSE, linetype = 5, linewidth = 1.2, alpha = 0.9) +
+  geom_segment(aes(x = 1981.5, xend = 2009.5, y = data_1$mean_anom_early, yend = data_1$mean_anom_early),
+               color = gmri_cols("blue"), linewidth = 1.5) +
+  geom_segment(aes(x = 2009.5, xend = 2021.5, y = data_1$mean_anom_late, yend = data_1$mean_anom_late),
+               color = gmri_cols("orange"), linewidth = 1.5) +
+  annotate(x = 1996, y = 0.3, geom = "text", label = "1982-2009", color = gmri_cols("blue"), fontface = "bold") +
+  annotate(x = 2016, y = 1.75, geom = "text", label = "2010-2021", color = gmri_cols("orange"), fontface = "bold") +
+  annotate(x = 2026, y = 0.4, geom = "text", label = "Global", color = "black", fontface = "bold") +
+  annotate(x = 2026, y = 1.4, geom = "text", label = "Regional", color = "black", fontface = "bold") +
+  scale_y_continuous(labels = number_format(suffix = deg_c), 
+                     expand = expansion(add = c(0.5,0.5))) +
+  scale_x_continuous(expand = expansion(add = c(2,8))) +
+  labs(x = "Year", y = "SST Anomaly", title = "Gulf of Maine EPU SST Regime Shift")
+
+
+```
+
+
+### Regional Warming Rates
+
 
 
 ```{r}
 #| label: warming-trends-maps
-#| eval: false
+#| eval: true
+
 # -------------  Plot 2 - Map of Rates ----------
+
+
+# Masking Function to clip to the study area
+mask_nc <- function(ras_obj, mask_shape, rotate = TRUE){
+  
+  # First Mask using the polygon, rotate if needed
+  if(rotate == TRUE){
+    m1 <- mask(rotate(ras_obj), mask_shape)
+  } else {
+    m1 <- mask(ras_obj, mask_shape)
+  }
+  
+  # Then Crop
+  m1 <- crop(m1, mask_shape)
+  return(m1)
+}
+
 
 # Load warming rates raster
 # # 1. Warming Rates and Rankings
-rates_path <- str_c(oisst_path, "warming_rates/annual_warming_rates1982to2022.nc")
-rates_nc <- stack(rates_path, varname = "annual_warming_rate")
-ranks_nc <- stack(rates_path, varname = "rate_percentile")
+oisst_path <- cs_path("res", "OISST/oisst_mainstays")
+rates_path <- str_c(oisst_path, "warming_rates/annual_warming_rates1982to2021.nc")
+rates_nc <- raster::stack(rates_path, varname = "annual_warming_rate")
+# ranks_nc <- raster::stack(rates_path, varname = "rate_percentile")
+
+
+
+#------------
+
+# Crop specifically to NE Shelf
+shelf_path <- gmRi:::get_timeseries_paths(region_group = "nmfs_trawl_regions", box_location = "cloudstorage")
+shelf_path <- shelf_path$inuse_strata$shape_path
+ne_shelf_sf <- read_sf(shelf_path) %>% st_union() %>% st_as_sf()
+ne_shelf_rate <- mask_nc(ras_obj = rates_nc, mask_shape = ne_shelf_sf)
+
+
+#------------
+
+# Crop specifically to Gulf of Maine EPU
+gom_epu <- ecodata::epu_sf %>% filter(EPU == "GOM")
+gom_epu_rate <- mask_nc(ras_obj = rates_nc, mask_shape = gom_epu)
+
+
+#------------
+
+# Get Means within each region for display purposes
+ne_shelf_avg <- cellStats(ne_shelf_rate, mean, na.rm = T) %>% round(2)
+gom_epu_avg <- cellStats(gom_epu_rate, mean, na.rm = T) %>% round(2)
+
+
+#------------
+
+# Terra of general area for map
+
+
+# Bounding Box Extent
+area_extent <- tribble(
+  ~"lon", ~"lat",
+  -76,	35, 
+  -61,	35, 
+  -61,	48, 
+  -76,	48, 
+  -76,	35) %>% 
+  as.matrix() %>% 
+  list() %>% 
+  st_polygon()
+
+# as simple feature collection
+general_area <- st_sf(area = "general_area", st_sfc(area_extent), crs = 4326)
+
+# Mask
+general_area_rate <- mask_nc(ras_obj = rates_nc, mask_shape = general_area)
+general_area_rate <- terra::rast(general_area_rate)
+
+
+#------------
+
+
+
+# Make map
+# landmasses, warming rates everywhere, shapefiles for regions, labels for regional rates
+us_poly <- ne_states("united states of america", returnclass = "sf")
+canada <- ne_states("canada", returnclass = "sf")
+
+
+
+ggplot() +
+  tidyterra::geom_spatraster(
+    data = general_area_rate, show.legend = T) +
+  geom_sf(data = us_poly, fill = "gray90", linewidth = .15) +
+  geom_sf(data = canada, fill = "gray90", linewidth = .15) +
+  geom_sf(data = ne_shelf_sf,
+          color = "gray20",
+          linetype = 1,
+          linewidth = 0.5,
+          fill = "transparent") +
+  geom_sf(data = gom_epu,
+          color = "gray20",
+          linetype = 1, 
+          linewidth = 0.5,
+          fill = "transparent") +
+  geom_sf(data = us_poly, fill = "gray90", linewidth = .15) +
+  geom_sf(data = canada, fill = "gray90", linewidth = .15) +
+  annotate(x = -63.5, y = 42.85, label = str_c("GoM EPU\n", gom_epu_avg, deg_c, " / Year"), geom = "label", size = 3) +
+  annotate(x = -69.5, y = 39, label = str_c("Northeast Shelf\n", ne_shelf_avg, deg_c, " / Year"), geom = "label", size = 3) +
+  scale_fill_distiller(palette = "RdBu", direction = -1, limits = c(-.12, .12), labels = number_format(suffix = deg_c), na.value = "transparent") +
+  scale_y_continuous(breaks = seq(30, 50, by = 2)) +
+  coord_sf(xlim = c(-78, -62), ylim = c(36, 47)) +
+  theme_bw() +
+  map_theme(legend.position = "bottom") +
+  guides(fill = guide_colorsteps(
+    title = "Annual Warming Rate: 1982-2021",
+    title.position = "top",
+    title.hjust = 0.5,
+    barwidth = unit(4, "in"), 
+    frame.colour = "black",
+    ticks.colour = "black", labels = number_format(suffix = "t"),
+    show.limits = T)) +
+  labs(x = NULL, y = NULL)
+
 ```
+
+
+
+
+:::
+
 
 
 ## Data Collection
@@ -470,34 +695,8 @@ rm(survdat_clean)
 
 
 
-
-
 ```
 
-
-```{r}
-#| eval: false
-#| label: im-stupid
-
-
-what_you_have <- tribble(
-  ~"station",  ~"comname", ~"depth", ~"biomass", ~"length", ~"numlen",
-  "station_1", "redfish",  10,       25,         12,        2,
-  "station_1", "redfish",  10,       25,         10,        1,
-  "station_2", "redfish",  12,       25,         10,        2 
-)
-
-
-what_the_funciton_expects <- tribble(
-  ~"station",  ~"comname", ~"depth", ~"biomass", ~"length", ~"numlen",
-  "station_1", "redfish",  10,       25,         12,        2,
-  #"station_1", "redfish",  10,       25,         10,        1,
-  "station_2", "redfish",  12,       25,         10,        2 
-)
-
-
-
-```
 
 
 ### Calculating Spatial Metrics
@@ -797,10 +996,9 @@ Yield-per-recruit analysis similar to Baudron et al. 2014?
 #| label: Temperature-regime-shift
 
 # Pull the whole area's temps
-# Pull the regime averages out
 survey_temps <- filter(temp_regimes, survey_area == "Full Region")
 
-
+# Get the distinct labels for the two regimes
 regime_avg_temps <- survey_temps %>% 
   distinct(regime, avg_temp_c, avg_anom_c, temp_label) 
 
@@ -811,7 +1009,6 @@ regime_2 <- regime_avg_temps %>% filter(regime == "2010-2021 Average")
 
 # Functions developed in 10_change_points.R
 # For bayesian Change points
-
 
 # run bcp and flag changepoints using threshold
 flag_bcp <- function(response_var,  
@@ -1567,7 +1764,13 @@ walk(display_species,
 
 # Discussion
 
-------------------------------------------------------------------------
+
+
+
+
+
+
+---
 
 # Bonus: Data Explorations
 
@@ -1776,7 +1979,7 @@ age_increment_ccf %>%
   scale_x_continuous(breaks = seq(-10,10,2)) +
   # scale_fill_distiller(palette = "RdBu", limits = c(-1,1)) +
   scale_fill_fermenter(palette = "RdBu", limits = c(-1,1), breaks = seq(-1,1, .2)) +
-  facet_wrap(`Age Increment`~., labeller = as_labeller(~str_c("Age Increment ", .x)), ncol = 1) +
+  facet_wrap(`Age Increment`~., labeller = as_labeller(~str_c("Age Increment ", .x)), ncol = 2) +
   labs(x = "Year Lags on Predictor (SST Anomaly)",
        y = "Common Name",
        fill = "Correlation",
@@ -1788,10 +1991,247 @@ age_increment_ccf %>%
 
 
 
-## Length at Age Changes
+
+## Parameters & Environment
+
+The following figures plot the change in Linf and K against the center of biomass values of depth, temp, lat, and lon.
+
+```{r}
+#| label: center-bio-estimation
+
+
+# Group on Common Name and Regime
+# run weighted mean/median/sd via biomass_kg
+regime_center_bio <- bio_regimes %>% 
+  group_by(comname, regime) %>% 
+  summarise(
+    across(.cols = c(depth = avgdepth,
+                     temp = bottemp,
+                     lat = decdeg_beglat,
+                     lon = decdeg_beglon), 
+           .fns = ~ weighted.mean(.x, w = biomass_kg, na.rm = T), 
+           .names = "{.col}_mu"),
+    .groups = "drop"
+  )
+
+
+# Join the coefficients
+coef_and_cbio <- species_coef %>% 
+  select(comname, regime, parameter, estimate, converged) %>% 
+  pivot_wider(names_from = "parameter", values_from = "estimate") %>% 
+  left_join(regime_center_bio, by = c("comname", "regime"))
+
+
+```
+
+::: panel-tabset
+
+### Depth
+
+```{r}
+#| label: center-depth-change-plots
+
+# K
+p1 <- ggplot(coef_and_cbio, aes(depth_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Depth (m)",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+p2 <- ggplot(coef_and_cbio, aes(depth_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Depth (m)",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+
+p1 | p2
+```
+
+### Bottom Temperature
+
+```{r}
+#| label: center-temp-change-plots
+
+# K
+p1 <- ggplot(coef_and_cbio, aes(temp_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Temp (C)",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+p2 <- ggplot(coef_and_cbio, aes(temp_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Temp (c)",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+p1 | p2
+```
+
+### Latitude
+
+```{r}
+#| label: center-lat-change-plots
+
+# K
+p1 <- ggplot(coef_and_cbio, aes(lat_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Latitude",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+p2 <- ggplot(coef_and_cbio, aes(lat_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Latitude",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+
+p1 | p2
+```
+
+### Longitude
+
+```{r}
+#| label: center-lon-change-plots
+
+
+# K
+p1 <- ggplot(coef_and_cbio, aes(lon_mu, K)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Longitude",
+       y = "K",
+       color = "Species Center of Biomass")
+
+
+# Linf
+p2 <- ggplot(coef_and_cbio, aes(lon_mu, Linf)) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    color = "gray50") +
+  ggforce::geom_link2(
+    aes(group = comname,
+        alpha = stat(index),
+        color = "Transition"),
+    color = "black",
+    size = 0.75,
+    show.legend = FALSE) +
+  geom_point(aes(color = regime)) +
+  scale_color_gmri() +
+  labs(x = "Center of Biomass Longitude",
+       y = "Linf",
+       color = "Species Center of Biomass")
+
+p1 | p2
+
+```
+
+:::
+
+
+
+# Retired Assets:
+
+This section exists to isolate code/analyses that were removed
+
+
+## Length at Age by Regime
 
 ```{r}
 #| label: regime-size-plots
+#| eval: false
 
 # Distribution of Length/Weight Across Regimes 
 plot_regime_sizes <- function(
@@ -1872,7 +2312,6 @@ plot_regime_sizes <- function(
          shape = "Median"
          )
   
-  
 }
 
 
@@ -1884,6 +2323,7 @@ plot_regime_sizes <- function(
 ::: panelset
 ```{r, results="asis", fig.height = 8}
 #| label: regime-size-panels
+#| eval: false
 
 # Loop through the key species:
 walk(display_species, plot_panelset, plot_fun = plot_regime_sizes, var = "length")
@@ -1891,11 +2331,12 @@ walk(display_species, plot_panelset, plot_fun = plot_regime_sizes, var = "length
 ```
 :::
 
-## Weight at Age Changes
+## Weight at Age by Regime
 
 ::: panelset
 ```{r, results="asis", fig.height = 8}
 #| label: weight-at-age-panels
+#| eval: false
 
 # Loop through the key species:
 walk(display_species, plot_panelset, plot_fun = plot_regime_sizes, var = "weight")
@@ -1923,20 +2364,28 @@ regime_comparison %>%
          subtitle = "Changes in Size at Age (Warm Regime - Historic Regime)") 
 ```
 
+
+
 ```{r}
 #| label: data-for-curves
 #| eval: false
 
 # Kathy requested the curve data.
 # Going to save both the coefficients and the fitted data for all species
-library(here)
+
 write_csv(regime_comparison, here("data/growth_results/growth_regime_fits.csv"))
 write_csv(species_coef, here("data/growth_results/growth_regime_coefs.csv"))
 
 ```
 
+
+#### Growth Change Horizons
+
+
+
 ```{r}
 #| label: growth-change-horizons
+#| eval: false
 
 # Try horizons
 library(ggHoriPlot)
@@ -2047,225 +2496,6 @@ ggplot(regime_comparison, aes(x = age, y = growth_frac)) +
 
 ```
 
-## Parameters & Environment
-
-The following figures plot the change in Linf and K against the center of biomass values of depth, temp, lat, and lon.
-
-```{r}
-#| label: center-bio-estimation
-
-
-# Group on Common Name and Regime
-# run weighted mean/median/sd via biomass_kg
-regime_center_bio <- bio_regimes %>% 
-  group_by(comname, regime) %>% 
-  summarise(
-    across(.cols = c(depth = avgdepth,
-                     temp = bottemp,
-                     lat = decdeg_beglat,
-                     lon = decdeg_beglon), 
-           .fns = ~ weighted.mean(.x, w = biomass_kg, na.rm = T), 
-           .names = "{.col}_mu"),
-    .groups = "drop"
-  )
-
-
-# Join the coefficients
-coef_and_cbio <- species_coef %>% 
-  select(comname, regime, parameter, estimate, converged) %>% 
-  pivot_wider(names_from = "parameter", values_from = "estimate") %>% 
-  left_join(regime_center_bio, by = c("comname", "regime"))
-
-
-```
-
-::: panel-tabset
-
-### Depth
-
-```{r}
-#| label: center-depth-change-plots
-
-# K
-ggplot(coef_and_cbio, aes(depth_mu, K)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Depth (m)",
-       y = "K",
-       color = "Species Center of Biomass")
-
-
-# Linf
-ggplot(coef_and_cbio, aes(depth_mu, Linf)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Depth (m)",
-       y = "Linf",
-       color = "Species Center of Biomass")
-
-```
-
-### Bottom Temperature
-
-```{r}
-#| label: center-temp-change-plots
-
-# K
-ggplot(coef_and_cbio, aes(temp_mu, K)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Temp (C)",
-       y = "K",
-       color = "Species Center of Biomass")
-
-
-# Linf
-ggplot(coef_and_cbio, aes(temp_mu, Linf)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Temp (c)",
-       y = "Linf",
-       color = "Species Center of Biomass")
-
-```
-
-### Latitude
-
-```{r}
-#| label: center-lat-change-plots
-
-# K
-ggplot(coef_and_cbio, aes(lat_mu, K)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Latitude",
-       y = "K",
-       color = "Species Center of Biomass")
-
-
-# Linf
-ggplot(coef_and_cbio, aes(lat_mu, Linf)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Latitude",
-       y = "Linf",
-       color = "Species Center of Biomass")
-
-```
-
-### Longitude
-
-```{r}
-#| label: center-lon-change-plots
-
-# K
-ggplot(coef_and_cbio, aes(lon_mu, K)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Longitude",
-       y = "K",
-       color = "Species Center of Biomass")
-
-
-# Linf
-ggplot(coef_and_cbio, aes(lon_mu, Linf)) +
-  geom_smooth(
-    method = "lm",
-    formula = y ~ x,
-    color = "gray50") +
-  ggforce::geom_link2(
-    aes(group = comname,
-        alpha = stat(index),
-        color = "Transition"),
-    color = "black",
-    size = 0.75,
-    show.legend = FALSE) +
-  geom_point(aes(color = regime)) +
-  scale_color_gmri() +
-  labs(x = "Center of Biomass Longitude",
-       y = "Linf",
-       color = "Species Center of Biomass")
-
-```
-
-:::
 
 ```{r}
 #| results: asis
