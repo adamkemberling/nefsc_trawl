@@ -983,6 +983,35 @@ walk(vb_species,
 
 :::
 
+
+# Size at Maturity
+
+Length and weight at first maturity for each species has been taken from [NOAA fisheries](https://www.fisheries.noaa.gov/species-directory) and from fishbase when unavailable.
+
+```{r}
+
+size_at_maturity <- tribble(
+  ~"Common Name",          ~"Length at Maturity",      ~"Weight at Maturity",
+  "american plaice",
+  "atlantic cod",
+  "atlantic herring",
+  "atlantic mackerel",
+  "black sea bass",
+  "butterfish",         
+  "haddock",
+  "pollock",
+  "scup",
+  "silver hake",
+  "white hake",
+  "winter flounder",
+  "witch flounder",
+  "yellowtail flounder"
+)
+
+```
+
+
+
 # Significant Growth Differences
 
 With the exception of silver hake, all species in these tests are significantly smaller at older ages. There are instances where species are larger at their earliest ages (1-4 years of age), but their growth then plateaus and they ultimately reach a smaller adult size. Black sea bass is another possible exception, showing some age-classes with smaller lengths and weights, but not in a consistent pattern with increasing age. 
