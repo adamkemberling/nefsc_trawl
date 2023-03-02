@@ -304,24 +304,24 @@ period_groups <- map(year_groups, function(period){
 
 # Set the Age ranges for each species:
 ages_to_test <- list(
-  "acadian redfish"     = c(1:15),
-  "american plaice"     = c(1:12),
-  "atlantic cod"        = c(1:12),
-  "atlantic herring"    = c(1:12),
-  "atlantic mackerel"   = c(1:10),
-  "black sea bass"      = c(1:10),
-  "butterfish"          = c(1:6),
-  "haddock"             = c(1:14),
-  "pollock"             = c(1:14),
-  "red hake"            = c(1:12),
-  "scup"                = c(1:12),
-  "silver hake"         = c(1:12),
-  "summer flounder"     = c(1:12),
-  "white hake"          = c(1:12),
-  "windowpane"          = c(1:8),
-  "winter flounder"     = c(1:14),
-  "witch flounder"      = c(1:14),
-  "yellowtail flounder" = c(1:12)
+  # "acadian redfish"     = c(1:15),
+  "american plaice"     = c(1:9),
+  "atlantic cod"        = c(1:7),
+  "atlantic herring"    = c(1:8),
+  "atlantic mackerel"   = c(1:5),
+  "black sea bass"      = c(1:5),
+  "butterfish"          = c(1:4),
+  "haddock"             = c(1:10),
+  "pollock"             = c(1:8),
+  # "red hake"            = c(1:12),
+  "scup"                = c(1:4),
+  "silver hake"         = c(1:5),
+  # "summer flounder"     = c(1:12),
+  "white hake"          = c(1:7),
+  # "windowpane"          = c(1:8),
+  "winter flounder"     = c(1:8),
+  "witch flounder"      = c(1:8),
+  "yellowtail flounder" = c(1:6)
 )
 
 
@@ -856,7 +856,6 @@ walk(vb_species,
 :::
 
 
-
 # Condition Factor at Age
 
 The following tables display the results of two-sample testing comparing fulton's condition factor at age of each species between data from two different periods. Significant differences are highlighted when they occur, and in those rows the larger size period's mean has been highlighted in green, with the smaller sized period's mean highlighted in red.
@@ -984,28 +983,32 @@ walk(vb_species,
 :::
 
 
+
+
+
 # Size at Maturity
 
-Length and weight at first maturity for each species has been taken from [NOAA fisheries](https://www.fisheries.noaa.gov/species-directory) and from fishbase when unavailable.
+Length and weight at first maturity for each species has been taken from [NOAA fisheries](https://www.fisheries.noaa.gov/new-england-mid-atlantic/science-data/introduction-age-determination-methods-northwest-atlantic-species) and stock assessment report citations when no webpage was available. Values reported in the table below are either the higher value of a 1-year range given, or the middle value of 3-year ranges reported. References can be found in the decadal variability folder on Box.
 
 ```{r}
 
 size_at_maturity <- tribble(
-  ~"Common Name",          ~"Length at Maturity",      ~"Weight at Maturity",
-  "american plaice",
-  "atlantic cod",
-  "atlantic herring",
-  "atlantic mackerel",
-  "black sea bass",
-  "butterfish",         
-  "haddock",
-  "pollock",
-  "scup",
-  "silver hake",
-  "white hake",
-  "winter flounder",
-  "witch flounder",
-  "yellowtail flounder"
+  ~"Common Name",          ~"Age at Maturity",
+  "american plaice",       3, 
+  "atlantic cod",          3, 
+  "atlantic herring",      4, 
+  "atlantic mackerel",     3, 
+  "black sea bass F",      2, 
+  "black sea bass M",      4, 
+  "butterfish",            2,  
+  "haddock",               2,   
+  "pollock",               4,    
+  "scup",                  2,  
+  "silver hake",           2,  
+  "white hake",            2,  
+  "winter flounder",       2,    
+  "witch flounder",        5,    
+  "yellowtail flounder",   3
 )
 
 ```
@@ -1022,6 +1025,41 @@ With the exception of silver hake, all species in these tests are significantly 
   
 ### 1970-2009 vs. 2009-2019
   
+  
+  
+### Exporting length and weight results
+
+```{r}
+#| label: export-wide-1970
+len_results <- laa_1970_start  %>% 
+  rename(mean_1970_2009 = `1970-2009`,
+         mean_2010_2019 = `2010-2019`) %>% 
+  mutate(percent_change = ((mean_2010_2019-mean_1970_2009)/mean_1970_2009)*100, 
+         .after = "mean_2010_2019") %>% 
+  mutate(early_period_coverage = str_c(earliest_measure, "-2009"), .after = "earliest_measure") %>% 
+  select(-c(method, variance_test, comparison_var, statistical_test, earliest_measure)) %>% 
+  rename_with(~str_c("l_", .), 3:14) 
+
+wt_results <- waa_1970_start %>% 
+  rename(mean_1970_2009 = `1970-2009`,
+         mean_2010_2019 = `2010-2019`) %>% 
+  mutate(percent_change = ((mean_2010_2019-mean_1970_2009)/mean_1970_2009)*100, 
+         .after = "mean_2010_2019") %>% 
+  mutate(early_period_coverage = str_c(earliest_measure, "-2009"), .after = "earliest_measure") %>% 
+  select(-c(method, variance_test, comparison_var, statistical_test, earliest_measure)) %>% 
+  rename_with(~str_c("w_", .), 3:14) 
+
+results_wide <- left_join(len_results, wt_results, by = c("comname", "age"))
+
+# Path to decadal folder:
+decadal_folder <- cs_path(box_group = "mills", subfolder = "Projects/Decadal Variability/Growth Results")
+
+
+write_csv(results_wide, str_c(decadal_folder, "length_and_weight_atage_ttest_results.csv"))
+```
+
+
+
   
 
 ```{r}
@@ -1102,12 +1140,18 @@ pair_2_results_tidy <- pair_2_results %>% #names()
   mutate(across(where(is.numeric), round, 3))
 
 
+# Put all the results into one table
+all_results <- bind_rows(pair_1_results_tidy, pair_2_results_tidy)
+```
+
+
+```{r}
+#| label: winloss-table-1970
 
 
 #---------------------
 
-# Put all the results into one table
-all_results <- bind_rows(pair_1_results_tidy, pair_2_results_tidy)
+
 
 
 # palette for bars
@@ -1144,9 +1188,9 @@ winloss_results_1 %>%
   pivot_wider(names_from = comparison_var, values_from = wins) %>% 
   select(comname, `Individual Length`, `Individual Weight`) %>% 
   gt(rowname_col = "comname") %>%
-  tab_header(
-    title = "Changes in Size-At-Age Characteristics",
-    subtitle = "Significant changes in size moving from 1970-2009 & to 2010-2019 size-at-age data") %>% 
+  # tab_header(
+  #   title = "Changes in Size-At-Age Characteristics",
+  #   subtitle = "Significant changes in size moving from 1970-2009 & to 2010-2019 size-at-age data") %>% 
   gtExtras::gt_plt_winloss(`Individual Weight`, palette = winloss_pal) %>% 
   gtExtras::gt_plt_winloss(`Individual Length`, palette = winloss_pal) %>% 
   tab_spanner(
@@ -1158,8 +1202,8 @@ winloss_results_1 %>%
       columns = c(`Individual Length`, `Individual Weight`)
   )) %>% 
   gt::cols_label(
-    `Individual Length` = md("**Length Changes**"),
-    `Individual Weight` = md("**Weight Changes**"))
+    `Individual Length` = md("**Length**"),
+    `Individual Weight` = md("**Weight**"))
 
 
 ```
@@ -1203,9 +1247,9 @@ winloss_results_2 %>%
   pivot_wider(names_from = comparison_var, values_from = wins) %>% 
   select(comname, `Individual Length`, `Individual Weight`) %>% 
   gt(rowname_col = "comname") %>%
-  tab_header(
-    title = "Changes in Size-At-Age Characteristics",
-    subtitle = "Significant changes in size moving from 2000-2009 & to 2010-2019 size-at-age data") %>% 
+  # tab_header(
+  #   title = "Changes in Size-At-Age Characteristics",
+  #   subtitle = "Significant changes in size moving from 2000-2009 & to 2010-2019 size-at-age data") %>% 
   gtExtras::gt_plt_winloss(`Individual Weight`, palette = winloss_pal) %>% 
   gtExtras::gt_plt_winloss(`Individual Length`, palette = winloss_pal) %>% 
   tab_spanner(
@@ -1216,8 +1260,8 @@ winloss_results_2 %>%
     locations = cells_column_labels(
       columns = c(`Individual Length`, `Individual Weight`))) %>% 
   gt::cols_label(
-    `Individual Length` = md("**Length Changes**"),
-    `Individual Weight` = md("**Weight Changes**"))
+    `Individual Length` = md("**Length**"),
+    `Individual Weight` = md("**Weight**"))
 
 ```
 
@@ -1241,33 +1285,29 @@ size_at_ages_all <- age_truncated %>%
     avg_condition = mean(fK, na.rm =T),
     .groups = "drop") %>% 
   complete(comname, year, age)
+```
 
 
-
-
-
-
-
-# Function to plot them all:
+```{r}
+# Function to plot the Size at Age differences
 mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average Length (cm)"){
   
   # Data for lines
   size_at_age_data <- size_at_ages_all %>% 
-    filter(comname == comname_x)
+    filter(comname == comname_x,
+           age %in% ages_to_test[[comname_x]]) 
   
-  
-  # Data for period averages
-  period_list <- list(
-    "period_1" = c(1970:2009),
-    "period_3" = c(2010:2019))
-  
-  # Data to get averages
-  species_dat <- filter(age_truncated, comname == comname_x)
   
   
   # Set a more accurate left-lim for species that were aged starting later
   true_left <- size_at_age_data %>% drop_na({{test_var}}) %>% pull(year) %>% min()
   
+  
+  # Data for period averages
+  period_list <- list("period_1" = c(1970:2009), "period_3" = c(2010:2019))
+  
+  # Data to get averages
+  species_dat <- filter(age_truncated, comname == comname_x, age %in% ages_to_test[[comname_x]])
   
   # Get the means over that range, make a dataframe of x, xend, y, yend for segments
   period_means <- imap_dfr(period_list, function(period_years, period_name){
@@ -1290,15 +1330,17 @@ mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average L
   # Make the plot with means for periods
   size_at_age_data %>% 
   ggplot(aes(year, {{test_var}})) +
-    geom_line(aes(group = age), color = "gray70") +
+    geom_line(aes(group = age), color = gmri_cols("light gray"), linewidth = 0.5) +
+    geom_point(aes(group = age), color = "black", size = 0.5) +
     geom_segment(
       data = period_means,
-      aes(x = x, xend = xend, y = {{test_var}}, yend = {{test_var}}, group = age, color = period, alpha = age_alpha),
+      aes(x = x, xend = xend, y = {{test_var}}, yend = {{test_var}}, group = age, color = period#, alpha = age_alpha
+          ),
       linewidth = 1.2, show.legend = FALSE) +
       scale_color_manual(values = c(gmri_cols("blue"), gmri_cols("orange"))) +
       scale_x_continuous(limits = c(true_left, 2019)) +
-      scale_alpha_continuous(trans = reverse_trans()) +
-      labs(title = comname_x, y = var_label, x = "Year")
+      #scale_alpha_continuous(trans = reverse_trans()) +
+      labs(title = toupper(comname_x), y = var_label, x = "Year")
   
 }
   
@@ -1346,68 +1388,104 @@ The following figures display what the average length or weight was for individu
 ```{r}
 # Display the lines for size at age starting at a 0 and extending out
 
-decadal_growth_lines <- function(test){
+decadal_growth_lines <- function(comname_x, option = "length"){
+  
   # Data to get averages
-  species_dat <- filter(age_truncated, comname == test)
+  species_dat <- filter(age_truncated, 
+                        comname == comname_x,
+                        age %in% ages_to_test[[comname_x]])
   
   # Get the averages for each year, give labels for display groups
   age_lines <- species_dat %>% 
       filter(yearclass >= 1970) %>% 
-      group_by(comname, year = yearclass,  age) %>% 
+      group_by(comname, birthyear = yearclass,  age) %>% 
     summarise(
       avg_len = mean(length_cm, na.rm =T),
-      avg_wt = mean(indwt, na.rm =T),
+      avg_wt  = mean(indwt, na.rm =T),
       avg_condition = mean(fK, na.rm =T),
       .groups = "drop") %>% 
-    mutate(decade = floor_decade(year),
+    mutate(birthdecade =floor_decade(birthyear),
            age = factor(age, levels = c(1:10, ">10")))
   
+  #return(age_lines)
+  
+  # Make decadal averages
   decade_lines <- species_dat %>%
     filter(yearclass>= 1970) %>% 
-    mutate(decade = floor_decade(yearclass)) %>% 
-    group_by(comname, decade,  age) %>% 
+    mutate(birthdecade =floor_decade(yearclass)) %>% 
+    group_by(comname, birthdecade,  age) %>% 
     summarise(
       avg_len = mean(length_cm, na.rm =T),
       avg_wt = mean(indwt, na.rm =T),
       avg_condition = mean(fK, na.rm =T),
       .groups = "drop")
   
+  #return(decade_lines)
   
+      
   # Average Length
   len_plot <- ggplot(age_lines, aes(age, avg_len)) +
-    geom_line(aes(group = year, color = decade), alpha = 0.2, linewidth = 0.5) +
+    geom_line(aes(group = birthyear, color = birthdecade), alpha = 0.2, linewidth = 0.5) +
     scale_color_gmri() +
-    geom_line(data = decade_lines, aes(group = decade, color = decade), linewidth = 1) +
-    geom_dl(data = decade_lines, aes(group = decade, color = decade, label = decade), method="last.points") +
+    geom_line(data = decade_lines, aes(group = birthdecade, color = birthdecade), linewidth = 1) +
+    geom_dl(data = decade_lines, aes(group = birthdecade, color = birthdecade, label = birthdecade, fontface = "bold"), method="last.points") +
     scale_x_discrete(expand = expansion(add = c(0,1))) +
-    labs(title = test, y = "Average Length (cm)", x = "Age", color = "Decade of Birth")
+    labs(title = toupper(comname_x), y = "Average Length (cm)", x = "Age", color = "Decade of Birth")
   
-  # Average Weight
+  
+
+  
+ 
+    # Average Weight
   wt_plot <- ggplot(age_lines, aes(age, avg_wt)) +
-    geom_line(aes(group = year, color = decade), alpha = 0.2, linewidth = 0.5) +
+    geom_line(aes(group = birthyear, color = birthdecade), alpha = 0.2, linewidth = 0.5) +
     scale_color_gmri() +
-    geom_line(data = decade_lines, aes(group = decade, color = decade), linewidth = 1) +
-    geom_dl(data = decade_lines, aes(group = decade, color = decade, label = decade, fontface = "bold"), method="last.points") +
+    geom_line(data = decade_lines, aes(group = birthdecade, color = birthdecade), linewidth = 1) +
+    geom_dl(data = decade_lines, aes(group = birthdecade, color = birthdecade, label = birthdecade, fontface = "bold"), method="last.points") +
     scale_x_discrete(expand = expansion(add = c(0,1))) +
-    labs(y = "Average Weight (kg)", x = "Age", color = "Decade of Birth")
+    labs(title = toupper(comname_x), y = "Average Weight (kg)", x = "Age", color = "Decade of Birth")
   
-  both_p <- (len_plot / wt_plot) + plot_layout(guides = "collect")
-  return(both_p)
+  
+  
+  if(option == "length"){return(len_plot)}
+  if(option == "weight"){return(wt_plot)}
+  
+  if(option == "both"){
+    both_p <- (len_plot / (wt_plot + labs(title = NULL))) + plot_layout(guides = "collect")
+    return(both_p)
+  }
 }
 
 ```
 
 
 
+### Decadal Length
 
 ::: panelset
 ```{r, results="asis"}
-#| fig-height: 8
+#| fig-height: 6
 
 # Loop through the key species:
 walk(vb_species, 
      plot_panelset, 
-     plot_fun = decadal_growth_lines)
+     plot_fun = decadal_growth_lines,
+     option = "length")
+
+```
+:::
+
+### Decadal Weight
+
+::: panelset
+```{r, results="asis"}
+#| fig-height: 6
+
+# Loop through the key species:
+walk(vb_species, 
+     plot_panelset, 
+     plot_fun = decadal_growth_lines,
+     option = "weight")
 
 ```
 :::

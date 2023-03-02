@@ -112,7 +112,6 @@ season_filter <- list(
 )
 
 
-
 #----------  Species Selections --------------
 
 #. Species that have center of biomass south of Gulf of Maine
@@ -406,13 +405,13 @@ ggplot() +
                color = gmri_cols("blue"), linewidth = 1.5) +
   geom_segment(aes(x = 2009.5, xend = 2021.5, y = data_1$mean_anom_late, yend = data_1$mean_anom_late),
                color = gmri_cols("orange"), linewidth = 1.5) +
-  annotate(x = 1996, y = 0.3, geom = "text", label = "1982-2009", color = gmri_cols("blue"), fontface = "bold") +
-  annotate(x = 2016, y = 1.6, geom = "text", label = "2010-2021", color = gmri_cols("orange"), fontface = "bold") +
-  annotate(x = 2026, y = 0.4, geom = "text", label = "Global", color = "black", fontface = "bold") +
-  annotate(x = 2026, y = 1.1, geom = "text", label = "Regional", color = "black", fontface = "bold") +
+  # annotate(x = 1996, y = 0.3, geom = "text", label = "1982-2009", color = gmri_cols("blue"), fontface = "bold") +
+  # annotate(x = 2016, y = 1.6, geom = "text", label = "2010-2021", color = gmri_cols("orange"), fontface = "bold") +
+  # annotate(x = 2026, y = 0.4, geom = "text", label = "Global", color = "black", fontface = "bold") +
+  # annotate(x = 2026, y = 1.1, geom = "text", label = "Regional", color = "black", fontface = "bold") +
   scale_y_continuous(labels = number_format(suffix = deg_c), 
                      expand = expansion(add = c(0.5,0.5))) +
-  scale_x_continuous(expand = expansion(add = c(2,8))) +
+  #scale_x_continuous(expand = expansion(add = c(2,8))) +
   labs(x = "Year", y = "SST Anomaly", title = "Northeast US Shelf SST Regime Shift")
 
 
@@ -442,13 +441,13 @@ ggplot() +
                color = gmri_cols("blue"), linewidth = 1.5) +
   geom_segment(aes(x = 2009.5, xend = 2021.5, y = data_1$mean_anom_late, yend = data_1$mean_anom_late),
                color = gmri_cols("orange"), linewidth = 1.5) +
-  annotate(x = 1996, y = 0.3, geom = "text", label = "1982-2009", color = gmri_cols("blue"), fontface = "bold") +
-  annotate(x = 2016, y = 1.75, geom = "text", label = "2010-2021", color = gmri_cols("orange"), fontface = "bold") +
-  annotate(x = 2026, y = 0.4, geom = "text", label = "Global", color = "black", fontface = "bold") +
-  annotate(x = 2026, y = 1.4, geom = "text", label = "Regional", color = "black", fontface = "bold") +
+  # annotate(x = 1996, y = 0.3, geom = "text", label = "1982-2009", color = gmri_cols("blue"), fontface = "bold") +
+  # annotate(x = 2016, y = 1.75, geom = "text", label = "2010-2021", color = gmri_cols("orange"), fontface = "bold") +
+  # annotate(x = 2026, y = 0.4, geom = "text", label = "Global", color = "black", fontface = "bold") +
+  # annotate(x = 2026, y = 1.4, geom = "text", label = "Regional", color = "black", fontface = "bold") +
   scale_y_continuous(labels = number_format(suffix = deg_c), 
                      expand = expansion(add = c(0.5,0.5))) +
-  scale_x_continuous(expand = expansion(add = c(2,8))) +
+  #scale_x_continuous(expand = expansion(add = c(2,8))) +
   labs(x = "Year", y = "SST Anomaly", title = "Gulf of Maine EPU SST Regime Shift")
 
 
@@ -545,7 +544,9 @@ general_area_rate <- terra::rast(general_area_rate)
 
 # Make map
 # landmasses, warming rates everywhere, shapefiles for regions, labels for regional rates
-us_poly <- ne_states("united states of america", returnclass = "sf")
+us_poly <- ne_download(scale = 'large', type = "states",
+                       category = "cultural",
+                       returnclass = "sf")
 canada <- ne_states("canada", returnclass = "sf")
 
 
@@ -1103,7 +1104,7 @@ global_benchmarks <- grouped_center_bio(station_totals = catch_station_totals)
 
 The available age data is a subset of the overall catch data from the NMFS trawl survey. This biological data subset contains additional information on individual fishes such as otolith-derived aging that require additional workup to ascertain. Not all fish species have age available for the full time period, with special attention being given to aid in the management of commercially valuable species. The data used for size-at-age analyses comes from both the Spring and Fall surveys.
 
-Size at age analyses were performed on `r length(vonbert_species)` species. Species were omitted from analyses if age data was not available across both temperature regimes (bluefish & ocean pout) or if their physiology prevented accurate aging (elasmobranch species). The following 18 species had sufficient age data across both temperature regimes to be included in the analysis: **`r pander::pander(vonbert_species)`**.
+Size at age analyses were performed on `r length(vonbert_species)` species. Species were omitted from analyses if age data was not available across both temperature regimes (bluefish & ocean pout) or if their physiology prevented accurate aging (elasmobranch species). The following `r length(vonbert_species)` species had sufficient age data across both temperature regimes to be included in the analysis: **`r pander::pander(vonbert_species)`**.
 
 ```{r}
 #| label: set-vonbert-species-data
