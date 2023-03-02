@@ -574,7 +574,7 @@ ggplot() +
   coord_sf(xlim = c(-78, -62), ylim = c(36, 47)) +
   theme_bw() +
   map_theme(legend.position = "bottom") +
-  guides(fill = guide_colorsteps(
+  guides(fill = guide_colorbar(
     title = "Annual Warming Rate: 1982-2021",
     title.position = "top",
     title.hjust = 0.5,
@@ -587,6 +587,298 @@ ggplot() +
 ```
 
 
+### NE Shelf Heatwaves
+
+```{r}
+####  Identify Marine Heatwaves  ####
+# 
+#' @title Pull Marine Heatwave and cold Spell Events from Timeseries
+#' 
+#' @description Pull both heatwave and cold spell events using same threshold and return
+#' as single table. Wrapper function to do heatwaves and coldwaves simultaneously at 90% 
+#' or custom threshold
+#' 
+#' Option to de-trend anomalies at annual scale in accordance with Jacox et al. methodology. Default
+#' is not de-trended and uses a statid climate reference period following the methods of hobday et al.
+#'
+#' @param temperature_timeseries timeseries dataframe with date and sst values
+#' @param clim_ref_period start and end dates to use when calculating the climate reference 
+#' period c("yyyy-mm-dd", "yyyy-mm-dd")
+#' @date_col String indicating the column to use for dates
+#' @temp_col String indicating the column to de-trend
+#' @param threshold percentile cutoff for indicating a heatwave/coldspell event
+#' @param detrend TRUE/FALSE Whether to de-trend anomalies prior to event detection, default is FALSE.
+#'
+#' @return
+#' @export
+#'
+#' @examples
+pull_heatwave_events <- function(temperature_timeseries, 
+                                 clim_ref_period = c("1982-01-01", "2011-12-31"),
+                                 date_col = "time",
+                                 temp_col = "sst",
+                                 threshold = 90,
+                                 detrend = FALSE) {
+  
+  # temperature_timeseries <- gom_sst
+  
+  
+  # Pull the two column dataframe for mhw estimation
+  test_ts <- data.frame(t = as.Date(temperature_timeseries[[date_col]]), 
+                        temp = temperature_timeseries[[temp_col]])
+  
+  
+  # Calculate seasonally varying climatology with threshold w/ smoothing window
+  ts  <- heatwaveR::ts2clm(data = test_ts, 
+                climatologyPeriod = clim_ref_period, 
+                pctile = threshold) %>% 
+    mutate(sst_anom = temp - seas,
+           yr = lubridate::year(t))
+  
+  
+  
+  # Perform linear detrending on anomalies
+  if(detrend){
+    
+    # Detrend day of year temperature trends:
+    ts <- ts %>% 
+      split(.$doy) %>% 
+      map_dfr(detrend_sst, vals = "sst_anom", yr_col = "yr") %>% 
+      mutate(detrend_temp = seas + detrend_vals) %>% 
+      arrange(t)
+    
+  }
+  
+  
+  # Perform Heatwave Detection
+  mhw <- ifelse(detrend,
+                heatwaveR::detect_event(ts, x = t, y = detrend_temp),
+                heatwaveR::detect_event(ts, x = t, y = temp))
+  
+  
+  
+  # Select and rename critical heatwave data
+  mhw_out <- mhw[[1]] %>% 
+    #mutate(sst_anom = temp - seas) %>% 
+    rename(time = t,
+           sst = temp,
+           mhw_thresh = thresh,
+           mhw_threshCriterion = threshCriterion,
+           mhw_durationCriterion = durationCriterion,
+           mhw_event = event,
+           mhw_event_no = event_no)
+  
+  
+  # Repeat for cold spells
+  # 2. Detect cold spells
+  # coldSpells = TRUE flips boolean to < thresh
+  ts <- ts2clm(data = test_ts, 
+               climatologyPeriod = clim_ref_period, 
+               pctile = (100 - threshold)) %>% 
+    mutate(sst_anom = temp - seas,
+           yr = lubridate::year(t))
+  
+  
+  # Perform linear detrending on anomalies
+  if(detrend){
+    
+    # Detrend day of year temperature trends:
+    ts <- ts %>%
+      split(.$doy) %>%
+      map_dfr(detrend_sst, vals = "sst_anom", yr_col = "yr") %>%
+      mutate(detrend_temp = seas + detrend_vals) %>% 
+      arrange(t)
+    
+  }
+  
+  
+  
+  # Perform Cold Spell Detection
+  mcs <- ifelse(detrend,
+                heatwaveR::detect_event(ts, x = t, y = detrend_temp, coldSpells = T),
+                heatwaveR::detect_event(ts, x = t, y = temp, coldSpells = T))
+  
+  
+  
+  # Prepare cold spell data to join
+  # Remove columns that are shared with heatwaves
+  mcs_out <- mcs[[1]] %>%
+    dplyr::select(time = t,
+           mcs_thresh = thresh,
+           mcs_threshCriterion = threshCriterion,
+           mcs_durationCriterion = durationCriterion,
+           mcs_event = event,
+           mcs_event_no = event_no)
+  
+  
+  # join heatwave detection results to coldspell results
+  hot_and_cold <- left_join(mhw_out, mcs_out, by = "time")
+  
+  
+  # 3. Data formatting for plotting, 
+  # adds columns to plot hw and cs seperately
+  events_out <- hot_and_cold %>% 
+    mutate(
+      # Set up status to combine labelling for heatwaves and cold spells:
+      status   = ifelse(mhw_event == TRUE, "Marine Heatwave Event", "Sea Surface Temperature"),
+      status   = ifelse(mcs_event == TRUE, "Marine Cold Spell Event", status),
+      event_type = ifelse(detrend, "Jacox Method", "Hobday Method"),
+      # Corrective measures for where event flagging is off:
+      # status   = ifelse(sst > mhw_thresh, "Marine Heatwave Event", status),
+      # status   = ifelse(sst < mcs_thresh, "Marine Cold Spell Event", status),
+      # Heatwave event temperature values:
+      hwe      = ifelse(mhw_event == TRUE, sst, NA),
+      cse      = ifelse(mcs_event == TRUE, sst, NA),
+      nonevent = ifelse(mhw_event == FALSE & mcs_event == FALSE, sst, NA)) 
+  
+  # Close the gaps between a mhw event and sst (might not need if full line for temp exists)
+  events_out <- events_out %>% 
+    mutate(hwe = ifelse( (is.na(hwe) & is.na(lag(hwe, n = 1))) == FALSE, sst, hwe),
+           cse = ifelse( (is.na(cse) & is.na(lag(cse, n = 1))) == FALSE, sst, cse)) %>% 
+    distinct(time, .keep_all = T)
+  
+  
+  return(events_out)
+}
+
+
+
+#------------------
+
+library(heatwaveR)
+conflicted::conflict_prefer("lag", "dplyr")
+
+base_date <- as.Date("2000-01-01")
+
+
+# NE shelf heatwaves
+shelf_hw <- pull_heatwave_events(
+  temperature_timeseries = shelf_oisst, 
+  date_col = "time", 
+  temp_col = "area_wtd_sst", 
+  threshold = 90, 
+  detrend = FALSE) %>% 
+  mutate(year = lubridate::year(time),
+         yday = lubridate::yday(time),
+         flat_date = as.Date(yday-1, origin = base_date),
+         yr_rev = factor(year),
+         yr_rev = fct_rev(yr_rev))
+
+# gulf of maine heatwaves
+gom_hw <- pull_heatwave_events(
+  temperature_timeseries = gom_oisst, 
+  date_col = "time", 
+  temp_col = "area_wtd_sst", 
+  threshold = 90, 
+  detrend = FALSE) %>% 
+  mutate(year = lubridate::year(time),
+         yday = lubridate::yday(time),
+         flat_date = as.Date(yday-1, origin = base_date),
+         yr_rev = factor(year),
+         yr_rev = fct_rev(yr_rev))
+```
+
+```{r}
+#' @title Heatwave Anomaly Heatmap
+#'
+#' @param hw_dat 
+#' @param temp_units 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+heatwave_heatmap_plot <- function(hw_dat, temp_units = "C", start_yr = 1981, end_yr = 2021){
+  
+  base_date <- as.Date("2000-01-01")
+  
+  # Set unit controls
+  temp_ops <- switch(
+    EXPR = temp_units,
+    "C" = list(anom_col = expr(sst_anom),
+               temp_suff = "\u00b0C",
+               temp_limits = c(-3,3)),
+    "F" = list(anom_col = expr(anom_f),
+               temp_suff = "\u00b0F",
+               temp_limits = c(-5,5)))
+  temp_limits <- temp_ops$temp_limits
+  anom_col <- temp_ops$anom_col
+  temp_suff <- temp_ops$temp_suff
+  
+  # Color limit for palettes
+  temp_breaks <- c(temp_limits[1], temp_limits[1]/2,  0, temp_limits[2]/2, temp_limits[2])
+  temp_labels <- str_c(c(str_c("< ", temp_limits[1]), temp_limits[1]/2, 0, temp_limits[2]/2, str_c("> ", temp_limits[2])), temp_suff)
+  
+  
+  
+  
+  # Assemble heatmap plot
+  heatwave_heatmap <- ggplot(hw_dat, 
+                             aes(x = flat_date, y = year)) +
+    
+    # background box fill for missing dates
+    geom_rect(xmin = base_date, 
+              xmax = base_date + 365, 
+              ymin = min(hw_dat$year) - .5, 
+              ymax = max(hw_dat$year) + .5, 
+              fill = "gray75", color = "transparent") +
+    
+    # tile for sst colors
+    geom_tile(aes(fill = {{ anom_col }})) +
+    # points for heatwave events
+    geom_point(data = filter(hw_dat, mhw_event == TRUE),
+               aes(x = flat_date, y = year), size = .25)  +
+    # # Points if over threshold only
+    # geom_point(data = filter(grid_data, sst > mhw_thresh),
+    #            aes(x = flat_date, y = year), size = .25)  +
+    scale_x_date(date_labels = "%b", date_breaks = "1 month", expand = expansion(add = c(0,0))) +
+    scale_y_continuous(limits = c(start_yr + .5, end_yr + .5), expand = expansion(add = c(0,0))) +
+    scale_fill_distiller(palette = "RdBu", 
+                         na.value = "transparent", 
+                         limit = temp_limits, 
+                         oob = scales::squish,
+                         breaks = temp_breaks, 
+                         labels = temp_labels) +
+    
+    #5 inches is default rmarkdown height for barheight
+    guides("fill" = guide_colorbar(title = "Sea Surface Temperature Anomaly", 
+                                   title.position = "right", 
+                                   title.hjust = 0.5,
+                                   barheight = unit(3.5, "inches"), 
+                                   frame.colour = "black", 
+                                   ticks.colour = "black")) +  
+    theme(legend.title = element_text(angle = 90), legend.position = "right") +
+    labs(title = "Temperature Anomalies and Marine Heatwave Events",
+         x = "Month", 
+         y = "Year",
+         "\nClimate reference period : 1982-2011",
+         caption = "Heatwave event dates have been overlayed with black points for distinction.")
+  
+  
+  # Assemble pieces
+  return(heatwave_heatmap)
+  
+  
+  
+}
+```
+
+
+```{r}
+heatwave_heatmap_plot(hw_dat = shelf_hw, temp_units = "C", start_yr = 1982, end_yr = 2021) + 
+  theme_bw() +
+  theme(legend.title = element_text(angle = 90)) +
+  labs(caption = NULL, title = "Northeast Shelf")
+```
+
+### Gulf of Maine Heatwaves
+
+```{r}
+heatwave_heatmap_plot(hw_dat = gom_hw, temp_units = "C", start_yr = 1982, end_yr = 2021) + 
+  theme_bw() +
+  theme(legend.title = element_text(angle = 90)) +
+  labs(caption = NULL, title = "Gulf of Maine Ecological Production Unit")
+```
 
 
 :::
@@ -641,17 +933,33 @@ bio_regimes <- bio_data %>%
 
 
 
-# Rank species by how many measurements there are in those years
-bio_species_abunds <- bio_regimes %>% 
-  dplyr::count(comname) %>% 
-  arrange(desc(n)) # ordered by number measured
+# # Rank species by how many measurements there are in those years
+# bio_species_abunds <- bio_regimes %>% 
+#   dplyr::count(comname) %>% 
+#   arrange(desc(n)) # ordered by number measured
+# 
+# 
+# # Drop the ones that don't work for whatever reason
+# vonbert_species <- bio_species_abunds %>% 
+#   filter(comname %not in% c("goosefish", "fourspot flounder", "cusk", "ocean pout", "bluefish")) %>% 
+#   arrange(comname) %>% 
+#   pull(comname)
 
-
-# Drop the ones that don't work for whatever reason
-vonbert_species <- bio_species_abunds %>% 
-  filter(comname %not in% c("goosefish", "fourspot flounder", "cusk", "ocean pout", "bluefish")) %>% 
-  arrange(comname) %>% 
-  pull(comname)
+vonbert_species <- c(
+  "american plaice",
+  "atlantic cod",
+  "atlantic herring",
+  "atlantic mackerel",
+  "black sea bass",
+  "butterfish",         
+  "haddock",
+  "pollock",
+  "scup",
+  "silver hake",
+  "white hake",
+  "winter flounder",
+  "witch flounder",
+  "yellowtail flounder")
 
 
 # tidy up
