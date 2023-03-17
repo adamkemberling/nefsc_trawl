@@ -117,6 +117,7 @@ test_signif <- function(filter_species, dependent_var){
 
 ```
 
+
 ```{r}
 #| results: asis
 gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
@@ -149,6 +150,59 @@ Data for these `r nrow(spec_df)` species comes from fisheries independent trawl 
 # Load the regional temperatures from {targets}
 withr::with_dir(rprojroot::find_root('_targets.R'), 
                 tar_load(catch_complete))
+
+# # Species names for Carly
+# carly_species <-c(
+# "acadian redfish",
+# "alewife",
+# "american lobster",
+# "american plaice",
+# "american shad",
+# "atlantic cod",
+# "atlantic halibut",
+# "atlantic herring",
+# "atlantic mackerel",
+# "atlantic rock crab",
+# "atlantic wolffish",
+# "black sea bass",
+# "blackbelly rosefish",
+# "bluefish",
+# "butterfish",
+# "clearnose skate",
+# "cusk",
+# "fourspot flounder",
+# "goosefish",
+# "haddock",
+# "little skate",
+# "longfin squid",
+# "longhorn sculpin",
+# "northern sand lance",
+# "northern shortfin squid",
+# "ocean pout",
+# "offshore hake",
+# "pollock",
+# "red hake",
+# "rosette skate",
+# "scup",
+# "sea raven",
+# "sea scallop",
+# "silver hake",
+# "smooth dogfish",
+# "smooth skate",
+# "spiny dogfish",
+# "spotted hake",
+# "summer flounder",
+# "thorny skate",
+# "white hake",
+# "windowpane",
+# "winter flounder",
+# "winter skate",
+# "witch flounder",
+# "yellowtail flounder"
+# )
+# 
+# catch_complete %>% filter(comname %in% carly_species) %>% distinct(comname, scientific_name)
+
 
 # Filter to just them, and the two time regimes
 trawldat <- catch_complete %>% 

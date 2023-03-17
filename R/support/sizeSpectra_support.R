@@ -645,35 +645,36 @@ warmem_isd_estimates <- function(wmin_grams,
                          abundance_vals = abundance_vals,
                          .group_cols = c("Year", "survey_area")) 
   
-  ####_ 7. every year, only seasons 
-  message("Calculating ISD exponent for each year in each season")
-  g7_res <- dbin_truncated %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("Year", "season"))
+  # ####_ 7. every year, only seasons 
+  # message("Calculating ISD exponent for each year in each season")
+  # g7_res <- dbin_truncated %>% 
+  #   group_isd_estimation(min_weight_g = min_weight_g, 
+  #                        max_weight_g = max_weight_g,
+  #                        isd_xmin = isd_xmin,
+  #                        isd_xmax = isd_xmax,
+  #                        abundance_vals = abundance_vals,
+  #                        .group_cols = c("Year", "season"))
   
   
-  ####_ 8. every year, region * season 
-  message("Calculating ISD exponent for each year in each region, for every season")
-  g8_res <- dbin_truncated %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("Year", "season", "survey_area")) 
+  # ####_ 8. every year, region * season 
+  # message("Calculating ISD exponent for each year in each region, for every season")
+  # g8_res <- dbin_truncated %>% 
+  #   group_isd_estimation(min_weight_g = min_weight_g, 
+  #                        max_weight_g = max_weight_g,
+  #                        isd_xmin = isd_xmin,
+  #                        isd_xmax = isd_xmax,
+  #                        abundance_vals = abundance_vals,
+  #                        .group_cols = c("Year", "season", "survey_area")) 
     
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
       "single years"                   = g5_res,
-      "single years * region"          = g6_res,
-      "single years * season "         = g7_res,
-      "single years * season * region" = g8_res), 
+      "single years * region"          = g6_res#,
+      #"single years * season "         = g7_res,
+      #"single years * season * region" = g8_res
+      ), 
     .id = "group ID")
   
   # Return the summary table
@@ -1445,27 +1446,28 @@ warmem_log2_estimates <- function(wmin_grams,
     group_log2_spectra(min_weight_g = min_weight_g, 
                       .group_cols = c("Year", "survey_area")) 
   
-  ####_ 7. every year, only seasons 
-  message("Calculating log(2) size spectrum slope each year in each season")
-  g7_res <- log2_assigned_trunc %>% 
-    group_log2_spectra(min_weight_g = min_weight_g, 
-                      .group_cols = c("Year", "season"))
-  
-  
-  ####_ 8. every year, region * season 
-  message("Calculating log(2) size spectrum slope each year in each region, for every season")
-  g8_res <- log2_assigned_trunc %>%
-    group_log2_spectra(min_weight_g = min_weight_g,
-                      .group_cols = c("Year", "season", "survey_area"))
+  # ####_ 7. every year, only seasons 
+  # message("Calculating log(2) size spectrum slope each year in each season")
+  # g7_res <- log2_assigned_trunc %>% 
+  #   group_log2_spectra(min_weight_g = min_weight_g, 
+  #                     .group_cols = c("Year", "season"))
+  # 
+  # 
+  # ####_ 8. every year, region * season 
+  # message("Calculating log(2) size spectrum slope each year in each region, for every season")
+  # g8_res <- log2_assigned_trunc %>%
+  #   group_log2_spectra(min_weight_g = min_weight_g,
+  #                     .group_cols = c("Year", "season", "survey_area"))
   
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
       "single years"                   = g5_res,
-      "single years * region"          = g6_res,
-      "single years * season"          = g7_res,
-      "single years * season * region" = g8_res), 
+      "single years * region"          = g6_res#,
+      # "single years * season"          = g7_res,
+      # "single years * season * region" = g8_res
+      ), 
     .id = "group ID")
   
   # Return the summary table

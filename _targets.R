@@ -100,18 +100,24 @@ list(
     command = gmri_survdat_prep(survdat = NULL,
                                 survdat_source = "most recent",
                                 box_location = boxdata_location) %>% 
-      filter(est_year %in% c(1970:2019, season %in% c("Spring", "Fall")))),
+              filter(est_year %in% c(1970:2019, 
+                     season %in% c("Spring", "Fall")))
+    ),
   
   
   # Run all the import and tidying for catch data to use for the pipeline
-  tar_target(catch_complete,
-             command = import_and_tidy_catch(box_location = boxdata_location)),
+  tar_target(
+    name = catch_complete,
+    command = import_and_tidy_catch(box_location = boxdata_location) %>% 
+              filter(est_year %in% c(1970:2019, 
+                     season %in% c("Spring", "Fall")))),
   
   ###### b. Biological Data  ####
   
   # Import and tidy the biological dataset
-  tar_target(bio_complete,
-             command = import_and_tidy_bio(box_location = boxdata_location)),
+  tar_target(
+    name = bio_complete,
+    command = import_and_tidy_bio(box_location = boxdata_location)),
   
   # survdat biological data - for actual length relationships
   tar_target(
@@ -120,9 +126,10 @@ list(
                                 box_location = boxdata_location) ),
   
 
-  #####  2. Size Spectrum Prep  #####
   
-
+  
+  
+  #####  2. Size Spectrum Prep  #####
   
   # # Prepare the data for use in size spectrum analysis:
   # # Set weight column units to grams

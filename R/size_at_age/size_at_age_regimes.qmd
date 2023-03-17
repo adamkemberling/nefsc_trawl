@@ -38,8 +38,8 @@ bibliography: references.bib
   library(patchwork)
   library(directlabels)
   library(xaringanExtra)
-  library(ggridges)
-  library(ggdist)
+  #library(ggridges)
+  #library(ggdist)
   library(ggforce)
   library(geomtextpath)
   library(colorspace)
@@ -54,10 +54,13 @@ bibliography: references.bib
   library(tidyterra)
   library(raster)
   library(sf)
-  library(ggHoriPlot)
+  #library(ggHoriPlot)
+  library(heatwaveR)
+  
  
 }
 
+conflicted::conflict_prefer("lag", "dplyr")
 conflicted::conflict_prefer("select", "dplyr")
 conflicted::conflict_prefer("filter", "dplyr")
 
@@ -70,6 +73,13 @@ theme_set(theme_gmri())
 
 # Celsius symbol
 deg_c <- "\u00b0C"
+
+
+# landmass shapes
+us_poly <- ne_download(scale = 'large', type = "states",
+                       category = "cultural",
+                       returnclass = "sf")
+canada <- ne_states("canada", returnclass = "sf")
 
 # Acitvate panelset
 xaringanExtra::use_panelset()
@@ -336,7 +346,10 @@ We computed the linear trend ($°C/Decade$) in the daily Gulf of Maine SST time 
 temp_details <- function(temp_dataset){
   
     # Get the annual warming rates: 82-2021
-    annual_avgs <- temp_dataset %>% group_by(year) %>% 
+    annual_avgs <- temp_dataset %>% 
+      filter(year > 1981,
+             year < 2022) %>% 
+      group_by(year) %>% 
       summarise(
         sst = mean(area_wtd_sst), 
         sst_anom = mean(area_wtd_anom),
@@ -351,7 +364,8 @@ temp_details <- function(temp_dataset){
 
     # Get the mean temperatures for 82-2009 & 2010-2021
     data_early <- annual_avgs %>% filter(year %in% c(1982:2009))
-    data_late <- annual_avgs %>% filter(year %in% c(2010:2022))
+    data_late <- annual_avgs %>% filter(year %in% c(2010:2021))
+    
     mean_early <- data_early %>% pull(sst) %>% mean()
     mean_anom_early <- data_early %>% pull(sst_anom) %>% mean()
     mean_late <- data_late %>% pull(sst) %>% mean()
@@ -360,15 +374,15 @@ temp_details <- function(temp_dataset){
     # Return everything
     return(
       list(
-        "annual_avgs" = annual_avgs,
-        "annual_rate" = rate_c,
-        "rate_f" = rate_f,
-        "data_early" = data_early,
-        "data_late" = data_late,
-        "mean_early" = mean_early,
+        "annual_avgs"     = annual_avgs,
+        "annual_rate"     = rate_c,
+        "rate_f"          = rate_f,
+        "data_early"      = data_early,
+        "data_late"       = data_late,
+        "mean_early"      = mean_early,
         "mean_anom_early" = mean_anom_early,
-        "mean_late" = mean_late,
-        "mean_anom_late" = mean_anom_late))
+        "mean_late"       = mean_late,
+        "mean_anom_late"  = mean_anom_late))
   
   
 }
@@ -392,7 +406,8 @@ area_summaries <- map(list("northeast shelf" = shelf_oisst,
 # Make a Plot comparing
 data_1 <- area_summaries$`northeast shelf`
 data_2 <- area_summaries$`Global Oceans`
-ggplot() +
+
+shelf_rate_plot <- ggplot() +
   geom_path(data = data_1$annual_avgs, aes(year, sst_anom, color = regime, group = 1), alpha = 0.5) +
   scale_color_identity() +
   geom_point(data = data_1$data_early, aes(year, sst_anom), color = gmri_cols("blue"), alpha = 0.5) +
@@ -415,6 +430,8 @@ ggplot() +
   labs(x = "Year", y = "SST Anomaly", title = "Northeast US Shelf SST Regime Shift")
 
 
+shelf_rate_plot
+
 ```
 
 
@@ -428,7 +445,9 @@ ggplot() +
 # Make a Plot comparing
 data_1 <- area_summaries$`Gulf of Maine`
 data_2 <- area_summaries$`Global Oceans`
-ggplot() +
+
+
+gom_rate_plot <- ggplot() +
   geom_path(data = data_1$annual_avgs, aes(year, sst_anom, color = regime, group = 1), alpha = 0.5) +
   scale_color_identity() +
   geom_point(data = data_1$data_early, aes(year, sst_anom), color = gmri_cols("blue"), alpha = 0.5) +
@@ -450,6 +469,8 @@ ggplot() +
   #scale_x_continuous(expand = expansion(add = c(2,8))) +
   labs(x = "Year", y = "SST Anomaly", title = "Gulf of Maine EPU SST Regime Shift")
 
+
+gom_rate_plot 
 
 ```
 
@@ -543,15 +564,11 @@ general_area_rate <- terra::rast(general_area_rate)
 
 
 # Make map
-# landmasses, warming rates everywhere, shapefiles for regions, labels for regional rates
-us_poly <- ne_download(scale = 'large', type = "states",
-                       category = "cultural",
-                       returnclass = "sf")
-canada <- ne_states("canada", returnclass = "sf")
 
 
 
-ggplot() +
+# Assemble
+warming_rate_map <- ggplot() +
   tidyterra::geom_spatraster(
     data = general_area_rate, show.legend = T) +
   geom_sf(data = us_poly, fill = "gray90", linewidth = .15) +
@@ -584,6 +601,9 @@ ggplot() +
     ticks.colour = "black", labels = number_format(suffix = "t"),
     show.limits = T)) +
   labs(x = NULL, y = NULL)
+
+
+warming_rate_map
 
 ```
 
@@ -746,8 +766,6 @@ pull_heatwave_events <- function(temperature_timeseries,
 
 #------------------
 
-library(heatwaveR)
-conflicted::conflict_prefer("lag", "dplyr")
 
 base_date <- as.Date("2000-01-01")
 
@@ -778,6 +796,7 @@ gom_hw <- pull_heatwave_events(
          yr_rev = factor(year),
          yr_rev = fct_rev(yr_rev))
 ```
+
 
 ```{r}
 #' @title Heatwave Anomaly Heatmap
@@ -866,19 +885,71 @@ heatwave_heatmap_plot <- function(hw_dat, temp_units = "C", start_yr = 1981, end
 
 
 ```{r}
-heatwave_heatmap_plot(hw_dat = shelf_hw, temp_units = "C", start_yr = 1982, end_yr = 2021) + 
+shelf_hw <- heatwave_heatmap_plot(hw_dat = shelf_hw, temp_units = "C", start_yr = 1982, end_yr = 2021) + 
   theme_bw() +
   theme(legend.title = element_text(angle = 90)) +
   labs(caption = NULL, title = "Northeast Shelf")
+
+shelf_hw
 ```
 
 ### Gulf of Maine Heatwaves
 
 ```{r}
-heatwave_heatmap_plot(hw_dat = gom_hw, temp_units = "C", start_yr = 1982, end_yr = 2021) + 
+gom_hw <- heatwave_heatmap_plot(hw_dat = gom_hw, temp_units = "C", start_yr = 1982, end_yr = 2021) + 
   theme_bw() +
   theme(legend.title = element_text(angle = 90)) +
   labs(caption = NULL, title = "Gulf of Maine Ecological Production Unit")
+
+gom_hw
+```
+
+
+### Rates and Regime Averages
+
+```{r}
+
+
+sst_summary_table <- area_summaries %>% 
+  map_dfr(~data.frame(
+      "rate_1982_2021_C" = .x$annual_rate,
+      "rate_1982_2021_F" = .x$rate_f,
+      "mean_temp_1982_2009_C" = .x$mean_early,
+      "mean_anom_1982_2009_C" = .x$mean_anom_early,
+      "mean_temp_2010_2021_C" = .x$mean_late,
+      "mean_anom_2010_2021_C" = .x$mean_anom_late),
+    .id = "Area") %>% 
+  mutate(
+    mean_temp_1982_2009_F = as_fahrenheit(mean_temp_1982_2009_C, data_type = "temperature"),
+    mean_anom_1982_2009_F = as_fahrenheit(mean_anom_1982_2009_C, data_type = "anomaly"),
+    mean_temp_2010_2021_F = as_fahrenheit(mean_temp_2010_2021_C, data_type = "temperature"),
+    mean_anom_2010_2021_F = as_fahrenheit(mean_anom_2010_2021_C, data_type = "anomaly"),
+    across(where(is.numeric), round, 3))
+
+sst_summary_table %>% knitr::kable()
+
+
+```
+
+
+```{r}
+#| eval: false
+#| label: export-figs
+
+# Path to decadal folder:
+decadal_folder <- cs_path(box_group = "mills", subfolder = "Projects/Decadal Variability/Graphics/SST")
+
+
+
+# Saving these assets:
+ggsave(plot = shelf_rate_plot, filename = str_c(decadal_folder, "ne_shelf_warming_rate.png"))
+ggsave(plot = gom_rate_plot, filename = str_c(decadal_folder, "gom_epu_warming_rate.png"))
+ggsave(plot = shelf_hw, filename = str_c(decadal_folder, "ne_shelf_heatwaves.png"))
+ggsave(plot = gom_hw, filename = str_c(decadal_folder, "gom_epu_heatwaves.png"))
+ggsave(plot = warming_rate_map, filename = str_c(decadal_folder, "warming_rates_map.png"))
+write_csv(sst_summary_table, str_c(decadal_folder, "sst_area_warming.csv"))
+
+
 ```
 
 

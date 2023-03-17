@@ -42,6 +42,7 @@ execute:
   library(targets)
   library(ggrepel)
   library(broom)
+  library(gridExtra)
 }
 
 
@@ -86,7 +87,7 @@ plot_panelset <- function(spec, plot_fun, ...) {
 ```{r}
 #| label: add-css
 #| results: asis
-#| 
+
 gmRi::use_gmri_style_rmd(css_file = "gmri_rmarkdown.css")
 
 ```
@@ -103,8 +104,6 @@ season_filter <- list(
   "cob" = c("Spring", "Fall"),
   "age" = c("Spring", "Fall"))
 
-#. Species that have center of biomass south of Gulf of Maine
-southern_species <- c("atlantic mackerel", "scup", "black sea bass", "butterfish")
 
 # Species to display with their own panels
 vb_species <- sort(c(
@@ -114,6 +113,7 @@ vb_species <- sort(c(
   "atlantic herring",
   "atlantic mackerel",
   "black sea bass",
+  #"bluefish",
   "butterfish",
   "haddock", 
   "pollock",
@@ -129,22 +129,23 @@ vb_species <- sort(c(
 ))
 
 
-# This is what year each species has historically seen plateaus in growth
-species_growth_plateaus <- list(
-  "american plaice"     = 1980,
-  "atlantic cod"        = 1970,
-  "atlantic herring"    = 1987,
-  "atlantic mackerel"   = 1973,
-  "black sea bass"      = 1983,
-  "butterfish"          = 1982,
-  "haddock"             = 1970,
-  "pollock"             = 1970,
-  "scup"                = 1971,
-  "silver hake"         = 1973,
-  "white hake"          = 1982,
-  "winter flounder"     = 1976,
-  "witch flounder"      = 1982,
-  "yellowtail flounder" = 1970) 
+# Not needed
+# # This is what year each species has historically seen plateaus in growth
+# species_growth_plateaus <- list(
+#   "american plaice"     = 1980,
+#   "atlantic cod"        = 1970,
+#   "atlantic herring"    = 1987,
+#   "atlantic mackerel"   = 1973,
+#   "black sea bass"      = 1983,
+#   "butterfish"          = 1982,
+#   "haddock"             = 1970,
+#   "pollock"             = 1970,
+#   "scup"                = 1971,
+#   "silver hake"         = 1973,
+#   "white hake"          = 1982,
+#   "winter flounder"     = 1976,
+#   "witch flounder"      = 1982,
+#   "yellowtail flounder" = 1970) 
 ```
 
 
@@ -214,8 +215,8 @@ age_truncated <- bio_regimes %>%
 
 
 # Function to make a table
-species_table <- function(x){
-  age_truncated %>% 
+species_table <- function(x, as_html = F){
+  age_table <- age_truncated %>% 
     filter(comname == x) %>% 
     group_by(regime, comname, est_year, age) %>% 
     summarise(n_aged = sum(age_tally), .groups = "drop") %>% 
@@ -231,8 +232,10 @@ species_table <- function(x){
       title = str_c(str_to_title(x) , " - Individuals Aged by Year"), 
       subtitle = "Numbers Combined from Spring and Fall Surveys") %>% 
     sub_missing(missing_text = "") %>% 
-    gt::cols_label("est_year" = "Age:") %>% 
-    as_raw_html()
+    gt::cols_label("est_year" = "Age:") 
+  
+  
+  if(as_html) {age_table %>% as_raw_html()} else {return(age_table)}
   
   
 }
@@ -249,7 +252,8 @@ species_table <- function(x){
 # Loop through the key species:
 walk(vb_species, 
      plot_panelset, 
-     plot_fun = species_table)
+     plot_fun = species_table,
+     as_html = T)
 
 ```
 :::
@@ -563,7 +567,8 @@ saa_table <- function(
     saa_results, 
     period_1 = "1970-2009",
     period_2 = "2010-2019", 
-    var_title = "Length at Age"){
+    var_title = "Length at Age",
+    as_html = F){
   
   # Pull a single species by name, drop some columns, round
   saa_table_data <- saa_results %>% 
@@ -591,7 +596,7 @@ saa_table <- function(
   period_1 <- str_c(actual_start, "-2009")
   
   # Make gt table
-  saa_table_data %>% 
+  saa_table_gt <- saa_table_data %>% 
     gt(rowname_col = "age") %>% 
     sub_missing(missing_text = "") %>% 
     tab_header(title = str_c(str_to_title(comname_x), " ", var_title, "  - Two-Sample Test"), 
@@ -621,8 +626,10 @@ saa_table <- function(
         locations = cells_body(columns = p.value, rows = p.value < 0.05)) %>% 
     tab_style(
         style = list(cell_fill(color = "#A4D1A2")),
-        locations = cells_body(columns = bartlett_p, rows = bartlett_p < 0.05)) %>% 
-    as_raw_html()
+        locations = cells_body(columns = bartlett_p, rows = bartlett_p < 0.05))
+  
+  
+  if(as_html){ saa_table_gt %>% as_raw_html()} else {return(saa_table_gt)}
   
   
 }
@@ -653,7 +660,8 @@ walk(vb_species,
      saa_results = laa_1970_start,
      period_1 = "1970-2009",
      period_2 = "2010-2019",
-     var_title = " Length at Age")
+     var_title = " Length at Age",
+     as_html = T)
 
 ```
 :::
@@ -1051,11 +1059,7 @@ wt_results <- waa_1970_start %>%
 
 results_wide <- left_join(len_results, wt_results, by = c("comname", "age"))
 
-# Path to decadal folder:
-decadal_folder <- cs_path(box_group = "mills", subfolder = "Projects/Decadal Variability/Growth Results")
 
-
-write_csv(results_wide, str_c(decadal_folder, "length_and_weight_atage_ttest_results.csv"))
 ```
 
 
@@ -1336,7 +1340,7 @@ mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average L
       data = period_means,
       aes(x = x, xend = xend, y = {{test_var}}, yend = {{test_var}}, group = age, color = period#, alpha = age_alpha
           ),
-      linewidth = 1.2, show.legend = FALSE) +
+      linewidth = .75, show.legend = FALSE) +
       scale_color_manual(values = c(gmri_cols("blue"), gmri_cols("orange"))) +
       scale_x_continuous(limits = c(true_left, 2019)) +
       #scale_alpha_continuous(trans = reverse_trans()) +
@@ -1381,6 +1385,9 @@ walk(vb_species,
 :::
 
 
+
+
+
 ## Cohort Decadal Growth Differences
 
 The following figures display what the average length or weight was for individuals **born** in a given decade. Means for each decade have been overlaid. No data for individuals born before 1970 were included here.
@@ -1397,7 +1404,7 @@ decadal_growth_lines <- function(comname_x, option = "length"){
   
   # Get the averages for each year, give labels for display groups
   age_lines <- species_dat %>% 
-      filter(yearclass >= 1970) %>% 
+      filter(yearclass >= 1980) %>% 
       group_by(comname, birthyear = yearclass,  age) %>% 
     summarise(
       avg_len = mean(length_cm, na.rm =T),
@@ -1411,8 +1418,8 @@ decadal_growth_lines <- function(comname_x, option = "length"){
   
   # Make decadal averages
   decade_lines <- species_dat %>%
-    filter(yearclass>= 1970) %>% 
-    mutate(birthdecade =floor_decade(yearclass)) %>% 
+    filter(yearclass>= 1980) %>% 
+    mutate(birthdecade = floor_decade(yearclass)) %>% 
     group_by(comname, birthdecade,  age) %>% 
     summarise(
       avg_len = mean(length_cm, na.rm =T),
@@ -1475,6 +1482,8 @@ walk(vb_species,
 ```
 :::
 
+
+
 ### Decadal Weight
 
 ::: panelset
@@ -1492,9 +1501,102 @@ walk(vb_species,
 
 
 
+
 ```{r}
-#| eval: true
-#| label: export_table
+#| label: exporting-data-and-pdfs
+#| eval: false
+
+# Path to decadal folder:
+decadal_folder <- cs_path(box_group = "mills", subfolder = "Projects/Decadal Variability/Graphics/Growth")
+
+
+# Data from t-tests
+write_csv(results_wide, str_c(decadal_folder, "length_and_weight_atage_ttest_results.csv"))
+
+
+#------ Length at age regimes
+
+# Export as pdf
+laa_figs <- map(vb_species, mean_saa_plots, test_var = avg_len, var_label = "Individual Length (cm)") %>% 
+  setNames(vb_species)
+
+# # Arrange on a page
+# species_laa <- marrangeGrob(laa_figs[1:7], ncol=3, nrow = 5, top=NULL)
+
+
+# Using patchwork?
+species_laa_1 <- wrap_plots(laa_figs[1:9], ncol = 3, nrow = 3, widths = 3, heights = 3)
+species_laa_2 <- wrap_plots(laa_figs[10:14], ncol = 3, nrow = 3, widths = 3, heights = 3)
+
+
+
+# Save pages
+ggsave(str_c(decadal_folder, "laa_multipanel_p1_v2.pdf"), species_laa_1, height = 15, width = 12.5, units ="in")
+ggsave(str_c(decadal_folder, "laa_multipanel_p2_v2.pdf"), species_laa_2, height = 15, width = 12.5, units ="in")
+
+
+
+
+
+
+
+
+#------- Weight at age regimes
+
+# Export as pdf
+waa_figs <- map(vb_species, mean_saa_plots, 
+                test_var = avg_wt,
+                var_label = "Individual Weight (kg)") %>% 
+  setNames(vb_species)
+
+
+
+# Using patchwork?
+species_waa_1 <- wrap_plots(waa_figs[1:9], ncol = 3, nrow = 3, widths = 3, heights = 3)
+species_waa_2 <- wrap_plots(waa_figs[10:14], ncol = 3, nrow = 3, widths = 3, heights = 3)
+
+
+# Save pages
+ggsave(str_c(decadal_folder, "waa_multipanel_p1_v2.pdf"), species_waa_1, height = 15, width = 12.5, units ="in")
+ggsave(str_c(decadal_folder, "waa_multipanel_p2_v2.pdf"), species_waa_2, height = 15, width = 12.5, units ="in")
+
+
+
+#------ length at age decades
+
+# Export as pdf
+decadal_laa_figs <- map(vb_species, decadal_growth_lines,
+                        option = "length") %>% 
+  setNames(vb_species)
+
+
+decadal_species_laa_1 <- wrap_plots(decadal_laa_figs[1:9], ncol = 3, nrow = 3, widths = 3, heights = 3)
+decadal_species_laa_2 <- wrap_plots(decadal_laa_figs[10:14], ncol = 3, nrow = 3, widths = 3, heights = 3)
+ggsave(str_c(decadal_folder, "decadal_laa_multipanel_p1_v2.pdf"), decadal_species_laa_1, height = 15, width = 12.5, units ="in")
+ggsave(str_c(decadal_folder, "decadal_laa_multipanel_p2_v2.pdf"), decadal_species_laa_2, height = 15, width = 12.5, units ="in")
+
+
+
+#------ Weight at age decades
+
+
+# Export as pdf
+decadal_waa_figs <- map(vb_species, decadal_growth_lines,
+                        option = "weight") %>% 
+  setNames(vb_species)
+
+
+decadal_species_waa_1 <- wrap_plots(decadal_waa_figs[1:9], ncol = 3, nrow = 3, widths = 3, heights = 3)
+decadal_species_waa_2 <- wrap_plots(decadal_waa_figs[10:14], ncol = 3, nrow = 3, widths = 3, heights = 3)
+ggsave(str_c(decadal_folder, "decadal_waa_multipanel_p1_v2.pdf"), decadal_species_waa_1, height = 15, width = 12.5, units ="in")
+ggsave(str_c(decadal_folder, "decadal_waa_multipanel_p2_v2.pdf"), decadal_species_waa_2, height = 15, width = 12.5, units ="in")
+```
+
+
+
+```{r}
+#| eval: false
+#| label: export-old_table
 
 write_csv(all_results, here::here("R/size_at_age/size_at_age_local_data/size_at_age_two_sample_tests.csv"))
 

@@ -124,7 +124,7 @@ process_regional_sst <- function(box_location){
   
   # Make every daily timeseries into a yearly one
   gom_yrly <- make_yearly(gom_oisst)
-  gb_yrly <- make_yearly(gb_oisst)
+  gb_yrly  <- make_yearly(gb_oisst)
   mab_yrly <- make_yearly(mab_oisst)
   sne_yrly <- make_yearly(sne_oisst)
   all_yrly <- make_yearly(inuse_strata_oisst)
