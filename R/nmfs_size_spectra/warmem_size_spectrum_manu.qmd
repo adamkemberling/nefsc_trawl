@@ -700,7 +700,8 @@ sst_idx <- temp_regimes %>%
 
 #--------------------
 # 4. Zooplankton
-zp_idx <- zp_index %>% pivot_longer(cols = c(zp_small, zp_large), names_to = "var", values_to = "value") %>% rename(area = survey_area)
+zp_idx <- zp_index %>% 
+  pivot_longer(cols = c(zp_small, zp_large), names_to = "var", values_to = "value") %>% rename(area = survey_area)
 
 
 
@@ -934,11 +935,10 @@ In addition to CCF estimates, we also investigated whether the timeseries of reg
 
 # Pull different years into a list
 driver_periods <- list(
-  "1980s"     = c(1982:1989),
-  "1990s"     = c(1990:1999),
-  "2000s"     = c(2000:2009),
-  "2010s"     = c(2010:2019),
-  "1982-2019" = c(1982:2019))
+  "1982-1998"     = c(1982:1998),
+  "1999-2006"     = c(1999:2006),
+  "2007-2019"     = c(2007:2019),
+  "1982-2019"     = c(1982:2019))
 
 
 # -------------------------------------------------
@@ -990,7 +990,8 @@ Following exploratory analyses with CCF functions and breakpoint analyses, regre
 
 # Use scaled drivers for the regressions
 # Need to drop zooplankton because they are non-unique since we split the MAB EPU and repeated it
-regression_df <- drivers_scaled %>% select(!ends_with(c("zp_small","zp_large")))
+regression_df <- drivers_scaled %>% 
+  select(!ends_with(c("zp_small","zp_large")))
 
 # Build back out the metadata:
 # Identify what region is associated with both: spectrum values & driver values
@@ -1064,8 +1065,16 @@ regression_df <- regression_df %>%
 
 
 # Add zooplankton here so it can be checked in the regressions
-regression_df <- left_join(regression_df, rename(zp_index, spectra_area = survey_area), 
-                           by = join_by(year, spectra_area))
+# Zooplankton values are duplicated in MAB and SNE b/c its the same EPU
+regression_df <- left_join(
+    regression_df, 
+    bind_rows(
+      zp_index,
+      zp_index %>% 
+        filter(survey_area == "Mid-Atlantic Bight") %>% 
+        mutate(survey_area = "Southern New England")) %>%                       
+  rename(spectra_area = survey_area), 
+        by = join_by(year, spectra_area))
 
 ```
 
@@ -1460,9 +1469,56 @@ region_indices %>%
 
 ## Size Spectra Drivers
 
-### Drivers of Spectra Shape
+## Spectra Slope Breakpoints and Regression Analysis
 
-**NOTE:** Correlation matrix is computed starting at the year where there are no NA values in any drivers. Currently with SST included that begins the matrix at 1982.
+Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which breakpoints were identified in the best supported model from the 12 candidaate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no breakpoints. Southern New-England showed the most support for a single intercept model, with no breakpoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no breakpoints, and an increasing intercept through the study period.
+
+```{r}
+
+# Pull Regions to test independently:
+gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") 
+gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>% drop_na()
+sne_df <- filter(regression_df, spectra_area == "Southern New England") 
+mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_na()
+
+
+# Check each for different breakpoint structures
+gom_cpt <- envcpt(gom_df$`ISD Exponent`, verbose = F)
+gb_cpt  <- envcpt(gb_df$`ISD Exponent`, verbose = F)
+sne_cpt <- envcpt(sne_df$`ISD Exponent`, verbose = F)
+mab_cpt <- envcpt(mab_df$`ISD Exponent`, verbose = F)
+
+
+# Pulling out details of best supported model
+cpt_res <- list(
+  "gom" =  list("cpt_res" = gom_cpt),
+  "gb"  =  list("cpt_res" = gb_cpt),
+  "sne" =  list("cpt_res" = sne_cpt),
+  "mab" =  list("cpt_res" = mab_cpt)) %>% map(function(x){
+    best <- names(which.min(AIC(x$cpt_res)))
+    best_summ <- x$cpt_res[[best]]
+    x$best <- best
+    x$best_summ <- best_summ
+    return(x)
+})
+
+
+# Plot GOM, the only one with breakpoints
+plot(gom_cpt, main = "Gulf of Maine, Break Point Analysis")
+
+
+
+# Put the rest of the results into a delta AIC table:
+bind_rows(map(cpt_res, ~tibble("Most Supported Model" = .x[["best"]])), .id = "Region") %>% kable()
+
+
+```
+
+
+
+### Driver Differences Across Regimes
+
+Breakpoint analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for breakpoints.
 
 ```{r}
 #| label: period-correlations-processing
@@ -1640,181 +1696,43 @@ period <- "1982-2019"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
-#### 1980s
+#### 1982-1998
 
 ```{r}
 #| label: correlations-80s
 #| fig-height: 6
 #| fig-width: 8
 
-period <- "1980s"
+period <- "1982-1998"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
-#### 1990's
+#### 1999-2006
 
 ```{r}
 #| label: correlations-90s
 #| fig-height: 6
 #| fig-width: 8
 
-period <- "1990s"
+period <- "1999-2006"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
-#### 2000's
+#### 2007-2019
 
 ```{r}
 #| label: correlations-20s
 #| fig-height: 6
 #| fig-width: 8
 
-period <- "2000s"
+period <- "2007-2019"
 plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
-#### 2010's
-
-```{r}
-#| label: correlations-21s
-#| fig-height: 6
-#| fig-width: 8
-
-period <- "2010s"
-plot_period_correlations(driver_period_correlations[[period]], period)
-
-```
 :::
 
 
 
-
-### Predictor Multi-Collinearity
-
-::: panel-tabset
-#### Continuous Variables
-
-::: panel-tabset
-##### SST x Landings
-
-```{r}
-#| eval: true
-#| label: predictor-relationships
-
-# Do predictor evaluations against one another
-# SST x Landings
-ggplot(regression_df, aes(SST, `Commercial Landings`, color = decade)) +
-  geom_point() + facet_wrap(~spectra_area) +
-  scale_color_gmri() +
-  labs(title = "SST x Commercial Landings")
-```
-
-##### SST x GSI
-
-```{r}
-# SST x GSI
-ggplot(regression_df, aes(SST, GSI, color = decade)) +
-  geom_point() + facet_wrap(~spectra_area) +
-  scale_color_gmri() +
-  labs(title = "SST x Gulf Stream Index")
-```
-
-##### GSI x Landings
-
-```{r}
-# GSI x Landings
-ggplot(regression_df, aes(GSI, `Commercial Landings`, color = decade)) +
-  geom_point() + facet_wrap(~spectra_area) +
-  scale_color_gmri() +
-  labs(title = "Gulf Stream Index x Commercial Landings")
-```
-:::
-
-
-
-
-#### Decadal Differences
-
-::: panel-tabset
-##### SST
-
-```{r}
-#| label: decade-relationships
-#| eval: true
-#------  Decade. --------
-
-# SST x Decade
-ggplot(regression_df, aes(decade, SST)) +
-  geom_boxplot()  + facet_wrap(~spectra_area) +
-  labs(title = "Decade x SST")
-```
-
-##### GSI
-
-```{r}
-# GSI x Decade
-ggplot(regression_df, aes(decade, GSI)) +
-  geom_boxplot()  + facet_wrap(~spectra_area) +
-  labs(title = "Decade x Gulf Stream Index")
-```
-
-##### Landings
-
-```{r}
-# Landings x Decade
-ggplot(regression_df, aes(decade, `Commercial Landings`)) +
-  geom_boxplot() + facet_wrap(~spectra_area) +
-  labs(title = "Decade x Commercial Landings")
-
-
-```
-:::
-:::
-
-
-
-## Spectra Slope Breakpoints and Regression Analysis
-
-Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which breakpoints were identified in the best supported model from the 12 candidaate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no breakpoints. Southern New-England showed the most support for a single intercept model, with no breakpoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no breakpoints, and an increasing intercept through the study period.
-
-```{r}
-
-# Pull Regions to test independently:
-gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") 
-gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>% drop_na()
-sne_df <- filter(regression_df, spectra_area == "Southern New England") 
-mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_na()
-
-
-gom_cpt <- envcpt(gom_df$`ISD Exponent`, verbose = F)
-gb_cpt  <- envcpt(gb_df$`ISD Exponent`, verbose = F)
-sne_cpt <- envcpt(sne_df$`ISD Exponent`, verbose = F)
-mab_cpt <- envcpt(mab_df$`ISD Exponent`, verbose = F)
-
-# Pulling out details of best supported model
-cpt_res <- list(
-  "gom" =  list("cpt_res" = gom_cpt),
-  "gb"  =  list("cpt_res" = gb_cpt),
-  "sne" =  list("cpt_res" = sne_cpt),
-  "mab" =  list("cpt_res" = mab_cpt)) %>% map(function(x){
-    best <- names(which.min(AIC(x$cpt_res)))
-    best_summ <- x$cpt_res[[best]]
-    x$best <- best
-    x$best_summ <- best_summ
-    return(x)
-})
-
-
-
-plot(gom_cpt, main = "Gulf of Maine, Break Point Analysis")
-
-
-
-# Put the rest of the results into a delta AIC table:
-bind_rows(map(cpt_res, ~tibble("Most Supported Model" = .x[["best"]])), .id = "Region") %>% kable()
-
-
-```
 
 
 
@@ -1827,26 +1745,11 @@ bind_rows(map(cpt_res, ~tibble("Most Supported Model" = .x[["best"]])), .id = "R
 
 ```{r}
 
-# change na. action
+# change na. action for dredge
 options(na.action = "na.fail")
 
-# fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large + regime, data = gom_df)
 
-# # Refine the dredge
-results <- dredge(all_parms,# subset= !(regime && decade), 
-                  m.lim = c(1,4), fixed = c("(Intercept)"))
-# subset
-# subset(results, delta == 0)
-
-# The "best" model
-bmod <- lm(`ISD Exponent` ~ `Commercial Landings` + zp_small, data = gom_df)
-
-
-#-----------------
-
-# Allowing Interactions with the breakpoint periods found from changepoint analysis:
-
+# Incorporate the patterns from the breakpoint analysis
 # What if we enforce the break_periods
 gom_df <- mutate(gom_df, 
   regime_shifts = case_when(
@@ -1855,6 +1758,28 @@ gom_df <- mutate(gom_df,
     year >= 2007 ~ "regime_3"
   ))
 
+
+
+
+# fit model with all parameters
+all_parms <- lm(`ISD Exponent` ~ 
+                  SST + GSI + `Commercial Landings` + 
+                  zp_small + zp_large + regime_shifts, 
+                data = gom_df)
+
+# # Refine the dredge
+results <- dredge(all_parms,# subset= !(regime && decade), 
+                  m.lim = c(1,4), fixed = c("(Intercept)"))
+# subset(results, delta == 0)
+
+# The "best" model, without interactions
+bmod <- lm(`ISD Exponent` ~ `Commercial Landings` + zp_small, data = gom_df)
+
+# Looked okay
+
+#-----------------
+
+# Allowing Interactions with the breakpoint periods found from changepoint analysis:
 
 # Do the interactions:
 regime_lm <- lm(`ISD Exponent` ~ 
@@ -1865,9 +1790,6 @@ regime_lm <- lm(`ISD Exponent` ~
                   regime_shifts * zp_large,
                 data = gom_df)
 
-# Pretty Good...
-# glance(regime_lm)
-
 # Do some dredging:
 results_shifts <- dredge(regime_lm)
 # subset(results_shifts, delta == 0)
@@ -1876,99 +1798,49 @@ results_shifts <- dredge(regime_lm)
 #new_bmod
 new_bmod <- lm(`ISD Exponent` ~ regime_shifts * `Commercial Landings`, data = gom_df)
 
-# Looks better
-# augment(new_bmod, gom_df) %>% 
-#   ggplot(aes(year)) +
-#   geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
-#   geom_line(aes(y = .fitted, color = "Regime Change Predicted"), linewidth = 1) +
-#   scale_color_gmri() +
-#   labs(color = "Color", y = "Spectrum Slope")
+# Looks worse
 
 
-# # Yea, better AIC
-# AIC(new_bmod); AIC(bmod); AIC(regime_lm)
-```
+#---------  Add Autoregressive Patterns
 
 
-```{r}
-#| label: ar2-sidecar
-#| eval: false
-
-# This code fits the autoregressive model from the changepoint analysis
-# lag 1 and lag 2 could be accomplished with lag(ISD_exponent, 1) & lag(isd..., 2) if we want to do that also:
-
-gom_dat <- gom_df$`ISD Exponent`
-n_gom <- length(gom_dat)
-
-# This is the code from the envcpt()
-gom_trendar2.fit = lm(gom_dat[-c(1:2)] ~ c(1:(n_gom - 2)) + gom_dat[2:(n_gom - 1)] + gom_dat[1:(n_gom - 2)])
-
-
-# Plotting the model from the changepoint algorithm
-data.frame(
-  "year" = gom_df$year,
-  "actual" = gom_dat,
-  "fitted" = c(NA,NA, gom_trendar2.fit$fitted.values)) %>% 
-  ggplot(aes(x = year)) +
-    geom_line(aes(y = actual, color = "Actual"), linewidth = 1) +
-    geom_line(aes(y = fitted, color = "Predicted"), linewidth = 1) +
-    scale_color_gmri() +
-    labs(color = "Color", y = "Spectrum Slope")
-
-
-#-----------------------
 
 # This is how I could recode the autoregressive predictors neatly
 gom_df_lag <- mutate(gom_df, 
                  b = `ISD Exponent`,
                  blag1 = dplyr::lag(b, 1),
-                 blag2 = dplyr::lag(b, 2)) %>% drop_na(blag2)
+                 blag2 = dplyr::lag(b, 2),
+                 zpslag1 = dplyr::lag(zp_small, 1),
+                 zpslag2 = dplyr::lag(zp_small, 2)
+                 ) %>% 
+  drop_na(blag2)
 
-# kitchen sink
+
+# kitchen sink Autoregressive model
 gom_ar_models = lm(b ~ 
                    regime_shifts * SST + 
                    regime_shifts * GSI + 
                    regime_shifts * `Commercial Landings` + 
                    regime_shifts * zp_small + 
-                   regime_shifts * zp_large +
+                   regime_shifts * zp_large + 
+                   # zpslag1 + zpslag2 +
                    blag1 + blag2, 
                    data = gom_df_lag)
 
 
 
 
-# Model selection on models with autoregression at 1+2 years
+# Model selection on models with lags at 1+2 years
 results_ar <- dredge(gom_ar_models)
 # subset(results_ar, delta == 0)
 
-
-#best autoregressive model
+# Best autoregressive model
 best_ar <- lm(b ~ `Commercial Landings` * regime_shifts + blag2 + zp_large * regime_shifts + zp_small, data = gom_df_lag)
 
 
-# And voila!?
-augment(best_ar, gom_df_lag) %>%
-  ggplot(aes(year)) +
-  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
-  geom_line(aes(y = .fitted, color = "Regime Change & Autoregression Model Preds"), linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Spectrum Slope", title = "Great Model - OR - Overfit?")
 
-# summary
-tidy(best_ar)
-
-# Residuals
-augment(best_ar, gom_df_lag) %>%
-  ggplot(aes(year, y = .resid)) +
-  geom_line(linewidth = 1, color = "gray30") +
-  geom_point(size = 2, color = "gray30") +
-  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Model Residuals")
-
-
-# Can we use emmeans to digest this?
-emmeans::emmeans(best_ar)
+# # Yea, better AIC somehow
+# AIC(new_bmod); AIC(bmod); AIC(best_ar)
 ```
 
 
@@ -1981,7 +1853,7 @@ emmeans::emmeans(best_ar)
 # output summary - broom.helpers and gtsummary
 
 # Best Model
-tbl1 <- new_bmod %>% 
+tbl1 <- best_ar %>% 
   tbl_regression() %>% 
   add_glance_table() %>% 
   bold_labels()
@@ -2014,7 +1886,7 @@ vif(all_parms) %>%
 #### Actual vs. Fitted
 
 ```{r}
-augment(new_bmod, gom_df ) %>% 
+augment(best_ar, gom_df_lag ) %>% 
   ggplot(aes(year)) +
   geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
   geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
@@ -2026,7 +1898,7 @@ augment(new_bmod, gom_df ) %>%
 #### Residual Autocorrelation
 
 ```{r}
-augment(bmod, gom_df ) %>% 
+augment(best_ar, gom_df_lag ) %>% 
   ggplot(aes(year, y = .resid)) +
   geom_line(linewidth = 1, color = "gray30") +
   geom_point(size = 2, color = "gray30") +
@@ -2036,13 +1908,35 @@ augment(bmod, gom_df ) %>%
 ```
 :::
 
+
 ### Georges Bank
+
+Exploratory analyses for Georges Bank indicated that the structure of the data did not show support for clear breakpoints. CCF results of individual predictors showed that spectrum slope was correlated with small zooplankton index values from two years prior. This relationship was added to the standard predictor candidates, each operating at a simultaneous timestep.
 
 ```{r}
 
+# Georges Bank showed
+gb_df_lag <- gb_df %>% 
+  mutate(
+    b = `ISD Exponent`,
+    blag1 = dplyr::lag(b, 1),
+    blag2 = dplyr::lag(b, 2),
+    zpslag1 = dplyr::lag(zp_small, 1),
+    zpslag2 = dplyr::lag(zp_small, 2)) %>% 
+  drop_na(blag2)
+
+
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large + regime, data = gb_df)
+all_parms <- lm(b ~ 
+                  SST + 
+                  GSI + 
+                  `Commercial Landings` + 
+                  zp_small + 
+                  zp_large + 
+                  zpslag1 + 
+                  zpslag2, 
+                data = gb_df_lag)
 
 # Refine the dredge
 results <- dredge(all_parms, #subset= !(regime && decade), 
@@ -2051,7 +1945,7 @@ results <- dredge(all_parms, #subset= !(regime && decade),
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- lm(`ISD Exponent` ~ GSI, data = gb_df)
+bmod <- lm(`ISD Exponent` ~ SST + zpslag2, data = gb_df_lag)
 
 ```
 
@@ -2075,8 +1969,15 @@ tbl1
 #### VIF
 
 ```{r}
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large + regime, 
-                data = gb_df)
+all_parms <- lm(b ~ 
+                  SST + 
+                  GSI + 
+                  `Commercial Landings` + 
+                  zp_small + 
+                  zp_large + 
+                  zpslag1 + 
+                  zpslag2, 
+                data = gb_df_lag)
 
 vif(all_parms) %>% 
   as.data.frame() %>% 
@@ -2090,7 +1991,7 @@ vif(all_parms) %>%
 #### Actual vs. Fitted
 
 ```{r}
-augment(bmod, drop_na(gb_df)) %>% 
+augment(bmod, gb_df_lag) %>% 
   ggplot(aes(year)) +
   geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
   geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
@@ -2101,7 +2002,7 @@ augment(bmod, drop_na(gb_df)) %>%
 #### Residual Autocorrelation
 
 ```{r}
-augment(bmod, gb_df ) %>% 
+augment(bmod, gb_df_lag) %>% 
   ggplot(aes(year, y = .resid)) +
   geom_line(linewidth = 1, color = "gray30") +
   geom_point(size = 2, color = "gray30") +
@@ -2111,12 +2012,14 @@ augment(bmod, gb_df ) %>%
 ```
 :::
 
+
+
 ### Southern New England
 
 ```{r}
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, data = sne_df)
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, data = sne_df)
 
 # Refine the dredge
 results <- dredge(all_parms, #subset= !(regime && decade), 
@@ -2148,8 +2051,15 @@ tbl1
 #### VIF
 
 ```{r}
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + regime, 
+all_parms <- lm(`ISD Exponent` ~ 
+                  SST + 
+                  GSI + 
+                  `Commercial Landings` + 
+                  zp_small + 
+                  zp_large, 
                 data = sne_df)
+
+
 vif(all_parms) %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
@@ -2183,6 +2093,8 @@ augment(bmod, sne_df ) %>%
   labs(color = "Color", y = "Model Residuals")
 ```
 :::
+
+
 
 ### Mid-Atlantic Bight
 
@@ -2262,7 +2174,14 @@ augment(bmod, mab_df ) %>%
 
 ## Slope Model Summaries
 
-Exploring the same model evaluation steps with AIC gives these important predictors in each area: \* Gulf of Maine: Landings & Decades.\
+# WORKING HERE
+
+Need to Organize the model predictions into a panel plot
+Need some organized summary table of the models that were selected, and their summary information
+
+
+Exploring the same model evaluation steps with AIC gives these important predictors in each area: 
+\* Gulf of Maine: Landings & Decades.\
 \* Georges Bank: GSI & Regime.\
 \* Southern New England: SST & Decades.\
 \* Mid-Atlantic Bight: Decades.
