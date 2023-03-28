@@ -12,10 +12,49 @@ library(tidyverse)
 library(patchwork)
 
 
+
 # Load the clean survdat data with targets
 tar_load("survdat_clean")
+survdat <- survdat_clean %>%  filter(season %in% c("Spring", "Fall"))
 
+#--------- Testing: Is crazy abundance coming from cleanup code --------------
 
+# # Load the raw to see if the cleanup changes what the aggregate numbers are:
+# sdat_path <- cs_path(box_group = "RES_Data", subfolder = "NMFS_trawl/SURVDAT_current")
+# load(str_c(sdat_path, "NEFSC_BTS_all_seasons_03032021.RData"))
+# survdat <- survey$survdat %>% as_tibble() %>% rename_all(tolower) %>% 
+#   mutate(biomass_kg = biomass,
+#          est_year = year,
+#          cruise6 = str_pad(cruise6, 6, "left", "0"),
+#          station = str_pad(station, 3, "left", "0"),
+#          stratum = str_pad(stratum, 4, "left", "0"),
+#          strat_num = stringr::str_sub(stratum, 2, 3),
+#          id      = str_c(cruise6, station, stratum))
+# 
+# 
+# # Drop the usual strata:
+# survdat <- survdat %>% filter(
+#   stratum >= 01010,
+#   stratum <= 01760,
+#   stratum != 1310,
+#   stratum != 1320,
+#   stratum != 1330,
+#   stratum != 1350,
+#   stratum != 1410,
+#   stratum != 1420,
+#   stratum != 1490,
+#   
+#   # Filter to the broader GOM, GB, SNE, MAB areas we include
+#   strat_num %in% c(
+#     as.character(13:23), #GB
+#     as.character(24:40), #GOM
+#     str_pad(as.character(1:12), width = 2, pad = "0", side = "left"), #SNE
+#     as.character(61:76) # MAB
+#   ),
+#   
+#   # Seasons filtered
+#   season %in% c("SPRING", "FALL")
+# )
 
 #----------  Stratum Area Details. ----------
 
@@ -40,25 +79,28 @@ alb_tow_km2 <- 0.0384
 q <- 1
 
 
+
+
+
 ####  3. Stratum Area & Effort Ratios  ####
-#  Get Annual Stratum Effort, and Area Ratios
+
+# Get Annual Stratum Effort, and Area Ratios
 # number of tows in each stratum by year
 # area of a stratum relative to total area of all stratum sampled that year
 
 
-# Merge in the area of strata in km2
-# (excludes ones we do not care about via left join)
-survdat_areas <- dplyr::left_join(survdat_clean, stratum_area, by = "stratum") %>% 
-  arrange(id)
+# a. Merge in the area of strata in km2 (excludes ones we do not care about via left join)
+survdat_areas <- dplyr::left_join(survdat, stratum_area, by = "stratum") 
 
 
-# Get Total area of all strata sampled in each year:
+# b. Get Total area of all strata sampled in each year:
 total_stratum_areas <- dplyr::group_by(survdat_areas, est_year) %>% 
-  distinct(stratum, .keep_all = T) %>% 
-  summarise(tot_s_area =  sum(s_area_km2, na.rm = T), .groups = "drop")
+  distinct(stratum, s_area_km2) %>% 
+  summarise(tot_s_area =  sum(s_area_km2, na.rm = T), 
+            .groups = "drop")
 
 
-# Calculate individual strata area relative to total area that year
+# c. Calculate individual strata area relative to total area that year
 # i.e. stratio or stratum weights
 survdat_areas <- dplyr::left_join(survdat_areas, total_stratum_areas, by = "est_year")
 survdat_areas <- dplyr::mutate(survdat_areas, st_ratio = s_area_km2 / tot_s_area)
@@ -68,6 +110,12 @@ survdat_areas <- dplyr::mutate(survdat_areas, st_ratio = s_area_km2 / tot_s_area
 # Number of unique tows per stratum, within each season
 yr_strat_effort <- dplyr::group_by(survdat_areas, est_year, season, stratum) %>% 
   summarise(strat_ntows = dplyr::n_distinct(id), .groups = "drop")
+
+# Plot effort:
+yr_strat_effort %>% 
+  group_by(est_year, season) %>% summarise(all_tows = sum(strat_ntows)) %>% 
+  ggplot(aes(est_year, all_tows)) +
+  geom_line(aes(color = season))
 
 
 
@@ -181,6 +229,7 @@ species <- c(
 
 # Filter to just those species:
 decadal_dat <- stratified_abundance %>% 
+  mutate(comname = tolower(comname)) %>% 
   filter(comname %in% tolower(species))
 
 
@@ -204,22 +253,23 @@ annual_abundance_summary <- decadal_dat %>%
 
 
 # Catch Density:
+test_species <- "little skate"
 annual_abundance_summary %>% 
-  filter(comname == "atlantic cod") %>% 
+  filter(comname == test_species) %>% 
   ggplot(aes(year, area_wtd_density)) +
   geom_line() +
   geom_point() +
   theme_gmri() +
-  labs(y = "Mean area-weighted CPUE", title = "Atlantic Cod")
+  labs(y = "Mean area-weighted CPUE", title = test_species)
 
 # Stratified Total Abundance Estimate
 annual_abundance_summary %>% 
-  filter(comname == "atlantic cod") %>% 
+  filter(comname == test_species) %>% 
   ggplot(aes(year, estimated_abundance)) +
   geom_line() +
   geom_point() +
   scale_y_continuous(labels = scales::comma_format()) +
-  labs(y = "Total Area-Stratified Abundance", title = "Atlantic Cod")
+  labs(y = "Total Area-Stratified Abundance", title = test_species)
 
 
 
@@ -241,26 +291,45 @@ annual_abundance_summary %>%
 # Color based on direction and significance
 
 plot_strat_abund <- function(species_x){
+  
+  # Pull the species
   one_species <- annual_abundance_summary %>% filter(comname == tolower(species_x)) %>% 
     mutate(comname = toupper(comname), 
-           abund_mill = estimated_abundance/1e6)
+           abund_mill = estimated_abundance/1e6) %>% 
+    filter(year %in% c(1970:2019))
+  
+  # Get the long-term mean
+  mean_abund <- mean(one_species$estimated_abundance, na.rm = T)
+  sd_abund <- sd(one_species$estimated_abundance, na.rm = T)
+  
+  # Get difference from mean
+  one_species <- one_species %>% mutate(
+    abund_scaled = (estimated_abundance - mean_abund)/sd_abund
+  )
+  
+  
   # lm_coef <- lm(estimated_abundance ~ year, data = one_species) %>% coef() %>% as.numeric()
   # direction_col <- ifelse(lm_coef[2] > 0, gmri_cols("blue"), gmri_cols("orange"))
-  ggplot(one_species, aes(year, abund_mill)) +
+  ggplot(one_species, aes(year, abund_scaled)) +
     geom_line(color = gmri_cols("light gray"), linewidth = 0.5) +
     geom_point(color = "black", size = 0.5) +
+    theme_gmri(
+      axis.title = element_blank(),
+      plot.title = element_text(size = 11),
+      axis.text.y = element_text(size=10)) +
     #geom_smooth(method = "lm", color = direction_col, formula = y~x, se = F, linewidth = 1) +
-    #facet_wrap(~comname) +
-    theme_gmri() +
-    #scale_y_continuous(labels = scales::comma_format()) +
-  #scale_y_continuous(labels = scales::number_format(suffix = "M")) +
-    scale_y_continuous(labels = scales::label_comma(suffix = "M")) +
-    labs(y = "Abundance", x = "Year", title = toupper(species_x))
+    #scale_y_continuous(labels = scales::number_format(suffix = "M")) +
+    #scale_y_continuous(labels = scales::label_comma()) +
+    labs(title = toupper(species_x))
   
   
 }
 
 
+# Difference in whitespace for different label removal options
+# ggplot(mtcars, aes(wt, mpg)) + geom_point() + labs(x = "", y = "")
+# ggplot(mtcars, aes(wt, mpg)) + geom_point() + labs(x = NULL, y = NULL)
+# ggplot(mtcars, aes(wt, mpg)) + geom_point() + theme(axis.title = element_blank())
 
 
 # Run it for all of them:
@@ -281,15 +350,25 @@ abundance_figs <- map(species, plot_strat_abund) %>%
 decadal_folder <- cs_path(box_group = "mills", subfolder = "Projects/Decadal Variability/Graphics/Strat_Abund")
 
 
-# Pages of 24:
-species_abund_1 <- wrap_plots(abundance_figs[1:24], ncol = 4, nrow = 6, widths = 3, heights = 3)
-species_abund_2 <- wrap_plots(abundance_figs[25:48], ncol = 4, nrow = 6, widths = 3, heights = 3)
-species_abund_3 <- wrap_plots(abundance_figs[49], ncol = 4, nrow = 6, widths = 3, heights = 3)
+# Patchwork: Pages of 20:
+species_abund_1 <- wrap_plots(abundance_figs[1:20], ncol = 4, nrow = 5, widths = 3, heights = 3)
+species_abund_2 <- wrap_plots(abundance_figs[21:40], ncol = 4, nrow = 5, widths = 3, heights = 3)
+species_abund_3 <- wrap_plots(abundance_figs[41:49], ncol = 4, nrow = 5, widths = 3, heights = 3)
 
 
 ggsave(str_c(decadal_folder, "strat_abundance_p1.pdf"), species_abund_1, height = 15, width = 12.5, units ="in")
 ggsave(str_c(decadal_folder, "strat_abundance_p2.pdf"), species_abund_2, height = 15, width = 12.5, units ="in")
 ggsave(str_c(decadal_folder, "strat_abundance_p3.pdf"), species_abund_3, height = 15, width = 12.5, units ="in")
+
+
+
+# marrageGrob Pages of 20
+
+species_abund <- gridExtra::marrangeGrob(abundance_figs, layout_matrix = matrix(1:20,  nrow = 5, ncol=4, byrow=TRUE), top=NULL)
+ggsave(str_c(decadal_folder, "strat_abundance_all.pdf"), species_abund, height = 15, width = 12.5, units ="in")
+
+
+
 
 
 # Pages of 9 (3x3), 5 pages

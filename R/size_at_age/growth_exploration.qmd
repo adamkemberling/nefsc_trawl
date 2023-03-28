@@ -11,9 +11,7 @@ date: "`r Sys.Date()`"
 format:
   html:
     self-contained: true
-    df-print: kable
     toc: true
-    toc-depth: 2
 execute: 
   echo: false
   warning: false
@@ -21,8 +19,6 @@ execute:
   eval: true
   fig.height: 6
   fig.width: 6
-  fig.align: center
-  comment: ""
 ---
 
 ```{r}
@@ -43,6 +39,7 @@ execute:
   library(ggrepel)
   library(broom)
   library(gridExtra)
+  library(gtExtras)
 }
 
 
@@ -128,24 +125,6 @@ vb_species <- sort(c(
   "yellowtail flounder"
 ))
 
-
-# Not needed
-# # This is what year each species has historically seen plateaus in growth
-# species_growth_plateaus <- list(
-#   "american plaice"     = 1980,
-#   "atlantic cod"        = 1970,
-#   "atlantic herring"    = 1987,
-#   "atlantic mackerel"   = 1973,
-#   "black sea bass"      = 1983,
-#   "butterfish"          = 1982,
-#   "haddock"             = 1970,
-#   "pollock"             = 1970,
-#   "scup"                = 1971,
-#   "silver hake"         = 1973,
-#   "white hake"          = 1982,
-#   "winter flounder"     = 1976,
-#   "witch flounder"      = 1982,
-#   "yellowtail flounder" = 1970) 
 ```
 
 
@@ -168,7 +147,7 @@ bio_data <- survdat_biological %>%
       as.data.frame()
   
 
-# Supplement
+# Supplement the data
 # 1. Add regime and decade labels
 # 2. Add condition Facotr: Fulton's condition factor
 bio_data <- bio_data %>% 
@@ -211,7 +190,7 @@ age_truncated <- bio_regimes %>%
 
 
 ```{r}
-#| label: age-availability-function
+#| label: age-availability-table-function
 
 
 # Function to make a table
@@ -284,7 +263,7 @@ The following tables display the results of two-sample testing comparing the len
 
 # Get the groups we want to compare
 year_groups <- list("1970-2009" = c(1970:2009),
-                    "2000-2009" = c(2000:2009),
+                    #"2000-2009" = c(2000:2009),
                     "2010-2019" = c(2010:2019))
 
 
@@ -329,9 +308,6 @@ ages_to_test <- list(
 )
 
 
-
-
-
 ```
 
 
@@ -362,18 +338,19 @@ ageclass_ttest <-  function(age_x, species_data = both_periods_df, dependent_var
       tidy() %>% 
       select(estimate1, estimate2, method, p.value)
 
-  tidy_b <- tidy(bartlett.test(length_cm ~ comparison_period, data = age_subset)) %>% 
-    select(variance_test = method, 
-           bartlett_p =  p.value)
+    tidy_b <- bartlett.test(test_formula, data = age_subset) %>% 
+        tidy() %>% 
+        select(variance_test = method, 
+               bartlett_p =  p.value)
 
-  # Make an output table
-  bind_cols(
-    list(
-      data.frame(
-        "comparison_var" = dependent_var,
-        "statistical_test" = "two sample t.test"),
-        tidy_t,
-        tidy_b))}
+    # Make an output table
+    bind_cols(
+      list(
+        data.frame(
+          "comparison_var" = dependent_var,
+          "statistical_test" = "two sample t.test"),
+          tidy_t,
+          tidy_b))}
 
 
 ```
@@ -408,6 +385,10 @@ species_ageclass_ttests <- function(
       .id = "comparison_period") %>% 
     mutate(comparison_period = factor(comparison_period, levels = regime_names))
   
+  
+  # If the variable is indwt start it at 1992
+  if(test_var == "indwt"){
+    both_periods_df <- filter(both_periods_df, est_year >= 1992)}
   
   
   
@@ -455,6 +436,7 @@ species_ageclass_ttests <- function(
     pivot_wider(names_from = comparison_period, values_from = c(n_obs, n_years, obs_per_yr)) %>% 
     left_join(ageclass_comparisons, by = "age") %>% 
     arrange(age)
+  
   
   # Add what year the earliest measurement came from:
   earliest_measure <- both_periods_df %>% pull(est_year) %>% min()
@@ -513,10 +495,7 @@ map_dfr(setNames(vb_species, vb_species),
 
 
 
-
-::: panel-tabset
-
-### 1970-2009 & 2010 - 2019
+### 1970-2009 & 2010-2019
 
 
 ```{r}
@@ -562,7 +541,7 @@ laa_1970_start <- map_dfr(
 #| label: size-at-age-table-function
 
 # Make Tables for Each Species to Reduce Code Length
-saa_table <- function(
+size_at_age_table <- function(
     comname_x, 
     saa_results, 
     period_1 = "1970-2009",
@@ -571,13 +550,13 @@ saa_table <- function(
     as_html = F){
   
   # Pull a single species by name, drop some columns, round
-  saa_table_data <- saa_results %>% 
+  size_at_age_table_data <- saa_results %>% 
     filter(comname == comname_x) %>% 
     select(-c(statistical_test, variance_test, method)) %>% 
     select(-c(3,4,5,6)) %>% 
     rename(obs_early = 3,
            obs_late = 4) %>% 
-    mutate(across(where(is.numeric), round, 2)) %>% 
+    mutate(across(where(is.numeric), \(x)  round(x, 2))) %>% 
     select(comname, 
            Variable = comparison_var, 
            age, 
@@ -589,14 +568,14 @@ saa_table <- function(
            p.value,
            bartlett_p) %>% 
     group_by(comname) 
-  #return(saa_table_data)
+  #return(size_at_age_table_data)
   
   # Change the coverage to reflect data availability
-  actual_start <- saa_table_data %>% distinct(`Data\nBegins`) %>% pull(`Data\nBegins`)
+  actual_start <- size_at_age_table_data %>% distinct(`Data\nBegins`) %>% pull(`Data\nBegins`)
   period_1 <- str_c(actual_start, "-2009")
   
   # Make gt table
-  saa_table_gt <- saa_table_data %>% 
+  size_at_age_table_gt <- size_at_age_table_data %>% 
     gt(rowname_col = "age") %>% 
     sub_missing(missing_text = "") %>% 
     tab_header(title = str_c(str_to_title(comname_x), " ", var_title, "  - Two-Sample Test"), 
@@ -629,7 +608,7 @@ saa_table <- function(
         locations = cells_body(columns = bartlett_p, rows = bartlett_p < 0.05))
   
   
-  if(as_html){ saa_table_gt %>% as_raw_html()} else {return(saa_table_gt)}
+  if(as_html){ size_at_age_table_gt %>% as_raw_html()} else {return(size_at_age_table_gt)}
   
   
 }
@@ -642,7 +621,7 @@ saa_table <- function(
 #| label: saa-table-test
 #| eval: false
 
-saa_table("haddock", saa_results = laa_1970_start, period_1 = "1970-2009", period_2 = "2010-2019")
+size_at_age_table("haddock", saa_results = laa_1970_start, period_1 = "1970-2009", period_2 = "2010-2019")
 
 ```
 
@@ -656,7 +635,7 @@ saa_table("haddock", saa_results = laa_1970_start, period_1 = "1970-2009", perio
 # Loop through the key species:
 walk(vb_species, 
      plot_panelset, 
-     plot_fun = saa_table,
+     plot_fun = size_at_age_table,
      saa_results = laa_1970_start,
      period_1 = "1970-2009",
      period_2 = "2010-2019",
@@ -668,68 +647,6 @@ walk(vb_species,
 
 
 
-### 2000-2009 & 2010-2019
-
-```{r}
-#| eval: true
-
-
-# Perform Length at Age Tests Tests
-laa_2000_start <- map_dfr(
-  .x = setNames(vb_species, vb_species), 
-  .f = possibly(
-    
-    .f = ~ species_ageclass_ttests(
-      comname_x = .x, 
-      group_1 = "2000-2009", 
-      group_2 = "2010-2019", 
-      test_var = "length_cm"),
-    
-    otherwise = data.frame(
-      "age" = NA,
-      "n_obs_2000-2009" = NA,
-      "n_obs_2010-2019" = NA,
-      "n_years_2000-2009" = NA,    
-      "n_years_2010-2019" = NA,    
-      "obs_per_yr_2000-2009" = NA,
-      "obs_per_yr_2010-2019" = NA, 
-      "comparison_var" = NA,
-      "earliest_measure" = NA,
-      "statistical_test" = "two sample t.test", 
-      "2000-2009" = NA,    
-      "2010_2019" = NA,   
-      "method" = NA,         
-      "p.value" = NA,          
-      "variance_test" = NA,    
-      "bartlett_p" = NA)), 
-    .id = "comname")
-
-
-```
-
-
-
-
-::: panelset
-```{r, results="asis"}
-#| label: laa-tables-2
-#| eval: false
-
-# Loop through the key species:
-walk(vb_species, 
-     plot_panelset, 
-     plot_fun = saa_table,
-     saa_results = laa_2000_start,
-     period_1 = "2000-2009",
-     period_2 = "2010-2019",
-     var_title = " Length at Age")
-
-```
-:::
-
-
-
-:::
 
 
 
@@ -738,7 +655,6 @@ walk(vb_species,
 
 The following tables display the results of two-sample testing comparing the weight at age of each species between data from two different periods. Significant differences are highlighted when they occur, and in those rows the larger size period's mean has been highlighted in green, with the smaller sized period's mean highlighted in red.
 
-::: panel-tabset
 
 ### 1970-2009 & 2010-2019
 
@@ -775,7 +691,7 @@ waa_1970_start <- map_dfr(
       "p.value" = NA,          
       "variance_test" = NA,    
       "bartlett_p" = NA)), 
-    .id = "comname")
+  .id = "comname")
 
 
 ```
@@ -784,93 +700,34 @@ waa_1970_start <- map_dfr(
 
 
 ::: panelset
+
 ```{r, results="asis"}
 #| label: waa-tables-1
 
 # Loop through the key species:
 walk(vb_species, 
      plot_panelset, 
-     plot_fun = saa_table,
+     plot_fun = size_at_age_table,
      saa_results = waa_1970_start,
      period_1 = "1970-2009",
      period_2 = "2010-2019",
-     var_title = " Weight at Age")
-
-```
-:::
-
-
-
-
-### 2000-2009 & 2010-2019
-
-
-```{r}
-#| eval: true
-
-# Perform Length at Age Tests Tests
-waa_2000_start <- map_dfr(
-  .x = setNames(vb_species, vb_species), 
-  .f = possibly(
-    
-    .f = ~ species_ageclass_ttests(
-      comname_x = .x, 
-      group_1 = "2000-2009", 
-      group_2 = "2010-2019", 
-      test_var = "indwt"),
-    
-    otherwise = data.frame(
-      "age" = NA,
-      "n_obs_2000-2009" = NA,
-      "n_obs_2010-2019" = NA,
-      "n_years_2000-2009" = NA,    
-      "n_years_2010-2019" = NA,    
-      "obs_per_yr_2000-2009" = NA,
-      "obs_per_yr_2010-2019" = NA, 
-      "comparison_var" = NA,
-      "earliest_measure" = NA,
-      "statistical_test" = "two sample t.test", 
-      "2000-2009" = NA,    
-      "2010_2019" = NA,   
-      "method" = NA,         
-      "p.value" = NA,          
-      "variance_test" = NA,    
-      "bartlett_p" = NA)), 
-    .id = "comname")
-
+     var_title = " Weight at Age",
+     as_html = T)
 
 ```
 
-
-
-
-::: panelset
-```{r, results="asis"}
-#| label: waa-tables-2
-#| eval: false
-
-# Loop through the key species:
-walk(vb_species, 
-     plot_panelset, 
-     plot_fun = saa_table,
-     saa_results = waa_2000_start,
-     period_1 = "2000-2009",
-     period_2 = "2010-2019",
-     var_title = " Weight at Age")
-
-```
 :::
-
-:::
+  
+  
 
 
 # Condition Factor at Age
 
 The following tables display the results of two-sample testing comparing fulton's condition factor at age of each species between data from two different periods. Significant differences are highlighted when they occur, and in those rows the larger size period's mean has been highlighted in green, with the smaller sized period's mean highlighted in red.
 
-::: panel-tabset
 
-### 1970-2009 & 2010 - 2019
+
+### 1970-2009 & 2010-2019
 
 
 ```{r}
@@ -911,6 +768,7 @@ condition_1970_start <- map_dfr(
 
 
 ::: panelset
+
 ```{r, results="asis"}
 #| label: condition-tables-1
 #| eval: false
@@ -918,75 +776,14 @@ condition_1970_start <- map_dfr(
 # Loop through the key species:
 walk(vb_species, 
      plot_panelset, 
-     plot_fun = saa_table,
+     plot_fun = size_at_age_table,
      saa_results = condition_1970_start,
      period_1 = "1970-2009",
      period_2 = "2010-2019",
-     var_title = " Condition (K) at Age")
+     var_title = " Condition (K) at Age",
+     as_html = T)
 
 ```
-:::
-
-
-### 2000-2009 & 2010-2019
-
-
-```{r}
-#| eval: true
-
-
-# Perform Length at Age Tests Tests
-condition_2000_start <- map_dfr(
-  .x = setNames(vb_species, vb_species), 
-  .f = possibly(
-    
-    .f = ~ species_ageclass_ttests(
-      comname_x = .x, 
-      group_1 = "2000-2009", 
-      group_2 = "2010-2019", 
-      test_var = "fK"),
-    
-    otherwise = data.frame(
-      "age" = NA,
-      "n_obs_2000-2009" = NA,
-      "n_obs_2010-2019" = NA,
-      "n_years_2000-2009" = NA,    
-      "n_years_2010-2019" = NA,    
-      "obs_per_yr_2000-2009" = NA,
-      "obs_per_yr_2010-2019" = NA, 
-      "comparison_var" = NA,
-      "earliest_measure" = NA,
-      "statistical_test" = "two sample t.test", 
-      "2000-2009" = NA,    
-      "2010_2019" = NA,   
-      "method" = NA,         
-      "p.value" = NA,          
-      "variance_test" = NA,    
-      "bartlett_p" = NA)), 
-    .id = "comname")
-
-
-```
-
-
-
-
-::: panelset
-```{r, results="asis"}
-#| label: condition-tables-2
-#| eval: false
-
-# Loop through the key species:
-walk(vb_species, 
-     plot_panelset, 
-     plot_fun = saa_table,
-     saa_results = condition_2000_start,
-     period_1 = "2000-2009",
-     period_2 = "2010-2019",
-     var_title = " Condition (K) at Age")
-
-```
-:::
 
 :::
 
@@ -1029,49 +826,14 @@ With the exception of silver hake, all species in these tests are significantly 
 
 
 
-::: {.panel-tabset}
+
   
 ### 1970-2009 vs. 2009-2019
   
-  
-  
-### Exporting length and weight results
+
 
 ```{r}
-#| label: export-wide-1970
-len_results <- laa_1970_start  %>% 
-  rename(mean_1970_2009 = `1970-2009`,
-         mean_2010_2019 = `2010-2019`) %>% 
-  mutate(percent_change = ((mean_2010_2019-mean_1970_2009)/mean_1970_2009)*100, 
-         .after = "mean_2010_2019") %>% 
-  mutate(early_period_coverage = str_c(earliest_measure, "-2009"), .after = "earliest_measure") %>% 
-  select(-c(method, variance_test, comparison_var, statistical_test, earliest_measure)) %>% 
-  rename_with(~str_c("l_", .), 3:14) 
-
-wt_results <- waa_1970_start %>% 
-  rename(mean_1970_2009 = `1970-2009`,
-         mean_2010_2019 = `2010-2019`) %>% 
-  mutate(percent_change = ((mean_2010_2019-mean_1970_2009)/mean_1970_2009)*100, 
-         .after = "mean_2010_2019") %>% 
-  mutate(early_period_coverage = str_c(earliest_measure, "-2009"), .after = "earliest_measure") %>% 
-  select(-c(method, variance_test, comparison_var, statistical_test, earliest_measure)) %>% 
-  rename_with(~str_c("w_", .), 3:14) 
-
-results_wide <- left_join(len_results, wt_results, by = c("comname", "age"))
-
-
-```
-
-
-
-  
-
-```{r}
-#| eval: true
-# Exporting the data for Kathy
-# Format data for the first comparison periods:
-
-
+#| label: prepare-winloss-results
 
 #-----------------------
 
@@ -1103,50 +865,21 @@ pair_1_results_tidy <- pair_1_results %>%
     bartlett_p) %>% 
   mutate(percent_change = ((late_period_mean-early_period_mean)/early_period_mean)*100, 
          .after = "late_period_mean") %>% 
-  mutate(across(where(is.numeric), round, 3))
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
 
 
 #--------------------
 
 
-# Pull the comparisons for 2000-2009 vs. 2010-2019
-pair_2_results <-  bind_rows(
-  list(
-    "length-at-age-2000-2009"     = laa_2000_start,
-    "weight-at-age-2000-2009"     = waa_2000_start,
-    "condition-at-age-2000-2009" = condition_2000_start), 
-  .id = "comparison_variable")
 
-
-
-
-
-# Make an "early period column" to be consistent with group one
-# make a "late period" for the 2010-2019 also, then rename early & late period means
-pair_2_results_tidy <- pair_2_results %>% #names()
-  mutate(early_period_coverage = "2000-2009",
-         late_period_coverage = "2010-2019") %>% 
-  select(
-    comparison_variable,
-    comparison_var,
-    early_period_coverage, 
-    late_period_coverage, 
-    comname,
-    age,
-    early_period_obs_per_yr = `obs_per_yr_2000-2009`,
-    late_period_obs_per_yr = `obs_per_yr_2010-2019`,
-    early_period_mean = `2000-2009`,
-    late_period_mean = `2010-2019`,
-    p.value,
-    bartlett_p) %>% 
-  mutate(percent_change = ((late_period_mean-early_period_mean)/early_period_mean)*100, 
-         .after = "late_period_mean") %>% 
-  mutate(across(where(is.numeric), round, 3))
-
-
-# Put all the results into one table
-all_results <- bind_rows(pair_1_results_tidy, pair_2_results_tidy)
+# Only using one comparison period for all results now
+all_results <- pair_1_results_tidy
 ```
+
+
+::: {.panel-tabset}
+
+### Win-Loss Table
 
 
 ```{r}
@@ -1154,9 +887,6 @@ all_results <- bind_rows(pair_1_results_tidy, pair_2_results_tidy)
 
 
 #---------------------
-
-
-
 
 # palette for bars
 winloss_pal <- c(gmri_cols("blue"), gmri_cols("orange"), "gray70")
@@ -1180,21 +910,22 @@ winloss_results_1 <- all_results %>%
 
 
 
-
-
-# Assemble the table
-winloss_results_1 %>% 
+# Reshape to have multiple winloss columns
+winloss_wide <- winloss_results_1 %>% 
   mutate(
     comparison_var = ifelse(comparison_var == "indwt", "Individual Weight", comparison_var),
     comparison_var = ifelse(comparison_var == "length_cm", "Individual Length", comparison_var),
     comparison_var = ifelse(comparison_var == "fK", "Condition (k)", comparison_var),
     comname = str_to_title(comname)) %>% 
   pivot_wider(names_from = comparison_var, values_from = wins) %>% 
-  select(comname, `Individual Length`, `Individual Weight`) %>% 
+  select(comname, `Individual Length`, `Individual Weight`) 
+
+
+
+
+# Assemble the table
+winloss_wide %>% 
   gt(rowname_col = "comname") %>%
-  # tab_header(
-  #   title = "Changes in Size-At-Age Characteristics",
-  #   subtitle = "Significant changes in size moving from 1970-2009 & to 2010-2019 size-at-age data") %>% 
   gtExtras::gt_plt_winloss(`Individual Weight`, palette = winloss_pal) %>% 
   gtExtras::gt_plt_winloss(`Individual Length`, palette = winloss_pal) %>% 
   tab_spanner(
@@ -1214,55 +945,293 @@ winloss_results_1 %>%
 
 
 
-### 2000-2009 vs. 2010-2019
-  
-  
+### New Win-Loss Table
+
 
 ```{r}
+#| label: winloss-replacement
 #| eval: false
 
+# 
+# # Data for the table:
+# #winloss_results_1
+# 
+# # What data each row provides
+# df_ex <- winloss_results_1[1,]
+# 
+# # Function to make a ggplot from the win/loss list
+# my_ggplot <- function(vals) {
+#   
+#   # Take the values from list and make a table with the color assignments
+#   # x is the number of positions on the x axis
+#   # y = the height placement
+#   df_gg <- data.frame(
+#     x = 1:length(vals),
+#     y = vals,
+#     # Shapes for points
+#     shape = dplyr:: case_when(
+#       vals == 0.5 ~ 22,
+#       vals == 1 ~ 24,
+#       vals == 0 ~ 25),
+#     # From pills
+#     ypill = case_when(
+#       vals == 0.5 ~ 0.6, 
+#       vals == 1 ~ 0.4, 
+#       vals == 0 ~ 0.6),
+#     ypill2 = case_when(
+#       vals == 0.5 ~ 0.4, 
+#       vals == 1 ~ 1, 
+#       vals == 0 ~ 0),
+#     # color for anything
+#     color = dplyr::case_when(
+#       vals == 0.5 ~ gmri_cols("light gray"), 
+#       vals == 1 ~ gmri_cols("blue"), 
+#       vals == 0 ~ gmri_cols("orange")))
+#   
+#   # Build the plot:
+#   # Can control the size it takes up here with shapoe sizes:
+#   ggplot(df_gg, 
+#          aes(x = x)) +
+#     
+#     # Rounded arrow for changes
+#     geom_segment(
+#       data = filter(df_gg, y != 0.5),
+#       aes(x=x, xend=x, y = ypill, yend = ypill2, color = I(color)), 
+#       linewidth = 5, lineend = "round",
+#       arrow = arrow(length = unit(0.075, "npc"), type = "closed")) +
+#     # Shape for no-change
+#     geom_point(
+#       data = filter(df_gg, y == 0.5),
+#       aes(y = y,
+#           fill = I(color),
+#           color = I(color),
+#           shape = I(shape)),
+#       size = 22) +
+#     theme_classic() +
+#     theme(
+#       axis.line.y = element_blank(),
+#       axis.text.y = element_blank(),
+#       axis.title.x = element_blank(),
+#       axis.title.y = element_blank(),
+#       axis.ticks = element_blank(),
+#       axis.text.x = element_text(size = 34, face = "bold")) +
+#     scale_x_continuous(limits = c(1, length(vals)),
+#                        breaks = seq(1, length(vals), 1)) +
+#     scale_y_continuous(limits = c(-0.5, 1.5))
+# }
+# 
+# # # Example of it in use
+# # ex_plot <- my_ggplot(df_ex$wins |> unlist())
+# # ex_plot <- my_ggplot(df_ex$wins |> unlist())
+#  
+# 
+# 
+# 
+# 
+# # Then how it is used for gt()
+# df_ex |>
+#   gt() |>
+#   text_transform(
+#     locations = cells_body(wins),
+#     fn = function(x){
+#       ggplot_image(ex_plot, aspect_ratio = 1.5)
+#       # ggplot_image(
+#       #   my_ggplot(x |> unlist()), 
+#       #   aspect_ratio = 1.5)
+#     }) |>
+#   cols_label(wins = "Growth Change") %>%
+#   fmt_markdown(comname)
+# 
+# 
+# # # ^ that works for one example, but how does one include that programmatically?
+# # # No
+# # winloss_results_1 %>% 
+# #   mutate(row = n()) %>% 
+# #   split(.$row) %>% 
+# #   map(function(.x){
+# #     my_plot <- my_ggplot(.x$wins %>% unlist())
+# #     })
+# 
+# 
+# # Whole thing?
+# winloss_wide %>% 
+#   gt(rowname_col = "comname") %>%
+#   text_transform(
+#     locations = cells_body(`Individual Length`),
+#     fn = function(x){
+#       ggplot_image(ex_plot, aspect_ratio = 3)
+#     }) |> 
+#   text_transform(
+#     locations = cells_body(`Individual Weight`),
+#     fn = function(x){
+#       ggplot_image(ex_plot, aspect_ratio = 3)
+#     }) |>
+#   tab_spanner(
+#     label = "Size-at-Age Differences",
+#     columns = c(`Individual Length`, `Individual Weight`)) %>% 
+#   tab_footnote(
+#     footnote = md('Colored arrows indicate significant changes in an ageclass characteristic moving from the period of 1970-2009 to individuals from 2010-2019. Downward facing arrows in <a style="color:#EA4F12">orange indicate significant declines in length or weight.</a> Upward facing arrows colored in <a style="color:#00608A">blue indicate significant increases in length or weight.</a> And bars in <a style="color:#B3B3B3">gray</a> indicate no difference in ageclass characteristics.</a>' ),
+#     locations = cells_column_labels(
+#       columns = c(`Individual Length`, `Individual Weight`)
+#   )) %>% 
+#   gt::cols_label(
+#     `Individual Length` = md("**Length**"),
+#     `Individual Weight` = md("**Weight**"))
+```
 
-# Prepare data in list for bars
-winloss_results_2 <- all_results %>% 
-  filter(early_period_coverage == "2000-2009") %>% 
-  select(`comparison_variable`, comname, age, comparison_var, 
-         early_period_mean,
-         late_period_mean, 
-         p.value) %>% 
-  drop_na() %>% 
-  group_by(comname, comparison_var) %>% 
-  arrange(age) %>% 
-  mutate(wins = case_when(
-    p.value > 0.05 ~ 0.5,
-    p.value < 0.05 & early_period_mean > late_period_mean ~ 0,
-    p.value < 0.05 & early_period_mean < late_period_mean ~ 1)
-    ) %>% 
-  summarize(wins = list(wins), .groups = "drop") 
+
+
+```{r}
+#| label: new-winloss-colors
+
+
+# Making a new gt plot for the arrow design:
+gt_plt_growchange <- function(
+    gt_object,
+    column,
+    max_wins = 17,
+    palette = c(gmri_cols("light gray"), gmri_cols("blue"), gmri_cols("orange")),
+    width = max_wins / 0.83,
+    aspect_r = 2.5){
+  
+  # Throw errors:
+  stopifnot("'gt_object' must be a 'gt_tbl', have you accidentally passed raw data?" = "gt_tbl" %in% class(gt_object))
+  stopifnot("There must be 3 colors" = length(palette) == 3L)
+
+
+  # Get the data values from the column
+  list_vals <- gt_index(gt_object = gt_object, {{ column }}, as_vector = TRUE)
+
+  # Stop if they are formatted wrong
+  stopifnot("The column must be a list-column" = is.list(list_vals))
+  stopifnot("All values must be 1, 0 or 0.5" = unlist(list_vals) %in% c(NA, NULL, 1, 0, 0.5))
+
+  
+  
+  # Plot function:
+  plot_fn_arrow <- function(vals) {
+    
+    # If there is no data then create a blank
+    if (all(is.na(vals) | is.null(vals))) {
+      plot_out <- ggplot() +
+        theme_void()
+      
+      # Swapping code in here:
+      } else {
+        
+        # New Data Prep
+        # Take the values from list and make a table with the color assignments
+        # x is the number of positions on the x axis
+        # y = the height placement
+        input_data <- data.frame(
+          x = 1:length(vals),
+          y = vals,
+          # Shapes for points
+          shape = dplyr:: case_when(
+            vals == 0.5 ~ 22,
+            vals == 1 ~ 24,
+            vals == 0 ~ 25),
+          # From pills
+          ypill = case_when(
+            vals == 0.5 ~ 0.6, 
+            vals == 1 ~ 0.4, 
+            vals == 0 ~ 0.6),
+          ypill2 = case_when(
+            vals == 0.5 ~ 0.4, 
+            vals == 1 ~ 1, 
+            vals == 0 ~ 0),
+          # color for anything
+          color = dplyr::case_when(
+            vals == 0.5 ~ palette[1], 
+            vals == 1 ~ palette[2], 
+            vals == 0 ~ palette[3]))
+        
+      
+      
+    # New Plot Design: 
+    # Build the plot:
+    # Can control the size it takes up here with shapoe sizes:
+    plot_out <- ggplot(input_data, aes(x = x)) +
+        # Rounded arrow for changes
+        geom_segment(
+          data = filter(input_data, y != 0.5),
+          aes(x=x, xend=x, y = ypill, yend = ypill2, color = I(color)), 
+          linewidth = 5, lineend = "round",
+          arrow = arrow(length = unit(0.075, "npc"), type = "closed")) +
+        # Shape for no-change
+        geom_point(
+          data = filter(input_data, y == 0.5),
+          aes(y = y,
+              fill = I(color),
+              color = I(color),
+              shape = I(shape)),
+          size = 25) +
+        theme_classic() +
+        theme(
+          axis.line.y = element_blank(),
+          axis.text.y = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.ticks = element_blank(),
+          axis.text.x = element_text(size = 34, face = "bold")) +
+        scale_x_continuous(limits = c(1, length(vals)),
+                           breaks = seq(1, length(vals), 1)) +
+        scale_y_continuous(limits = c(-0.5, 1.5))
+      
+    } # End else on data present
+    
+    # return the plot if passing to ggplot_image
+    plot_out
+
+    
+  }
+  
+  
+  
+  # Phase 2, use text transform to add to table
+  text_transform(
+    # 1. The gt table
+    gt_object, 
+    # 2. the Column to pass into the plot function
+    locations = cells_body(columns = {{ column }}),
+    fn = function(x) {
+      lapply(
+        list_vals,
+        # # Using the original workflow
+        # plot_fn_arrow
+        
+        # Can we skip the temp file saving and just use text transform?
+        function(x){ggplot_image(plot_fn_arrow(x), aspect_ratio = aspect_r)}
+      )
+    } # Close fn
+  )
+  
+  
+  
+  
+} # Close gt_function
 
 
 
-# Assemble the table
-winloss_results_2 %>% 
-  mutate(
-    comparison_var = ifelse(comparison_var == "indwt", "Individual Weight", comparison_var),
-    comparison_var = ifelse(comparison_var == "length_cm", "Individual Length", comparison_var),
-    comparison_var = ifelse(comparison_var == "fK", "Condition (k)", comparison_var),
-    comname = str_to_title(comname)) %>% 
-  pivot_wider(names_from = comparison_var, values_from = wins) %>% 
-  select(comname, `Individual Length`, `Individual Weight`) %>% 
+
+# Testing the new function:
+# Whole thing? Why not...
+winloss_wide %>% 
   gt(rowname_col = "comname") %>%
-  # tab_header(
-  #   title = "Changes in Size-At-Age Characteristics",
-  #   subtitle = "Significant changes in size moving from 2000-2009 & to 2010-2019 size-at-age data") %>% 
-  gtExtras::gt_plt_winloss(`Individual Weight`, palette = winloss_pal) %>% 
-  gtExtras::gt_plt_winloss(`Individual Length`, palette = winloss_pal) %>% 
+  gt_plt_growchange(`Individual Length`, 
+                    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+                    aspect_r = 3) |>
+  gt_plt_growchange(`Individual Weight`, 
+                    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+                    aspect_r = 3) |>
   tab_spanner(
     label = "Size-at-Age Differences",
-    columns = c(`Individual Length`,`Individual Weight`)) %>% 
+    columns = c(`Individual Length`, `Individual Weight`)) %>% 
   tab_footnote(
-    footnote = md('Colored bars indicate the change in an ageclass characteristic moving from the periods of 2000-2009 to 2010-2019. Bars in <a style="color:#EA4F12">orange indicate significant declines in length or weight.</a> Bars colored in <a style="color:#00608A">blue indicate significant increases in length or weight.</a> And bars in <a style="color:#B3B3B3">gray</a> indicate no difference in ageclass characteristics.</a>' ),
+    footnote = md('Colored arrows indicate significant changes in an ageclass characteristic moving from the period of 1970-2009 to individuals from 2010-2019. Downward facing arrows in <a style="color:#EACC1B">yellow indicate significant declines in length or weight.</a> Upward facing arrows colored in <a style="color:#0098B8">blue indicate significant increases in length or weight.</a> And bars in <a style="color:#B3B3B3">gray</a> indicate no difference in ageclass characteristics.</a>' ),
     locations = cells_column_labels(
-      columns = c(`Individual Length`, `Individual Weight`))) %>% 
+      columns = c(`Individual Length`, `Individual Weight`)
+  )) %>% 
   gt::cols_label(
     `Individual Length` = md("**Length**"),
     `Individual Weight` = md("**Weight**"))
@@ -1272,6 +1241,9 @@ winloss_results_2 %>%
 
   
 :::
+
+
+
 
 
 
@@ -1294,7 +1266,7 @@ size_at_ages_all <- age_truncated %>%
 
 ```{r}
 # Function to plot the Size at Age differences
-mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average Length (cm)"){
+mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average Length (cm)", is_wt = F){
   
   # Data for lines
   size_at_age_data <- size_at_ages_all %>% 
@@ -1302,30 +1274,44 @@ mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average L
            age %in% ages_to_test[[comname_x]]) 
   
   
-  
   # Set a more accurate left-lim for species that were aged starting later
-  true_left <- size_at_age_data %>% drop_na({{test_var}}) %>% pull(year) %>% min()
+  true_left <- size_at_age_data %>% 
+    drop_na({{test_var}}) %>% 
+    pull(year) %>% 
+    min()
+  
+  # If weights start all at 1992
+  if(is_wt){
+    size_at_age_data <- size_at_age_data %>% filter(year >= 1992)
+    true_left <- 1992
+  }
   
   
   # Data for period averages
   period_list <- list("period_1" = c(1970:2009), "period_3" = c(2010:2019))
   
   # Data to get averages
-  species_dat <- filter(age_truncated, comname == comname_x, age %in% ages_to_test[[comname_x]])
+  species_dat <- age_truncated %>% 
+    filter(comname == comname_x, 
+           age %in% ages_to_test[[comname_x]])
+  
   
   # Get the means over that range, make a dataframe of x, xend, y, yend for segments
   period_means <- imap_dfr(period_list, function(period_years, period_name){
     species_dat %>% 
       filter(est_year %in% period_years) %>% 
       group_by(comname, age) %>% 
-  summarise(
-    avg_len       = mean(length_cm, na.rm =T),
-    avg_wt        = mean(indwt, na.rm =T),
-    avg_condition = mean(fK, na.rm =T),
-    .groups = "drop") %>% 
-      mutate(x = ifelse(period_name == "period_1", true_left, min(period_years)), 
-             xend = max(period_years))
-  }, .id = "period")  %>% 
+      summarise(
+        avg_len       = mean(length_cm, na.rm =T),
+        avg_wt        = mean(indwt, na.rm =T),
+        avg_condition = mean(fK, na.rm =T),
+        .groups = "drop") %>% 
+      mutate(
+        x = ifelse(
+          period_name == "period_1", 
+          true_left, min(period_years)), 
+       xend = max(period_years))
+    }, .id = "period") %>% 
     mutate(age_alpha = as.numeric(as.character(age)),
            age_alpha = ifelse(is.na(age_alpha), max(age_alpha, na.rm = T) + 1, age_alpha))
   
@@ -1338,12 +1324,10 @@ mean_saa_plots <- function(comname_x, test_var = avg_len, var_label = "Average L
     geom_point(aes(group = age), color = "black", size = 0.5) +
     geom_segment(
       data = period_means,
-      aes(x = x, xend = xend, y = {{test_var}}, yend = {{test_var}}, group = age, color = period#, alpha = age_alpha
-          ),
+      aes(x = x, xend = xend, y = {{test_var}}, yend = {{test_var}}, group = age, color = period),
       linewidth = .75, show.legend = FALSE) +
       scale_color_manual(values = c(gmri_cols("blue"), gmri_cols("orange"))) +
       scale_x_continuous(limits = c(true_left, 2019)) +
-      #scale_alpha_continuous(trans = reverse_trans()) +
       labs(title = toupper(comname_x), y = var_label, x = "Year")
   
 }
@@ -1379,7 +1363,8 @@ walk(vb_species,
      plot_panelset, 
      plot_fun = mean_saa_plots,
      test_var = avg_wt,
-     var_label = "Individual Weight (kg)")
+     var_label = "Individual Weight (kg)",
+     is_wt = T)
 
 ```
 :::
@@ -1401,6 +1386,11 @@ decadal_growth_lines <- function(comname_x, option = "length"){
   species_dat <- filter(age_truncated, 
                         comname == comname_x,
                         age %in% ages_to_test[[comname_x]])
+  
+  #If weight start all at 1992
+  if(option == "weight"){
+    species_dat <- filter(species_dat, est_year >= 1992)
+  }
   
   # Get the averages for each year, give labels for display groups
   age_lines <- species_dat %>% 
@@ -1500,18 +1490,58 @@ walk(vb_species,
 :::
 
 
-
-
 ```{r}
-#| label: exporting-data-and-pdfs
+#| label: exporting-test-results
 #| eval: false
 
+# Reshape the length at age results
+len_results <- laa_1970_start  %>% 
+  rename(mean_1970_2009 = `1970-2009`,
+         mean_2010_2019 = `2010-2019`) %>% 
+  mutate(percent_change = ((mean_2010_2019-mean_1970_2009)/mean_1970_2009)*100, 
+         .after = "mean_2010_2019") %>% 
+  mutate(early_period_coverage = str_c(earliest_measure, "-2009"), .after = "earliest_measure") %>% 
+  select(-c(method, variance_test, comparison_var, statistical_test, earliest_measure)) %>% 
+  rename_with(~str_c("l_", .), 3:14) 
+
+
+# Reshape the weight at age results
+wt_results <- waa_1970_start %>% 
+  rename(mean_1970_2009 = `1970-2009`,
+         mean_2010_2019 = `2010-2019`) %>% 
+  mutate(percent_change = ((mean_2010_2019-mean_1970_2009)/mean_1970_2009)*100, 
+         .after = "mean_2010_2019") %>% 
+  mutate(early_period_coverage = str_c(earliest_measure, "-2009"), .after = "earliest_measure") %>% 
+  select(-c(method, variance_test, comparison_var, statistical_test, earliest_measure)) %>% 
+  rename_with(~str_c("w_", .), 3:14) 
+
+
+# Join them together into one very wide table
+results_wide <- left_join(len_results, wt_results, by = c("comname", "age"))
+
+
 # Path to decadal folder:
-decadal_folder <- cs_path(box_group = "mills", subfolder = "Projects/Decadal Variability/Graphics/Growth")
+decadal_folder <- cs_path(
+  box_group = "mills", 
+  subfolder = "Projects/Decadal Variability/Graphics/Growth")
 
 
 # Data from t-tests
 write_csv(results_wide, str_c(decadal_folder, "length_and_weight_atage_ttest_results.csv"))
+
+
+
+```
+
+
+```{r}
+#| label: exporting-pdf-plotsß
+#| eval: false
+
+# Path to decadal folder:
+decadal_folder <- cs_path(
+  box_group = "mills", 
+  subfolder = "Projects/Decadal Variability/Graphics/Growth")
 
 
 #------ Length at age regimes
@@ -1519,9 +1549,6 @@ write_csv(results_wide, str_c(decadal_folder, "length_and_weight_atage_ttest_res
 # Export as pdf
 laa_figs <- map(vb_species, mean_saa_plots, test_var = avg_len, var_label = "Individual Length (cm)") %>% 
   setNames(vb_species)
-
-# # Arrange on a page
-# species_laa <- marrangeGrob(laa_figs[1:7], ncol=3, nrow = 5, top=NULL)
 
 
 # Using patchwork?
@@ -1539,14 +1566,13 @@ ggsave(str_c(decadal_folder, "laa_multipanel_p2_v2.pdf"), species_laa_2, height 
 
 
 
-
-
 #------- Weight at age regimes
 
 # Export as pdf
 waa_figs <- map(vb_species, mean_saa_plots, 
                 test_var = avg_wt,
-                var_label = "Individual Weight (kg)") %>% 
+                var_label = "Individual Weight (kg)", 
+                is_wt = T) %>% 
   setNames(vb_species)
 
 
@@ -1559,6 +1585,8 @@ species_waa_2 <- wrap_plots(waa_figs[10:14], ncol = 3, nrow = 3, widths = 3, hei
 # Save pages
 ggsave(str_c(decadal_folder, "waa_multipanel_p1_v2.pdf"), species_waa_1, height = 15, width = 12.5, units ="in")
 ggsave(str_c(decadal_folder, "waa_multipanel_p2_v2.pdf"), species_waa_2, height = 15, width = 12.5, units ="in")
+
+
 
 
 
@@ -1594,11 +1622,14 @@ ggsave(str_c(decadal_folder, "decadal_waa_multipanel_p2_v2.pdf"), decadal_specie
 
 
 
+
 ```{r}
 #| eval: false
 #| label: export-old_table
-
-write_csv(all_results, here::here("R/size_at_age/size_at_age_local_data/size_at_age_two_sample_tests.csv"))
+# 
+# write_csv(all_results, here::here("R/size_at_age/size_at_age_local_data/size_at_age_two_sample_tests.csv"))
 
 ```
 
+
+  

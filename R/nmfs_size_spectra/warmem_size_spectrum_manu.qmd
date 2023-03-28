@@ -771,9 +771,12 @@ drivers_scaled <- bind_cols(dont_scale, to_scale) %>%
 ## Analysis of Driver Impacts
 
 
+
+
 ### Driver Cross Correlation Functions
 
-Cross correlation function estimates were used to look at correlation changes at one year intervals to investigate potential lag effects between the hypothesized drivers and the community's exponent of size spectra. CCF estimates were performed between the dependent variables of the size spectra slope, size spectra intercept, and individual size distribution exponent with the independent variables of the annual gulf stream index, and the corresponding regional commercial landings and sea surface temperature anomalies. CCF estimates were primarily done for exploratory purposes, and to inform potential needs to account for temporal autocorrelations.
+In addition to evaluating the direct and contemporaneous impacts of each potential driver, additional predictors were identified for inclusion in the model-selection process through the use of cross correlation function (CCF) estimates and changepoint analysis. CCF estimates were used to look at correlation at one-year lag intervals to investigate potential time-delayed effects between the hypothesized drivers and the community’s size spectra. CCF estimates were performed between the dependent variables of the size spectra slope with the independent variables of the annual gulf stream index, the corresponding regional commercial landings and sea surface temperature anomalies, and both small and large zooplankton indices. Annual time lags on independent variables of up to 10 years that were identified in the CCF analysis were then included as additional candidate predictors in the regression analysis on drivers of the spectrum slope changes.
+
 
 
 ```{r}
@@ -922,9 +925,9 @@ ccf_plot_data %>%
 
 ```
 
-### Slope Breakpoint Analyses
+### Slope Changepoint Analyses
 
-In addition to CCF estimates, we also investigated whether the timeseries of regional size spectra slopes showed support for regime-shift(s) using breakpoint analyses. These exploratory analyses were performed using the EnvCpt package in R, and tested each region's timeseries independently using 12 common candidate models. These 12 model candidates test whether there is evidence for a change point in any combination in slope, mean, and autoregressive structure of 1 to 2 time steps. The 12 candidate models can then be compared against one another using Aikike Information Criterion to identify between model support for whichever structure best models the shape in the underlying timeseries.
+Changepoint analysis was used as a means to explore the temporal structure in changes of the regional size spectrum slopes. Changepoint analysis was performed using the envcpt package (@killick et al), testing comparing support for 12 candidate model structures and any identified changepoints. The most supported changepoint structures were then used to inform whether (if any) regional spectra expressed distinct periods of behavior. If changepoints were identified, this was used as evidence that there may have been a community regime change. Following this thinking it is plausible for there to be inconsistencies or non-stationarity in the predictors' impact on the community spectra, as different community regimes may be differently vulnerable to top-down pressures like commercial fishing. To allow for changes in these relationships across different regimes, separated by changepoints, an additional interaction term was added to the regression model candidates for that region. 
 
 
 ### Driver Correlation Periods
@@ -982,7 +985,8 @@ driver_period_list <- map(driver_periods, function(yrs){
 
 ### Regression Analyses
 
-Following exploratory analyses with CCF functions and breakpoint analyses, regression models were developed and tested independently for each region. Candidate models were evaluated using AIC to determine the most parsimonious models for each regional system. Potential drivers included in the models were the annual Gulf Stream Index, the annual regionally averaged SST anomaly value, regionally averaged small and large copepod indices, and the scaled annual commercial landings from that region. Gulf stream index, zooplankton indices, and SST anomalies were not standardized prior to use in model fitting and evaluation as the two former are already an index value and the latter is scaled to a thirty-year climatological reference period.
+Following exploratory analyses with CCF functions and changepoint analyses, regression models were developed and tested independently for each region.  Potential drivers included in the models were the annual Gulf Stream Index, the annual regionally averaged SST anomaly value, regionally averaged small and large copepod indices, and the scaled annual commercial landings from that region. Gulf stream index, zooplankton indices, and SST anomalies were not standardized prior to use in model fitting and evaluation as the two former are already an index value and the latter is scaled to a thirty-year climatological reference period. In the event that CCF analysis identified an important time lag for a region’s independent variables, these specific time-lagged predictors were included as predictors in the candidate models, otherwise time-lags on predictors were not evaluated. For any region(s) that showed support for changepoints in their temporal structure, the periods separated by those breaks were included as an interaction term on all other predictors. In the absence of any identified changepoints, no multi-year periods were included as potential regime impacts. All candidate models for a region were evaluated using AIC to determine the most parsimonious models for each regional system. 
+
 
 ```{r}
 #| label: regression-analysis-data
@@ -1335,7 +1339,7 @@ slope_timeline <- region_indices %>%
   geom_line(aes(group = area_titles), linewidth = 1) +
   scale_color_gmri() +
   facet_wrap(~area_titles, ncol = 1)  +
-  labs(x = "Year", y = "Slope", title = "Normalized Abundance Spectra") 
+  labs(x = "Year", y = "Normalized Abundance Spectrum Slope") 
 
 
 
@@ -1350,7 +1354,7 @@ isd_timeline <- region_indices %>%
   #geom_pointrange(aes(group = area_titles, ymin = confMin, ymax = confMax), size = 0.1) +
   scale_color_gmri() +
   facet_wrap(~area_titles, ncol = 1) +
-  labs(x = "Year", y = "Abundance Size Spectrum Slope (b)", title = "Exponent of Abundance Size Spectra")
+  labs(x = "Year", y = "Abundance Size Spectrum Slope (b)")
 ```
 
 
@@ -1406,15 +1410,15 @@ fgroup_area$weight_bins %>%
       axis.text.x = element_text(angle = 45, hjust = 1))
 
 
-# # Table of averages over different periods for all of them:
-# region_indices %>% 
-#   filter(yr %in% c(1970:2000)) %>% 
-#   mutate(year_range = "1970-2000") %>% 
-#   group_by(year_range, area_titles) %>% 
-#   summarise(
-#     avg_slope = mean(b, na.rm = T),
-#     sd_slope = sd(b, na.rm = T)
-#   )
+# Table of averages over different periods for all of them:
+region_indices %>%
+  filter(yr %in% c(1970:2000)) %>%
+  mutate(year_range = "1970-2000") %>%
+  group_by(year_range, area_titles) %>%
+  summarise(
+    avg_slope = mean(b, na.rm = T),
+    sd_slope = sd(b, na.rm = T)
+  )
 
 ```
 
@@ -1469,9 +1473,9 @@ region_indices %>%
 
 ## Size Spectra Drivers
 
-## Spectra Slope Breakpoints and Regression Analysis
+## Spectra Slope changepoints and Regression Analysis
 
-Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which breakpoints were identified in the best supported model from the 12 candidaate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no breakpoints. Southern New-England showed the most support for a single intercept model, with no breakpoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no breakpoints, and an increasing intercept through the study period.
+Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which changepoints were identified in the best supported model from the candidaate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no changepoints. Southern New-England showed the most support for a single intercept model, with no changepoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no changepoints, and an increasing intercept through the study period.
 
 ```{r}
 
@@ -1482,7 +1486,7 @@ sne_df <- filter(regression_df, spectra_area == "Southern New England")
 mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_na()
 
 
-# Check each for different breakpoint structures
+# Check each for different changepoint structures
 gom_cpt <- envcpt(gom_df$`ISD Exponent`, verbose = F)
 gb_cpt  <- envcpt(gb_df$`ISD Exponent`, verbose = F)
 sne_cpt <- envcpt(sne_df$`ISD Exponent`, verbose = F)
@@ -1503,7 +1507,7 @@ cpt_res <- list(
 })
 
 
-# Plot GOM, the only one with breakpoints
+# Plot GOM, the only one with changepoints
 plot(gom_cpt, main = "Gulf of Maine, Break Point Analysis")
 
 
@@ -1518,7 +1522,7 @@ bind_rows(map(cpt_res, ~tibble("Most Supported Model" = .x[["best"]])), .id = "R
 
 ### Driver Differences Across Regimes
 
-Breakpoint analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for breakpoints.
+changepoint analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for changepoints.
 
 ```{r}
 #| label: period-correlations-processing
@@ -1749,7 +1753,7 @@ plot_period_correlations(driver_period_correlations[[period]], period)
 options(na.action = "na.fail")
 
 
-# Incorporate the patterns from the breakpoint analysis
+# Incorporate the patterns from the changepoint analysis
 # What if we enforce the break_periods
 gom_df <- mutate(gom_df, 
   regime_shifts = case_when(
@@ -1779,7 +1783,7 @@ bmod <- lm(`ISD Exponent` ~ `Commercial Landings` + zp_small, data = gom_df)
 
 #-----------------
 
-# Allowing Interactions with the breakpoint periods found from changepoint analysis:
+# Allowing Interactions with the changepoint periods found from changepoint analysis:
 
 # Do the interactions:
 regime_lm <- lm(`ISD Exponent` ~ 
@@ -1911,7 +1915,7 @@ augment(best_ar, gom_df_lag ) %>%
 
 ### Georges Bank
 
-Exploratory analyses for Georges Bank indicated that the structure of the data did not show support for clear breakpoints. CCF results of individual predictors showed that spectrum slope was correlated with small zooplankton index values from two years prior. This relationship was added to the standard predictor candidates, each operating at a simultaneous timestep.
+Exploratory analyses for Georges Bank indicated that the structure of the data did not show support for clear changepoints. CCF results of individual predictors showed that spectrum slope was correlated with small zooplankton index values from two years prior. This relationship was added to the standard predictor candidates, each operating at a simultaneous timestep.
 
 ```{r}
 
