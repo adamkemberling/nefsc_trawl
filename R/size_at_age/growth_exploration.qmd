@@ -924,7 +924,7 @@ winloss_wide <- winloss_results_1 %>%
 
 
 # Assemble the table
-winloss_wide %>% 
+pill_table <- winloss_wide %>% 
   gt(rowname_col = "comname") %>%
   gtExtras::gt_plt_winloss(`Individual Weight`, palette = winloss_pal) %>% 
   gtExtras::gt_plt_winloss(`Individual Length`, palette = winloss_pal) %>% 
@@ -941,6 +941,12 @@ winloss_wide %>%
     `Individual Weight` = md("**Weight**"))
 
 
+
+pill_table
+
+
+
+
 ```
 
 
@@ -948,150 +954,17 @@ winloss_wide %>%
 ### New Win-Loss Table
 
 
-```{r}
-#| label: winloss-replacement
-#| eval: false
-
-# 
-# # Data for the table:
-# #winloss_results_1
-# 
-# # What data each row provides
-# df_ex <- winloss_results_1[1,]
-# 
-# # Function to make a ggplot from the win/loss list
-# my_ggplot <- function(vals) {
-#   
-#   # Take the values from list and make a table with the color assignments
-#   # x is the number of positions on the x axis
-#   # y = the height placement
-#   df_gg <- data.frame(
-#     x = 1:length(vals),
-#     y = vals,
-#     # Shapes for points
-#     shape = dplyr:: case_when(
-#       vals == 0.5 ~ 22,
-#       vals == 1 ~ 24,
-#       vals == 0 ~ 25),
-#     # From pills
-#     ypill = case_when(
-#       vals == 0.5 ~ 0.6, 
-#       vals == 1 ~ 0.4, 
-#       vals == 0 ~ 0.6),
-#     ypill2 = case_when(
-#       vals == 0.5 ~ 0.4, 
-#       vals == 1 ~ 1, 
-#       vals == 0 ~ 0),
-#     # color for anything
-#     color = dplyr::case_when(
-#       vals == 0.5 ~ gmri_cols("light gray"), 
-#       vals == 1 ~ gmri_cols("blue"), 
-#       vals == 0 ~ gmri_cols("orange")))
-#   
-#   # Build the plot:
-#   # Can control the size it takes up here with shapoe sizes:
-#   ggplot(df_gg, 
-#          aes(x = x)) +
-#     
-#     # Rounded arrow for changes
-#     geom_segment(
-#       data = filter(df_gg, y != 0.5),
-#       aes(x=x, xend=x, y = ypill, yend = ypill2, color = I(color)), 
-#       linewidth = 5, lineend = "round",
-#       arrow = arrow(length = unit(0.075, "npc"), type = "closed")) +
-#     # Shape for no-change
-#     geom_point(
-#       data = filter(df_gg, y == 0.5),
-#       aes(y = y,
-#           fill = I(color),
-#           color = I(color),
-#           shape = I(shape)),
-#       size = 22) +
-#     theme_classic() +
-#     theme(
-#       axis.line.y = element_blank(),
-#       axis.text.y = element_blank(),
-#       axis.title.x = element_blank(),
-#       axis.title.y = element_blank(),
-#       axis.ticks = element_blank(),
-#       axis.text.x = element_text(size = 34, face = "bold")) +
-#     scale_x_continuous(limits = c(1, length(vals)),
-#                        breaks = seq(1, length(vals), 1)) +
-#     scale_y_continuous(limits = c(-0.5, 1.5))
-# }
-# 
-# # # Example of it in use
-# # ex_plot <- my_ggplot(df_ex$wins |> unlist())
-# # ex_plot <- my_ggplot(df_ex$wins |> unlist())
-#  
-# 
-# 
-# 
-# 
-# # Then how it is used for gt()
-# df_ex |>
-#   gt() |>
-#   text_transform(
-#     locations = cells_body(wins),
-#     fn = function(x){
-#       ggplot_image(ex_plot, aspect_ratio = 1.5)
-#       # ggplot_image(
-#       #   my_ggplot(x |> unlist()), 
-#       #   aspect_ratio = 1.5)
-#     }) |>
-#   cols_label(wins = "Growth Change") %>%
-#   fmt_markdown(comname)
-# 
-# 
-# # # ^ that works for one example, but how does one include that programmatically?
-# # # No
-# # winloss_results_1 %>% 
-# #   mutate(row = n()) %>% 
-# #   split(.$row) %>% 
-# #   map(function(.x){
-# #     my_plot <- my_ggplot(.x$wins %>% unlist())
-# #     })
-# 
-# 
-# # Whole thing?
-# winloss_wide %>% 
-#   gt(rowname_col = "comname") %>%
-#   text_transform(
-#     locations = cells_body(`Individual Length`),
-#     fn = function(x){
-#       ggplot_image(ex_plot, aspect_ratio = 3)
-#     }) |> 
-#   text_transform(
-#     locations = cells_body(`Individual Weight`),
-#     fn = function(x){
-#       ggplot_image(ex_plot, aspect_ratio = 3)
-#     }) |>
-#   tab_spanner(
-#     label = "Size-at-Age Differences",
-#     columns = c(`Individual Length`, `Individual Weight`)) %>% 
-#   tab_footnote(
-#     footnote = md('Colored arrows indicate significant changes in an ageclass characteristic moving from the period of 1970-2009 to individuals from 2010-2019. Downward facing arrows in <a style="color:#EA4F12">orange indicate significant declines in length or weight.</a> Upward facing arrows colored in <a style="color:#00608A">blue indicate significant increases in length or weight.</a> And bars in <a style="color:#B3B3B3">gray</a> indicate no difference in ageclass characteristics.</a>' ),
-#     locations = cells_column_labels(
-#       columns = c(`Individual Length`, `Individual Weight`)
-#   )) %>% 
-#   gt::cols_label(
-#     `Individual Length` = md("**Length**"),
-#     `Individual Weight` = md("**Weight**"))
-```
-
-
 
 ```{r}
-#| label: new-winloss-colors
+#| label: winloss-arrows
 
 
 # Making a new gt plot for the arrow design:
 gt_plt_growchange <- function(
     gt_object,
     column,
-    max_wins = 17,
     palette = c(gmri_cols("light gray"), gmri_cols("blue"), gmri_cols("orange")),
-    width = max_wins / 0.83,
+    lims = c(1,9),
     aspect_r = 2.5){
   
   # Throw errors:
@@ -1108,13 +981,12 @@ gt_plt_growchange <- function(
 
   
   
-  # Plot function:
-  plot_fn_arrow <- function(vals) {
+  # ggplot image function:
+  plot_fn_arrow <- function(vals, lims) {
     
     # If there is no data then create a blank
     if (all(is.na(vals) | is.null(vals))) {
-      plot_out <- ggplot() +
-        theme_void()
+      plot_out <- ggplot() + theme_void()
       
       # Swapping code in here:
       } else {
@@ -1174,17 +1046,16 @@ gt_plt_growchange <- function(
           axis.title.y = element_blank(),
           axis.ticks = element_blank(),
           axis.text.x = element_text(size = 34, face = "bold")) +
-        scale_x_continuous(limits = c(1, length(vals)),
-                           breaks = seq(1, length(vals), 1)) +
+        scale_x_continuous(limits = lims,
+                           breaks = seq(min(lims), length(vals), 1)) +
         scale_y_continuous(limits = c(-0.5, 1.5))
       
     } # End else on data present
     
-    # return the plot if passing to ggplot_image
+    # Return the plot if passing to ggplot_image
     plot_out
 
-    
-  }
+  } # Close arrow plot function
   
   
   
@@ -1201,7 +1072,7 @@ gt_plt_growchange <- function(
         # plot_fn_arrow
         
         # Can we skip the temp file saving and just use text transform?
-        function(x){ggplot_image(plot_fn_arrow(x), aspect_ratio = aspect_r)}
+        function(x){ggplot_image(plot_fn_arrow(x, lims = lims), aspect_ratio = aspect_r)}
       )
     } # Close fn
   )
@@ -1214,27 +1085,311 @@ gt_plt_growchange <- function(
 
 
 
+
+
+
+#-------------------
+
+
 # Testing the new function:
 # Whole thing? Why not...
-winloss_wide %>% 
+arrow_table <- winloss_wide %>% 
   gt(rowname_col = "comname") %>%
   gt_plt_growchange(`Individual Length`, 
                     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
-                    aspect_r = 3) |>
+                    aspect_r = 3, 
+                    lims = c(1,10)) |>
   gt_plt_growchange(`Individual Weight`, 
                     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
-                    aspect_r = 3) |>
+                    aspect_r = 3, 
+                    lims = c(1,10)) |>
   tab_spanner(
     label = "Size-at-Age Differences",
     columns = c(`Individual Length`, `Individual Weight`)) %>% 
+  gt::cols_label(
+    `Individual Length` = md("**Length**"),
+    `Individual Weight` = md("**Weight**"))
+
+
+
+# Add footnote here
+arrow_table %>% 
   tab_footnote(
     footnote = md('Colored arrows indicate significant changes in an ageclass characteristic moving from the period of 1970-2009 to individuals from 2010-2019. Downward facing arrows in <a style="color:#EACC1B">yellow indicate significant declines in length or weight.</a> Upward facing arrows colored in <a style="color:#0098B8">blue indicate significant increases in length or weight.</a> And bars in <a style="color:#B3B3B3">gray</a> indicate no difference in ageclass characteristics.</a>' ),
     locations = cells_column_labels(
       columns = c(`Individual Length`, `Individual Weight`)
-  )) %>% 
-  gt::cols_label(
-    `Individual Length` = md("**Length**"),
-    `Individual Weight` = md("**Weight**"))
+  ))
+
+
+
+
+```
+
+### Percent Change Bars
+
+
+```{r}
+#| label: percent-change-table-data
+
+# Throw the percentt change stuff in the data prep:
+pchange_prep <- all_results  %>% 
+  filter(early_period_coverage != "2000-2009") %>% 
+  select(comname, comparison_var, age, percent_change, early_period_mean, late_period_mean, p.value, percent_change) %>% 
+  drop_na() %>% 
+  group_by(comname, comparison_var) %>% 
+  arrange(age) %>% 
+  mutate(
+    # Make "wins" list column for binary outcome plots
+    wins = case_when(
+      p.value > 0.05 ~ 0.5,
+      p.value < 0.05 & early_period_mean > late_period_mean ~ 0,
+      p.value < 0.05 & early_period_mean < late_period_mean ~ 1)) %>% 
+  summarize(
+    wins = list(wins),
+    percent_change = list(percent_change),
+    .groups = "drop") 
+
+
+
+# Reshape to have multiple winloss columns
+pchange_wide <- pchange_prep %>% 
+  mutate(comname = str_to_title(comname)) %>% 
+  pivot_wider(
+    names_from = comparison_var, 
+    values_from = c(wins, percent_change), 
+    names_glue = "{comparison_var}_{.value}") 
+```
+
+
+
+```{r}
+#| label: gt-dropin-plot
+
+# Just the plot Function
+# Takes a list of values and makes a plot from it somehow...
+
+dropin_bars <- function(
+    vals, 
+    wins, 
+    ylims = c(-100, 100), 
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B")){
+  
+  # 1. Data QA/QC:
+  
+  # If there is no data then create a blank
+  if (all(is.na(vals) | is.null(vals))) {
+      plot_out <- ggplot() + theme_void()
+      
+    # If there is Data, Make the Plot
+    } else {
+        
+        # Customize Data Prep Here
+        # x is the number of positions on the x axis
+        # y = the height placement
+        input_data <- data.frame(
+          # X increment
+          x = 1:length(vals),
+          # Percent Change height
+          y = vals,
+          # Colors from Palette
+          color = dplyr::case_when(
+            wins == 0.5 ~ palette[1], 
+            wins == 1 ~ palette[2], 
+            wins == 0 ~ palette[3]))
+        
+      #return(input_data)
+      
+    # New Plot Design: 
+    # Build the plot:
+    # Can control the size it takes up here with shapoe sizes:
+    plot_out <- ggplot(input_data) +
+        geom_col(aes(x = x, y = y, fill = I(color))) +
+        theme_classic() +
+        theme(
+          axis.line.y = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size = 24),
+          axis.text.x = element_text(size = 34, 
+                                     face = "bold")) +
+        scale_x_continuous(
+          #limits = c(0.5, length(vals)+0.5),
+          limits = c(0.5, 10.5),
+          breaks = seq(1, length(vals), 1), 
+          expand = expansion(add = c(0,0))) +
+        scale_y_continuous(
+          limits = ylims, 
+          breaks = seq(-150, 150, 50),
+          labels = scales::label_percent(scale = 1), 
+          oob = scales::squish)
+      
+    } # End else on data present
+    
+    # return the plot if passing to ggplot_image
+    plot_out
+
+    
+  
+}
+
+
+# 
+# # Test it out:
+# dropin_bars(vals = pchange_wide$indwt_percent_change[[1]],
+#             wins = pchange_wide$indwt_wins[[1]],
+#             palette = c("#E9E9E9", "#0098B8", "#EACC1B"),
+#             ylims = c(-50, 50))
+# 
+#     
+
+```
+
+
+```{r}
+#| label: gt-dropin-plt-function
+
+# Making a new gt plot for the arrow design:
+gt_plt_dropin <- function(
+    gt_object,
+    dropin_ggplot_fn,
+    nest_column,
+    win_col = "",
+    val_col = "",
+    palette = c(gmri_cols("light gray"), gmri_cols("blue"), gmri_cols("orange")),
+    aspect_r = 2.5,
+    ...){
+  
+  # Throw errors:
+  stopifnot("'gt_object' must be a 'gt_tbl', have you accidentally passed raw data?" = "gt_tbl" %in% class(gt_object))
+  stopifnot("There must be 3 colors" = length(palette) == 3L)
+
+
+  # Get the data values from the column
+  list_vals <- gt_index(gt_object = gt_object, {{ nest_column }}, as_vector = TRUE)
+ 
+  # Stop if they are formatted wrong
+  stopifnot("The column must be a list-column" = is.list(list_vals))
+
+  
+  # Set the plotting function to use:
+  plot_fn <- dropin_ggplot_fn
+  
+  
+  # Phase 2, use text transform to add to table
+  text_transform(
+    # 1. The gt table
+    gt_object, 
+    # 2. the Column to pass into the plot function
+    locations = cells_body(columns = {{ nest_column }}),
+    
+    # Function to apply to each row's data value list
+    fn = function(x) {
+      lapply(
+        list_vals,
+        
+        # Skip the temp file saving and just use ggplot_image
+        function(x){
+          ggplot_image(
+            plot_fn(
+              vals = unlist(x[[val_col]]), 
+              wins = unlist(x[[win_col]]),
+              ...), 
+            aspect_ratio = aspect_r)}
+      )
+    } # Close fn
+  )
+  
+  
+  
+  
+} # Close gt_function
+
+
+
+
+
+
+
+# #----------  Testing 
+# 
+# Nest the data
+wt_nest <- pchange_wide %>%
+  select(c(comname, starts_with("indwt"))) %>%
+  nest(.by = comname, .key = "waa_change")
+
+len_nest <- pchange_wide %>%
+  select(c(comname, starts_with("length"))) %>%
+  nest(.by = comname, .key = "laa_change")
+#  
+#  both_nest <- left_join(wt_nest, len_nest)
+#  
+# 
+# # Do weight at Age
+# wt_nest %>% 
+#   gt(rowname_col = "comname") %>%
+#   # Weight at Age Changes
+#   gt_plt_dropin(
+#     nest_column = waa_change, 
+#     win_col = "indwt_wins",
+#     val_col = "indwt_percent_change",
+#     dropin_ggplot_fn = dropin_bars,
+#     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+#     ylims = c(-50, 50),
+#     aspect_r = 3) %>% 
+#    gt::cols_label(waa_change = md("**Weight at Age**"))
+
+```
+
+
+
+
+
+```{r}
+#| label: gt-winloss-percent-bars
+
+
+#-------------------
+
+# Join them together
+both_nest <- left_join(len_nest, wt_nest, by = "comname")
+ 
+
+# Make the table
+bar_table <- both_nest %>% 
+  gt(rowname_col = "comname") %>%
+  # Length at Age Changes
+  gt_plt_dropin(
+    nest_column = laa_change, 
+    win_col = "length_cm_wins",
+    val_col = "length_cm_percent_change",
+    dropin_ggplot_fn = dropin_bars,
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+    ylims = c(-50, 50),
+    aspect_r = 3) %>%
+  # Weight at Age Changes
+  gt_plt_dropin(
+    nest_column = waa_change, 
+    win_col = "indwt_wins",
+    val_col = "indwt_percent_change",
+    dropin_ggplot_fn = dropin_bars,
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+    ylims = c(-50, 50),
+    aspect_r = 3) %>% 
+   gt::cols_label(
+    laa_change = md("**Length at Age**<br>1970-2009 to 2010-2019"),
+    waa_change = md('**Weight at Age**<br>1992-2009 to 2010-2019'))
+
+
+# Add footnote here
+bar_table %>% 
+  tab_footnote(
+    footnote = md('Colored bars indicate the magnitudes of significant changes in an ageclass characteristics moving from the period of 1970-2009 to individuals from 2010-2019. Bars filled in <a style="color:#EACC1B">yellow indicate significant declines in length or weight.</a> Bars colored in <a style="color:#0098B8">blue indicate significant increases in length or weight.</a> And bars in <a style="color:#B3B3B3">gray</a> indicate no significance in difference in ageclass characteristics.</a>' ),
+    locations = cells_column_labels(
+      columns = c(laa_change, waa_change)
+  ))
+
+
 
 ```
 
@@ -1543,6 +1698,59 @@ decadal_folder <- cs_path(
   box_group = "mills", 
   subfolder = "Projects/Decadal Variability/Graphics/Growth")
 
+
+
+# Saving the winloss table
+gtsave(data = arrow_table, 
+       #filename = str_c(decadal_folder, "size_at_age_changes_table.pdf"))
+       filename = here::here("data/decadal_figures", "size_at_age_changes_table.pdf"))
+
+# Saving the table with bars
+gtsave(
+  data = bar_table, 
+  #filename = here::here("data/decadal_figures", "size_at_age_percent_changes_table.pdf")
+  filename = str_c(decadal_folder, "size_at_age_percent_changes_table.pdf"))
+
+
+# # Saving the table with one bar
+# wt_bars <- wt_nest %>% 
+#   gt(rowname_col = "comname") %>%
+#   # Weight at Age Changes
+#   gt_plt_dropin(
+#     nest_column = waa_change, 
+#     win_col = "indwt_wins",
+#     val_col = "indwt_percent_change",
+#     dropin_ggplot_fn = dropin_bars,
+#     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+#     ylims = c(-50, 50),
+#     aspect_r = 3) %>% 
+#    gt::cols_label(waa_change = md('**Weight at Age**<br>1992-2009 to 2010-2019'))
+# 
+# # Save just length at age
+# gtsave(
+#   data = wt_bars, 
+#   filename = "wt_at_age_percent_changes_table.pdf", 
+#   path = str_c(decadal_folder))
+# 
+# # Length only
+# len_bars <- len_nest %>% 
+#   gt(rowname_col = "comname") %>%
+#   # Length at Age Changes
+#   gt_plt_dropin(
+#     nest_column = laa_change,
+#     win_col = "length_cm_wins",
+#     val_col = "length_cm_percent_change",
+#     dropin_ggplot_fn = dropin_bars,
+#     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+#     ylims = c(-50, 50),
+#     aspect_r = 3) %>%
+#   gt::cols_label(laa_change = md("**Length at Age**<br>1970-2009 to 2010-2019"))
+# 
+# # Save just length at age
+# gtsave(
+#   data = len_bars, 
+#   filename = "len_at_age_percent_changes_table.pdf", 
+#   path = str_c(decadal_folder))
 
 #------ Length at age regimes
 
