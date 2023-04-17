@@ -644,7 +644,7 @@ zp_index <- zp_sli %>%
       EPU == "GB" ~ "Georges Bank",
       EPU == "GOM" ~ "Gulf of Maine",
       EPU == "MAB" ~ "Mid-Atlantic Bight",
-      EPU == "SNE" ~ "Southern New-England"),
+      EPU == "SNE" ~ "Southern New England"),
     Units = str_c("zp_", Var)) %>% 
   select(year = Time, survey_area, Value, Units) %>% 
   pivot_wider(names_from = Units, values_from = Value)
@@ -701,7 +701,9 @@ sst_idx <- temp_regimes %>%
 #--------------------
 # 4. Zooplankton
 zp_idx <- zp_index %>% 
-  pivot_longer(cols = c(zp_small, zp_large), names_to = "var", values_to = "value") %>% rename(area = survey_area)
+  pivot_longer(cols = c(zp_small, zp_large), 
+               names_to = "var", values_to = "value") %>% 
+  rename(area = survey_area)
 
 
 
@@ -1041,7 +1043,9 @@ regression_df <- regression_df %>%
     
     # E. Add Decade in
     decade = floor_decade(year),
-    regime = ifelse(year < 2010, "regime_1", "regime_2" )) 
+    #
+    #regime = ifelse(year < 2010, "regime_1", "regime_2" )
+    ) 
 
 
 # Filter it so predictors are only within matching regions, 
@@ -1072,13 +1076,8 @@ regression_df <- regression_df %>%
 # Zooplankton values are duplicated in MAB and SNE b/c its the same EPU
 regression_df <- left_join(
     regression_df, 
-    bind_rows(
-      zp_index,
-      zp_index %>% 
-        filter(survey_area == "Mid-Atlantic Bight") %>% 
-        mutate(survey_area = "Southern New England")) %>%                       
-  rename(spectra_area = survey_area), 
-        by = join_by(year, spectra_area))
+    zp_index %>% rename(spectra_area = survey_area), 
+    by = join_by(year, spectra_area))
 
 ```
 
@@ -1191,23 +1190,55 @@ Similar to abundance, the overall biomass was highest in the two northern region
 #| fig-height: 8
 
 # panel plot the biomass by body size
-fgroup_area$weight_bins %>% 
-  complete(Year, hare_group, survey_area, left_lim) %>% 
-  filter(survey_area != "Northeast Shelf, Full") %>% 
-  ggplot(aes(Year, strat_abund_mill, fill = left_lim)) +
-    geom_col(color = "gray30", linewidth = 0.1) +
-    facet_grid(survey_area~hare_group) +
-    scale_fill_distiller(palette = "RdYlGn", direction = -1, breaks = seq(0,14, 2)) +
-    guides(fill = guide_colorsteps(barwidth = unit(3, "in"))) +
-    scale_y_continuous(labels = comma_format()) +
-    labs(y = "Biomass (million kg)",  
-         x = "", 
-         fill = "Minimum Individual Weight 2^x (g)") +
-    theme(legend.position = "bottom",
-          axis.text.x = element_text(angle = 45, hjust = 1))
+plot_bodymass_vertical <- function(p_area = "GoM", show_facets = F, ylab = "Biomass (million kg)"){
+  
+  p <- fgroup_area$weight_bins %>% 
+    complete(Year, hare_group, survey_area, left_lim) %>% 
+    #filter(survey_area != "Northeast Shelf, Full") %>% 
+    filter(survey_area == p_area) %>% 
+    ggplot(aes(Year, strat_abund_mill, fill = left_lim)) +
+      geom_col(color = "gray30", linewidth = 0.1) +
+      # facet_grid(survey_area~hare_group) +
+      facet_grid(hare_group~survey_area, scales = "free") +
+      scale_fill_distiller(
+        palette = "RdYlGn", 
+        direction = -1, 
+        breaks = seq(0,14, 2), 
+        labels = math_format(2^.x)) +
+      guides(
+        fill = guide_colorbar(
+          title.position = "top", title.hjust = 0.5, barwidth = unit(4, "in"),
+          frame.colour = "black", ticks.colour = "black")) +
+      scale_y_continuous(labels = comma_format()) +
+      labs(y = ylab,  
+           x = NULL, 
+           fill = "Minimum Individual Weight 2^x (g)") +
+      theme(legend.position = "bottom",
+            axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.margin = margin(t = 0, r = 0, b = 0, l = 2))
+  if(show_facets == F){p <- p + theme(strip.text.y = element_blank(), strip.background.y = element_blank())}
+  return(p)
+  
+}
+
+
+
+
+
+# Build the pieces
+shelf_bmass <- plot_bodymass_vertical("Northeast Shelf, Full", show_facets = F)
+gom_bmass   <- plot_bodymass_vertical("GoM", F, ylab = NULL)
+gb_bmass    <- plot_bodymass_vertical("GB", F, ylab = NULL)
+sne_bmass   <- plot_bodymass_vertical("SNE", F, ylab = NULL)
+mab_bmass   <- plot_bodymass_vertical("MAB", T, ylab = NULL)
+
+# patch together
+( shelf_bmass | gom_bmass |gb_bmass |sne_bmass |gb_bmass |mab_bmass ) + plot_layout(guides = "collect")
 
 
 ```
+
+
 
 ### Regional Variation in Species Composition
 
@@ -1233,15 +1264,35 @@ regional_size <- regional_size %>%
     area_copy = survey_area)
 
 
+# Get the average length and weight at each decade
+avg_size_decades <- regional_size %>% 
+  mutate(
+    decade_left = as.numeric(as.character(floor_decade(Year))),
+    decade_right = as.numeric(as.character(floor_decade(Year+10))) - 1,
+    decade_center = (decade_left + decade_right)/2,
+    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
+  group_by(area_titles, decade_left, decade_right, decade_center, decade_lab) %>% 
+  summarise(
+    mean_len_cm = mean(mean_len_cm),
+    mean_wt_kg = mean(mean_wt_kg),
+    .groups = "drop"
+  )
+
+
 # Length plot
 avg_len_p <-  regional_size %>% 
-    ggplot(aes(Year, mean_len_cm)) +
-    geom_line(data = dplyr::select(regional_size, -area_titles),
-              aes(group = area_copy),
-              alpha = 0.2, linewidth = 0.5) + 
-    geom_line(aes(group = area_titles), 
+    ggplot() +
+    geom_line(aes(Year, mean_len_cm, group = area_titles), 
               linewidth = 1,
-              show.legend = F) + 
+              show.legend = F, color = "gray60") + 
+  geom_segment(
+    data = avg_size_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_len_cm, yend = mean_len_cm), linewidth = 1.5) +
+  geom_text(
+    data = avg_size_decades,
+    aes(x = decade_center, y = mean_len_cm, 
+        label = str_c(round(mean_len_cm, 1)) ), 
+    vjust = -1.05, size = 4, fontface = "bold") +
     scale_color_gmri() +
     facet_wrap(~area_titles, ncol = 1) + 
     labs(title = "Average Length",
@@ -1252,12 +1303,18 @@ avg_len_p <-  regional_size %>%
 # Weight plot
 avg_wt_p <- regional_size %>% 
   ggplot(aes(Year, mean_wt_kg)) + 
-  geom_line(data = dplyr::select(regional_size, -area_titles),
-            aes(group = area_copy),
-            alpha = 0.2, linewidth = 0.5) + 
   geom_line(aes(group = area_titles), 
             linewidth = 1,
-              show.legend = F) + 
+            show.legend = F,
+            color = "gray60") + 
+  geom_segment(
+    data = avg_size_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_wt_kg, yend = mean_wt_kg), linewidth = 1.5) +
+  geom_text(
+    data = avg_size_decades,
+    aes(x = decade_center, y = mean_wt_kg, 
+        label = str_c(round(mean_wt_kg, 1)) ), 
+    vjust = -1.05, size = 4, fontface = "bold") +
   scale_color_gmri() +
   facet_wrap(~area_titles, ncol = 1) + 
   labs(title = "Average Weight",
@@ -1312,7 +1369,7 @@ functional_group_size %>%
   geom_line(aes(group = area_titles), 
               linewidth = 1,
               show.legend = F) + 
-    geom_smooth(color = "orange", method = "loess", linewidth = 1) +
+    geom_smooth(color = "orange", method = "loess", linewidth = 1, formula = 'y ~ x') +
     facet_grid(hare_group~area_titles, scales = "free_y") + 
     theme(axis.text = element_text(size = 8)) +
     labs(title = "Average Weight",
@@ -1330,13 +1387,39 @@ At the start of our time series, back in the 1970's, there was a clear differenc
 #| label: size spectra results
 
 
-# Plot the Regional Slopes
+# Make decadal averages of spectrums slopes
+indices_decades <- region_indices %>% 
+  mutate(
+    Year = as.numeric(Year),
+    decade_left = as.numeric(as.character(floor_decade(Year))),
+    decade_right = as.numeric(as.character(floor_decade(Year + 10))) - 1,
+    decade_center = (decade_left + decade_right)/2,
+    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
+  group_by(area_titles, decade_left, decade_right, decade_center, decade_lab) %>% 
+  summarise( mean_b = mean(b, na.rm = T),
+             mean_l2slope = mean(log2_slope_strat, na.rm = T), 
+             .groups = "drop")
+
+
+
+
+
+
+# 1. Plot the Regional Slopes, using the binned method
 slope_timeline <- region_indices %>% 
   ggplot(aes(yr, log2_slope_strat, group = area_titles)) +
-  geom_line(data = select(region_indices, -area_titles),
-            aes(group = area_copy),
-            alpha = 0.2, linewidth = 0.5) +
-  geom_line(aes(group = area_titles), linewidth = 1) +
+  # geom_line(data = select(region_indices, -area_titles),
+  #           aes(group = area_copy),
+  #           alpha = 0.2, linewidth = 0.5) +
+  geom_line(aes(group = area_titles), linewidth = 1, color = "gray70") +
+  geom_segment(
+    data = indices_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_l2slope, yend = mean_l2slope), linewidth = 1.5) +
+  geom_text(
+    data = indices_decades,
+    aes(x = decade_center, y = mean_l2slope, 
+        label = str_c(round(mean_l2slope, 1)) ), 
+    vjust = -1.05, size = 4, fontface = "bold") +
   scale_color_gmri() +
   facet_wrap(~area_titles, ncol = 1)  +
   labs(x = "Year", y = "Normalized Abundance Spectrum Slope") 
@@ -1344,83 +1427,31 @@ slope_timeline <- region_indices %>%
 
 
 
-# Exponent of ISD
+
+
+
+# 2. Exponent of ISD, MLE method
 isd_timeline <- region_indices %>% 
   ggplot(aes(yr, b, group = area_titles)) +
-  geom_line(data = select(region_indices, -area_titles),
-            aes(group = area_copy),
-            alpha = 0.2, linewidth = 0.5) +
-  geom_line(aes(group = area_titles), linewidth = 1) +
+  # geom_line(data = select(region_indices, -area_titles),
+  #           aes(group = area_copy),
+  #           alpha = 0.2, linewidth = 0.5) +
+  geom_line(aes(group = area_titles), color = "gray60", linewidth = 1) +
   #geom_pointrange(aes(group = area_titles, ymin = confMin, ymax = confMax), size = 0.1) +
+  geom_segment(
+    data = indices_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_b, yend = mean_b), linewidth = 1.5) +
+  geom_text(
+    data = indices_decades,
+    aes(x = decade_center, y = mean_b, 
+        label = str_c(round(mean_b, 1)) ), 
+    vjust = -1.05, size = 4, fontface = "bold") +
   scale_color_gmri() +
   facet_wrap(~area_titles, ncol = 1) +
   labs(x = "Year", y = "Abundance Size Spectrum Slope (b)")
 ```
 
 
-```{r}
-#| label: weisberg-synthesis
-#| eval: false
-
-
-# Stuff for Sara:
-
-
-# 1. Plot of Gulf of Maine Slopes, no gray lines
-sara_plot <- region_indices %>% 
-  filter(survey_area == "GoM") %>% 
-  ggplot(aes(yr, b, group = area_titles)) +
-  # geom_line(aes(group = area_titles), linewidth = 1) +
-  geom_point(size = 1) +
-  geom_smooth(method = 'loess', formula = 'y ~ x', color = "orange") +
-  #geom_pointrange(aes(group = area_titles, ymin = confMin, ymax = confMax), size = 0.25) +
-  scale_color_gmri() +
-  facet_wrap(~area_titles, ncol = 1) +
-  labs(x = "Year", y = "Abundance Size Spectrum Slope (b)", title = "Exponent of Abundance Size Spectra")
-
-# The decline in weight of groundfish to go with:
-# Average individual weight
-functional_group_size %>% 
-  filter(survey_area == "GoM", hare_group %in% c("groundfish", "elasmobranch")) %>% 
-  ggplot(aes(Year, mean_wt_kg)) +
-  geom_point(size = 1) + 
-    geom_smooth(color = "orange", method = "loess", linewidth = 1) +
-    facet_grid(hare_group~area_titles, scales = "free_y") + 
-    theme(axis.text = element_text(size = 8)) +
-    labs(title = "Average Weight",
-         y = "Weight (kg)",
-         color = "Region")
-
-# How much biomass is just gf and elsmo:
-
-# Plot abundance by region and Group
-fgroup_area$weight_bins %>% 
-  filter(survey_area == "GoM") %>% 
-  ggplot(aes(Year, strat_lwbio_mill, fill = hare_group)) +
-    geom_col(color = "gray30", linewidth = 0.1, position = "fill") +
-    facet_grid(.~survey_area) +
-    scale_fill_gmri() +
-    scale_y_continuous(labels = percent_format()) +
-    labs(
-      y = "Fraction of Biomass",  
-      x = NULL, 
-      fill = "Functional Group") +
-    theme(
-      legend.position = "bottom",
-      axis.text.x = element_text(angle = 45, hjust = 1))
-
-
-# Table of averages over different periods for all of them:
-region_indices %>%
-  filter(yr %in% c(1970:2000)) %>%
-  mutate(year_range = "1970-2000") %>%
-  group_by(year_range, area_titles) %>%
-  summarise(
-    avg_slope = mean(b, na.rm = T),
-    sd_slope = sd(b, na.rm = T)
-  )
-
-```
 
 ::: panel-tabset
 #### Exponent of Size Spectra
@@ -1429,7 +1460,8 @@ region_indices %>%
 #| fig.height: 8
 #| fig.weight: 8
 
-isd_timeline + geom_smooth(color = "orange", se = FALSE)
+isd_timeline 
+#+ geom_smooth(color = "orange", se = FALSE)
 ```
 
 #### Binned Size Spectra
@@ -1438,7 +1470,7 @@ isd_timeline + geom_smooth(color = "orange", se = FALSE)
 #| fig.height: 8
 #| fig.weight: 8
 
-slope_timeline + geom_smooth(color = "orange", se = FALSE)
+slope_timeline #+ geom_smooth(color = "orange", se = FALSE)
 ```
 
 #### Contrast
@@ -1772,8 +1804,7 @@ all_parms <- lm(`ISD Exponent` ~
                 data = gom_df)
 
 # # Refine the dredge
-results <- dredge(all_parms,# subset= !(regime && decade), 
-                  m.lim = c(1,4), fixed = c("(Intercept)"))
+results <- dredge(all_parms, m.lim = c(1,4), fixed = c("(Intercept)"))
 # subset(results, delta == 0)
 
 # The "best" model, without interactions
@@ -1915,7 +1946,7 @@ augment(best_ar, gom_df_lag ) %>%
 
 ### Georges Bank
 
-Exploratory analyses for Georges Bank indicated that the structure of the data did not show support for clear changepoints. CCF results of individual predictors showed that spectrum slope was correlated with small zooplankton index values from two years prior. This relationship was added to the standard predictor candidates, each operating at a simultaneous timestep.
+Exploratory analyses for Georges Bank indicated that the structure of the data did not show support for clear changepoints. CCF results of individual predictors showed that spectrum slope was correlated with small zooplankton index values from two years prior. This relationship was added to the standard predictor candidates, each operating at a simultaneous time step.
 
 ```{r}
 
@@ -1943,7 +1974,7 @@ all_parms <- lm(b ~
                 data = gb_df_lag)
 
 # Refine the dredge
-results <- dredge(all_parms, #subset= !(regime && decade), 
+results <- dredge(all_parms, 
                   m.lim = c(1,3), 
                   fixed = c("(Intercept)"))
 
@@ -2026,7 +2057,7 @@ augment(bmod, gb_df_lag) %>%
 all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, data = sne_df)
 
 # Refine the dredge
-results <- dredge(all_parms, #subset= !(regime && decade), 
+results <- dredge(all_parms,  
                   m.lim = c(1,3), 
                   fixed = c("(Intercept)"))
 
@@ -2105,16 +2136,16 @@ augment(bmod, sne_df ) %>%
 ```{r}
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large + regime, data = mab_df)
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, data = mab_df)
 
 # Refine the dredge
-results <- dredge(all_parms, #subset= !(regime && decade), 
+results <- dredge(all_parms,
                   m.lim = c(1,3), 
                   fixed = c("(Intercept)"))
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- lm(`ISD Exponent` ~ zp_small + regime, data = mab_df)
+bmod <- lm(`ISD Exponent` ~ zp_small, data = mab_df)
 
 ```
 
@@ -2137,7 +2168,7 @@ tbl1
 #### VIF
 
 ```{r}
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large + regime, 
+all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, 
                 data = mab_df)
 
 vif(all_parms) %>% 
@@ -2173,10 +2204,15 @@ augment(bmod, mab_df ) %>%
 ```
 
 :::
+
+
+
 :::
 
 
 ## Slope Model Summaries
+
+
 
 # WORKING HERE
 
@@ -2275,11 +2311,46 @@ clim_drivers %>%
   guides(fill = "none")
 ```
 
-###
+#### Zooplankton Indices
+
+
+```{r}
+
+zp_index %>% 
+  pivot_longer(cols = starts_with("zp"), 
+               names_to = "Var", values_to = "Value") %>% 
+  group_by(year, Var, survey_area) %>% 
+  summarise(Value = mean(Value, na.rm = T)) %>% 
+  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative"),
+         Var = ifelse(
+           Var == "zp_large", 
+           "Large Zooplankton", 
+           "Small Zooplankton"),
+         survey_area = factor(survey_area, levels = area_levels_long)) %>% 
+  ggplot(aes(year, Value, group = survey_area)) +
+  geom_col(aes(fill = anom_direction),  
+           linewidth = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
+  scale_fill_gmri() +  
+  facet_grid(survey_area~Var) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(limits = c(1960, 2020), 
+                     breaks = seq(1950, 2030, by = 10)) +
+  labs(x = "Year", y = "Index",
+       title = "Environmental Drivers") +
+  guides(fill = "none")
+```
+
 
 :::
 
+
+
 # Supplemental Materials
+
+
+
+
 
 ::: panel-tabset
 ## Species Functional Groups
@@ -2375,8 +2446,78 @@ landings %>%
   gt::tab_source_note(source_note = md("*Landings data obtained from the Greater Atlantic Regional Fishing Office (GARFO)*"))
   
 ```
+
+
+
+
 :::
 
 
+
+
+
+```{r}
+#| label: weisberg-synthesis
+#| eval: false
+
+
+# Stuff for Sara:
+
+
+# 1. Plot of Gulf of Maine Slopes, no gray lines
+sara_plot <- region_indices %>% 
+  filter(survey_area == "GoM") %>% 
+  ggplot(aes(yr, b, group = area_titles)) +
+  # geom_line(aes(group = area_titles), linewidth = 1) +
+  geom_point(size = 1) +
+  geom_smooth(method = 'loess', formula = 'y ~ x', color = "orange") +
+  #geom_pointrange(aes(group = area_titles, ymin = confMin, ymax = confMax), size = 0.25) +
+  scale_color_gmri() +
+  facet_wrap(~area_titles, ncol = 1) +
+  labs(x = "Year", y = "Abundance Size Spectrum Slope (b)", title = "Exponent of Abundance Size Spectra")
+
+# The decline in weight of groundfish to go with:
+# Average individual weight
+functional_group_size %>% 
+  filter(survey_area == "GoM", hare_group %in% c("groundfish", "elasmobranch")) %>% 
+  ggplot(aes(Year, mean_wt_kg)) +
+  geom_point(size = 1) + 
+    geom_smooth(color = "orange", method = "loess", linewidth = 1) +
+    facet_grid(hare_group~area_titles, scales = "free_y") + 
+    theme(axis.text = element_text(size = 8)) +
+    labs(title = "Average Weight",
+         y = "Weight (kg)",
+         color = "Region")
+
+# How much biomass is just gf and elsmo:
+
+# Plot abundance by region and Group
+fgroup_area$weight_bins %>% 
+  filter(survey_area == "GoM") %>% 
+  ggplot(aes(Year, strat_lwbio_mill, fill = hare_group)) +
+    geom_col(color = "gray30", linewidth = 0.1, position = "fill") +
+    facet_grid(.~survey_area) +
+    scale_fill_gmri() +
+    scale_y_continuous(labels = percent_format()) +
+    labs(
+      y = "Fraction of Biomass",  
+      x = NULL, 
+      fill = "Functional Group") +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# Table of averages over different periods for all of them:
+region_indices %>%
+  filter(yr %in% c(1970:2000)) %>%
+  mutate(year_range = "1970-2000") %>%
+  group_by(year_range, area_titles) %>%
+  summarise(
+    avg_slope = mean(b, na.rm = T),
+    sd_slope = sd(b, na.rm = T)
+  )
+
+```
 
 # References

@@ -1131,7 +1131,7 @@ arrow_table %>%
 ```{r}
 #| label: percent-change-table-data
 
-# Throw the percentt change stuff in the data prep:
+# Throw the percent change stuff in the data prep:
 pchange_prep <- all_results  %>% 
   filter(early_period_coverage != "2000-2009") %>% 
   select(comname, comparison_var, age, percent_change, early_period_mean, late_period_mean, p.value, percent_change) %>% 
@@ -1172,6 +1172,7 @@ dropin_bars <- function(
     vals, 
     wins, 
     ylims = c(-100, 100), 
+    break_space = 50,
     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B")){
   
   # 1. Data QA/QC:
@@ -1209,8 +1210,9 @@ dropin_bars <- function(
           axis.line.y = element_blank(),
           axis.title.x = element_blank(),
           axis.title.y = element_blank(),
+          axis.ticks.y = element_line(linewidth = 2),
           axis.ticks.x = element_blank(),
-          axis.text.y = element_text(size = 24),
+          axis.text.y = element_text(size = 30),
           axis.text.x = element_text(size = 34, 
                                      face = "bold")) +
         scale_x_continuous(
@@ -1220,7 +1222,7 @@ dropin_bars <- function(
           expand = expansion(add = c(0,0))) +
         scale_y_continuous(
           limits = ylims, 
-          breaks = seq(-150, 150, 50),
+          breaks = seq(-150, 150, break_space),
           labels = scales::label_percent(scale = 1), 
           oob = scales::squish)
       
@@ -1234,12 +1236,17 @@ dropin_bars <- function(
 }
 
 
-# 
-# # Test it out:
-# dropin_bars(vals = pchange_wide$indwt_percent_change[[1]],
-#             wins = pchange_wide$indwt_wins[[1]],
+# # 
+# # # Test it out:
+# pchange_wide$comname
+# test_species <- 3
+# dropin_bars(vals = pchange_wide$indwt_percent_change[[test_species]],
+#             wins = pchange_wide$indwt_wins[[test_species]],
 #             palette = c("#E9E9E9", "#0098B8", "#EACC1B"),
-#             ylims = c(-50, 50))
+#             #ylims = c(-50, 50)
+#             ylims = NULL,
+#             break_space = 25
+#             )
 # 
 #     
 
@@ -1321,8 +1328,8 @@ wt_nest <- pchange_wide %>%
 len_nest <- pchange_wide %>%
   select(c(comname, starts_with("length"))) %>%
   nest(.by = comname, .key = "laa_change")
-#  
-#  both_nest <- left_join(wt_nest, len_nest)
+
+ both_nest <- left_join(wt_nest, len_nest)
 #  
 # 
 # # Do weight at Age
@@ -1352,7 +1359,7 @@ len_nest <- pchange_wide %>%
 #-------------------
 
 # Join them together
-both_nest <- left_join(len_nest, wt_nest, by = "comname")
+both_nest <- left_join(len_nest, wt_nest, by = join_by("comname"))
  
 
 # Make the table
@@ -1645,6 +1652,9 @@ walk(vb_species,
 :::
 
 
+## Saving Results:
+
+
 ```{r}
 #| label: exporting-test-results
 #| eval: false
@@ -1700,10 +1710,10 @@ decadal_folder <- cs_path(
 
 
 
-# Saving the winloss table
-gtsave(data = arrow_table, 
-       #filename = str_c(decadal_folder, "size_at_age_changes_table.pdf"))
-       filename = here::here("data/decadal_figures", "size_at_age_changes_table.pdf"))
+# # Saving the winloss table
+# gtsave(data = arrow_table, 
+#        #filename = str_c(decadal_folder, "size_at_age_changes_table.pdf"))
+#        filename = here::here("data/decadal_figures", "size_at_age_changes_table.pdf"))
 
 # Saving the table with bars
 gtsave(
@@ -1712,45 +1722,90 @@ gtsave(
   filename = str_c(decadal_folder, "size_at_age_percent_changes_table.pdf"))
 
 
-# # Saving the table with one bar
-# wt_bars <- wt_nest %>% 
-#   gt(rowname_col = "comname") %>%
-#   # Weight at Age Changes
-#   gt_plt_dropin(
-#     nest_column = waa_change, 
-#     win_col = "indwt_wins",
-#     val_col = "indwt_percent_change",
-#     dropin_ggplot_fn = dropin_bars,
-#     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
-#     ylims = c(-50, 50),
-#     aspect_r = 3) %>% 
-#    gt::cols_label(waa_change = md('**Weight at Age**<br>1992-2009 to 2010-2019'))
-# 
-# # Save just length at age
-# gtsave(
-#   data = wt_bars, 
-#   filename = "wt_at_age_percent_changes_table.pdf", 
-#   path = str_c(decadal_folder))
-# 
-# # Length only
-# len_bars <- len_nest %>% 
-#   gt(rowname_col = "comname") %>%
-#   # Length at Age Changes
-#   gt_plt_dropin(
-#     nest_column = laa_change,
-#     win_col = "length_cm_wins",
-#     val_col = "length_cm_percent_change",
-#     dropin_ggplot_fn = dropin_bars,
-#     palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
-#     ylims = c(-50, 50),
-#     aspect_r = 3) %>%
-#   gt::cols_label(laa_change = md("**Length at Age**<br>1970-2009 to 2010-2019"))
-# 
-# # Save just length at age
-# gtsave(
-#   data = len_bars, 
-#   filename = "len_at_age_percent_changes_table.pdf", 
-#   path = str_c(decadal_folder))
+#---------------  Saving half of the bars side by side as two tables
+
+
+
+# Make the left table
+bar_tab_left <- both_nest[1:7,] %>% 
+  gt(rowname_col = "comname") %>%
+  # Length at Age Changes
+  gt_plt_dropin(
+    nest_column = laa_change, 
+    win_col = "length_cm_wins",
+    val_col = "length_cm_percent_change",
+    dropin_ggplot_fn = dropin_bars,
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+    ylims = c(-50, 50),
+    aspect_r = 3) %>%
+  # Weight at Age Changes
+  gt_plt_dropin(
+    nest_column = waa_change, 
+    win_col = "indwt_wins",
+    val_col = "indwt_percent_change",
+    dropin_ggplot_fn = dropin_bars,
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+    ylims = c(-50, 50),
+    aspect_r = 3) %>% 
+   gt::cols_label(
+    laa_change = md("**Length at Age**<br>1970-2009 to 2010-2019"),
+    waa_change = md('**Weight at Age**<br>1992-2009 to 2010-2019'))
+
+
+
+# Make the left table
+bar_tab_right <- both_nest[8:14,] %>% 
+  gt(rowname_col = "comname") %>%
+  # Length at Age Changes
+  gt_plt_dropin(
+    nest_column = laa_change, 
+    win_col = "length_cm_wins",
+    val_col = "length_cm_percent_change",
+    dropin_ggplot_fn = dropin_bars,
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+    ylims = c(-50, 50),
+    aspect_r = 3) %>%
+  # Weight at Age Changes
+  gt_plt_dropin(
+    nest_column = waa_change, 
+    win_col = "indwt_wins",
+    val_col = "indwt_percent_change",
+    dropin_ggplot_fn = dropin_bars,
+    palette = c(gmri_cols("light gray"), "#0098B8", "#EACC1B"),
+    ylims = c(-50, 50),
+    aspect_r = 3) %>% 
+   gt::cols_label(
+    laa_change = md("**Length at Age**<br>1970-2009 to 2010-2019"),
+    waa_change = md('**Weight at Age**<br>1992-2009 to 2010-2019'))
+
+
+
+# Combining them horizontally:
+bar_tab_left | bar_tab_right
+
+
+library(cowplot)
+bar_tab_left %>% 
+  tab_options(container.padding.x = px(0), container.padding.y = px(0)) %>% 
+  gtsave("left_side.png", path = here::here("data/decadal_figures"))
+bar_tab_right %>% 
+  tab_options(container.padding.x = px(0), container.padding.y = px(0)) %>% 
+  gtsave("right_side.png", path = here::here("data/decadal_figures"))
+p111 <- ggdraw() + draw_image(here::here("data/decadal_figures/left_side.png"), scale = 0.8)
+p112 <- ggdraw() + draw_image(here::here("data/decadal_figures/right_side.png"), scale = 0.8)
+plot_grid(p111, p112)
+
+
+# Save as svg
+ggsave(p111, filename = str_c(here::here("data/decadal_figures"), "/left_side.svg"))
+ggsave(p112, filename = str_c(here::here("data/decadal_figures"), "/right_side.svg"))
+
+
+
+
+
+
+
 
 #------ Length at age regimes
 
