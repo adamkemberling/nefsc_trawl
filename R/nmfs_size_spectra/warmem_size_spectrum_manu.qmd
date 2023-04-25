@@ -1507,11 +1507,15 @@ region_indices %>%
 
 ## Spectra Slope changepoints and Regression Analysis
 
-Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which changepoints were identified in the best supported model from the candidaate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no changepoints. Southern New-England showed the most support for a single intercept model, with no changepoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no changepoints, and an increasing intercept through the study period.
+Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which changepoints were identified in the best supported model from the candidate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no changepoints. Southern New-England showed the most support for a single intercept model, with no changepoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no changepoints, and an increasing intercept through the study period.
 
 ```{r}
 
 # Pull Regions to test independently:
+regression_df <- regression_df %>% 
+  rename(
+    landings = `Commercial Landings`,
+    b = `ISD Exponent`)
 gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") 
 gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>% drop_na()
 sne_df <- filter(regression_df, spectra_area == "Southern New England") 
@@ -1519,10 +1523,10 @@ mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_n
 
 
 # Check each for different changepoint structures
-gom_cpt <- envcpt(gom_df$`ISD Exponent`, verbose = F)
-gb_cpt  <- envcpt(gb_df$`ISD Exponent`, verbose = F)
-sne_cpt <- envcpt(sne_df$`ISD Exponent`, verbose = F)
-mab_cpt <- envcpt(mab_df$`ISD Exponent`, verbose = F)
+gom_cpt <- envcpt(gom_df$b, verbose = F)
+gb_cpt  <- envcpt(gb_df$b, verbose = F)
+sne_cpt <- envcpt(sne_df$b, verbose = F)
+mab_cpt <- envcpt(mab_df$b, verbose = F)
 
 
 # Pulling out details of best supported model
@@ -1780,6 +1784,7 @@ plot_period_correlations(driver_period_correlations[[period]], period)
 ### Gulf of Maine
 
 ```{r}
+#| label: gom-standard-models
 
 # change na. action for dredge
 options(na.action = "na.fail")
@@ -1788,99 +1793,133 @@ options(na.action = "na.fail")
 # Incorporate the patterns from the changepoint analysis
 # What if we enforce the break_periods
 gom_df <- mutate(gom_df, 
-  regime_shifts = case_when(
-    year < 1999 ~ "regime_1",
-    year < 2007 ~ "regime_2",
-    year >= 2007 ~ "regime_3"
+  regime = case_when(
+    year < 1999 ~ "yrs_1982-1998",
+    year < 2007 ~ "yrs_1999_2006",
+    year >= 2007 ~ "yrs_2007_2019"
   ))
 
 
-
-
-# fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ 
-                  SST + GSI + `Commercial Landings` + 
-                  zp_small + zp_large + regime_shifts, 
-                data = gom_df)
-
-# # Refine the dredge
-results <- dredge(all_parms, m.lim = c(1,4), fixed = c("(Intercept)"))
-# subset(results, delta == 0)
-
-# The "best" model, without interactions
-bmod <- lm(`ISD Exponent` ~ `Commercial Landings` + zp_small, data = gom_df)
-
-# Looked okay
-
-#-----------------
-
-# Allowing Interactions with the changepoint periods found from changepoint analysis:
-
-# Do the interactions:
-regime_lm <- lm(`ISD Exponent` ~ 
-                  regime_shifts * SST + 
-                  regime_shifts * GSI + 
-                  regime_shifts * `Commercial Landings` + 
-                  regime_shifts * zp_small + 
-                  regime_shifts * zp_large,
-                data = gom_df)
-
-# Do some dredging:
-results_shifts <- dredge(regime_lm)
-# subset(results_shifts, delta == 0)
-
-
-#new_bmod
-new_bmod <- lm(`ISD Exponent` ~ regime_shifts * `Commercial Landings`, data = gom_df)
-
-# Looks worse
-
-
-#---------  Add Autoregressive Patterns
-
-
-
-# This is how I could recode the autoregressive predictors neatly
-gom_df_lag <- mutate(gom_df, 
-                 b = `ISD Exponent`,
-                 blag1 = dplyr::lag(b, 1),
-                 blag2 = dplyr::lag(b, 2),
-                 zpslag1 = dplyr::lag(zp_small, 1),
-                 zpslag2 = dplyr::lag(zp_small, 2)
-                 ) %>% 
+# Add the autoregressive predictors neatly/manually
+gom_df_lag <- gom_df %>% 
+  mutate(
+    blag1 = dplyr::lag(b, 1),
+    blag2 = dplyr::lag(b, 2),
+    zpslag1 = dplyr::lag(zp_small, 1),
+    zpslag2 = dplyr::lag(zp_small, 2)) %>% 
   drop_na(blag2)
 
 
 # kitchen sink Autoregressive model
-gom_ar_models = lm(b ~ 
-                   regime_shifts * SST + 
-                   regime_shifts * GSI + 
-                   regime_shifts * `Commercial Landings` + 
-                   regime_shifts * zp_small + 
-                   regime_shifts * zp_large + 
-                   # zpslag1 + zpslag2 +
-                   blag1 + blag2, 
-                   data = gom_df_lag)
-
+gom_ar_models = lm(
+  b ~ 
+    regime * SST + 
+    regime * GSI + 
+    regime * landings + 
+    regime * zp_small + 
+    regime * zp_large + 
+    regime * blag1 + 
+    regime * blag2, 
+  data = gom_df_lag)
 
 
 
 # Model selection on models with lags at 1+2 years
-results_ar <- dredge(gom_ar_models)
-# subset(results_ar, delta == 0)
+results_gom <- dredge(gom_ar_models)
+
 
 # Best autoregressive model
-best_ar <- lm(b ~ `Commercial Landings` * regime_shifts + blag2 + zp_large * regime_shifts + zp_small, data = gom_df_lag)
+best_gom <- get.models(results_gom, subset = delta == 0)[[1]]
 
-
-
-# # Yea, better AIC somehow
-# AIC(new_bmod); AIC(bmod); AIC(best_ar)
 ```
 
 
 
 ::: panel-tabset
+
+#### Model Selection Table
+
+```{r}
+#| label: gom-top-models-table
+
+#----------------------
+
+# Okay quick issues, for non-stationary effects, maybe just take the models under delta = 2
+# and from them pull the summary
+
+# Pull details for models with delta AIC < 2
+top_mods_gom <- get.models(results_gom, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_gom, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_gom, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    term = ifelse(term == "blag2", "2-yr-AR", term),
+    term = str_remove_all(term, "regime"),
+    term = str_remove_all(term, "yrs_"),
+    term = str_replace_all(term, ":", " ~ "),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Gulf of Maine",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "1999_2006" ~ "Regime\nIntercept",
+      term ==  "2007_2019" ~ "Regime\nIntercept",
+      term ==  "2-yr-AR" ~ "Fixed\nEffect",
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term," ~ ") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Regime\nIntercept", "Regime\nInteraction", "Model\nPerformance"))) %>% 
+ggplot( aes(term, `Model ID`)) +
+  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
+  geom_text(aes(label = estimate)) +
+  facet_grid(survey_area ~ type, scales = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
+  labs(
+    x = "Model Predictor",
+    y = "",
+    title = "Gulf of Maine Size Spectra Driver Exploration",
+    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
+  )
+
+
+
+```
+
+
 
 #### Model Summary
 
@@ -1888,7 +1927,7 @@ best_ar <- lm(b ~ `Commercial Landings` * regime_shifts + blag2 + zp_large * reg
 # output summary - broom.helpers and gtsummary
 
 # Best Model
-tbl1 <- best_ar %>% 
+tbl1 <- best_gom %>% 
   tbl_regression() %>% 
   add_glance_table() %>% 
   bold_labels()
@@ -1901,19 +1940,19 @@ tbl1
 
 ```{r}
 # make a model with all of them
-all_parms <- lm(`ISD Exponent` ~ 
-                  regime_shifts * SST + 
-                  regime_shifts * GSI + 
-                  regime_shifts * `Commercial Landings` + 
-                  regime_shifts * zp_small + 
-                  regime_shifts * zp_large, data = gom_df)
+all_parms <- lm(
+  b ~ 
+    regime * SST + 
+    regime * GSI + 
+    regime * landings + 
+    regime * zp_small + 
+    regime * zp_large, 
+  data = gom_df)
 
 # Check VIF
-vif(all_parms) %>% 
+vif(all_parms, type = "predictor") %>% 
   as.data.frame() %>% 
   rownames_to_column(var = "Predictor") %>% 
-  # rename(VIF = ".") %>% 
-  # arrange(VIF) %>% 
   gt() 
 
 ```
@@ -1921,9 +1960,10 @@ vif(all_parms) %>%
 #### Actual vs. Fitted
 
 ```{r}
-augment(best_ar, gom_df_lag ) %>% 
+augment(best_gom, gom_df_lag ) %>% 
+# augment(best_gom, gom_df) %>% 
   ggplot(aes(year)) +
-  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
   geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
@@ -1933,7 +1973,7 @@ augment(best_ar, gom_df_lag ) %>%
 #### Residual Autocorrelation
 
 ```{r}
-augment(best_ar, gom_df_lag ) %>% 
+augment(best_gom, gom_df_lag ) %>% 
   ggplot(aes(year, y = .resid)) +
   geom_line(linewidth = 1, color = "gray30") +
   geom_point(size = 2, color = "gray30") +
@@ -1953,7 +1993,7 @@ Exploratory analyses for Georges Bank indicated that the structure of the data d
 # Georges Bank showed
 gb_df_lag <- gb_df %>% 
   mutate(
-    b = `ISD Exponent`,
+    b = b,
     blag1 = dplyr::lag(b, 1),
     blag2 = dplyr::lag(b, 2),
     zpslag1 = dplyr::lag(zp_small, 1),
@@ -1966,7 +2006,7 @@ gb_df_lag <- gb_df %>%
 all_parms <- lm(b ~ 
                   SST + 
                   GSI + 
-                  `Commercial Landings` + 
+                  landings + 
                   zp_small + 
                   zp_large + 
                   zpslag1 + 
@@ -1974,17 +2014,90 @@ all_parms <- lm(b ~
                 data = gb_df_lag)
 
 # Refine the dredge
-results <- dredge(all_parms, 
-                  m.lim = c(1,3), 
-                  fixed = c("(Intercept)"))
+results <- dredge(all_parms)
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- lm(`ISD Exponent` ~ SST + zpslag2, data = gb_df_lag)
+bmod <- get.models(results, subset = delta == 0)[[1]]
 
 ```
 
 ::: panel-tabset
+
+
+#### Model Selection Table
+
+```{r}
+#| label: gb-top-models-table
+
+#----------------------
+
+
+# Pull details for models with delta AIC < 2
+top_mods_gb <- get.models(results, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_gb, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_gb, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    term = ifelse(term == "zpslag2", "Small Zooplankton 2-yr Lag", term),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Georges Bank",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term,":") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Model\nPerformance"))) %>% 
+ggplot( aes(term, `Model ID`)) +
+  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
+  geom_text(aes(label = estimate), size = 4) +
+  facet_grid(survey_area ~ type, scales = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
+  labs(
+    x = "Model Predictor",
+    y = "",
+    title = "Georges Bank Size Spectra Driver Exploration",
+    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
+  )
+
+
+
+```
 
 #### Model Summary
 
@@ -2007,7 +2120,7 @@ tbl1
 all_parms <- lm(b ~ 
                   SST + 
                   GSI + 
-                  `Commercial Landings` + 
+                  landings + 
                   zp_small + 
                   zp_large + 
                   zpslag1 + 
@@ -2028,7 +2141,7 @@ vif(all_parms) %>%
 ```{r}
 augment(bmod, gb_df_lag) %>% 
   ggplot(aes(year)) +
-  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
   geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
@@ -2054,20 +2167,95 @@ augment(bmod, gb_df_lag) %>%
 ```{r}
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, data = sne_df)
+all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, data = sne_df)
 
 # Refine the dredge
-results <- dredge(all_parms,  
-                  m.lim = c(1,3), 
-                  fixed = c("(Intercept)"))
+results <- dredge(all_parms)
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- lm(`ISD Exponent` ~ `Commercial Landings`, data = sne_df)
+bmod <- get.models(results, subset = delta == 0)[[1]]
 
 ```
 
 ::: panel-tabset
+
+
+
+#### Model Selection Table
+
+```{r}
+#| label: sne-top-models-table
+
+#----------------------
+
+
+# Pull details for models with delta AIC < 2
+top_mods_sne <- get.models(results, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_sne, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_sne, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Southern New England",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term,":") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Model\nPerformance"))) %>% 
+ggplot( aes(term, `Model ID`)) +
+  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
+  geom_text(aes(label = estimate)) +
+  facet_grid(survey_area ~ type, scales = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
+  labs(
+    x = "Model Predictor",
+    y = "",
+    title = "Southern New England Size Spectra Driver Exploration",
+    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
+  )
+
+
+
+```
+
+
 #### Model Summary
 
 ```{r}
@@ -2086,10 +2274,10 @@ tbl1
 #### VIF
 
 ```{r}
-all_parms <- lm(`ISD Exponent` ~ 
+all_parms <- lm(b ~ 
                   SST + 
                   GSI + 
-                  `Commercial Landings` + 
+                  landings + 
                   zp_small + 
                   zp_large, 
                 data = sne_df)
@@ -2110,7 +2298,7 @@ vif(all_parms) %>%
 ```{r}
 augment(bmod, sne_df ) %>% 
   ggplot(aes(year)) +
-  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
   geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
@@ -2136,20 +2324,94 @@ augment(bmod, sne_df ) %>%
 ```{r}
 
 # fit model with all parameters
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, data = mab_df)
+all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, data = mab_df)
 
 # Refine the dredge
-results <- dredge(all_parms,
-                  m.lim = c(1,3), 
-                  fixed = c("(Intercept)"))
+results <- dredge(all_parms)
 
 #grab best model
 # subset(results, delta == 0)
-bmod <- lm(`ISD Exponent` ~ zp_small, data = mab_df)
+bmod <- get.models(results, subset = delta == 0)[[1]]
 
 ```
 
 ::: panel-tabset
+
+
+#### Model Selection Table
+
+```{r}
+#| label: mab-top-models-table
+
+#----------------------
+
+
+# Pull details for models with delta AIC < 2
+top_mods_mab <- get.models(results, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_mab, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_mab, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Mid-Atlantic Bight",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term,":") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Model\nPerformance"))) %>% 
+ggplot( aes(term, `Model ID`)) +
+  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
+  geom_text(aes(label = estimate)) +
+  facet_grid(survey_area ~ type, scales = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
+  labs(
+    x = "Model Predictor",
+    y = "",
+    title = "Mid-Atlantic Bight Driver Exploration",
+    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
+  )
+
+
+
+```
+
+
 #### Model Summary
 
 ```{r}
@@ -2168,7 +2430,7 @@ tbl1
 #### VIF
 
 ```{r}
-all_parms <- lm(`ISD Exponent` ~ SST + GSI + `Commercial Landings` + zp_small + zp_large, 
+all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, 
                 data = mab_df)
 
 vif(all_parms) %>% 
@@ -2185,7 +2447,7 @@ vif(all_parms) %>%
 ```{r}
 augment(bmod, mab_df ) %>% 
   ggplot(aes(year)) +
-  geom_line(aes(y = `ISD Exponent`, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
   geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
@@ -2210,21 +2472,7 @@ augment(bmod, mab_df ) %>%
 :::
 
 
-## Slope Model Summaries
 
-
-
-# WORKING HERE
-
-Need to Organize the model predictions into a panel plot
-Need some organized summary table of the models that were selected, and their summary information
-
-
-Exploring the same model evaluation steps with AIC gives these important predictors in each area: 
-\* Gulf of Maine: Landings & Decades.\
-\* Georges Bank: GSI & Regime.\
-\* Southern New England: SST & Decades.\
-\* Mid-Atlantic Bight: Decades.
 
 
 
