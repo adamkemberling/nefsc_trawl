@@ -237,62 +237,58 @@ The surface waters of the Northwest Atlantic Ocean are among the fastest warming
 
 # Introduction
 
-## Normalized Size Spectra & Individual Size Distributions
+## Rapid Warming of Northeast Shelf
 
-Size is a defining characteristic of species and mediates many ecological interactions and metabolic pathways (@brown2000) . Size is a big factor in determining the mobility of an organism. Mobility then impacts the ability to evade predation, foraging success, efforts to locate and follow essential habitats, geographic ranging, and the metabolic costs associated with each of these behaviors (@hillaert2018). Body size also mediates vulnerability to aspects the immediate environment such as temperature through heat exchange or the threat of desiccation in terrestrial species (@gillooly2001; @heatwole1969). Body size even informs life history features like life span and the trophic position an individual might occupy through its impact on metabolism and resource use (@white2007).
+The Northwest Atlantic is one of the fastest warming locations in the global oceans. Sea surface temperatures in the Gulf of Maine since 1982 have been warming at rates faster than 96% of the world’s oceans, with similar warming rates along the northwest Atlantic shelf (Pershing et al. (2018)). The persistent elevated temperature regime of the area is a result of several forces: a combination of shifting ocean currents and the unique bathymetry of the region. A Northward shift in the Gulf Stream directly increased the regional temperatures through increased transport of warm Gulf Stream water into areas like the Gulf of Maine. The Northward Gulf Stream shift is associated with a higher frequency of warm core rings, and the obstruction of cold-water Scotian Shelf current flow that otherwise counters the influence of the Gulf Stream on the region’s temperatures (Gangopadhyay et al. (2019); Meyer-Gutbrod et al. (2021)). The combination of these oceanographic changes has led to a warmer continental shelf habitat, which has caused alarm among scientists studying the ecology of the region.
 
-Size structured environments are a fundamental organizational pattern globally that emerges from these relationships **add_citation**. Within strongly size-structured ecosystems, growth and maturity changes alter fitness and ultimately determine whether a species is successful in that environment **add_citation** . Ecological theory is rich with models relating how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards those ends (@bertalanffy1938; @vonbertalanffy1957; **add_citations)**. A globally persistent pattern in ecology entangled in those relationships and their critiques is the decline in abundance with increasing body size (@damuth1981; @currie1993; @sheldon1972; @loeuille2006).
 
-This relationship, between size and abundance, integrates multiple processes operating on the cellular, individual, and community levels simultaneously. The quantities for size and abundance are also some of the most readily collected data assets of any ecological community. This creates an opportunity to learn much about a system from a relatively low-effort in data collection. For these reasons, size spectrum analyses and individual size distribution (ISD) methods have gained increasing attention as an entry point to assessing ecosystem health and to detect system-wide disturbance (@shin2005'; @pomeranz2022; @white2007). An advantage of these models is they avoid the need to explicitly articulate each predator-prey interactions as they and can be estimated from the commonly collected measures of abundance and size. The "size spectrum" describes the distribution of biomass or abundance as a function of individuals' mass or size on a log--log scale (@guiet2016; @kerr2001) . Size spectra are described by two terms, the size spectrum slope & intercept. These two terms reveal a sense of the baseline productivity, and how energy flows through an ecosystem (in the form of biomass) from many smaller individuals to many fewer large individuals. The spectrum intercept has been linked to the productivity of the community, and is often connected to the prevailing environmental conditions (@boudreau1992; @rossberg2012).
+Temperature plays a critical role on biological function, affecting many of the chemical reactions that underpin basic physiological function. Reactions impacting critical actions like locomotion and feeding behavior, metabolism and development, and even maturation rates. Because of these relationships, species have evolved thermal preferences around which these functions each operate efficiently. Individuals that are unable to maintain their thermal preferences internally risk metabolic costs unless they can follow their thermal preference in the environment through locomotion or adapt to less-favorable conditions through changes in behavior. In an era of anthropogenic climate change, there is an expectation that many species will be displaced from historic habitats in their efforts to follow their thermal preferences. Recent research in marine environments has shown evidence of this, as species are now shifting to higher latitudes and to deeper depths in the pursuit of more favorable conditions (Nye et al. (2009); Pinsky et al. (2013)). Other work suggests that temperature related impacts may manifest through physiological changes and changes in seasonal phenology, hindering species conservation efforts (Miller et al. (2018); Pershing et al. (2015); Meyer-Gutbrod et al. (2021)).
+Need to connect temperature to size here:
+Direct quote from Guiet et al. (2016) , but nails the connection back to temp expectations:
 
-**How are they used in practice:**
 
-Size spectra condense the complexities of predator prey networks and their interactions into a handful of size-based indices. These indices capture the emergent properties of a system, and have become increasingly used as indicators of ecosystem health. Within the context of fisheries management, changes in spectrum slopes have been associated with fishing exploitation, primarily through the targeted removal of larger individuals (@bianchi2000; @shin2005). Numerical experiments have also linked changes in slope to environmental disturbances (@guiet2016). Size spectra have also been shown to express predictable relationships between ecosystems of similar productivity levels as well as from distinct temperatures (@guiet2016).
+> Because it controls chemical reactions, temperature controls metabolic rates which underpin maintenance, growth or reproduction (Clarke and Johnston, 1999; Kooijman, 2010) as well as the functional responses to food density (Rall et al., 2012). Guiet et al. (2016)… In addition to the impact of temperature on communities’ intercepts (heights), the impact of temperature on the speed of the energy flow within communities may affect other properties, such as their resilience to perturbations or the intensity of trophic cascades (Andersen and Pedersen, 2009).
 
-**Use Pomerantz paper & Edwards to extend into ISD**
-
-## Temperature & Ecology
-
-Temperature plays a critical role on biological life impacting many of the chemical reactions that underpin basic physiological function. Temperature has direct and indirect impacts on critical biological functions including the acquisition of biomass through feeding, the rates of biomass loss through metabolism, and the rates at which individuals mature and develop. Because of these relationships, most species have evolved thermal preferences around which these chemical reactions are optimized. Species that are unable to maintain their thermal preferences internally must be able to follow their thermal preference in the environment through locomotion or adapt to less-favorable conditions through changes in behavior or risk metabolic costs in failing to do so. In an era of anthropogenic climate change, there is an expectation that many species will be displaced from historic habitats in their efforts to follow their thermal preferences. Recent research in marine environments has shown evidence of this as species are now shifting to higher latitudes and to deeper depths in the pursuit of more favorable conditions (@kleisner2017; @pinsky2013). Others have suggested that temperature related impacts may not be seen through geographic distribution change, but through physiological changes, changes in seasonal phenology, or in dashed hopes of species recovery (@daan2005; @miller2018; @pershing2015; @meyer-gutbrod2021).
-
-**Need to connect temperature to size here**
-
-Direct quote from @guiet2016 , but nails the connection back to temp expectations:
-
-> Because it controls chemical reactions, temperature controls metabolic rates which underpin maintenance, growth or reproduction (Clarke and Johnston, 1999; Kooijman, 2010) as well as the functional responses to food density (Rall et al., 2012). Guiet et al. (2016)... In addition to the impact of temperature on communities' intercepts (heights), the impact of temperature on the speed of the energy flow within communities may affect other properties, such as their resilience to perturbations or the intensity of trophic cascades (Andersen and Pedersen, 2009).
 
 The potential for elevated temperatures to impact the size structure of an ecosystem has implications for the ecosystem resilience in the face of climate change, as well as the blue economies & natural resource systems that rely upon their good health.
 
-### Temperature of the Gulf of Maine & NE Shelf
 
-In addition to the ecological disturbances of industrial fisheries, the Northwest Atlantic is also one of the fastest warming locations in the global oceans. Sea surface temperatures in the Gulf of Maine since 1982 have been warming at rates faster than 96% of the world's oceans, with similar warming rates along the northwest Atlantic shelf (@pershing2018). This persistent elevated temperature regime of the area is a result of several forces, a combination of shifting ocean currents and the unique bathymetry of the region. A Northward shift in the Gulf Stream directly increased the regional temperatures through increased transport of warm Gulf Stream water into areas like the Gulf of Maine. The Northward Gulf Stream shift is associated with a higher frequency of warm core rings, and the obstruction of cold-water Scotian Shelf current flow that would otherwise counter the influence of the Gulf Stream on the region's temperatures (@gangopadhyay2019; @meyer-gutbrod2021). The combination of these oceanographic changes has led to a warmer continental shelf habitat.
+## Size Spectra Theory
 
-The rapid warming in the northwest Atlantic is a major factor in the redistribution of marine species along the US east coast. Species have responded by adjusting the timing and locations of their seasonal migrations and shifting their geographic ranges (@nye2009; @staudinger2019). There is evidence that warming has hampered fisheries recoveries as well. Adding a metabolic tax to physiological pathways like growth and metabolism. Species like Black Sea Bass, Atlantic shortfin squid, and Blue crab have been high-profile examples of species expanding their ranges to follow their thermal preferences. While species like the American lobster have shown declines at their southern range near Long Island Sound, with much doubt whether they will recover under the present temperature trends. The recent regime shift in the physical oceanography has also shown to be a catalyst for biological shifts as well (@meyer-gutbrod2021; @perretti2017).
+Size is a defining characteristic of species and mediates many ecological interactions and metabolic pathways (Brown et al. 2000) . Size is a major determining factor for the mobility of an organism which directly impacts the ability to evade predation, find foraging success, and efforts to locate and follow seasonal habitats. Size and physical dimensions also impact the metabolic costs associated with each of these behaviors (Hillaert et al. 2018),  mediating exchange rates with the immediate environment like heat loss or desiccation in terrestrial species (Gillooly et al. (2001); Heatwole et al. 1969). Body size even informs life history features like life span and the trophic position an individual might occupy through its impact on metabolism and resource use (White et al. 2007). 
+Size structured environments are a fundamental organizational pattern that emerges from these relationships add_citation. Within strongly size-structured ecosystems, growth and maturity changes alter fitness and ultimately determine whether a species is successful in that environment add_citation . Ecological theory is rich with models relating how energy transfers from smaller prey species to larger predatory trophic levels, the allocation of energy for growth, and the trade offs of allocating energy towards those ends (Bertalanffy (1938); Bertalanffy (1957)); add_size_theory_citations). A globally persistent pattern in ecology entangled in those relationships and their critiques is the decline in abundance with increasing body size (Damuth (1981); Currie (1993); Sheldon et al. (1972); Loeuille and Loreau (2006)).
+The relationship between size and abundance integrates processes operating on the cellular, individual, and community levels simultaneously. By measuring how this relationship changes, scientists can detect whether the fundamental energy transfer pathways from small individuals to larger predators have been impacted or altered, an outward indication of ecosystem-wide changes. The quantities for size and abundance are often the most readily collected data assets of any ecological community. This creates an opportunity to learn much about a system from a relatively low-effort in data collection. For these reasons, size spectrum analyses and individual size distribution (ISD) methods have gained increasing attention as an entry point to assessing ecosystem health and to detect system-wide disturbance (Shin et al. (2005)‘; Pomeranz et al. (2022); White et al. (2007)). Spectra models are also taxon agnostic and avoid the need to explicitly articulate each predator-prey interaction. The “size spectrum” describes the distribution of abundance or biomass as a function of individuals’ mass on a log–log scale (Guiet et al. (2016); Kerr and Dickie (2001)) . Size spectra condense the complexities of predator prey networks and their interactions into taxon-agnostic size-based indices. These indices capture the emergent properties of a system, and have become increasingly used as indicators of ecosystem health. Within the context of fisheries management, changes in spectrum slopes have been associated with fishing exploitation, primarily through the targeted removal of larger individuals (Bianchi et al. (2000); Shin et al. (2005)). Numerical experiments have also linked changes in slope to environmental disturbances (Guiet et al. (2016)). Size spectra have also been shown to express predictable relationships between ecosystems of similar productivity levels as well as from distinct temperature regimes (Guiet et al. (2016)).
+Use Sprules and Barth Paper to discuss applications
+Use Pomerantz paper & Edwards to extend into ISD
 
-While these examples show that species can respond to changes in the physical environment around them through movement & behavior, research elsewhere suggests that physiological responses integrated across species will manifest as changes in community size structure.
 
-## Fishing Impacts on Size/Species Composition
+## External Drivers of Size Structure
 
-**NEED fishing impacts on size structure references**
+Our study area’s ecology is one that has historically been studied through the fishing grounds it once supported and their challenges. The focus has traditionally been on the success/failure of single species management actions, however there are growing efforts to better understand the full ecological impact of this endeavor. Fishing practices are often size-selective, with harvesters targeting larger individuals for a higher yield on any time and capital invested. Larger individuals are also commonly the older individuals in a population, having lived longer to achieve those sizes. With the unfortunate side-effect of having an outsized impact on the reproductive potential of the population. Larger individuals have a greater impact on population resilience and recovery, capable of holding more (and often of higher quality) eggs which increase the odds of recruitment success. Heavily fished populations have been shown to exhibit changes to growth rates, suggesting an additional genetic impact from size-selective fishing on the target-species. The direct removal of larger individuals carries a predictable impact on the size distributions of the target species, but may also change that of non-target species as well. Non-target species may be impacted as by-catch from the fishery, or may alternatively find relief from predation if the target species is a direct predator. This can even create circumstances where prey species can crowd out, or outcompete the juveniles of their natural predators, reinforcing the new community. Industrial fishing practices are inherently size-selective, with an outsized footprint relative to small-scale fisheries. Large removals have an immediate and measurable impact on the community size-distribution with potential additional impacts on the future population as well. Size-based harvest in fisheries has been shown to create selective pressures that promote characteristics of early maturation at smaller sizes add_citation. These consequences may independently or in combination create circumstances where a community is unable to return to conditions before these  disturbances occurred.
+reference gb/ss spectra early work (Duplisea & Kerr 1995, or Kerr book)
 
-### Species Trends in the Northeast Atlantic Shelf
 
-The continental shelf groundfish community in Northwest Atlantic has changed dramatically over the last century. Stocks that supported international fishing effort collapsed, and recovery efforts fell short of their objectives. Research on Georges Bank estimated that biomass more than halved in the 1960's (pre-dating federal monitoring efforts), and noted a species replacement of commercial groundfish target species by skate and dogfish (@fogarty1998). Industrial fishing is inherently size-selective, with larger individuals selectively removed from the population. This has an immediate impact on the community size-distribution with additional impacts on the future population as well. Larger individuals have a greater impact on population recovery, capable of holding more (and often of higher quality) eggs. Size-based harvest in fisheries has been shown to create selective pressures that promote characteristics of early maturation at smaller sizes **add_citation**.
+The ecological community in our study area has with no uncertainty been altered through human behaviors over the last century. Early research estimated that biomass had more than halved in some areas by the 1960’s, pre-dating federal monitoring efforts and inspiring their formation (Fogarty and Murawski (1998)). Key stocks that supported international fishing efforts collapsed, and recovery efforts have in many species fallen short. Work exploring retrospective patterns in stock assessment predictions have highlighted that these shortfalls can be partially attributed to un-accounted for influences of a changing environment. However, other research has noted that the community structure itself may have changed, and with it, how it responds to outside pressure. That same early research noted that species replacement of commercial target species by skate and dogfish was happening as their numbers quickly began to rise. A wealth of anecdotal evidence and records from commercial landings support the conclusion that the region does not support either the fisheries or the fishing  communities in the same way today. The Lobster industry remains King in the Gulf of Maine, another side-effect of the decline in large predators in the area. With other similar declines in large-fish populations up and down the coast, scientists have recently brought the focus of their attention away from single-species management to more holistic and ecosystem-wide approaches.
 
-**reference gb spectra early work**
+## Regime Shifts in Marine Systems
+
+**Goals:**
+
+Want to hit: dynamic tipping points, hysteresis, and non-stationary functional relationships. Show examples of the idea on single species, suggest that we size spectra can be used to check the whole community for tipping points
+
+When an ecosystem experiences an abrupt change in its internal dynamics in response to internal or external pressures, it is said to have crossed a tipping point. When these tipping points are crossed, it often becomes difficult or impossible to return to the previous state. This is true even when the pressures that caused the shift have ceded and favorable conditions have returned, a phenomenon known as hysteresis. This phenomenon has been observed in individual population trends, and is a major factor undermining sustainable management of fisheries (Blocker 2023; Sguottti 2019) . Another feature that may accompany a regime shift is the altering of functional relationships with other biotic or abiotic features of the environment. When this occurs, the productivity of a species and/or its resilience to stress may be altered, and assumptions underpinning sustainable harvest thresholds should be updated (Blocker 2023). At the community level the alternative community states may support a different composition of species.  The community itself may respond differently to the same stressors/stimulus. In the Northeast Shelf Region there is evidence to suggest that through a combination of human influences and environmental changes that the ecology of some areas may have crossed ecological tipping points. This study explores whether evidence for an ecological tipping point can be seen through the perspective of the size spectrum, and whether there is evidence for hysteresis, or non-stationarity in the community’s relationships to external forces.
+
 
 ### Purpose
 
-With the understanding that populations depend on the health of their ecosystems, there is a need to have community-wide metrics to effectively understand and manage marine resources. Size based indices are metrics that can be estimated from the information that has historically been available from long-term survey efforts. These indices have been shown to be sensitive to the impacts of fishing, but should also capture environmentally driven stress as well. We estimated size spectrum relationships as SBI's for the groundfish populations for each sub-region of the Northeast US continental shelf. In the case of the NW Atlantic sustained increases in temperature should have a physiological impact on the community size structure.
+Understanding that human populations depend on the health of their ecosystems, there is a need to better understand when we’ve crossed ecological tipping points. One way to capture these changes is through the use of community-wide metrics that capture the inner-efficiencies of many trophic interactions. Size based indices are metrics that can be estimated from the information that has historically been available from long-term survey efforts. These indices have been shown to be sensitive to the impacts of fishing, but also capture environmental dynamics as well. We estimated size spectrum relationships to use as size based indicators of the ecological communities within each sub-region of the Northeast US continental shelf. Based on ecological theory we believe that the sustained increases in temperature in the NW Atlantics should have a physiological impact on the community size structure. We hypothesize that rapid warming alters the community through the direct influence of temperature on metabolism, growth, and population productivity. We also hypothesize that size spectra will uniquely reflect the physical environment of the regions, with less steep size spectra in regions with colder temperatures and of higher primary productivity. Understanding that temperature is not the sole mechanism for altering community size structure, we will explore how the temporal structures in size spectra have changed in relation to major external drivers. We posit that distinct patterns of deviation from that signature may reflect a fundamental change in the ecology of that region, an indication of a possible ecological regime change, and an altered relationship to human and environmental disturbances.
 
-This leads to our second hypothesis:
-
-> H2. Warming alters the community through the direct influence of temperature on metabolism, growth, and population productivity.
 
 # Methods
 
 
 ## Fish Data Source and Processing
+
 
 ```{r}
 #| label: load-survdat
@@ -307,7 +303,7 @@ catch_size_bins <- catch_log2_labelled %>% fill_func_groups()
 n_species <- length(unique(catch_size_bins$comname))
 ```
 
-Data on the biomass, abundance, and size of fish on the Northeast U.S. Shelf were collected as part of the Northeast Fisheries Science Center's bottom trawl survey ( @grosslein1969, @Azarovits1981, @politis2014 ) This survey is conducted from Cape Hatteras, North Carolina to the Gulf of Maine each year in the spring and in the fall.  The survey follows a stratified random sampling design, with strata defined based on depth, bottom habitat, and latitude. Trawls are performed for a fixed duration at each station, reporting aggregate abundance and biomass for all species caught, and measuring individual lengths and weights for the catch of each species or a sub-sample if that catch is large. Correction factors were applied to aggregate species abundance and biomass to account for changes in vessels, gear, and doors used in the survey over time ( @sissenwine1978, @byrne1991, @miller2010 ) However, abundance and biomass at length needed to be estimated after these aggregate corrections. As such, abundance at length for each species was adjusted to match the corrected aggregate species abundance at each station, such that for each species, the sum of the resulting estimated abundance numbers across each length is equal to the corrected aggregate abundance.
+Data on the biomass, abundance, and size of fish on the Northeast U.S. Shelf were collected as part of the Northeast Fisheries Science Center’s bottom trawl survey (Grosslein 1969, Azarovits 1981, Politis 2014). This survey is conducted from Cape Hatteras, North Carolina to the Gulf of Maine each year in the spring and in the fall.  The survey follows a stratified random sampling design, with strata defined based on depth, bottom habitat, and latitude. Trawls are performed for a fixed duration at each station, reporting aggregate abundance and biomass for all species caught, and measuring individual lengths and weights for the catch of each species or a sub-sample if that catch is large. Correction factors were applied to aggregate species abundance and biomass to account for changes in vessels, gear, and doors used in the survey over time (Sissenwine and Bowman 1978, Byrne and Forrester 1991, Miller et al. 2010). However, abundance and biomass at length needed to be estimated after these aggregate corrections. As such, abundance at length for each species was adjusted to match the corrected aggregate species abundance at each station, such that for each species, the sum of the resulting estimated abundance numbers across each length is equal to the corrected aggregate abundance. 
 
 ```{r}
 #| label: study-area-maps
@@ -379,7 +375,7 @@ garfo_map <- ggplot(stat_zones) +
 
 ### Community Composition & Functional Groups
 
-Analyses were performed using 68 species. These species were selected based on the availability of published weight-at-length relationships (Wigley et al. 2003) and represented 98.98% of the total biomass caught in the survey. Each species was assigned to a functional group based on life history and geography using the definitions of (@hare2016). Functional groups included coastal fish, diadromous fish, elasmobranch, groundfish, and pelagic fish (@tbl-functional-groups). Six species with available length-weight details did not have a functional group designation, these species were designated as **reef species**. Exploratory analyses showed that the pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
+Analyses were performed using 68 species. These species were selected based on the availability of published weight-at-length relationships (Wigley et al. 2003) and represented 98.98% of the total biomass caught in the survey. Each species was assigned to a functional group based on life history and geography using the definitions of (Hare et al. (2016)). Functional groups included coastal fishes, diadromous fishes, elasmobranchs, groundfish, pelagic fishes, and reef fish species (Table 1.). Six species with available length-weight details did not have a functional group designation, these species were designated as reef species. Exploratory analyses showed that the pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
 
 ```{r}
 #| label: biomass-group-summaries
@@ -396,33 +392,39 @@ fgroup_all  <- fgroup_all %>% map(~mutate(.x, survey_area = "Northeast Shelf, Fu
 # Join the overall values back in
 fgroup_area <- map2(fgroup_area, fgroup_all, bind_rows)
 
+# Add new units in millions
+fgroup_area$weight_bins <- fgroup_area$weight_bins %>%
+  mutate(strat_abund_mill = wtbin_strat_abund / 1e6,
+         strat_lwbio_mill = wtbin_strat_lw_bio / 1e6,
+         survey_area = factor(survey_area,
+                              levels = area_levels))
+
 ```
 
-Published length-weight relationships ( Wigley et al. 2003 ) were used to convert from length data, available for all individuals, into their corresponding biomass-at-length. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data were area-stratified. Area-stratified biomass-at-length values were then computed as the product of area-stratified abundance-at-length and estimated weight-at-length. All analyses were performed using area-stratified abundances and their associated area-stratified biomass estimates, hereby referred to as simply abundance-at-length & biomass-at-length
-
-<!--# Everything above here in methods describes the data source, and its pre-processing, Everything below details what is done with it -->
+Published length-weight relationships ( Wigley et al. 2003 ) were used to convert from length data, available for all individuals, into their corresponding biomass-at-length. To account for differences in sampling effort among survey strata, all corrected abundance-at-length data were area-stratified. Area-stratified biomass-at-length values were then computed as the product of area-stratified abundance-at-length and estimated weight-at-length. All analyses were performed using area-stratified abundances and their associated area-stratified biomass estimates, hereby referred to as simply abundance-at-length & biomass-at-length
 
 
 
-## Community Composition Metrics
+## Community Metrics
 
-Our analyses used all data collected during the spring and fall surveys from 1970-2019. Data were grouped using survey-design strata into four sub-regions: Gulf of Maine, Georges Bank, Southern New England, Mid-Atlantic Bight. These sub-regions have been widely used in regional ecological studies (e.g., ). For each region, we developed several time series indicators:
-
-1.  Community Composition Metrics (regional abundance and biomass by functional group)
-
-2.  Average length and weight of the aggregate community and each functional group
-
-3.  Exponent of the Individual Size Distribution Spectra
+Our analyses used all data collected during the spring and fall surveys from 1970-2019. Data were grouped using survey-design strata into four sub-regions: Gulf of Maine, Georges Bank, Southern New England, Mid-Atlantic Bight (Figure 1.). These sub-regions have been widely used in regional ecological studies (e.g., ). For each region, we developed the following time series of ecological indicators:
 
 
+1.  Annual mean abundance and biomass by functional group
 
-### Body Size Changes
+2.  Annual mean length and weight of the aggregate community and for each functional group
 
-The average body length (cm) and body weight (kg) was calculated for all catch for each region and within each functional group. Each body-size metric was weighted by the abundance-at-length of a species sampled at each station such that.
+3.  Annual estimates of the community size spectrum slope
+
+
+
+### Quantifying Body Size Changes
+
+Changes in the size structure of the community was measured using the average length and weight across all species, each weighted by their species and size-specific catch rates. The average body length (cm) and body weight (kg) was calculated for each region and within each functional group. 
 
 $$X_j = \frac{ \sum_{}^{}  n_iX_{ij}  }{  \sum~w_i  }$$ Where $X$ is the body-size metric, $j$ is the year, & $n$ is the abundance for each station $i$.
 
-Data for body size trends were not truncated using any minimum or maximum size and reflect all available catch data for the `r n_species`, for which biomass-at-length could be estimated.
+Data for body size trends were not truncated using any minimum or maximum size and reflect all available catch data for the 68 species in this study for which biomass-at-length could be estimated.
 
 ```{r}
 #| label: body size data
@@ -495,9 +497,8 @@ region_indices <- region_indices  %>%
 
 ```
 
-Lengths of individuals in the catch data are measured to the nearest cm, with smaller specimens measured to the nearest millimeter. Because individual biomass is estimated from those length measurements, there is a range of possible body mass values between the cm & mm increments. The relationship between length and mass in fishes is exponential and taxon specific, so biases resulting from using only the lower or upper end of those ranges is different for each taxon and increases for larger taxa. To account for this and reduce biases, we used the extended likelihood method (MLEbin) of @edwards2020. This method estimates the exponent of size spectra (b) for a bounded power law relationship between abundance and our length-derived estimates of individual biomass.
+Abundance size spectra were calculated using the area-weighted abundance at length information from the catch data. Lengths of individuals in the catch data are measured to the nearest cm, with smaller specimens measured to the nearest millimeter. Because individual biomass is estimated from those length measurements, there is a range of possible body mass values between the increments used (cm and mm). The relationship between length and mass in fishes is exponential and taxon specific. Using only the lower or upper end of those ranges introduces biases which are different for each species and increase with larger body-sizes. To account for these biases, we used the extended likelihood method (MLEbin) of Edwards et al. (2020). This method estimates the exponent of size spectra (b) for a bounded power law relationship between abundance and length-estimated biomass. The exponent of this relationship is analogous to slope estimates from linear regression on logarithmic axes, with a steeper slope (i.e. a more negative b) indicating fewer large-bodied individuals and/or more small-bodied fishes (Carvalho 2021) . This method has been shown to be the most accurate for estimating the exponent of size spectra when tested against alternative methods that require arbitrary decisions around binning the data and make estimates difficult to compare directly across studies (White 2008; Sprules & Barth 2016; Edwards 2017).
 
-The exponent of this relationship is analogous to slope estimates from linear regression on logarithmic axes, with a steeper slope (i.e. a more negative b) indicating fewer large-bodied individuals and/or more small-bodied fishes @carvalho2021. This method has been shown to be the most accurate for estimating the exponent of size spectra when tested against alternative methods that require arbitrary decisions around binning the data (@white2008; @sprules2016; @edwards2017 ).
 
 $$
 \begin{align*}
@@ -508,15 +509,16 @@ f(x) = \frac{1}{logx_{max} - logx_{min}}~~~~~~\lambda=1
 \end{align*}
 $${#eq-ISD}
 
-Using this method, the size spectra exponent (b) was estimated for each survey region from 1970 to 2019. A minimum biomass of 1g was used for the lower limit and a maximum biomass of 10kg was used as an upper limit for the ISD's bounded power law probability density function @eq-ISD, where $x$ is body mass & $\lambda$ is the scaling exponent of the ISD. The biomass within these limits constitutes 97.83% of all estimated biomass for the `r n_species` used in this study. This truncation accounts for poor gear selectivity at the smallest and largest size ranges and imposes shared limits to the size distribution we'd expect to sample across these different areas. Exponents of size spectra were calculated using code modified from the sizeSpectra package in R (@edwards2017; @edwards2020).
+Using this method, the size spectra exponent (b) was estimated for each region from 1970 to 2019. A minimum biomass of 1g was used for the lower bound and a maximum biomass of 10kg was used as an upper bound for the ISD’s bounded power law probability density function Equation 1, where X is body mass & Λ  is the scaling exponent of the abundance density function. This body-size range constitutes 97.83% of all the biomass for the 68 species included in this study. This body-size range truncation was done to account for poor gear selectivity at the smallest and largest size ranges. This measure also imposes shared bounds to the size range covered by our size spectra, reflecting only the ranges  we’d expect to consistently sample across these different areas. Exponents of size spectra (b) were calculated using code modified from the sizeSpectra package (Edwards et al. (2017); Edwards et al. (2020)) and implemented using the R statistical programming language.
 
-## Drivers of Size Spectrum Change
+## Drivers of Size Spectra Changes
 
-The impact of external factors on the changes in size spectra was correlated against several hypothesized driving forces related to both environmental regimes and anthropogenic disturbances. Potential large-scale environmental drivers include regional SST anomalies & the larger-scale impact of the Gulf Stream Index (GSI). Fishing pressure represents the primary top-down anthropogenic driver in the region, and was investigated using the aggregate regional commercial landings data. The potential bottom-up impacts of zooplankton community differences were incorporated at a regional scale using small and large zooplankton indices from the EcoMon plankton survey.
+The impact of external factors on the changes in size spectra were explored using multiple regression analyses. Annual variation in size spectrum slopes was modeled using several hypothesized drivers including the environmental state and measures of anthropogenic disturbances. The large-scale environmental drivers included were regional SST anomalies & the larger-scale impact of the Gulf Stream Index (GSI). Fishing pressure represents the primary top-down anthropogenic driver in the region, and was investigated using the aggregate regional commercial landings data. Bottom-up ecological interactions were explored using zooplankton indices from the EcoMon plankton survey. Each of these drivers (climate, productivity, fishing) have independently been shown in other works to have measurable impacts on size spectra. Our exploratory investigations here are an effort to evaluate which best explain the trends within our study region, and whether those relationships have changed over the study period.
+
 
 ### Gulf Stream Index
 
-Gulf stream index (GSI) values were obtained from the ecodata package in R (Bastille & Hardison 2018) . This package supplies GSI data at monthly intervals following the methodology of @pérez-hernández2014 and @joyce2019 , using as sea level height anomaly data from the Copernicus Marine Environment Monitoring Service
+Data for the Gulf stream index (GSI) was obtained from the ecodata package in R (Bastille & Hardison 2018) . This package supplies GSI data at monthly intervals following the methodology of Pérez-Hernández and Joyce (2014) and Joyce et al. (2019) , using as sea level height anomaly data from the Copernicus Marine Environment Monitoring Service.
 
 ```{r}
 #| label: gsi-data-prep
@@ -539,9 +541,9 @@ gsi <- ecodata::gsi %>%
 
 ### Sea Surface Temperature Data
 
-Global Sea surface temperature data was obtained via NOAA's optimally interpolated SST analysis (OISSTv2), providing daily temperature values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were provided by the NOAA PSL, Boulder, Colorado, USA from their website at [https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.html](https://www.google.com/url?q=https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.html&sa=D&source=docs&ust=1675370947039361&usg=AOvVaw1ShFZYjArUTbnJyV_pkcaK).
+Global sea surface temperature (SST) data were obtained via NOAA’s Optimum Interpolation SST analysis (OISSTv2), which provides daily SST values at a 0.25° latitude x 0.25° longitude resolution (Reynolds et al. 2007). A daily climatology for every 0.25° pixel in the global data set was created using average daily temperatures spanning the period of 1982-2011. Daily anomalies were then computed as the difference between observed temperatures and the daily climatological average. OISSTv2 data used in these analyses were obtained from the NOAA Physical Sciences Laboratory, Boulder, Colorado, USA from their website at https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.html.
 
-Sea surface temperature data was regionally averaged to match the survey regions from the age-at-length data. SST anomalies were averaged by year for each region and over the entire sampling region to produce daily time series. These time series were then processed into annual timeseries of surface temperatures and anomalies. All region-averaging was done with area-weighting of the latitude/longitude grid cells to account for differences in cell-size in the OISSTv2 data.
+SST data were regionally averaged to match the four survey sub-regions described above (Figure 1a),  producing daily time series for each area. These were then averaged into annual time series of surface temperatures and anomalies. All averaging between satellite grid units was done with area-weighting of the grid cells to account for differences in cell size with latitude/longitude in the OISSTv2 data. 
 
 ```{r}
 #| label: load temperature data
@@ -568,7 +570,7 @@ temp_regimes <- regional_oisst %>%
 
 ### Commercial Fishing
 
-Fishing pressure in the region was indexed using state and federal commercial fishing landings.  These data were obtained from the Greater Atlantic Regional Fisheries Office (GARFO) for statistical areas that are routinely used for fisheries reporting and management (Figure X).  Individual statistical areas were aggregated into regions that closely align with the survey areas we defined for the size spectra analyses (Figure X).
+Fishing pressure in the region was indexed using state and federal commercial fishing landings.  These data were obtained from the Greater Atlantic Regional Fisheries Office (GARFO) for statistical areas that are routinely used for fisheries reporting and management (Figure 1., right).  Individual statistical areas were aggregated into regions that closely align with the survey areas we defined for the size spectra analyses (Figure 1 b.). Each region’s commercial landings timeline was scaled using z-score normalization
 
 ```{r}
 #| label: garfo-data-prep
@@ -621,9 +623,9 @@ landings_summ <- landings_summ %>%
 ```
 
 
-### Zooplankton Abundance Indices
+### Zooplankton Indices
 
-Zooplankton data are from the National Oceanographic and Atmospheric Administration Marine Resources Monitoring, Assessment and Prediction (MARMAP) program and Ecosystem Monitoring (EcoMon) cruises detailed extensively in Kane (2007), Kane (2011), and Morse et al. (2017). Abundance anomalies are computed from the expected abundance on the day of sample collection. The small copepod index is computed by averaging the individual abundance anomalies of Pseudocalanus spp., Centropages hamatus, Centropages typicus, and Temora longicornis. The large-copepod anomalies is the abundance anomaly of Calanus finmarchicus, the largest copepod in the Northeast U.S. region. Anomalies for both large and small zooplankton groups are then averaged within ecological production units for annual timeseries.
+Zooplankton data was from the National Oceanographic and Atmospheric Administration Marine Resources Monitoring, Assessment and Prediction (MARMAP) program and Ecosystem Monitoring (EcoMon) cruises detailed extensively in Kane (2007), Kane (2011), and Morse et al. (2017). Abundance anomalies were computed from the expected abundance on the day of sample collection. The small copepod index is computed by averaging the individual abundance anomalies of Pseudocalanus spp., Centropages hamatus, Centropages typicus, and Temora longicornis. The “large-copepod” anomaly values are the abundance anomaly of Calanus finmarchicus, the largest copepod in the Northeast U.S. region. Anomalies for both large and small zooplankton groups were averaged within ecological production units by the data provider, producing annual timeseries for the Gulf of Maine, Georges Bank, and Mid-Atlantic Bight. The timeseries for the Mid-Atlantic Bight EPU was used as a predictor for both the Mid-Atlantic Bight and Southern New England regions in our analyses. This decision was made to address how the spatial coverage of this EPU spans the joint area of our two southernmost regions. 
 
 
 ```{r}
@@ -665,7 +667,7 @@ zp_index <- zp_sli %>%
 ####  Build a Common form for all Drivers:   ####
 # Format: year, area, var, value
 
-#--------------------
+#---
 #### Reshape all the inputs so that we can bind them together in one dataframe
 
 
@@ -681,7 +683,7 @@ clim_idx <- clim_drivers %>%
   summarise(value = mean(Value, na.rm = T),
             .groups = "drop")
 
-#--------------------
+#---
 # 2. GARFO landings
 landings_idx <- landings_summ %>% 
   group_by(year, area = survey_area) %>% 
@@ -690,7 +692,7 @@ landings_idx <- landings_summ %>%
   mutate(var = "landings")
 
 
-#--------------------
+#---
 # 3. Temperature
 sst_idx <- temp_regimes %>% 
   left_join(area_df, by = "survey_area") %>% 
@@ -698,7 +700,7 @@ sst_idx <- temp_regimes %>%
   mutate(var = "sst_anom")
 
 
-#--------------------
+#---
 # 4. Zooplankton
 zp_idx <- zp_index %>% 
   pivot_longer(cols = c(zp_small, zp_large), 
@@ -707,7 +709,7 @@ zp_idx <- zp_index %>%
 
 
 
-#--------------------
+#---
 #  4. Size Spectrum Slopes & Intercepts
 ss_idx <- region_indices %>% 
   select(
@@ -725,7 +727,7 @@ ss_idx <- region_indices %>%
   left_join(area_df, by = "survey_area") %>% 
   select(-survey_area)
 
-#--------------------
+#---
 # All Metrics Together
 all_drivers <- bind_rows(
   list(
@@ -770,19 +772,956 @@ drivers_scaled <- bind_cols(dont_scale, to_scale) %>%
 ```
 
 
-## Analysis of Driver Impacts
+## Exploring Influence of Drivers on Size Spectra
+
+The hypothesized drivers for size spectrum changes were evaluated using multiple regression analysis. Candidate models for each region were informed by the any observed temporal structures in the size spectra changes through time, and with the inclusion of important lag-effects of predictors.These modeling decisions were informed by the following steps performed prior to multiple regression analysis with the above drivers.
+
+
+### Temporal Lags in Hypothesized Drivers
+
+In addition to exploring their contemporaneous impacts, the importance of any time-lags on predictors was also evaluated. Important lagged relationships were identified through the use of cross correlation function (CCF) estimates. These estimates looked at correlations at one-year lag intervals to investigate potential time-delayed effects between the hypothesized drivers and the community’s size spectra. CCF were performed between the dependent variables of the size spectra slope with the independent variables of the annual gulf stream index, the corresponding regional commercial landings and sea surface temperature anomalies, and both small and large zooplankton indices. This was performed for annual lags up to 10 years. Significant lags  identified in the CCF analysis were then included as additional candidate predictors in the multiple regression analysis of spectrum slope changes.
 
 
 
 
-### Driver Cross Correlation Functions
+### Non-Stationary Behavior Across Response Regimes
 
-In addition to evaluating the direct and contemporaneous impacts of each potential driver, additional predictors were identified for inclusion in the model-selection process through the use of cross correlation function (CCF) estimates and changepoint analysis. CCF estimates were used to look at correlation at one-year lag intervals to investigate potential time-delayed effects between the hypothesized drivers and the community’s size spectra. CCF estimates were performed between the dependent variables of the size spectra slope with the independent variables of the annual gulf stream index, the corresponding regional commercial landings and sea surface temperature anomalies, and both small and large zooplankton indices. Annual time lags on independent variables of up to 10 years that were identified in the CCF analysis were then included as additional candidate predictors in the regression analysis on drivers of the spectrum slope changes.
+To highlight potential signatures of any non-stationary or non-linear discontinuous dynamics, a hallmark of regime-shift dynamics (Blocker 2023), we explored discontinuous changes in the size spectra using breakpoint analyses. Breakpoint analysis was performed on the annual time series of spectrum slopes to explore their temporal structures for evidence of any potential regime shifts. Breakpoint analyses were performed using the envcpt package (Killick et al. 2021). This package applies an automatic model selection process testing support for candidate model structures including constant/piecewise changes to the mean, variance, trends, & autocorrelations and any identified changepoints located using the pruned exact linear time algorithm (Rikardsen 2004). Best supported model structures from this procedure were then used to inform whether (if any) regional spectra expressed distinct periods of behavior. In the events where changepoints were identified, this was used as evidence that there may have been a community regime change. Following this thinking it is plausible for there to be inconsistencies or non-stationarity in the predictors' impact on the community spectra, as different community regimes may be differently vulnerable to top-down pressures like commercial fishing. To allow for changes in these relationships across different regimes, an additional interaction term was added to the regression model candidates for that region. 
+
+
+
+### Regime Specific Correlations
+
+Based on any breakpoints detected, single driver correlations were prepared to visually explore how each driver was correlated within the different regimes. Additionally, spectra slope changes were also correlated with the body-size changes of each functional group as a window into what body-size changes might be informing the change in the size structure.
+
+```{r}
+#| label: driver-correlation-periods
+
+# Pull different years into a list
+driver_periods <- list(
+  "1982-1998"     = c(1982:1998),
+  "1999-2006"     = c(1999:2006),
+  "2007-2019"     = c(2007:2019),
+  "1982-2019"     = c(1982:2019))
+
+
+# -------------------------------------------------
+# Idea: Add functional_group_sizes into the correlation chart:
+
+# Reshape the size information so we can combine it with the drivers:
+# Values are scaled here
+sizes_wide <- functional_group_size %>% 
+  select(year = Year, 
+         survey_area, 
+         hare_group, 
+         avg_weight = mean_wt_kg) %>% 
+  pivot_longer(names_to = "var", 
+               values_to = "value", 
+               cols = c(avg_weight)) %>% 
+  inner_join(area_df, by = "survey_area") %>% 
+  select(-survey_area) %>% 
+  mutate(id = str_replace_all(str_c(area, "_", hare_group, "_", var), " ", "_")) %>% 
+  select(-c(area, area_titles, var, hare_group)) %>% 
+  pivot_wider(names_from = id, values_from = value, values_fn = {mean}) %>% 
+  column_to_rownames(var = "year") %>% 
+  scale() %>% 
+  as.data.frame()
+
+
+
+# Join regional size changes to the scaled drivers
+drivers_and_sizes <- drivers_scaled %>% 
+  left_join(rownames_to_column(sizes_wide, var = "year"), by = "year") %>%
+  column_to_rownames(var = "year")
+
+
+# Split them out into a list that contains data for each period
+# Takes the years in driver_periods and pulls the rows that correspond
+driver_period_list <- map(driver_periods, function(yrs){
+  period_matrix <- drivers_and_sizes[rownames(drivers_and_sizes) %in% yrs, ] %>% drop_na()})
+
+```
+
+
+
+
+### Multiple Regression Modeling of Hypothesized Drivers
+
+Following these explorations into temporal structures, multiple regression models were developed and evaluated independently for each region. Potential drivers included in the models were the annual Gulf Stream Index, the annual regionally averaged SST anomaly value, regionally averaged small and large copepod indices, and the scaled annual commercial landings from that region. Gulf stream index, zooplankton indices, and SST anomalies were not standardized prior to use in model fitting and evaluation as the two former are already an index value and the latter is scaled to a thirty-year climatological reference period. In the event that CCF analysis identified an important time lag for a region’s independent variables, these specific time-lagged predictors were included as predictors in the candidate models, otherwise time-lags on predictors were not evaluated. For any region(s) that showed support for changepoints in their temporal structure, the periods separated by those breaks were included as an interaction term on all other predictors. In the absence of any identified changepoints, no multi-year periods were included as potential regime impacts. All candidate models for a region were evaluated using AIC and AIC weights to rank the most parsimonious models for each region’s dynamics. 
+
+
+
 
 
 
 ```{r}
-#| label: ccf-data
+#| label: regression-analysis-data
+
+
+# Use scaled drivers for the regressions
+# Need to drop zooplankton because they are non-unique since we split the MAB EPU and repeated it
+regression_df <- drivers_scaled %>% 
+  select(!ends_with(c("zp_small","zp_large")))
+
+# Build back out the metadata:
+# Identify what region is associated with both: spectrum values & driver values
+regression_df <- regression_df %>% 
+  pivot_longer(names_to = "spectra_param", 
+               values_to = "spectra_values", 
+               cols = ends_with("slope") | ends_with("int")) %>% 
+  pivot_longer(names_to = "driver_var", 
+               values_to = "driver_values", 
+               cols = -matches("spectra|year")) %>% 
+  mutate(
+    year = as.numeric(year),
+    # A. Flag what the driver type was
+    driver_type = case_when(
+      str_detect(driver_var, "landings") ~ "Commercial Landings",
+      str_detect(driver_var, "sst") ~ "SST",
+      str_detect(driver_var, "index") ~ "GSI",
+      TRUE ~ "Missed Something"),
+    # B. Flag what the spectrum feature was
+    param_feature = case_when(
+      # Flag what the Size Distribution Parameter was
+      str_detect(spectra_param, "int") ~ "Spectra Intercept",
+      str_detect(spectra_param, "isd") ~ "ISD Exponent",
+      str_detect(spectra_param, "slope") ~ "Spectra Slope",
+      TRUE ~ "Missed Something"),
+    # C. These are the areas associated with the Spectra Features
+    spectra_area = case_when(
+      str_detect(spectra_param, "All") ~ "All",
+      str_detect(spectra_param, "Georges") ~ "Georges Bank",
+      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
+      str_detect(spectra_param, "Southern") ~ "Southern New England",
+      str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    spectra_area = factor(spectra_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    
+    # D. These are the areas of the drivers
+    driver_area = case_when(
+      str_detect(driver_var, "All") ~ "All",
+      str_detect(driver_var, "Georges") ~ "Georges Bank",
+      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
+      str_detect(driver_var, "Southern") ~ "Southern New England",
+      str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
+    driver_area = factor(driver_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    
+    # E. Add Decade in
+    decade = floor_decade(year),
+    #
+    #regime = ifelse(year < 2010, "regime_1", "regime_2" )
+    ) 
+
+
+# Filter it so predictors are only within matching regions, 
+# or just overarching (GSI)
+regression_df <- regression_df %>% 
+  filter(driver_area == spectra_area | driver_type == "GSI") %>% 
+  arrange(year, driver_var)
+
+
+
+
+# Last wrangling:
+# columns for: year, slope, isd, spectra region, drver_region, GSI, sst_anom, landings
+# GSI is so annoying here, just rejoin it without the area column
+regression_df <- regression_df %>% 
+  select(-c(spectra_param, driver_var)) %>% 
+  pivot_wider(names_from = "driver_type", values_from = "driver_values") %>% 
+  pivot_wider(names_from = "param_feature", values_from = "spectra_values") %>% 
+  select(-GSI) %>% 
+  filter(driver_area != "All") %>% 
+  left_join( select(clim_idx, year, GSI = value), by = c("year") ) %>% 
+  mutate(spectra_area = fct_drop(spectra_area))
+
+
+
+
+# Add zooplankton here so it can be checked in the regressions
+# Zooplankton values are duplicated in MAB and SNE b/c its the same EPU
+regression_df <- left_join(
+    regression_df, 
+    zp_index %>% rename(spectra_area = survey_area), 
+    by = join_by(year, spectra_area))
+
+```
+
+
+# Results
+
+
+```{r}
+#| label: abundance stacked bars
+
+
+ 
+
+
+# # Just abundance, not by groups
+# strat_abundance_plot <- fgroup_area$weight_bins %>% 
+#   filter(survey_area == "Northeast Shelf, Full") %>% 
+#   group_by(Year, survey_area, hare_group) %>% 
+#   summarise(abund_millions = sum(strat_abund_mill, na.rm = T),
+#             .groups = "drop") %>% 
+#   #filter(survey_area == "GoM") %>% 
+#   ggplot(aes(Year, abund_millions, fill = hare_group)) +
+#   #geom_area(color = "gray30", linewidth = 0.1) +
+#   geom_col(color = "gray30", linewidth = 0.1, position = "stack") +
+#   scale_fill_gmri() + 
+#   scale_x_continuous(expand = expansion(add = c(0,0))) +
+#   scale_y_continuous(labels = comma_format()) +
+#   facet_wrap(~survey_area, ncol = 1, scales = "free") + 
+#   labs(y = "Abundance (millions)",  
+#        x = NULL,
+#        fill = "Functional Group") +
+#   theme(legend.position = "bottom")
+# 
+# 
+# 
+# 
+# # Abundance Totals
+# strat_abundance_plot
+
+```
+
+
+```{r}
+#| label: biomass stacked bars
+
+# 
+# # Just Biomass, by area and functional group
+# strat_biomass_plot <- fgroup_area$weight_bins %>% 
+#   filter(survey_area == "Northeast Shelf, Full") %>% 
+#   group_by(Year, survey_area, hare_group) %>% 
+#   summarise(abund_millions = sum(strat_lwbio_mill, na.rm = T),
+#             .groups = "drop") %>% 
+#   ggplot(aes(Year, abund_millions, fill = hare_group)) +
+#   # geom_area(color = "gray30", linewidth = 0.1) +
+#   geom_col(color = "gray30", linewidth = 0.1, position = "stack") +
+#   scale_fill_gmri() + 
+#   scale_x_continuous(expand = expansion(add = c(0,0))) +
+#   scale_y_continuous(labels = comma_format()) +
+#   facet_wrap(~survey_area, ncol = 1, scales = "free") + 
+#   labs(y = "Biomass (million kg)",  
+#        x = NULL,
+#        fill = "Functional Group") +
+#   theme(legend.position = "bottom")
+# 
+# 
+# strat_biomass_plot
+
+```
+
+### Community Abundance
+
+
+
+
+```{r}
+#| label: abundance and biomass summary numbers
+#---- Overall Abundance Trends
+
+
+# Total abundance and biomass for the whole shelf
+shelf_summary <- catch_size_bins %>% 
+  group_by(Year) %>% 
+  summarise(
+    lwbio_mill = sum(strat_total_lwbio_s, na.rm = T) / 1e6,
+    abund_mill = sum(strat_total_abund_s, na.rm = T) / 1e6)
+
+# Total Abundance and Biomass for the regions
+region_summary <- catch_size_bins %>% 
+  left_join(area_df) %>% 
+  group_by(Year, area_titles) %>% 
+  summarise(
+    lwbio_mill = sum(strat_total_lwbio_s, na.rm = T) / 1e6,
+    abund_mill = sum(strat_total_abund_s, na.rm = T) / 1e6,
+    .groups = "drop") %>% 
+  mutate(area_titles = factor(area_titles, levels = area_levels_long))
+
+
+# Total abundance and biomass for functional Groups within the regions
+functional_group_summary <- catch_size_bins %>% 
+  left_join(area_df) %>% 
+  group_by(Year, area_titles, hare_group) %>% 
+  summarise(
+    lwbio_mill = sum(strat_total_lwbio_s, na.rm = T) / 1e6,
+    abund_mill = sum(strat_total_abund_s, na.rm = T) / 1e6,
+    .groups = "drop") %>% 
+  mutate(area_titles = factor(area_titles, levels = area_levels_long))
+```
+
+
+
+Stratified abundance estimates have been gradually increasing on the Northeast Shelf since 1970. Abundance growth accelerated after 2007 to peak levels in 2014. Abundance then began declining, which continued through 2019 (Figure 2).  
+
+
+```{r}
+#| label: abundance totals by area
+#| eval: true
+#| fig.width: 8
+#| fig-height: 6
+
+# Abundance 1.
+shelf_abund_p <- shelf_summary %>% 
+  mutate(area_titles = "Northeast Shelf, Full") %>% 
+  ggplot() +
+  geom_line(aes(Year, abund_mill), color = gmri_cols("dark gray"), linewidth = 1) +
+  #geom_col(aes(Year, abund_mill), fill = gmri_cols("dark gray")) +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~area_titles) +
+  labs(y = "Abundance (millions)")
+
+
+
+# Abundance 2.
+region_abund_p <- region_summary %>% 
+  ggplot() +
+  geom_col(aes(Year, abund_mill, fill = area_titles), show.legend = F) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~area_titles, ncol = 1, scales = "free") +
+  labs(y = "Abundance (millions)")
+
+shelf_abund_p | region_abund_p
+```
+
+
+
+In the Gulf of Maine, fish abundance remained relatively-low until the 1990’s, at which point it began to steadily rise–closely aligning with the pattern for the Northeast Shelf. This increase in abundance reversed briefly during 2002-2006, but continued to rise after 2006 before hitting a regional peak in 2016. Populations then declined through 2019 similar to the shelf-wide trend. Georges Bank abundances were consistently low from 1970 around 2010. By 2014 abundance had roughly quadrupled, propelled by strong recruitment classes of haddock. After 2014, abundance quickly fell to numbers more similar to the 1970-2010 levels by the end of the decade. Community abundance in Southern New England displayed higher inter-annual changes across all years compared to both Gulf of Maine and Georges Bank. Abundance in this area showed a less dramatic rise and fall than the Northern regions.  Abundances began increasing rapidly here in 2007, before falling back to earlier levels by the end of the 2010’s decade. The Mid Atlantic Bight displayed the most inter-annual variability and had no major trends in fish abundance.
+
+
+#### Regional Abundances
+
+
+::: {.panel-tabset}
+
+### Northeast Shelf
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+shelf_fgroup_summary <- catch_size_bins %>% 
+  mutate(area_titles = "Northeast Shelf, Full") %>% 
+  group_by(Year, area_titles, hare_group) %>% 
+  summarise(
+    lwbio_mill = sum(strat_total_lwbio_s, na.rm = T) / 1e6,
+    abund_mill = sum(strat_total_abund_s, na.rm = T) / 1e6,
+    .groups = "drop")
+
+
+# Make Plot for Functional Groups
+shelf_fgroup_abund_p <- shelf_fgroup_summary %>% 
+  ggplot() +
+  geom_col(aes(Year, abund_mill, fill = hare_group), show.legend = F) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~hare_group, ncol = 1, scales = "free") +
+  labs(y = "Abundance (millions)")
+
+
+# Place Functional Groups Beside Shelf
+shelf_abund_p | shelf_fgroup_abund_p
+
+```
+
+
+### Gulf of Maine
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+area_option <- "Gulf of Maine"
+
+plot_area_abund_summary <- function(area_option){
+  
+  area_abund_p <- region_summary %>% 
+  filter(area_titles == area_option) %>% 
+  ggplot() +
+  geom_line(aes(Year, abund_mill), color = gmri_cols("dark gray"), linewidth = 1) +
+  #geom_col(aes(Year, abund_mill), fill = gmri_cols("dark gray")) +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~area_titles) +
+  labs(y = "Abundance (millions)")
+  
+
+# Make Plot for Functional Groups
+area_fgroup_abund_p <- functional_group_summary %>% 
+  filter(area_titles == area_option) %>% 
+  ggplot() +
+  geom_col(aes(Year, abund_mill, fill = hare_group), show.legend = F) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~hare_group, ncol = 1, scales = "free") +
+  labs(y = "Abundance (millions)")
+
+
+# Place Functional Groups Beside Shelf
+p_out <- area_abund_p | area_fgroup_abund_p
+return(p_out)
+  
+}
+
+plot_area_abund_summary(area_option = "Gulf of Maine")
+```
+
+
+### Georges Bank
+
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+plot_area_abund_summary(area_option = "Georges Bank")
+```
+
+### Southern New England
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+plot_area_abund_summary(area_option = "Southern New England")
+```
+
+
+### Mid-Atlantic Bight
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+plot_area_abund_summary(area_option = "Mid-Atlantic Bight")
+```
+
+
+:::
+
+
+
+Groundfish species were the dominant functional group driving the abundance and biomass trends in the Gulf of Maine and Georges Bank, with the two southern regions showing a more balanced abundance distribution among the five functional groups (Figure 2). 
+
+
+
+#### Total Abundance by Individual Body-Size
+
+```{r}
+#| label: bodymass biomass distributions
+#| fig.width: 10
+#| fig-height: 8
+
+# panel plot the biomass by body size
+plot_abundance_vertical <- function(p_area = "GoM", show_facets = F, ylab = "Abundance (million)"){
+  
+  p <- fgroup_area$weight_bins %>% 
+    complete(Year, hare_group, survey_area, left_lim) %>% 
+    filter(survey_area == p_area) %>% 
+    ggplot(aes(Year, strat_abund_mill, fill = left_lim)) +
+      geom_col(color = "gray30", linewidth = 0.1) +
+      facet_grid(hare_group~survey_area, scales = "free") +
+      scale_fill_distiller(
+        palette = "RdYlGn", 
+        direction = -1, 
+        breaks = seq(0,14, 2), 
+        labels = math_format(2^.x)) +
+      guides(
+        fill = guide_colorbar(
+          title.position = "top", title.hjust = 0.5, barwidth = unit(4, "in"),
+          frame.colour = "black", ticks.colour = "black")) +
+      scale_y_continuous(labels = comma_format()) +
+      labs(y = ylab,  
+           x = NULL, 
+           fill = "Minimum Individual Weight 2^x (g)") +
+      theme(legend.position = "bottom",
+            axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.margin = margin(t = 0, r = 0, b = 0, l = 2))
+  if(show_facets == F){p <- p + theme(strip.text.y = element_blank(), strip.background.y = element_blank())}
+  return(p)
+  
+}
+
+
+
+# Build the pieces
+shelf_abunds <- plot_abundance_vertical("Northeast Shelf, Full", show_facets = F)
+gom_abunds   <- plot_abundance_vertical("GoM", F, ylab = NULL)
+gb_abunds    <- plot_abundance_vertical("GB", F, ylab = NULL)
+sne_abunds   <- plot_abundance_vertical("SNE", F, ylab = NULL)
+mab_abunds   <- plot_abundance_vertical("MAB", T, ylab = NULL)
+
+# patch together
+( shelf_abunds | gom_abunds |gb_abunds |sne_abunds |gb_abunds |mab_abunds ) + plot_layout(guides = "collect")
+
+
+```
+
+
+
+### Community Biomass
+
+
+
+
+
+```{r}
+#| label: biomass totals by area
+#| fig.width: 8
+#| fig-height: 6
+
+#----- Overall Biomass
+
+
+# Repeat for Biomass
+# Abundance 1.
+shelf_bio_p <- shelf_summary %>% 
+  mutate(area_titles = "Northeast Shelf, Full") %>% 
+  ggplot() +
+  geom_line(aes(Year, lwbio_mill), color = gmri_cols("dark gray"), linewidth = 1) +
+  #geom_col(aes(Year, abund_mill), fill = gmri_cols("dark gray")) +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~area_titles) +
+  labs(y = "Biomass (million kg)")
+
+# Abundance 2.
+region_bio_p <- region_summary %>% 
+  ggplot() +
+  geom_col(aes(Year, lwbio_mill, fill = area_titles), show.legend = F) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~area_titles, ncol = 1, scales = "free") +
+  labs(y = "Biomass (million kg)")
+
+shelf_bio_p | region_bio_p
+
+```
+
+
+
+Similar to abundance, the overall biomass was highest in the two northern regions, the Gulf of Maine and Georges Bank. Roughly half of the biomass sampled in these regions can be attributed to groundfish species, with the second largest contributions coming from elasmobranchs. Within the groundfish biomass, larger individuals \>2kg in particular, declined during the 70's and 80's in these regions, never truly recovering. Beginning in the 2000's there were signs that groundfish abundances were increasing as evidenced by increasing numbers of smaller individuals, however in both regions this trend appears to have reversed by the mid 2010's. Elasmobranch biomass increased steadily throughout the survey time period across all regions, with the exception of southern New England. This area showed large 5-10 year swings in biomass, but no clear long-term trend. Larger elasmobranch were rare in all regions except for a period spanning the late 70's through the early 90's isolated to Georges Bank. Demersal species biomass was highest in the Gulf of Maine, dwarfing their contributions in other regions. Their biomass declined in the 70's, was flat until the late 90's, remaining relatively high until declining in the late 2010's. Pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
+
+
+
+
+
+#### Regional Biomass
+
+
+
+There was a distinct difference between Northern and Southern regions in the way biomass was distributed among the different functional groups. The largest contributors to biomass in the southern regions (southern New England & mid-Atlantic bight) was the elasmobranch community. While the northern regions (Gulf of Maine & Georges Bank) each had similar quantities of elasmobranch biomasses, there was also a comparable contribution of groundfish and in the Gulf of Maine there was a major component of demersal species as well.
+
+
+
+::: {.panel-tabset}
+
+### Northeast Shelf
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+# Make Plot for Functional Groups
+shelf_fgroup_bio_p <- shelf_fgroup_summary %>% 
+  ggplot() +
+  geom_col(aes(Year, lwbio_mill, fill = hare_group), show.legend = F) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~hare_group, ncol = 1, scales = "free") +
+  labs(y = "Biomass (million kg)")
+
+
+# Place Functional Groups Beside Shelf
+shelf_bio_p | shelf_fgroup_bio_p
+
+```
+
+
+### Gulf of Maine
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+area_option <- "Gulf of Maine"
+
+plot_area_bio_summary <- function(area_option){
+  
+  area_bio_p <- region_summary %>% 
+  filter(area_titles == area_option) %>% 
+  ggplot() +
+  geom_line(aes(Year, lwbio_mill), color = gmri_cols("dark gray"), linewidth = 1) +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~area_titles) +
+  labs(y = "Biomass (million kg)")
+  
+
+# Make Plot for Functional Groups
+area_fgroup_bio_p <- functional_group_summary %>% 
+  filter(area_titles == area_option) %>% 
+  ggplot() +
+  geom_col(aes(Year, lwbio_mill, fill = hare_group), show.legend = F) +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = label_comma()) +
+  facet_wrap(~hare_group, ncol = 1, scales = "free") +
+  labs(y = "Biomass (million kg)")
+
+
+# Place Functional Groups Beside Shelf
+p_out <- area_bio_p | area_fgroup_bio_p
+return(p_out)
+  
+}
+
+plot_area_bio_summary(area_option = "Gulf of Maine")
+```
+
+
+### Georges Bank
+
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+plot_area_bio_summary(area_option = "Georges Bank")
+```
+
+### Southern New England
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+plot_area_bio_summary(area_option = "Southern New England")
+```
+
+
+### Mid-Atlantic Bight
+
+```{r}
+#| fig.width: 8
+#| fig-height: 6
+
+
+plot_area_bio_summary(area_option = "Mid-Atlantic Bight")
+```
+
+
+:::
+
+
+
+#### Total Biomass by Individual Body-Size
+
+```{r}
+#| label: bodymass abundance distributions
+#| fig.width: 10
+#| fig-height: 8
+
+# panel plot the biomass by body size
+plot_bodymass_vertical <- function(p_area = "GoM", show_facets = F, ylab = "Biomass (million kg)"){
+  
+  p <- fgroup_area$weight_bins %>% 
+    complete(Year, hare_group, survey_area, left_lim) %>% 
+    filter(survey_area == p_area) %>% 
+    ggplot(aes(Year, strat_lwbio_mill, fill = left_lim)) +
+      geom_col(color = "gray30", linewidth = 0.1) +
+      facet_grid(hare_group~survey_area, scales = "free") +
+      scale_fill_distiller(
+        palette = "RdYlGn", 
+        direction = -1, 
+        breaks = seq(0,14, 2), 
+        labels = math_format(2^.x)) +
+      guides(
+        fill = guide_colorbar(
+          title.position = "top", title.hjust = 0.5, barwidth = unit(4, "in"),
+          frame.colour = "black", ticks.colour = "black")) +
+      scale_y_continuous(labels = comma_format()) +
+      labs(y = ylab,  
+           x = NULL, 
+           fill = "Minimum Individual Weight 2^x (g)") +
+      theme(legend.position = "bottom",
+            axis.text.x = element_text(angle = 45, hjust = 1),
+            plot.margin = margin(t = 0, r = 0, b = 0, l = 2))
+  if(show_facets == F){p <- p + theme(strip.text.y = element_blank(), strip.background.y = element_blank())}
+  return(p)
+  
+}
+
+
+
+# Build the pieces
+shelf_bmass <- plot_bodymass_vertical("Northeast Shelf, Full", show_facets = F)
+gom_bmass   <- plot_bodymass_vertical("GoM", F, ylab = NULL)
+gb_bmass    <- plot_bodymass_vertical("GB", F, ylab = NULL)
+sne_bmass   <- plot_bodymass_vertical("SNE", F, ylab = NULL)
+mab_bmass   <- plot_bodymass_vertical("MAB", T, ylab = NULL)
+
+# patch together
+( shelf_bmass | gom_bmass |gb_bmass |sne_bmass |gb_bmass |mab_bmass ) + plot_layout(guides = "collect")
+
+
+```
+
+
+
+### Body Size Trends
+
+The average fish size in the Gulf of Maine (length and weight) declined the greatest of all regions over our study period. The average individual length was greatest in the 1970's in the 35-40cm range, falling to 28-33cm over the last decade. Body-weight fell dramatically in the 1980's, from around .75kg in the 1970's to .25-.30kg, roughly a third of what it had been. Georges Bank body sizes also declined during the study period, but less dramatically. Both of these Northern regions had brief period in the late 2000's where average length and weight rose, before falling again in the 2010's. The MAB region was the only region to see a long-term increase in both length and weight during the study period. SNE saw no long-term change in length, and a minor decline in average body-weight.
+
+::: panel-tabset
+#### All Species
+
+```{r}
+#| label: regional-size-trends
+#| fig.height: 6
+
+# Re-factor
+regional_size <- regional_size %>% 
+  filter(Year < 2020) %>% 
+  mutate(
+    survey_area = factor(survey_area, area_levels),
+    area_copy = survey_area)
+
+
+# Get the average length and weight at each decade
+avg_size_decades <- regional_size %>% 
+  mutate(
+    decade_left = as.numeric(as.character(floor_decade(Year))),
+    decade_right = as.numeric(as.character(floor_decade(Year+10))) - 1,
+    decade_center = (decade_left + decade_right)/2,
+    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
+  group_by(area_titles, decade_left, decade_right, decade_center, decade_lab) %>% 
+  summarise(
+    mean_len_cm = mean(mean_len_cm),
+    mean_wt_kg = mean(mean_wt_kg),
+    .groups = "drop"
+  )
+
+
+# Length plot
+avg_len_p <-  regional_size %>% 
+    ggplot() +
+    geom_line(aes(Year, mean_len_cm, group = area_titles), 
+              linewidth = 1,
+              show.legend = F, color = "gray60") + 
+  geom_segment(
+    data = avg_size_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_len_cm, yend = mean_len_cm), linewidth = 1.5) +
+  geom_text(
+    data = avg_size_decades,
+    aes(x = decade_center, y = mean_len_cm, 
+        label = str_c(round(mean_len_cm, 1)) ), 
+    vjust = -1.05, size = 4, fontface = "bold") +
+    scale_color_gmri() +
+    facet_wrap(~area_titles, ncol = 1) + 
+    labs(title = "Average Length",
+         y = "Length (cm)",
+         color = "Region")
+
+
+# Weight plot
+avg_wt_p <- regional_size %>% 
+  ggplot(aes(Year, mean_wt_kg)) + 
+  geom_line(aes(group = area_titles), 
+            linewidth = 1,
+            show.legend = F,
+            color = "gray60") + 
+  geom_segment(
+    data = avg_size_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_wt_kg, yend = mean_wt_kg), linewidth = 1.5) +
+  geom_text(
+    data = avg_size_decades,
+    aes(x = decade_center, y = mean_wt_kg, 
+        label = str_c(round(mean_wt_kg, 1)) ), 
+    vjust = -1.05, size = 4, fontface = "bold") +
+  scale_color_gmri() +
+  facet_wrap(~area_titles, ncol = 1) + 
+  labs(title = "Average Weight",
+       y = "Weight (kg)",
+       color = "Region")
+  
+# Plot side by side
+(avg_len_p | avg_wt_p) 
+
+```
+
+#### Functional Group Avg. Length
+
+```{r}
+#| label: functional-group-length-trends
+#| fig-height: 6
+
+# Get the average length and weight at each decade
+avg_fgroup_decades <- functional_group_size %>% 
+  
+  mutate(
+    decade_left = as.numeric(as.character(floor_decade(Year))),
+    decade_right = as.numeric(as.character(floor_decade(Year+10))) - 1,
+    decade_center = (decade_left + decade_right)/2,
+    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
+  group_by(area_titles, hare_group, decade_left, decade_right, decade_center, decade_lab) %>% 
+  summarise(
+    mean_len_cm = mean(mean_len_cm),
+    mean_wt_kg = mean(mean_wt_kg),
+    .groups = "drop")
+
+
+
+# Plot the Length changes
+functional_group_size %>% 
+    ggplot() +
+    geom_line(aes(Year, mean_len_cm, group = area_titles), 
+              linewidth = 1,
+              show.legend = F, color = "gray60") + 
+  geom_segment(
+    data = avg_fgroup_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_len_cm, yend = mean_len_cm), linewidth = 1.5) +
+  geom_text(
+    data = avg_fgroup_decades,
+    aes(x = decade_center, y = mean_len_cm, 
+        label = str_c(round(mean_len_cm, 1)) ), 
+    vjust = -1.05, size = 3.5, fontface = "bold") +
+    scale_color_gmri() +
+    facet_grid(hare_group~area_titles, scales = "free_y") +  
+    labs(title = "Average Length",
+         y = "Length (cm)",
+         color = "Region")
+
+
+
+
+
+
+
+```
+
+#### Functional Group Avg. Weight
+
+```{r}
+#| label: functional-group-weight-trends
+#| fig-height: 6
+
+# Average Weights
+functional_group_size %>% 
+    ggplot() +
+    geom_line(aes(Year, mean_wt_kg, group = area_titles), 
+              linewidth = 1,
+              show.legend = F, color = "gray60") + 
+  geom_segment(
+    data = avg_fgroup_decades,
+    aes(x = decade_left, xend = decade_right, y = mean_wt_kg, yend = mean_wt_kg), linewidth = 1.5) +
+  geom_text(
+    data = avg_fgroup_decades,
+    aes(x = decade_center, y = mean_wt_kg, 
+        label = str_c(round(mean_len_cm, 1)) ), 
+    vjust = -1.05, size = 3.5, fontface = "bold") +
+    scale_color_gmri() +
+    facet_grid(hare_group~area_titles, scales = "free_y") +  
+    labs(title = "Average Weight",
+         y = "Weight (kg)",
+         color = "Region")
+
+```
+:::
+
+### Regional Size Spectra
+
+At the start of our time series, back in the 1970's, there was a clear difference in the relative positions of spectra parameters among the different regions. Gulf of Maine and Georges Bank showed the least steep spectra slopes in the earlier time periods with slopes around -1 & -1.1 respectively. The relatively flat slopes in these regions both steepened over time, settling near -1.3 (GoM) and -1.5 (GB). Gulf of Maine experienced much of its decline during the 1980's and 1990's. There was a brief reversal in this trend during the 2000's, but slopes continued to steepen by 2010 and remained steep through 2019. Georges Bank did not experience as rapid of a decline, but experienced a similar long-term steepening. In contrast to the northern regions, SNE and MAB had steeper slopes in the -1.2 to -1.5 territory. The long term pattern for SNE was one of increasing volatility, but not so much a decline. The spectra slope for the MAB was less volatile, but similarly maintained a relatively stable wander around -1.4. By the end of the study period all regions had slopes that were at or near a similar level.
+
+```{r}
+#| label: size spectra results
+
+
+# Make decadal averages of spectra slopes
+indices_decades <- region_indices %>% 
+  mutate(
+    Year = as.numeric(Year),
+    decade_left = as.numeric(as.character(floor_decade(Year))),
+    decade_right = as.numeric(as.character(floor_decade(Year + 10))) - 1,
+    decade_center = (decade_left + decade_right)/2,
+    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
+  group_by(area_titles, decade_left, decade_right, decade_center, decade_lab) %>% 
+  summarise( mean_b = mean(b, na.rm = T),
+             mean_l2slope = mean(log2_slope_strat, na.rm = T), 
+             .groups = "drop")
+
+```
+
+
+
+::: panel-tabset
+#### Exponent of Size Spectra
+
+```{r}
+#| fig.height: 6
+
+# 1. Exponent of ISD, MLE method
+isd_timeline <- region_indices %>% 
+  ggplot(aes(yr, b, group = area_titles)) +
+    geom_line(aes(group = area_titles), color = "gray60", linewidth = 1) +
+    #geom_pointrange(aes(group = area_titles, ymin = confMin, ymax = confMax), size = 0.1) +
+    geom_segment(
+      data = indices_decades,
+      aes(x = decade_left, xend = decade_right, y = mean_b, yend = mean_b), linewidth = 1.5) +
+    geom_text(
+      data = indices_decades,
+      aes(x = decade_center, y = mean_b, 
+          label = str_c(round(mean_b, 1)) ), 
+      vjust = -1.05, size = 3.5, fontface = "bold") +
+    scale_y_continuous(expand = expansion(add = c(0,.1))) +
+    scale_color_gmri() +
+    facet_wrap(~area_titles, ncol = 1) +
+    labs(x = "Year", y = "Abundance Size Spectrum Slope (b)")
+
+isd_timeline 
+#+ geom_smooth(color = "orange", se = FALSE)
+```
+
+#### Log2 Binned Size Spectra
+
+```{r}
+#| fig.height: 6
+
+# 2. Plot the Regional Slopes, using the binned method
+slope_timeline <- region_indices %>% 
+  ggplot(aes(yr, log2_slope_strat, group = area_titles)) +
+    geom_line(aes(group = area_titles), linewidth = 1, color = "gray70") +
+    geom_segment(
+      data = indices_decades,
+      aes(x = decade_left, xend = decade_right, y = mean_l2slope, yend = mean_l2slope), linewidth = 1.5) +
+    geom_text(
+      data = indices_decades,
+      aes(x = decade_center, y = mean_l2slope, 
+          label = str_c(round(mean_l2slope, 1)) ), 
+      vjust = -1.05, size = 3.5, fontface = "bold") +
+    scale_y_continuous(expand = expansion(add = c(0,.1))) +
+    scale_color_gmri() +
+    facet_wrap(~area_titles, ncol = 1)  +
+    labs(x = "Year", y = "Normalized Abundance Spectrum Slope") 
+
+slope_timeline #+ geom_smooth(color = "orange", se = FALSE)
+```
+
+:::
+
+## Size Spectra Drivers
+
+### Lagged Impacts of Predictors
+
+Exploratory analysis on potentially important predictor time lags through the use of cross correlation functions raised 6 potential lagged-driver candidates for the driver regression analyses. CCF identified potential time lags in Georges Bank predictors, and in the Mid-Atlantic Bight. Lagged predictors added to Georges Bank regression model selection process included:  A 2-year lag on the small zooplankton index, a 1-year lag on the large zooplankton index, a 1-year lag of SST, 4-year lag & 1-year lags of the GSI, and 4 & 5 year lags of commercial landings. Lagged predictors added to Mid-Atlantic Bight regression model selection process included: 5 & 7 year lags on the small zooplankton index and a 2-year lag on SST. 
+
+
+```{r}
+#| label: ccf-results
 #| fig-height: 8
 #| fig-width: 8
 
@@ -927,589 +1866,18 @@ ccf_plot_data %>%
 
 ```
 
-### Slope Changepoint Analyses
-
-Changepoint analysis was used as a means to explore the temporal structure in changes of the regional size spectrum slopes. Changepoint analysis was performed using the envcpt package (@killick et al), testing comparing support for 12 candidate model structures and any identified changepoints. The most supported changepoint structures were then used to inform whether (if any) regional spectra expressed distinct periods of behavior. If changepoints were identified, this was used as evidence that there may have been a community regime change. Following this thinking it is plausible for there to be inconsistencies or non-stationarity in the predictors' impact on the community spectra, as different community regimes may be differently vulnerable to top-down pressures like commercial fishing. To allow for changes in these relationships across different regimes, separated by changepoints, an additional interaction term was added to the regression model candidates for that region. 
-
-
-### Driver Correlation Periods
-
-
-```{r}
-#| label: driver-correlation-periods
-
-# Pull different years into a list
-driver_periods <- list(
-  "1982-1998"     = c(1982:1998),
-  "1999-2006"     = c(1999:2006),
-  "2007-2019"     = c(2007:2019),
-  "1982-2019"     = c(1982:2019))
-
-
-# -------------------------------------------------
-# Idea: Add functional_group_sizes into the correlation chart:
-
-# Reshape the size information so we can combine it with the drivers:
-# Values are scaled here
-sizes_wide <- functional_group_size %>% 
-  select(year = Year, 
-         survey_area, 
-         hare_group, 
-         avg_weight = mean_wt_kg) %>% 
-  pivot_longer(names_to = "var", 
-               values_to = "value", 
-               cols = c(avg_weight)) %>% 
-  inner_join(area_df, by = "survey_area") %>% 
-  select(-survey_area) %>% 
-  mutate(id = str_replace_all(str_c(area, "_", hare_group, "_", var), " ", "_")) %>% 
-  select(-c(area, area_titles, var, hare_group)) %>% 
-  pivot_wider(names_from = id, values_from = value, values_fn = {mean}) %>% 
-  column_to_rownames(var = "year") %>% 
-  scale() %>% 
-  as.data.frame()
 
 
 
-# Join regional size changes to the scaled drivers
-drivers_and_sizes <- drivers_scaled %>% 
-  left_join(rownames_to_column(sizes_wide, var = "year"), by = "year") %>%
-  column_to_rownames(var = "year")
+
+### Spectra Slope Changepoints
 
 
-# Split them out into a list that contains data for each period
-# Takes the years in driver_periods and pulls the rows that correspond
-driver_period_list <- map(driver_periods, function(yrs){
-  period_matrix <- drivers_and_sizes[rownames(drivers_and_sizes) %in% yrs, ] %>% drop_na()})
-
-```
-
-
-
-### Regression Analyses
-
-Following exploratory analyses with CCF functions and changepoint analyses, regression models were developed and tested independently for each region.  Potential drivers included in the models were the annual Gulf Stream Index, the annual regionally averaged SST anomaly value, regionally averaged small and large copepod indices, and the scaled annual commercial landings from that region. Gulf stream index, zooplankton indices, and SST anomalies were not standardized prior to use in model fitting and evaluation as the two former are already an index value and the latter is scaled to a thirty-year climatological reference period. In the event that CCF analysis identified an important time lag for a region’s independent variables, these specific time-lagged predictors were included as predictors in the candidate models, otherwise time-lags on predictors were not evaluated. For any region(s) that showed support for changepoints in their temporal structure, the periods separated by those breaks were included as an interaction term on all other predictors. In the absence of any identified changepoints, no multi-year periods were included as potential regime impacts. All candidate models for a region were evaluated using AIC to determine the most parsimonious models for each regional system. 
+Breakpoint analyses showed support for ecological regime change in one region, the Gulf of Maine. Evidence of breakpoints were found in 1999 & 2007 – when slope values increased briefly, before reversing course and falling further. The best-supported breakpoint model structure included breaks in the linear trend at 1999 & 2007, and a 2-year autocorrelation term. Suggesting that the community spectra behaved differently over 3 regimes with strong autocorrelation to its state two years prior. For Georges Bank spectra slopes showed a single trend structure, with slopes steepening over time. This was also the case for the Mid-Atlantic Bight, but with slopes becoming more shallow with time. In Southern New England a single mean (intercept) model best reflected the lack of change. With no strong support for either a long-term trend or break points. Based on these exploratory results, three regime periods were added to the Gulf of Maine’s dataset for multiple regression analysis. The three regimes were 1982-1998, 1999-2006, 2007-2019. These regimes were included as an interaction term with each of the original hypothesized drivers, permitting potentially different influences of the drivers within each regime. The two-year lag on the spectrum slope was also included based on its support in the most-parsimonious changepoint analysis model. No breakpoints or autocorrelation terms were added to models for the other regions.
 
 
 ```{r}
-#| label: regression-analysis-data
-
-
-# Use scaled drivers for the regressions
-# Need to drop zooplankton because they are non-unique since we split the MAB EPU and repeated it
-regression_df <- drivers_scaled %>% 
-  select(!ends_with(c("zp_small","zp_large")))
-
-# Build back out the metadata:
-# Identify what region is associated with both: spectrum values & driver values
-regression_df <- regression_df %>% 
-  pivot_longer(names_to = "spectra_param", 
-               values_to = "spectra_values", 
-               cols = ends_with("slope") | ends_with("int")) %>% 
-  pivot_longer(names_to = "driver_var", 
-               values_to = "driver_values", 
-               cols = -matches("spectra|year")) %>% 
-  mutate(
-    year = as.numeric(year),
-    # A. Flag what the driver type was
-    driver_type = case_when(
-      str_detect(driver_var, "landings") ~ "Commercial Landings",
-      str_detect(driver_var, "sst") ~ "SST",
-      str_detect(driver_var, "index") ~ "GSI",
-      TRUE ~ "Missed Something"),
-    # B. Flag what the spectrum feature was
-    param_feature = case_when(
-      # Flag what the Size Distribution Parameter was
-      str_detect(spectra_param, "int") ~ "Spectra Intercept",
-      str_detect(spectra_param, "isd") ~ "ISD Exponent",
-      str_detect(spectra_param, "slope") ~ "Spectra Slope",
-      TRUE ~ "Missed Something"),
-    # C. These are the areas associated with the Spectra Features
-    spectra_area = case_when(
-      str_detect(spectra_param, "All") ~ "All",
-      str_detect(spectra_param, "Georges") ~ "Georges Bank",
-      str_detect(spectra_param, "Gulf") ~ "Gulf of Maine",
-      str_detect(spectra_param, "Southern") ~ "Southern New England",
-      str_detect(spectra_param, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    spectra_area = factor(spectra_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-    
-    # D. These are the areas of the drivers
-    driver_area = case_when(
-      str_detect(driver_var, "All") ~ "All",
-      str_detect(driver_var, "Georges") ~ "Georges Bank",
-      str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
-      str_detect(driver_var, "Southern") ~ "Southern New England",
-      str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    driver_area = factor(driver_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
-    
-    # E. Add Decade in
-    decade = floor_decade(year),
-    #
-    #regime = ifelse(year < 2010, "regime_1", "regime_2" )
-    ) 
-
-
-# Filter it so predictors are only within matching regions, 
-# or just overarching (GSI)
-regression_df <- regression_df %>% 
-  filter(driver_area == spectra_area | driver_type == "GSI") %>% 
-  arrange(year, driver_var)
-
-
-
-
-# Last wrangling:
-# columns for: year, slope, isd, spectra region, drver_region, GSI, sst_anom, landings
-# GSI is so annoying here, just rejoin it without the area column
-regression_df <- regression_df %>% 
-  select(-c(spectra_param, driver_var)) %>% 
-  pivot_wider(names_from = "driver_type", values_from = "driver_values") %>% 
-  pivot_wider(names_from = "param_feature", values_from = "spectra_values") %>% 
-  select(-GSI) %>% 
-  filter(driver_area != "All") %>% 
-  left_join( select(clim_idx, year, GSI = value), by = c("year") ) %>% 
-  mutate(spectra_area = fct_drop(spectra_area))
-
-
-
-
-# Add zooplankton here so it can be checked in the regressions
-# Zooplankton values are duplicated in MAB and SNE b/c its the same EPU
-regression_df <- left_join(
-    regression_df, 
-    zp_index %>% rename(spectra_area = survey_area), 
-    by = join_by(year, spectra_area))
-
-```
-
-
-# Results
-
-### Community Abundance
-
-Stratified abundance estimates have been gradually increasing on the Northeast Shelf since 1970. Abundance growth accelerated after 2007 to peak levels in 2014. Abundance then began declining, which continued through 2019 (Figure 2).  In the Gulf of Maine, fish abundance remained relatively-low until the 1990’s, at which point it began to steadily rise–closely aligning with the pattern for the Northeast Shelf. This increase in abundance reversed briefly during 2002-2006, but continued to rise after 2006 before hitting a regional peak in 2016. Populations then declined through 2019 similar to the shelf-wide trend. Georges Bank abundances were consistently low from 1970 around 2010. By 2014 abundance had roughly quadrupled, propelled by strong recruitment classes of haddock. After 2014, abundance quickly fell to numbers more similar to the 1970-2010 levels by the end of the decade. Community abundance in Southern New England displayed higher inter-annual changes across all years compared to both Gulf of Maine and Georges Bank. Abundance in this area showed a less dramatic rise and fall than the Northern regions.  Abundances began increasing rapidly here in 2007, before falling back to earlier levels by the end of the 2010’s decade. The Mid Atlantic Bight displayed the most inter-annual variability and had no major trends in fish abundance.
-
-
-```{r}
-#| label: abundance distributions
-#| fig.width: 8
-#| fig-height: 8
-
-# panel plot the biomass by body size
-fgroup_area$weight_bins <- fgroup_area$weight_bins %>% 
-  mutate(strat_abund_mill = wtbin_strat_abund / 1e6,
-         strat_lwbio_mill = wtbin_strat_lw_bio / 1e6,
-         survey_area = factor(survey_area,
-                              levels = area_levels))
-
-
-
-
-# Just abundance, not by groups
-strat_abundance_plot <- fgroup_area$weight_bins %>% 
-  filter(survey_area == "Northeast Shelf, Full") %>% 
-  group_by(Year, survey_area, hare_group) %>% 
-  summarise(abund_millions = sum(strat_abund_mill, na.rm = T),
-            .groups = "drop") %>% 
-  #filter(survey_area == "GoM") %>% 
-  ggplot(aes(Year, abund_millions, fill = hare_group)) +
-  #geom_area(color = "gray30", linewidth = 0.1) +
-  geom_col(color = "gray30", linewidth = 0.1, position = "stack") +
-  scale_fill_gmri() + 
-  scale_x_continuous(expand = expansion(add = c(0,0))) +
-  scale_y_continuous(labels = comma_format()) +
-  facet_wrap(~survey_area, ncol = 1, scales = "free") + 
-  labs(y = "Abundance (millions)",  
-       x = NULL,
-       fill = "Functional Group") +
-  theme(legend.position = "bottom")
-
-
-
-# Just Biomass, by area and functional group
-strat_biomass_plot <- fgroup_area$weight_bins %>% 
-  filter(survey_area == "Northeast Shelf, Full") %>% 
-  group_by(Year, survey_area, hare_group) %>% 
-  summarise(abund_millions = sum(strat_lwbio_mill, na.rm = T),
-            .groups = "drop") %>% 
-  ggplot(aes(Year, abund_millions, fill = hare_group)) +
-  # geom_area(color = "gray30", linewidth = 0.1) +
-  geom_col(color = "gray30", linewidth = 0.1, position = "stack") +
-  scale_fill_gmri() + 
-  scale_x_continuous(expand = expansion(add = c(0,0))) +
-  scale_y_continuous(labels = comma_format()) +
-  facet_wrap(~survey_area, ncol = 1, scales = "free") + 
-  labs(y = "Biomass (million kg)",  
-       x = NULL,
-       fill = "Functional Group") +
-  theme(legend.position = "bottom")
-
-
-# Biomass and Abundance Together
-(strat_abundance_plot / strat_biomass_plot + labs(x = "Year")) + 
-  plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom")
-
-
-```
-
-Groundfish species were the dominant functional group driving the abundance and biomass trends in the Gulf of Maine and Georges Bank, with the two southern regions showing a more balanced abundance distribution among the five functional groups (Figure 2). 
-
-```{r}
-#| label: abundance-by-group
-#| fig.height: 8
-#| fig.width: 10
-#| eval: false
-
-
-# Plot abundance by region and Group
-fgroup_area$weight_bins %>% 
-  filter(survey_area != "Northeast Shelf, Full") %>% 
-  ggplot(aes(Year, strat_abund_mill, fill = left_lim)) +
-    geom_col(color = "gray30", linewidth = 0.1) +
-    facet_grid(survey_area~hare_group) +
-    scale_fill_distiller(palette = "RdYlGn", direction = -1, breaks = seq(0,14, 2)) +
-    guides(fill = guide_colorsteps(barwidth = unit(3, "in"))) +
-    scale_y_continuous(labels = comma_format()) +
-    labs(
-      y = "Abundance (millions)",  
-      x = NULL, 
-      fill = "Minimum Individual Weight 2^x (g)") +
-    theme(
-      legend.position = "bottom",
-      axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
-
-### Community Biomass
-
-Similar to abundance, the overall biomass was highest in the two northern regions, the Gulf of Maine and Georges Bank. Roughly half of the biomass sampled in these regions can be attributed to groundfish species, with the second largest contributions coming from elasmobranchs. Within the groundfish biomass, larger individuals \>2kg in particular, declined during the 70's and 80's in these regions, never truly recovering. Beginning in the 2000's there were signs that groundfish abundances were increasing as evidenced by increasing numbers of smaller individuals, however in both regions this trend appears to have reversed by the mid 2010's. Elasmobranch biomass increased steadily throughout the survey time period across all regions, with the exception of southern New England. This area showed large 5-10 year swings in biomass, but no clear long-term trend. Larger elasmobranch were rare in all regions except for a period spanning the late 70's through the early 90's isolated to Georges Bank. Demersal species biomass was highest in the Gulf of Maine, dwarfing their contributions in other regions. Their biomass declined in the 70's, was flat until the late 90's, remaining relatively high until declining in the late 2010's. Pelagic species biomass was low in all regions, and is unlikely to be representative of true biomass trends due to gear selectivity.
-
-```{r}
-#| label: bodymass distributions
-#| fig.width: 10
-#| fig-height: 8
-
-# panel plot the biomass by body size
-plot_bodymass_vertical <- function(p_area = "GoM", show_facets = F, ylab = "Biomass (million kg)"){
-  
-  p <- fgroup_area$weight_bins %>% 
-    complete(Year, hare_group, survey_area, left_lim) %>% 
-    #filter(survey_area != "Northeast Shelf, Full") %>% 
-    filter(survey_area == p_area) %>% 
-    ggplot(aes(Year, strat_abund_mill, fill = left_lim)) +
-      geom_col(color = "gray30", linewidth = 0.1) +
-      # facet_grid(survey_area~hare_group) +
-      facet_grid(hare_group~survey_area, scales = "free") +
-      scale_fill_distiller(
-        palette = "RdYlGn", 
-        direction = -1, 
-        breaks = seq(0,14, 2), 
-        labels = math_format(2^.x)) +
-      guides(
-        fill = guide_colorbar(
-          title.position = "top", title.hjust = 0.5, barwidth = unit(4, "in"),
-          frame.colour = "black", ticks.colour = "black")) +
-      scale_y_continuous(labels = comma_format()) +
-      labs(y = ylab,  
-           x = NULL, 
-           fill = "Minimum Individual Weight 2^x (g)") +
-      theme(legend.position = "bottom",
-            axis.text.x = element_text(angle = 45, hjust = 1),
-            plot.margin = margin(t = 0, r = 0, b = 0, l = 2))
-  if(show_facets == F){p <- p + theme(strip.text.y = element_blank(), strip.background.y = element_blank())}
-  return(p)
-  
-}
-
-
-
-
-
-# Build the pieces
-shelf_bmass <- plot_bodymass_vertical("Northeast Shelf, Full", show_facets = F)
-gom_bmass   <- plot_bodymass_vertical("GoM", F, ylab = NULL)
-gb_bmass    <- plot_bodymass_vertical("GB", F, ylab = NULL)
-sne_bmass   <- plot_bodymass_vertical("SNE", F, ylab = NULL)
-mab_bmass   <- plot_bodymass_vertical("MAB", T, ylab = NULL)
-
-# patch together
-( shelf_bmass | gom_bmass |gb_bmass |sne_bmass |gb_bmass |mab_bmass ) + plot_layout(guides = "collect")
-
-
-```
-
-
-
-### Regional Variation in Species Composition
-
-There was a distinct difference between Northern and Southern regions in the way biomass was distributed among the different functional groups. The largest contributors to biomass in the southern regions (southern New England & mid-Atlantic bight) was the elasmobranch community. While the northern regions (Gulf of Maine & Georges Bank) each had similar quantities of elasmobranch biomasses, there was also a comparable contribution of groundfish and in the Gulf of Maine there was a major component of demersal species as well.
-
-### Body Size Trends
-
-The average fish size in the Gulf of Maine (length and weight) declined the greatest of all regions over our study period. The average individual length was greatest in the 1970's in the 35-40cm range, falling to 28-33cm over the last decade. Body-weight fell dramatically in the 1980's, from around .75kg in the 1970's to .25-.30kg, roughly a third of what it had been. Georges Bank body sizes also declined during the study period, but less dramatically. Both of these Northern regions had brief period in the late 2000's where average length and weight rose, before falling again in the 2010's. The MAB region was the only region to see a long-term increase in both length and weight during the study period. SNE saw no long-term change in length, and a minor decline in average body-weight.
-
-::: panel-tabset
-#### All Species
-
-```{r}
-#| label: regional-size-trends
-#| fig.height: 8
-#| fig.weight: 8
-
-# Re-factor
-regional_size <- regional_size %>% 
-  filter(Year < 2020) %>% 
-  mutate(
-    survey_area = factor(survey_area, area_levels),
-    area_copy = survey_area)
-
-
-# Get the average length and weight at each decade
-avg_size_decades <- regional_size %>% 
-  mutate(
-    decade_left = as.numeric(as.character(floor_decade(Year))),
-    decade_right = as.numeric(as.character(floor_decade(Year+10))) - 1,
-    decade_center = (decade_left + decade_right)/2,
-    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
-  group_by(area_titles, decade_left, decade_right, decade_center, decade_lab) %>% 
-  summarise(
-    mean_len_cm = mean(mean_len_cm),
-    mean_wt_kg = mean(mean_wt_kg),
-    .groups = "drop"
-  )
-
-
-# Length plot
-avg_len_p <-  regional_size %>% 
-    ggplot() +
-    geom_line(aes(Year, mean_len_cm, group = area_titles), 
-              linewidth = 1,
-              show.legend = F, color = "gray60") + 
-  geom_segment(
-    data = avg_size_decades,
-    aes(x = decade_left, xend = decade_right, y = mean_len_cm, yend = mean_len_cm), linewidth = 1.5) +
-  geom_text(
-    data = avg_size_decades,
-    aes(x = decade_center, y = mean_len_cm, 
-        label = str_c(round(mean_len_cm, 1)) ), 
-    vjust = -1.05, size = 4, fontface = "bold") +
-    scale_color_gmri() +
-    facet_wrap(~area_titles, ncol = 1) + 
-    labs(title = "Average Length",
-         y = "Length (cm)",
-         color = "Region")
-
-
-# Weight plot
-avg_wt_p <- regional_size %>% 
-  ggplot(aes(Year, mean_wt_kg)) + 
-  geom_line(aes(group = area_titles), 
-            linewidth = 1,
-            show.legend = F,
-            color = "gray60") + 
-  geom_segment(
-    data = avg_size_decades,
-    aes(x = decade_left, xend = decade_right, y = mean_wt_kg, yend = mean_wt_kg), linewidth = 1.5) +
-  geom_text(
-    data = avg_size_decades,
-    aes(x = decade_center, y = mean_wt_kg, 
-        label = str_c(round(mean_wt_kg, 1)) ), 
-    vjust = -1.05, size = 4, fontface = "bold") +
-  scale_color_gmri() +
-  facet_wrap(~area_titles, ncol = 1) + 
-  labs(title = "Average Weight",
-       y = "Weight (kg)",
-       color = "Region")
-  
-# Plot side by side
-(avg_len_p | avg_wt_p) 
-
-```
-
-#### Functional Group Avg. Length
-
-```{r}
-#| label: functional-group-length-trends
-#| fig.width: 8
-#| fig-height: 8
-
-
-
-
-
-# Plot the different trends in length
-functional_group_size %>% 
-  ggplot(aes(Year, mean_len_cm)) +
-  geom_line(aes(group = area_titles#,
-                  #color = area_copy
-                  ), 
-              linewidth = 1,
-              show.legend = F) + 
-    geom_smooth(color = "orange", method = "loess", linewidth = 1) +
-    facet_grid(hare_group~area_titles, scales = "free_y") + 
-    theme(axis.text = element_text(size = 8)) +
-    labs(title = "Average Length",
-         y = "Length (cm)",
-         color = "Region")
-
-
-```
-
-#### Functional Group Avg. Weight
-
-```{r}
-#| label: functional-group-weight-trends
-#| fig.width: 8
-#| fig-height: 8
-
-
-# Average individual weight
-functional_group_size %>% 
-  ggplot(aes(Year, mean_wt_kg)) +
-  geom_line(aes(group = area_titles), 
-              linewidth = 1,
-              show.legend = F) + 
-    geom_smooth(color = "orange", method = "loess", linewidth = 1, formula = 'y ~ x') +
-    facet_grid(hare_group~area_titles, scales = "free_y") + 
-    theme(axis.text = element_text(size = 8)) +
-    labs(title = "Average Weight",
-         y = "Weight (kg)",
-         color = "Region")
-
-```
-:::
-
-### Regional Size Spectra
-
-At the start of our time series, back in the 1970's, there was a clear difference in the relative positions of spectra parameters among the different regions. Gulf of Maine and Georges Bank showed the least steep spectra slopes in the earlier time periods with slopes around -1 & -1.1 respectively. The relatively flat slopes in these regions both steepened over time, settling near -1.3 (GoM) and -1.5 (GB). Gulf of Maine experienced much of its decline during the 1980's and 1990's. There was a brief reversal in this trend during the 2000's, but slopes continued to steepen by 2010 and remained steep through 2019. Georges Bank did not experience as rapid of a decline, but experienced a similar long-term steepening. In contrast to the northern regions, SNE and MAB had steeper slopes in the -1.2 to -1.5 territory. The long term pattern for SNE was one of increasing volatility, but not so much a decline. The spectra slope for the MAB was less volatile, but similarly maintained a relatively stable wander around -1.4. By the end of the study period all regions had slopes that were at or near a similar level.
-
-```{r}
-#| label: size spectra results
-
-
-# Make decadal averages of spectrums slopes
-indices_decades <- region_indices %>% 
-  mutate(
-    Year = as.numeric(Year),
-    decade_left = as.numeric(as.character(floor_decade(Year))),
-    decade_right = as.numeric(as.character(floor_decade(Year + 10))) - 1,
-    decade_center = (decade_left + decade_right)/2,
-    decade_lab = str_c(decade_left, "-", decade_right)) %>% 
-  group_by(area_titles, decade_left, decade_right, decade_center, decade_lab) %>% 
-  summarise( mean_b = mean(b, na.rm = T),
-             mean_l2slope = mean(log2_slope_strat, na.rm = T), 
-             .groups = "drop")
-
-
-
-
-
-
-# 1. Plot the Regional Slopes, using the binned method
-slope_timeline <- region_indices %>% 
-  ggplot(aes(yr, log2_slope_strat, group = area_titles)) +
-  # geom_line(data = select(region_indices, -area_titles),
-  #           aes(group = area_copy),
-  #           alpha = 0.2, linewidth = 0.5) +
-  geom_line(aes(group = area_titles), linewidth = 1, color = "gray70") +
-  geom_segment(
-    data = indices_decades,
-    aes(x = decade_left, xend = decade_right, y = mean_l2slope, yend = mean_l2slope), linewidth = 1.5) +
-  geom_text(
-    data = indices_decades,
-    aes(x = decade_center, y = mean_l2slope, 
-        label = str_c(round(mean_l2slope, 1)) ), 
-    vjust = -1.05, size = 4, fontface = "bold") +
-  scale_color_gmri() +
-  facet_wrap(~area_titles, ncol = 1)  +
-  labs(x = "Year", y = "Normalized Abundance Spectrum Slope") 
-
-
-
-
-
-
-
-# 2. Exponent of ISD, MLE method
-isd_timeline <- region_indices %>% 
-  ggplot(aes(yr, b, group = area_titles)) +
-  # geom_line(data = select(region_indices, -area_titles),
-  #           aes(group = area_copy),
-  #           alpha = 0.2, linewidth = 0.5) +
-  geom_line(aes(group = area_titles), color = "gray60", linewidth = 1) +
-  #geom_pointrange(aes(group = area_titles, ymin = confMin, ymax = confMax), size = 0.1) +
-  geom_segment(
-    data = indices_decades,
-    aes(x = decade_left, xend = decade_right, y = mean_b, yend = mean_b), linewidth = 1.5) +
-  geom_text(
-    data = indices_decades,
-    aes(x = decade_center, y = mean_b, 
-        label = str_c(round(mean_b, 1)) ), 
-    vjust = -1.05, size = 4, fontface = "bold") +
-  scale_color_gmri() +
-  facet_wrap(~area_titles, ncol = 1) +
-  labs(x = "Year", y = "Abundance Size Spectrum Slope (b)")
-```
-
-
-
-::: panel-tabset
-#### Exponent of Size Spectra
-
-```{r}
-#| fig.height: 8
-#| fig.weight: 8
-
-isd_timeline 
-#+ geom_smooth(color = "orange", se = FALSE)
-```
-
-#### Binned Size Spectra
-
-```{r}
-#| fig.height: 8
-#| fig.weight: 8
-
-slope_timeline #+ geom_smooth(color = "orange", se = FALSE)
-```
-
-#### Contrast
-
-```{r}
-#| fig.height: 8
-#| fig.weight: 8
-
-# Assemble the figure
-slope_timeline +
-  scale_y_continuous(limits = c(-1.35, -0.3))  | isd_timeline +
-  scale_y_continuous(limits = c(-1.35, -0.3)) 
-
-
-```
-
-#### Method Correlation
-
-```{r}
-#| fig.height: 8
-#| fig.weight: 8
-
-
-region_indices %>% 
-  ggplot(aes(log2_slope_strat, b)) +
-  geom_point() +
-  geom_smooth(method = "lm", formula = y~x, color = "orange") +
-  facet_wrap(~area_titles, ncol = 1) +
-  labs(x = "Normalized Abundance Spectra Slope", y = "Individual Size Distribution Exponent (b)", title = "Between Methods Correlation")
-```
-:::
-
-## Size Spectra Drivers
-
-## Spectra Slope changepoints and Regression Analysis
-
-Following break point exploratory analyses with the EnvCpt package, the Gulf of Maine was the only region from which changepoints were identified in the best supported model from the candidate changepoint model structures. Changes in Gulf of Maine's spectrum slope was best modeled by a model allowing breaks in the trend, and with an auto-regressive process on the previous 2 years. From this model, breaks were identified at 1999 and 2007. Georges Bank was best modeled with a single trend, with no changepoints. Southern New-England showed the most support for a single intercept model, with no changepoints, with values centered on mu = -1.04 & sd = 0.046. The Mid-Atlantic Bight was best supported by a single trend model, with no changepoints, and an increasing intercept through the study period.
-
-```{r}
+#| label: regional changepoint analysis
 
 # Pull Regions to test independently:
 regression_df <- regression_df %>% 
@@ -1543,8 +1911,8 @@ cpt_res <- list(
 })
 
 
-# Plot GOM, the only one with changepoints
-plot(gom_cpt, main = "Gulf of Maine, Break Point Analysis")
+# # Plot GOM, the only one with changepoints
+# plot(gom_cpt, main = "Gulf of Maine, Break Point Analysis")
 
 
 
@@ -1555,10 +1923,959 @@ bind_rows(map(cpt_res, ~tibble("Most Supported Model" = .x[["best"]])), .id = "R
 ```
 
 
+Changepoint analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for changepoints. 
 
-### Driver Differences Across Regimes
 
-changepoint analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for changepoints.
+## Spectra Slope Regression Analysis
+
+# WORKING HERE
+
+fix the coefficients so the interactions now reflect the net result
+
+Fix it so delta AIC is actually delta AICc
+
+
+::: panel-tabset
+
+### Gulf of Maine
+
+Model rankings using AICc & delta-AICc (Figure 5.) for the Gulf of Maine’s size spectrum slope models best support a regression model containing two predictors with a stationary effect across all years, and two predictors whose effects across were allowed to vary across the regime periods identified by the changepoint analysis (non-stationary effects). The two stationary drivers impacts were the negative impact of the small zooplankton index (p = 0.011) and a negative impact from the two-year autocorrelation term highlighted by the exploratory changepoint analysis (p = 0.033). The inclusion of an interaction term between the three changepoint analysis regimes (1982-1998, 1999-2006, & 2007-2019) and both the commercial landings index and the large zooplankton index allowed these drivers to differently impact size spectrum slope within the three regimes. Over those three periods the impact of landings during the first regime was positive (p = 0.009), the 1999-2006 regime was negative (p = 0.032), and during the third regime there was no relationship (p = 0.088). For the large zooplankton index during the first two regimes there was no significant impact (p = 0.2, p = >0.9), however during the third regime large zooplankton had a positive effect on the spectrum slope (p = <0.001). None of the terms for the regime periods themselves were significant  in the final model. Models containing only stationary effects on the predictors were not retained by model selection. This agreed with visual assessments of their predictive performance and residual trends.
+
+```{r}
+#| label: gom-standard-models
+
+# change na. action for dredge
+options(na.action = "na.fail")
+
+
+# Incorporate the patterns from the changepoint analysis
+# What if we enforce the break_periods
+gom_df <- mutate(gom_df, 
+  regime = case_when(
+    year < 1999 ~ "yrs_1982-1998",
+    year < 2007 ~ "yrs_1999_2006",
+    year >= 2007 ~ "yrs_2007_2019"
+  ))
+
+
+# Add the autoregressive predictors neatly/manually
+gom_df_lag <- gom_df %>% 
+  mutate(
+    blag1 = dplyr::lag(b, 1),
+    blag2 = dplyr::lag(b, 2),
+    zpslag1 = dplyr::lag(zp_small, 1),
+    zpslag2 = dplyr::lag(zp_small, 2)) %>% 
+  drop_na(blag2)
+
+
+# kitchen sink Autoregressive model
+gom_ar_models = lm(
+  b ~ 
+    regime * SST + 
+    regime * GSI + 
+    regime * landings + 
+    regime * zp_small + 
+    regime * zp_large + 
+    regime * blag1 + 
+    regime * blag2, 
+  data = gom_df_lag)
+
+
+
+# Model selection on models with lags at 1+2 years
+results_gom <- dredge(gom_ar_models)
+
+
+# Best autoregressive model
+best_gom <- get.models(results_gom, subset = delta == 0)[[1]]
+
+```
+
+
+
+```{r}
+#| label: gom-top-models-table
+
+# Okay quick issues, for non-stationary effects, maybe just take the models under delta = 2
+# and from them pull the summary
+
+# Pull details for models with delta AIC < 2
+top_mods_gom <- get.models(results_gom, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_gom, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% 
+  arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_gom, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+
+
+
+
+# Clean up the data and put it into a graph
+gom_table_data <- top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    term = ifelse(term == "blag2", "2-yr-AR", term),
+    term = str_remove_all(term, "regime"),
+    term = str_remove_all(term, "yrs_"),
+    term = str_replace_all(term, ":", " ~ "),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Gulf of Maine",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "1999_2006" ~ "Regime\nIntercept",
+      term ==  "2007_2019" ~ "Regime\nIntercept",
+      term ==  "2-yr-AR" ~ "Fixed\nEffects",
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term," ~ ") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Regime\nIntercept", "Regime\nInteraction", "Model\nPerformance"))) 
+
+
+
+```
+
+::: panel-tabset
+
+
+
+
+
+
+#### Model Summary
+
+```{r}
+#| label: gom regression summary
+# output summary - broom.helpers and gtsummary
+
+# Best Model
+tbl1 <- best_gom %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+#### VIF
+
+```{r}
+#| label: gom vif
+# make a model with all of them
+all_parms <- lm(
+  b ~ 
+    regime * SST + 
+    regime * GSI + 
+    regime * landings + 
+    regime * zp_small + 
+    regime * zp_large, 
+  data = gom_df)
+
+# Check VIF
+vif(all_parms, type = "predictor") %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  gt() 
+
+```
+
+#### Actual vs. Fitted
+
+```{r}
+#| label: gom fit
+augment(best_gom, gom_df_lag ) %>% 
+# augment(best_gom, gom_df) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Spectrum Slope")
+```
+
+
+#### Residual Autocorrelation
+
+```{r}
+#| label: gom residuals
+augment(best_gom, gom_df_lag ) %>% 
+  ggplot(aes(year, y = .resid)) +
+  geom_line(linewidth = 1, color = "gray30") +
+  geom_point(size = 2, color = "gray30") +
+  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Model Residuals")
+```
+:::
+
+
+### Georges Bank
+
+The best supported model for Georges Bank retained two predictors: sea surface temperature anomalies (p = 0.028) and the small zooplankton index at a 2-year lag (p = 0.006). With both the SST anomalies and the lagged small zooplankton index having negative effects on size spectrum slope. Five candidate models were within a delta-AIC range of <2. These top-models retained only bottom-up drivers as the best predictors, usually as some pair containing the small zooplankton at 0-2 year lags and either SST anomalies or the Gulf Stream Index. Suggesting that this region’s size spectrum changes are most highly correlated with environmental forces and not commercial landings.
+
+```{r}
+#| label: gb models
+
+# Georges Bank showed
+gb_df_lag <- gb_df %>% 
+  mutate(
+    b = b,
+    blag1 = dplyr::lag(b, 1),
+    blag2 = dplyr::lag(b, 2),
+    zpslag1 = dplyr::lag(zp_small, 1),
+    zpslag2 = dplyr::lag(zp_small, 2)) %>% 
+  drop_na(blag2)
+
+
+
+# fit model with all parameters
+all_parms <- lm(b ~ 
+                  SST + 
+                  GSI + 
+                  landings + 
+                  zp_small + 
+                  zp_large + 
+                  zpslag1 + 
+                  zpslag2, 
+                data = gb_df_lag)
+
+# Refine the dredge
+results <- dredge(all_parms)
+
+#grab best model
+# subset(results, delta == 0)
+bmod <- get.models(results, subset = delta == 0)[[1]]
+
+```
+
+
+
+
+```{r}
+#| label: gb-top-models-table
+
+
+# Pull details for models with delta AIC < 2
+top_mods_gb <- get.models(results, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_gb, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_gb, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+gb_table_data <- top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    term = ifelse(term == "zpslag1", "Small Zooplankton 1-yr Lag", term),
+    term = ifelse(term == "zpslag2", "Small Zooplankton 2-yr Lag", term),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Georges Bank",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term,":") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Model\nPerformance"))) 
+
+
+```
+
+::: panel-tabset
+
+
+
+
+#### Model Summary
+
+```{r}
+#| label: gb regression summary
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+#### VIF
+
+```{r}
+#| label: gb vif
+all_parms <- lm(b ~ 
+                  SST + 
+                  GSI + 
+                  landings + 
+                  zp_small + 
+                  zp_large + 
+                  zpslag1 + 
+                  zpslag2, 
+                data = gb_df_lag)
+
+vif(all_parms) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
+  gt() 
+
+```
+
+#### Actual vs. Fitted
+
+```{r}
+#| label: gb fit
+augment(bmod, gb_df_lag) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Spectrum Slope")
+```
+
+#### Residual Autocorrelation
+
+```{r}
+#| label: gb residuals
+augment(bmod, gb_df_lag) %>% 
+  ggplot(aes(year, y = .resid)) +
+  geom_line(linewidth = 1, color = "gray30") +
+  geom_point(size = 2, color = "gray30") +
+  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Model Residuals")
+```
+:::
+
+
+
+### Southern New England
+
+Exploratory analysis for Southern New-England was suggestive of a lack of trend in size spectrum slopes. This was further confirmed by the model selection process. The best supported model of Southern New England retained only commercial landings, however this relationship was not significant (p = 0.13) and had very low performance (r-squared = 0.06). 
+
+```{r}
+#| label: sne models
+
+# fit model with all parameters
+all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, data = sne_df)
+
+# Refine the dredge
+results <- dredge(all_parms)
+
+#grab best model
+# subset(results, delta == 0)
+bmod <- get.models(results, subset = delta == 0)[[1]]
+
+```
+
+
+
+```{r}
+#| label: sne-top-models-table
+
+
+
+# Pull details for models with delta AIC < 2
+top_mods_sne <- get.models(results, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_sne, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_sne, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+sne_table_data <- top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Southern New England",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term,":") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Model\nPerformance"))) 
+
+```
+
+::: panel-tabset
+
+
+
+
+#### Model Summary
+
+```{r}
+#| label: sne regression summary
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+#### VIF
+
+```{r}
+#| label: sne vif
+all_parms <- lm(b ~ 
+                  SST + 
+                  GSI + 
+                  landings + 
+                  zp_small + 
+                  zp_large, 
+                data = sne_df)
+
+
+vif(all_parms) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
+  arrange(VIF) %>% 
+  gt() 
+
+```
+
+#### Actual vs. Fitted
+
+```{r}
+#| label: sne fit
+augment(bmod, sne_df ) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Spectrum Slope")
+```
+
+#### Residual Autocorrelation
+
+```{r}
+#| label: sne residuals
+augment(bmod, sne_df ) %>% 
+  ggplot(aes(year, y = .resid)) +
+  geom_line(linewidth = 1, color = "gray30") +
+  geom_point(size = 2, color = "gray30") +
+  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Model Residuals")
+```
+:::
+
+
+
+### Mid-Atlantic Bight
+
+Three top models were selected for the Mid-atlantic Bight region, all with non-stationary predictors. The best supported model showed that increases in the small zooplankton index had a negative impact on spectrum slope (p = 0.020). This result was present in the other top candidates, which each also included a negative correlation to large zooplankton or with commercial landings. Model performance was low among the top models (r-squared 0.14-0.16).
+
+
+```{r}
+#| label: mab models
+
+# fit model with all parameters
+all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, data = mab_df)
+
+# Refine the dredge
+results <- dredge(all_parms)
+
+#grab best model
+# subset(results, delta == 0)
+bmod <- get.models(results, subset = delta == 0)[[1]]
+
+```
+
+
+
+
+```{r}
+#| label: mab-top-models-table
+
+
+
+# Pull details for models with delta AIC < 2
+top_mods_mab <- get.models(results, subset = delta < 2)
+
+# Peformance, Gets the AIC order 
+top_perf <- map_dfr(top_mods_mab, glance, .id = "id") %>% arrange(AIC)
+top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
+top_perf <- top_perf %>% arrange(Delta) %>% 
+  mutate(`Model ID` = row_number(),
+         `Model ID` = str_c("Model ", `Model ID`))
+
+
+
+# Top Model Coefficients, join in the model number based on AIC order
+top_coef <- map_dfr(top_mods_mab, tidy, .id = "id") %>% 
+  left_join(
+    select(top_perf, id, `Model ID`)) %>% 
+  select(-id)
+
+# Reshape Performance Specs to bind_row later
+top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
+  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
+  mutate(fill_color = "lightgray")
+
+
+# Clean up the data and put it into a graph
+mab_table_data <- top_coef %>% 
+  # Tidy up the names and set the color scheme for fill
+  mutate(
+    term = ifelse(term == "landings", "Commercial Landings", term),
+    term = ifelse(term == "zp_small", "Small Zooplankton", term),
+    term = ifelse(term == "zp_large", "Large Zooplankton", term),
+    fill_color = ifelse(estimate<0, "#EACA00", "#00736D"),
+    fill_color = ifelse(term == "(Intercept)", "lightgray", fill_color)) %>%
+  
+  # Join in the Performance Details and set Factor Orders
+  bind_rows(top_perf) %>%  
+  mutate(
+    survey_area = "Mid-Atlantic Bight",
+    `Model ID` = fct_rev(`Model ID`),
+    estimate = round(estimate, 2)) %>% 
+  
+  # Set the different types of estimates here
+  mutate(
+    type = case_when(
+      term ==  "r2" ~ "Model\nPerformance",
+      term ==  "Delta" ~ "Model\nPerformance",
+      str_detect(term,":") ~ "Regime\nInteraction",
+      TRUE ~ "Fixed\nEffects"),
+    type = factor(type, 
+      levels = c("Fixed\nEffects", "Model\nPerformance"))) 
+
+
+```
+
+
+::: panel-tabset
+
+
+
+#### Model Summary
+
+```{r}
+#| label: mab regression summary
+# output summary - brrom.helpers and gtsummary
+
+# Best Model
+tbl1 <- bmod %>% 
+  tbl_regression() %>% 
+  add_glance_table() %>% 
+  bold_labels()
+
+tbl1
+
+```
+
+#### VIF
+
+```{r}
+#| label: mab vif
+all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, 
+                data = mab_df)
+
+vif(all_parms) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "Predictor") %>% 
+  rename(VIF = ".") %>% 
+  arrange(VIF) %>% 
+  gt() 
+
+```
+
+#### Actual vs. Fitted
+
+```{r}
+#| label: mab fit
+augment(bmod, mab_df ) %>% 
+  ggplot(aes(year)) +
+  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
+  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Spectrum Slope")
+```
+
+#### Residual Autocorrelation
+
+```{r}
+#| label: mab residuals
+augment(bmod, mab_df ) %>% 
+  ggplot(aes(year, y = .resid)) +
+  geom_line(linewidth = 1, color = "gray30") +
+  geom_point(size = 2, color = "gray30") +
+  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
+  scale_color_gmri() +
+  labs(color = "Color", y = "Model Residuals") 
+```
+
+:::
+
+
+
+:::
+
+
+### Model Selection Results
+
+```{r}
+#| label: model selection table
+#| fig-height: 10
+#| fig-width: 8
+
+bind_rows(
+  list(
+    gom_table_data,
+    sne_table_data,
+    mab_table_data,
+    gb_table_data)) %>% 
+  mutate(
+    survey_area = factor(survey_area, levels = area_levels_long),
+    `Model ID` = factor(`Model ID`, levels = str_c("Model ", c(5:1))))%>% 
+ggplot( aes(term, `Model ID`)) +
+  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
+  geom_text(aes(label = estimate)) +
+  facet_grid(survey_area ~ type, scales = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
+  labs(
+    x = "Model Predictor",
+    y = "",
+    title = "Spectrum Slope Driver Exploration",
+    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
+  )
+```
+
+
+# Discussion
+
+
+
+### Potential Drivers Timeseries:
+
+The following panels show the historical changes in each of the drivers. Landings have been scaled by average total landings within each region across all years. SST and GSI have not been scaled. This is different from how they are implemented in the regression analyses, when the landings were scaled over the 1982-2019 period.
+
+::: panel-tabset
+#### Surface Temperature Anomalies
+
+```{r}
+#| label: temperature-index
+#| fig.height: 8
+
+
+# Plot the timelines
+temp_regimes %>% 
+  mutate(anom_direction = ifelse(sst_anom > 0, "Positive", "Negative")) %>% 
+  ggplot( aes(yr, sst_anom)) +
+  geom_col(aes(fill = anom_direction),  
+           linewidth = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
+  scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
+  scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
+  scale_fill_gmri() +  
+  facet_wrap(~survey_area, ncol = 1) +
+  theme(
+    legend.title = element_blank(),
+    legend.background = element_rect(fill = "transparent"),
+    legend.key = element_rect(fill = "transparent", color = "transparent")) + 
+  labs(
+    title = "NW-Atlantic Regional SST Anomalies",
+    x = "", 
+    y = "Surface Temperature Anomaly",
+    caption = "Anomalies calculated using 1982-2011 reference period.") +
+  guides(fill = "none",
+         label = "none",
+         color = guide_legend(keyheight = unit(0.5, "cm")))
+```
+
+#### GARFO Landings
+
+```{r}
+#| label: landings-index
+#| fig.height: 8
+
+####  Landings  ####
+landings_summ %>% 
+  mutate(anom_direction = ifelse(total_wt_z > 0, "Positive", "Negative")) %>% 
+  ggplot(aes(year, total_wt_z, group = survey_area)) +
+  geom_col(aes(fill = anom_direction),  
+           linewidth = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
+  scale_fill_gmri() +  
+  facet_wrap(~survey_area, ncol = 1) +
+  scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
+  labs(x = "Year", y = "Finfish Landings Index (z)",
+       title = "GARFO Finfish Landings")  +
+  guides(fill = "none")
+```
+
+#### Climate Modes
+
+```{r}
+#| label: climate-modes
+
+####  Climate Drivers  ####
+clim_drivers %>% 
+  group_by(year = lubridate::year(Time), Var, EPU) %>% 
+  summarise(Value = mean(Value, na.rm = T)) %>% 
+  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative"),
+         Var = str_to_title(Var)) %>% 
+  ggplot(aes(year, Value, group = EPU)) +
+  geom_col(aes(fill = anom_direction),  
+           linewidth = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
+  scale_fill_gmri() +  
+  facet_wrap(~Var, ncol = 1) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(limits = c(1960, 2020), 
+                     breaks = seq(1950, 2030, by = 10)) +
+  labs(x = "Year", y = "Index",
+       title = "Environmental Drivers") +
+  guides(fill = "none")
+```
+
+#### Zooplankton Indices
+
+
+```{r}
+#| fig.height: 8
+
+zp_index %>% 
+  pivot_longer(cols = starts_with("zp"), 
+               names_to = "Var", values_to = "Value") %>% 
+  group_by(year, Var, survey_area) %>% 
+  summarise(Value = mean(Value, na.rm = T)) %>% 
+  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative"),
+         Var = ifelse(
+           Var == "zp_large", 
+           "Large Zooplankton", 
+           "Small Zooplankton"),
+         survey_area = factor(survey_area, levels = area_levels_long)) %>% 
+  ggplot(aes(year, Value, group = survey_area)) +
+  geom_col(aes(fill = anom_direction),  
+           linewidth = 0.75, alpha = 0.8) +
+  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
+  scale_fill_gmri() +  
+  facet_grid(survey_area~Var) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  scale_x_continuous(limits = c(1960, 2020), 
+                     breaks = seq(1950, 2030, by = 10)) +
+  labs(x = "Year", y = "Index",
+       title = "Environmental Drivers") +
+  guides(fill = "none")
+```
+
+
+:::
+
+
+
+# Supplemental Materials
+
+
+
+
+
+::: panel-tabset
+## Species Functional Groups
+
+```{r}
+#| label: tbl-functional-groups
+#| tbl-cap: "Common and scientific names for the species that constitute each functional group used in our analyses. X markers are used to indicate which regions each species has been caught in the data."
+
+
+# Tidy up a key of what is labeled what
+spec_key <- catch_size_bins %>% 
+  distinct(comname, scientific_name, hare_group) %>% 
+  mutate(
+    hare_group = ifelse(hare_group %in% c("elasmobranch", "groundfish"), hare_group, str_c(hare_group)),
+    hare_group = ifelse(is.na(hare_group), "Not Classified", hare_group),
+    hare_group = str_to_title(hare_group),
+    hare_group = fct_drop(hare_group),
+    hare_group = factor(hare_group, levels = c("Coastal", "Diadromous", "Elasmobranch", "Groundfish",  "Pelagic", "Reef", "Not Classified"))) %>% 
+  group_by(hare_group) %>% 
+  mutate(n = str_c("(",n(),")")) %>% 
+  ungroup()
+
+
+# Reformat the data to check presence absence
+catch_size_bins %>% 
+  distinct(comname, survey_area) %>% 
+  mutate(Presence = "X") %>% 
+  complete(comname, survey_area) %>% 
+  left_join(spec_key, by = "comname") %>% 
+  mutate(comname = str_to_title(comname),
+         Presence = ifelse(is.na(Presence) == FALSE, "X", ""),
+         Presence = ifelse(is.na(Presence) == TRUE, "", Presence)) %>% 
+  left_join(area_df, by = "survey_area") %>% 
+  select(hare_group, n, comname, scientific_name, area, Presence) %>% 
+  pivot_wider(names_from = area, values_from = Presence) %>% 
+  arrange(hare_group, comname) %>% 
+  group_by(hare_group,n) %>% 
+  gt()  %>% 
+  gt::tab_header(title = md("**Functional Group Assignments and Regional Presence/Absence**")) %>% 
+  tab_stubhead(label = md("**Functional Group**")) %>% 
+  cols_label(
+    comname = md("*Common Name*"),
+    scientific_name = md("*Scientific Name*"),
+    `Gulf of Maine` = md("*Gulf of Maine*"),
+    `Georges Bank` = md("*Georges Bank*"),
+    `Southern New England` = md("*Southern New England*"),
+    `Mid-Atlantic Bight` = md("*Mid-Atlantic Bight*")
+    ) %>%
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_row_groups()) %>% 
+  gt::tab_source_note(source_note = md("*Functional group assignments adapted from Hare et al. 2010*"))
+
+```
+
+## GARFO Landings Summary
+
+```{r}
+#| label: garfo-landings-summary
+
+# Add the labels into the landings data and remove what we don't need there:
+landings %>% 
+  filter(between(year, 1960, 2019),
+         !str_detect(sppname, "CONFIDENTIAL")) %>% 
+  mutate(
+    decade = floor_decade(year),
+    sppname = str_to_title(sppname)) %>% 
+  group_by(survey_area, decade,  sppname) %>% 
+  summarise(avg_landings_lb = mean(`landed lbs`, na.rm = T),
+            across(.cols = c(landings_lb = `landed lbs`, 
+                             value = value), 
+                   .fns = sum, 
+                   .names = "total_{.col}"),
+            .groups = "drop") %>% 
+  group_by(survey_area, decade) %>% 
+  slice_max(order_by = total_landings_lb, n = 3) %>% 
+  gt() %>% 
+  gt::tab_header(title = md("**Top Commercial Fisheries Landings of Northeastern US (by weight)**")) %>% 
+  tab_stubhead(label = md("*Harvest Region*")) %>% 
+  fmt_number(columns = c(avg_landings_lb, total_landings_lb, total_value),
+             use_seps = T, 
+             sep_mark = ",",
+             suffixing = T) %>% 
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_row_groups()) %>% 
+  cols_label(
+    decade            = md("*Decade*"),
+    sppname           = md(""),
+    avg_landings_lb   = md("*Avg. Annual Landings (lb.)*"),
+    total_landings_lb = md("*Total Landings (lb.)*"),
+    total_value       = md("*Total Value ($)*")) %>%
+  gt::tab_source_note(source_note = md("*Landings data obtained from the Greater Atlantic Regional Fishing Office (GARFO)*"))
+  
+```
+
+
+
+
+:::
+
+
+
+### Single Driver Correlations
+
 
 ```{r}
 #| label: period-correlations-processing
@@ -1770,936 +3087,6 @@ plot_period_correlations(driver_period_correlations[[period]], period)
 ```
 
 :::
-
-
-
-
-
-
-
-## Spectra Slope Regression Analysis
-
-::: panel-tabset
-
-### Gulf of Maine
-
-```{r}
-#| label: gom-standard-models
-
-# change na. action for dredge
-options(na.action = "na.fail")
-
-
-# Incorporate the patterns from the changepoint analysis
-# What if we enforce the break_periods
-gom_df <- mutate(gom_df, 
-  regime = case_when(
-    year < 1999 ~ "yrs_1982-1998",
-    year < 2007 ~ "yrs_1999_2006",
-    year >= 2007 ~ "yrs_2007_2019"
-  ))
-
-
-# Add the autoregressive predictors neatly/manually
-gom_df_lag <- gom_df %>% 
-  mutate(
-    blag1 = dplyr::lag(b, 1),
-    blag2 = dplyr::lag(b, 2),
-    zpslag1 = dplyr::lag(zp_small, 1),
-    zpslag2 = dplyr::lag(zp_small, 2)) %>% 
-  drop_na(blag2)
-
-
-# kitchen sink Autoregressive model
-gom_ar_models = lm(
-  b ~ 
-    regime * SST + 
-    regime * GSI + 
-    regime * landings + 
-    regime * zp_small + 
-    regime * zp_large + 
-    regime * blag1 + 
-    regime * blag2, 
-  data = gom_df_lag)
-
-
-
-# Model selection on models with lags at 1+2 years
-results_gom <- dredge(gom_ar_models)
-
-
-# Best autoregressive model
-best_gom <- get.models(results_gom, subset = delta == 0)[[1]]
-
-```
-
-
-
-::: panel-tabset
-
-#### Model Selection Table
-
-```{r}
-#| label: gom-top-models-table
-
-#----------------------
-
-# Okay quick issues, for non-stationary effects, maybe just take the models under delta = 2
-# and from them pull the summary
-
-# Pull details for models with delta AIC < 2
-top_mods_gom <- get.models(results_gom, subset = delta < 2)
-
-# Peformance, Gets the AIC order 
-top_perf <- map_dfr(top_mods_gom, glance, .id = "id") %>% arrange(AIC)
-top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
-top_perf <- top_perf %>% arrange(Delta) %>% 
-  mutate(`Model ID` = row_number(),
-         `Model ID` = str_c("Model ", `Model ID`))
-
-
-
-# Top Model Coefficients, join in the model number based on AIC order
-top_coef <- map_dfr(top_mods_gom, tidy, .id = "id") %>% 
-  left_join(
-    select(top_perf, id, `Model ID`)) %>% 
-  select(-id)
-
-# Reshape Performance Specs to bind_row later
-top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
-  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
-  mutate(fill_color = "lightgray")
-
-
-# Clean up the data and put it into a graph
-top_coef %>% 
-  # Tidy up the names and set the color scheme for fill
-  mutate(
-    term = ifelse(term == "landings", "Commercial Landings", term),
-    term = ifelse(term == "zp_small", "Small Zooplankton", term),
-    term = ifelse(term == "zp_large", "Large Zooplankton", term),
-    term = ifelse(term == "blag2", "2-yr-AR", term),
-    term = str_remove_all(term, "regime"),
-    term = str_remove_all(term, "yrs_"),
-    term = str_replace_all(term, ":", " ~ "),
-    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
-  
-  # Join in the Performance Details and set Factor Orders
-  bind_rows(top_perf) %>%  
-  mutate(
-    survey_area = "Gulf of Maine",
-    `Model ID` = fct_rev(`Model ID`),
-    estimate = round(estimate, 2)) %>% 
-  
-  # Set the different types of estimates here
-  mutate(
-    type = case_when(
-      term ==  "1999_2006" ~ "Regime\nIntercept",
-      term ==  "2007_2019" ~ "Regime\nIntercept",
-      term ==  "2-yr-AR" ~ "Fixed\nEffect",
-      term ==  "r2" ~ "Model\nPerformance",
-      term ==  "Delta" ~ "Model\nPerformance",
-      str_detect(term," ~ ") ~ "Regime\nInteraction",
-      TRUE ~ "Fixed\nEffects"),
-    type = factor(type, 
-      levels = c("Fixed\nEffects", "Regime\nIntercept", "Regime\nInteraction", "Model\nPerformance"))) %>% 
-ggplot( aes(term, `Model ID`)) +
-  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
-  geom_text(aes(label = estimate)) +
-  facet_grid(survey_area ~ type, scales = "free", space = "free") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
-  labs(
-    x = "Model Predictor",
-    y = "",
-    title = "Gulf of Maine Size Spectra Driver Exploration",
-    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
-  )
-
-
-
-```
-
-
-
-#### Model Summary
-
-```{r}
-# output summary - broom.helpers and gtsummary
-
-# Best Model
-tbl1 <- best_gom %>% 
-  tbl_regression() %>% 
-  add_glance_table() %>% 
-  bold_labels()
-
-tbl1
-
-```
-
-#### VIF
-
-```{r}
-# make a model with all of them
-all_parms <- lm(
-  b ~ 
-    regime * SST + 
-    regime * GSI + 
-    regime * landings + 
-    regime * zp_small + 
-    regime * zp_large, 
-  data = gom_df)
-
-# Check VIF
-vif(all_parms, type = "predictor") %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var = "Predictor") %>% 
-  gt() 
-
-```
-
-#### Actual vs. Fitted
-
-```{r}
-augment(best_gom, gom_df_lag ) %>% 
-# augment(best_gom, gom_df) %>% 
-  ggplot(aes(year)) +
-  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
-  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Spectrum Slope")
-```
-
-
-#### Residual Autocorrelation
-
-```{r}
-augment(best_gom, gom_df_lag ) %>% 
-  ggplot(aes(year, y = .resid)) +
-  geom_line(linewidth = 1, color = "gray30") +
-  geom_point(size = 2, color = "gray30") +
-  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Model Residuals")
-```
-:::
-
-
-### Georges Bank
-
-Exploratory analyses for Georges Bank indicated that the structure of the data did not show support for clear changepoints. CCF results of individual predictors showed that spectrum slope was correlated with small zooplankton index values from two years prior. This relationship was added to the standard predictor candidates, each operating at a simultaneous time step.
-
-```{r}
-
-# Georges Bank showed
-gb_df_lag <- gb_df %>% 
-  mutate(
-    b = b,
-    blag1 = dplyr::lag(b, 1),
-    blag2 = dplyr::lag(b, 2),
-    zpslag1 = dplyr::lag(zp_small, 1),
-    zpslag2 = dplyr::lag(zp_small, 2)) %>% 
-  drop_na(blag2)
-
-
-
-# fit model with all parameters
-all_parms <- lm(b ~ 
-                  SST + 
-                  GSI + 
-                  landings + 
-                  zp_small + 
-                  zp_large + 
-                  zpslag1 + 
-                  zpslag2, 
-                data = gb_df_lag)
-
-# Refine the dredge
-results <- dredge(all_parms)
-
-#grab best model
-# subset(results, delta == 0)
-bmod <- get.models(results, subset = delta == 0)[[1]]
-
-```
-
-::: panel-tabset
-
-
-#### Model Selection Table
-
-```{r}
-#| label: gb-top-models-table
-
-#----------------------
-
-
-# Pull details for models with delta AIC < 2
-top_mods_gb <- get.models(results, subset = delta < 2)
-
-# Peformance, Gets the AIC order 
-top_perf <- map_dfr(top_mods_gb, glance, .id = "id") %>% arrange(AIC)
-top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
-top_perf <- top_perf %>% arrange(Delta) %>% 
-  mutate(`Model ID` = row_number(),
-         `Model ID` = str_c("Model ", `Model ID`))
-
-
-
-# Top Model Coefficients, join in the model number based on AIC order
-top_coef <- map_dfr(top_mods_gb, tidy, .id = "id") %>% 
-  left_join(
-    select(top_perf, id, `Model ID`)) %>% 
-  select(-id)
-
-# Reshape Performance Specs to bind_row later
-top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
-  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
-  mutate(fill_color = "lightgray")
-
-
-# Clean up the data and put it into a graph
-top_coef %>% 
-  # Tidy up the names and set the color scheme for fill
-  mutate(
-    term = ifelse(term == "landings", "Commercial Landings", term),
-    term = ifelse(term == "zp_small", "Small Zooplankton", term),
-    term = ifelse(term == "zp_large", "Large Zooplankton", term),
-    term = ifelse(term == "zpslag2", "Small Zooplankton 2-yr Lag", term),
-    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
-  
-  # Join in the Performance Details and set Factor Orders
-  bind_rows(top_perf) %>%  
-  mutate(
-    survey_area = "Georges Bank",
-    `Model ID` = fct_rev(`Model ID`),
-    estimate = round(estimate, 2)) %>% 
-  
-  # Set the different types of estimates here
-  mutate(
-    type = case_when(
-      term ==  "r2" ~ "Model\nPerformance",
-      term ==  "Delta" ~ "Model\nPerformance",
-      str_detect(term,":") ~ "Regime\nInteraction",
-      TRUE ~ "Fixed\nEffects"),
-    type = factor(type, 
-      levels = c("Fixed\nEffects", "Model\nPerformance"))) %>% 
-ggplot( aes(term, `Model ID`)) +
-  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
-  geom_text(aes(label = estimate), size = 4) +
-  facet_grid(survey_area ~ type, scales = "free", space = "free") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
-  labs(
-    x = "Model Predictor",
-    y = "",
-    title = "Georges Bank Size Spectra Driver Exploration",
-    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
-  )
-
-
-
-```
-
-#### Model Summary
-
-```{r}
-# output summary - brrom.helpers and gtsummary
-
-# Best Model
-tbl1 <- bmod %>% 
-  tbl_regression() %>% 
-  add_glance_table() %>% 
-  bold_labels()
-
-tbl1
-
-```
-
-#### VIF
-
-```{r}
-all_parms <- lm(b ~ 
-                  SST + 
-                  GSI + 
-                  landings + 
-                  zp_small + 
-                  zp_large + 
-                  zpslag1 + 
-                  zpslag2, 
-                data = gb_df_lag)
-
-vif(all_parms) %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var = "Predictor") %>% 
-  rename(VIF = ".") %>% 
-  arrange(VIF) %>% 
-  gt() 
-
-```
-
-#### Actual vs. Fitted
-
-```{r}
-augment(bmod, gb_df_lag) %>% 
-  ggplot(aes(year)) +
-  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
-  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Spectrum Slope")
-```
-
-#### Residual Autocorrelation
-
-```{r}
-augment(bmod, gb_df_lag) %>% 
-  ggplot(aes(year, y = .resid)) +
-  geom_line(linewidth = 1, color = "gray30") +
-  geom_point(size = 2, color = "gray30") +
-  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Model Residuals")
-```
-:::
-
-
-
-### Southern New England
-
-```{r}
-
-# fit model with all parameters
-all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, data = sne_df)
-
-# Refine the dredge
-results <- dredge(all_parms)
-
-#grab best model
-# subset(results, delta == 0)
-bmod <- get.models(results, subset = delta == 0)[[1]]
-
-```
-
-::: panel-tabset
-
-
-
-#### Model Selection Table
-
-```{r}
-#| label: sne-top-models-table
-
-#----------------------
-
-
-# Pull details for models with delta AIC < 2
-top_mods_sne <- get.models(results, subset = delta < 2)
-
-# Peformance, Gets the AIC order 
-top_perf <- map_dfr(top_mods_sne, glance, .id = "id") %>% arrange(AIC)
-top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
-top_perf <- top_perf %>% arrange(Delta) %>% 
-  mutate(`Model ID` = row_number(),
-         `Model ID` = str_c("Model ", `Model ID`))
-
-
-
-# Top Model Coefficients, join in the model number based on AIC order
-top_coef <- map_dfr(top_mods_sne, tidy, .id = "id") %>% 
-  left_join(
-    select(top_perf, id, `Model ID`)) %>% 
-  select(-id)
-
-# Reshape Performance Specs to bind_row later
-top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
-  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
-  mutate(fill_color = "lightgray")
-
-
-# Clean up the data and put it into a graph
-top_coef %>% 
-  # Tidy up the names and set the color scheme for fill
-  mutate(
-    term = ifelse(term == "landings", "Commercial Landings", term),
-    term = ifelse(term == "zp_small", "Small Zooplankton", term),
-    term = ifelse(term == "zp_large", "Large Zooplankton", term),
-    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
-  
-  # Join in the Performance Details and set Factor Orders
-  bind_rows(top_perf) %>%  
-  mutate(
-    survey_area = "Southern New England",
-    `Model ID` = fct_rev(`Model ID`),
-    estimate = round(estimate, 2)) %>% 
-  
-  # Set the different types of estimates here
-  mutate(
-    type = case_when(
-      term ==  "r2" ~ "Model\nPerformance",
-      term ==  "Delta" ~ "Model\nPerformance",
-      str_detect(term,":") ~ "Regime\nInteraction",
-      TRUE ~ "Fixed\nEffects"),
-    type = factor(type, 
-      levels = c("Fixed\nEffects", "Model\nPerformance"))) %>% 
-ggplot( aes(term, `Model ID`)) +
-  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
-  geom_text(aes(label = estimate)) +
-  facet_grid(survey_area ~ type, scales = "free", space = "free") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
-  labs(
-    x = "Model Predictor",
-    y = "",
-    title = "Southern New England Size Spectra Driver Exploration",
-    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
-  )
-
-
-
-```
-
-
-#### Model Summary
-
-```{r}
-# output summary - brrom.helpers and gtsummary
-
-# Best Model
-tbl1 <- bmod %>% 
-  tbl_regression() %>% 
-  add_glance_table() %>% 
-  bold_labels()
-
-tbl1
-
-```
-
-#### VIF
-
-```{r}
-all_parms <- lm(b ~ 
-                  SST + 
-                  GSI + 
-                  landings + 
-                  zp_small + 
-                  zp_large, 
-                data = sne_df)
-
-
-vif(all_parms) %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var = "Predictor") %>% 
-  rename(VIF = ".") %>% 
-  arrange(VIF) %>% 
-  arrange(VIF) %>% 
-  gt() 
-
-```
-
-#### Actual vs. Fitted
-
-```{r}
-augment(bmod, sne_df ) %>% 
-  ggplot(aes(year)) +
-  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
-  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Spectrum Slope")
-```
-
-#### Residual Autocorrelation
-
-```{r}
-augment(bmod, sne_df ) %>% 
-  ggplot(aes(year, y = .resid)) +
-  geom_line(linewidth = 1, color = "gray30") +
-  geom_point(size = 2, color = "gray30") +
-  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Model Residuals")
-```
-:::
-
-
-
-### Mid-Atlantic Bight
-
-```{r}
-
-# fit model with all parameters
-all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, data = mab_df)
-
-# Refine the dredge
-results <- dredge(all_parms)
-
-#grab best model
-# subset(results, delta == 0)
-bmod <- get.models(results, subset = delta == 0)[[1]]
-
-```
-
-::: panel-tabset
-
-
-#### Model Selection Table
-
-```{r}
-#| label: mab-top-models-table
-
-#----------------------
-
-
-# Pull details for models with delta AIC < 2
-top_mods_mab <- get.models(results, subset = delta < 2)
-
-# Peformance, Gets the AIC order 
-top_perf <- map_dfr(top_mods_mab, glance, .id = "id") %>% arrange(AIC)
-top_perf$Delta <- top_perf$AIC - min(top_perf$AIC)
-top_perf <- top_perf %>% arrange(Delta) %>% 
-  mutate(`Model ID` = row_number(),
-         `Model ID` = str_c("Model ", `Model ID`))
-
-
-
-# Top Model Coefficients, join in the model number based on AIC order
-top_coef <- map_dfr(top_mods_mab, tidy, .id = "id") %>% 
-  left_join(
-    select(top_perf, id, `Model ID`)) %>% 
-  select(-id)
-
-# Reshape Performance Specs to bind_row later
-top_perf <- select(top_perf, `Model ID`, r2 = r.squared, Delta) %>% 
-  pivot_longer(cols = -1, names_to = "term", values_to = "estimate") %>% 
-  mutate(fill_color = "lightgray")
-
-
-# Clean up the data and put it into a graph
-top_coef %>% 
-  # Tidy up the names and set the color scheme for fill
-  mutate(
-    term = ifelse(term == "landings", "Commercial Landings", term),
-    term = ifelse(term == "zp_small", "Small Zooplankton", term),
-    term = ifelse(term == "zp_large", "Large Zooplankton", term),
-    fill_color = ifelse(estimate<0, "#EACA00", "#00736D")) %>%
-  
-  # Join in the Performance Details and set Factor Orders
-  bind_rows(top_perf) %>%  
-  mutate(
-    survey_area = "Mid-Atlantic Bight",
-    `Model ID` = fct_rev(`Model ID`),
-    estimate = round(estimate, 2)) %>% 
-  
-  # Set the different types of estimates here
-  mutate(
-    type = case_when(
-      term ==  "r2" ~ "Model\nPerformance",
-      term ==  "Delta" ~ "Model\nPerformance",
-      str_detect(term,":") ~ "Regime\nInteraction",
-      TRUE ~ "Fixed\nEffects"),
-    type = factor(type, 
-      levels = c("Fixed\nEffects", "Model\nPerformance"))) %>% 
-ggplot( aes(term, `Model ID`)) +
-  geom_tile(aes(fill = I(fill_color)), color = "gray20", linewidth = 0.2, alpha = 0.75) +
-  geom_text(aes(label = estimate)) +
-  facet_grid(survey_area ~ type, scales = "free", space = "free") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
-  labs(
-    x = "Model Predictor",
-    y = "",
-    title = "Mid-Atlantic Bight Driver Exploration",
-    subtitle = "Interaction terms should be added to the corresponding fixed effect to determine net-influence."
-  )
-
-
-
-```
-
-
-#### Model Summary
-
-```{r}
-# output summary - brrom.helpers and gtsummary
-
-# Best Model
-tbl1 <- bmod %>% 
-  tbl_regression() %>% 
-  add_glance_table() %>% 
-  bold_labels()
-
-tbl1
-
-```
-
-#### VIF
-
-```{r}
-all_parms <- lm(b ~ SST + GSI + landings + zp_small + zp_large, 
-                data = mab_df)
-
-vif(all_parms) %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var = "Predictor") %>% 
-  rename(VIF = ".") %>% 
-  arrange(VIF) %>% 
-  gt() 
-
-```
-
-#### Actual vs. Fitted
-
-```{r}
-augment(bmod, mab_df ) %>% 
-  ggplot(aes(year)) +
-  geom_line(aes(y = b, color = "Actual"), linewidth = 1) +
-  geom_line(aes(y = .fitted, color = "Predicted"), linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Spectrum Slope")
-```
-
-#### Residual Autocorrelation
-
-```{r}
-augment(bmod, mab_df ) %>% 
-  ggplot(aes(year, y = .resid)) +
-  geom_line(linewidth = 1, color = "gray30") +
-  geom_point(size = 2, color = "gray30") +
-  geom_hline(yintercept = 0, linetype = 2, color = "darkred", linewidth = 1) +
-  scale_color_gmri() +
-  labs(color = "Color", y = "Model Residuals") 
-```
-
-:::
-
-
-
-:::
-
-
-
-
-
-
-### Potential Drivers Timeseries:
-
-The following panels show the historical changes in each of the drivers. Landings have been scaled by average total landings within each region across all years. SST and GSI have not been scaled. This is different from how they are implemented in the regression analyses, when the landings were scaled over the 1982-2019 period.
-
-::: panel-tabset
-#### Surface Temperature Anomalies
-
-```{r}
-#| label: temperature-index
-#| fig.height: 8
-
-
-# Plot the timelines
-temp_regimes %>% 
-  mutate(anom_direction = ifelse(sst_anom > 0, "Positive", "Negative")) %>% 
-  ggplot( aes(yr, sst_anom)) +
-  geom_col(aes(fill = anom_direction),  
-           linewidth = 0.75, alpha = 0.8) +
-  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
-  scale_x_continuous(expand = expansion(add = c(0.25,0.25))) +
-  scale_y_continuous(labels = number_format(suffix = " \u00b0C")) +
-  scale_fill_gmri() +  
-  facet_wrap(~survey_area, ncol = 1) +
-  theme(
-    legend.title = element_blank(),
-    legend.background = element_rect(fill = "transparent"),
-    legend.key = element_rect(fill = "transparent", color = "transparent")) + 
-  labs(
-    title = "NW-Atlantic Regional SST Anomalies",
-    x = "", 
-    y = "Surface Temperature Anomaly",
-    caption = "Anomalies calculated using 1982-2011 reference period.") +
-  guides(fill = "none",
-         label = "none",
-         color = guide_legend(keyheight = unit(0.5, "cm")))
-```
-
-#### GARFO Landings
-
-```{r}
-#| label: landings-index
-#| fig.height: 8
-
-####  Landings  ####
-landings_summ %>% 
-  mutate(anom_direction = ifelse(total_wt_z > 0, "Positive", "Negative")) %>% 
-  ggplot(aes(year, total_wt_z, group = survey_area)) +
-  geom_col(aes(fill = anom_direction),  
-           linewidth = 0.75, alpha = 0.8) +
-  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
-  scale_fill_gmri() +  
-  facet_wrap(~survey_area, ncol = 1) +
-  scale_x_continuous(breaks = seq(1950, 2030, by = 10)) +
-  labs(x = "Year", y = "Finfish Landings Index (z)",
-       title = "GARFO Finfish Landings")  +
-  guides(fill = "none")
-```
-
-#### Climate Modes
-
-```{r}
-#| label: climate-modes
-
-####  Climate Drivers  ####
-clim_drivers %>% 
-  group_by(year = lubridate::year(Time), Var, EPU) %>% 
-  summarise(Value = mean(Value, na.rm = T)) %>% 
-  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative"),
-         Var = str_to_title(Var)) %>% 
-  ggplot(aes(year, Value, group = EPU)) +
-  geom_col(aes(fill = anom_direction),  
-           linewidth = 0.75, alpha = 0.8) +
-  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
-  scale_fill_gmri() +  
-  facet_wrap(~Var, ncol = 1) +
-  scale_y_continuous(labels = scales::comma_format()) +
-  scale_x_continuous(limits = c(1960, 2020), 
-                     breaks = seq(1950, 2030, by = 10)) +
-  labs(x = "Year", y = "Index",
-       title = "Environmental Drivers") +
-  guides(fill = "none")
-```
-
-#### Zooplankton Indices
-
-
-```{r}
-
-zp_index %>% 
-  pivot_longer(cols = starts_with("zp"), 
-               names_to = "Var", values_to = "Value") %>% 
-  group_by(year, Var, survey_area) %>% 
-  summarise(Value = mean(Value, na.rm = T)) %>% 
-  mutate(anom_direction = ifelse(Value > 0, "Positive", "Negative"),
-         Var = ifelse(
-           Var == "zp_large", 
-           "Large Zooplankton", 
-           "Small Zooplankton"),
-         survey_area = factor(survey_area, levels = area_levels_long)) %>% 
-  ggplot(aes(year, Value, group = survey_area)) +
-  geom_col(aes(fill = anom_direction),  
-           linewidth = 0.75, alpha = 0.8) +
-  geom_hline(yintercept = 0, linewidth = 0.5, lty = 1) +
-  scale_fill_gmri() +  
-  facet_grid(survey_area~Var) +
-  scale_y_continuous(labels = scales::comma_format()) +
-  scale_x_continuous(limits = c(1960, 2020), 
-                     breaks = seq(1950, 2030, by = 10)) +
-  labs(x = "Year", y = "Index",
-       title = "Environmental Drivers") +
-  guides(fill = "none")
-```
-
-
-:::
-
-
-
-# Supplemental Materials
-
-
-
-
-
-::: panel-tabset
-## Species Functional Groups
-
-```{r}
-#| label: tbl-functional-groups
-#| tbl-cap: "Common and scientific names for the species that constitute each functional group used in our analyses. X markers are used to indicate which regions each species has been caught in the data."
-
-
-# Tidy up a key of what is labeled what
-spec_key <- catch_size_bins %>% 
-  distinct(comname, scientific_name, hare_group) %>% 
-  mutate(
-    hare_group = ifelse(hare_group %in% c("elasmobranch", "groundfish"), hare_group, str_c(hare_group)),
-    hare_group = ifelse(is.na(hare_group), "Not Classified", hare_group),
-    hare_group = str_to_title(hare_group),
-    hare_group = fct_drop(hare_group),
-    hare_group = factor(hare_group, levels = c("Coastal", "Diadromous", "Elasmobranch", "Groundfish",  "Pelagic", "Reef", "Not Classified"))) %>% 
-  group_by(hare_group) %>% 
-  mutate(n = str_c("(",n(),")")) %>% 
-  ungroup()
-
-
-# Reformat the data to check presence absence
-catch_size_bins %>% 
-  distinct(comname, survey_area) %>% 
-  mutate(Presence = "X") %>% 
-  complete(comname, survey_area) %>% 
-  left_join(spec_key, by = "comname") %>% 
-  mutate(comname = str_to_title(comname),
-         Presence = ifelse(is.na(Presence) == FALSE, "X", ""),
-         Presence = ifelse(is.na(Presence) == TRUE, "", Presence)) %>% 
-  left_join(area_df, by = "survey_area") %>% 
-  select(hare_group, n, comname, scientific_name, area, Presence) %>% 
-  pivot_wider(names_from = area, values_from = Presence) %>% 
-  arrange(hare_group, comname) %>% 
-  group_by(hare_group,n) %>% 
-  gt()  %>% 
-  gt::tab_header(title = md("**Functional Group Assignments and Regional Presence/Absence**")) %>% 
-  tab_stubhead(label = md("**Functional Group**")) %>% 
-  cols_label(
-    comname = md("*Common Name*"),
-    scientific_name = md("*Scientific Name*"),
-    `Gulf of Maine` = md("*Gulf of Maine*"),
-    `Georges Bank` = md("*Georges Bank*"),
-    `Southern New England` = md("*Southern New England*"),
-    `Mid-Atlantic Bight` = md("*Mid-Atlantic Bight*")
-    ) %>%
-  tab_style(
-    style = list(cell_text(weight = "bold")),
-    locations = cells_row_groups()) %>% 
-  gt::tab_source_note(source_note = md("*Functional group assignments adapted from Hare et al. 2010*"))
-
-```
-
-## GARFO Landings Summary
-
-```{r}
-#| label: garfo-landings-summary
-
-# Add the labels into the landings data and remove what we don't need there:
-landings %>% 
-  filter(between(year, 1960, 2019),
-         !str_detect(sppname, "CONFIDENTIAL")) %>% 
-  mutate(
-    decade = floor_decade(year),
-    sppname = str_to_title(sppname)) %>% 
-  group_by(survey_area, decade,  sppname) %>% 
-  summarise(avg_landings_lb = mean(`landed lbs`, na.rm = T),
-            across(.cols = c(landings_lb = `landed lbs`, 
-                             value = value), 
-                   .fns = sum, 
-                   .names = "total_{.col}"),
-            .groups = "drop") %>% 
-  group_by(survey_area, decade) %>% 
-  slice_max(order_by = total_landings_lb, n = 3) %>% 
-  gt() %>% 
-  gt::tab_header(title = md("**Top Commercial Fisheries Landings of Northeastern US (by weight)**")) %>% 
-  tab_stubhead(label = md("*Harvest Region*")) %>% 
-  fmt_number(columns = c(avg_landings_lb, total_landings_lb, total_value),
-             use_seps = T, 
-             sep_mark = ",",
-             suffixing = T) %>% 
-  tab_style(
-    style = list(cell_text(weight = "bold")),
-    locations = cells_row_groups()) %>% 
-  cols_label(
-    decade            = md("*Decade*"),
-    sppname           = md(""),
-    avg_landings_lb   = md("*Avg. Annual Landings (lb.)*"),
-    total_landings_lb = md("*Total Landings (lb.)*"),
-    total_value       = md("*Total Value ($)*")) %>%
-  gt::tab_source_note(source_note = md("*Landings data obtained from the Greater Atlantic Regional Fishing Office (GARFO)*"))
-  
-```
-
-
-
-
-:::
-
 
 
 
