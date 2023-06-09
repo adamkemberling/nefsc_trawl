@@ -305,7 +305,7 @@ spectra_surface <- function(l10_totals, plot_title){
     ) %>% 
   add_surface() %>%
   layout(
-    title = str_c(plot_title, " - Bodymass Spectrum"),
+    title = str_c(plot_title, " - Normalized Size Spectrum"),
     scene = list(
       xaxis = list(title = "Year", autorange = "reversed"),
       yaxis = list(title = "Log10( BodyMass (g) )"),

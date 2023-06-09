@@ -6,7 +6,7 @@ author:
     url: https://github.com/adamkemberling
     affiliation: Gulf of Maine Research Institute
 description: | 
-  Results from a Individual Size Distribution Analysis of the Northeast US Groundfish Community
+  Size Spectra Analysis of the Northeast US Finfish Community
 date: "`r Sys.Date()`"
 # format: docx
 format:
@@ -90,6 +90,27 @@ area_df <- data.frame(
   area = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
   survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Northeast Shelf"),
   area_titles = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "Northeast Shelf"))
+
+
+# Stupid shapefiles
+
+# Get the paths to the shapefiles used to mask
+trawl_paths <- gmRi::get_timeseries_paths(
+  region_group = "nmfs_trawl_regions", 
+  box_location = "cloudstorage")
+
+# Polygons for each region
+all_poly <- read_sf(trawl_paths[["inuse_strata"]][["shape_path"]]) 
+
+# Shapefiles for the fisheries stat zones
+stat_zones <- read_sf(str_c(res_path, "Shapefiles/Statistical_Areas/Statistical_Areas_2010_withNames.shp"))
+
+# Make a list of zones to roughly match the survey areas:
+fish_zones <- list(
+  "Gulf of Maine" = c(511:515, 464, 465),
+  "Georges Bank" = c(521, 522, 525, 561, 562),
+  "Southern New England" = c(611, 612, 613, 616, 526, 537, 538, 539),
+  "Mid-Atlantic Bight" = c(614:615, 621, 622, 625, 626, 631, 632))
 ```
 
 ```{r}
@@ -130,7 +151,7 @@ get_group_summaries <- function(data_in, ...){
               wtbin_strat_abund  = sum(strat_total_abund_s),
               wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
               .groups = "drop") %>% 
-    left_join(group_totals) %>% 
+    left_join(group_totals) %>% g
     mutate(
       perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
       perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
@@ -297,14 +318,11 @@ Data on the biomass, abundance, and size of fish on the Northeast U.S. Shelf wer
 
 ```{r}
 #| label: study-area-maps
+#| eval: false
 
-#------------- Trawl Strata --------------
+#------------- Trawl Strata map --------------
 
-# Get the paths to the shapefiles used to mask
-trawl_paths <- gmRi::get_timeseries_paths(region_group = "nmfs_trawl_regions", box_location = "cloudstorage")
 
-# Polygons for each region
-all_poly <- read_sf(trawl_paths[["inuse_strata"]][["shape_path"]]) 
 
 # Make the Map
 strata_map <- ggplot() +
@@ -314,23 +332,17 @@ strata_map <- ggplot() +
   coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
   scale_fill_gmri() +
   theme_bw() +
-  map_theme(legend.position = c(0.6, 0.125), 
-            legend.background = element_rect(fill = "white"),
-            plot.caption = element_text(hjust = 0)) +
+  map_theme(
+    legend.position = c(0.6, 0.125), 
+    legend.background = element_rect(fill = "white"),
+    plot.caption = element_text(hjust = 0),
+    plot.margin = margin(t = 0, b = 0)) +
   guides(fill = guide_legend(title = "", nrow = 2)) 
 
 # ----------- Landings Statistical Zones -----------------
 
 
-# Shapefiles for the fisheries stat zones
-stat_zones <- read_sf(str_c(res_path, "Shapefiles/Statistical_Areas/Statistical_Areas_2010_withNames.shp"))
 
-# Make a list of zones to roughly match the survey areas:
-fish_zones <- list(
-  "Gulf of Maine" = c(511:515, 464, 465),
-  "Georges Bank" = c(521, 522, 525, 561, 562),
-  "Southern New England" = c(611, 612, 613, 616, 526, 537, 538, 539),
-  "Mid-Atlantic Bight" = c(614:615, 621, 622, 625, 626, 631, 632))
 
 
 # Trim out what we don't need and label them
@@ -352,16 +364,28 @@ garfo_map <- ggplot(stat_zones) +
   coord_sf(xlim = c(-76.4, -64.4), ylim = c(35, 45.5), expand = F) +
   scale_fill_gmri() +
   theme_bw() +
-  map_theme(legend.position = c(0.6, 0.125),
-            legend.background = element_rect(fill = "white"),
-            plot.caption = element_text(hjust = 0)) +
+  map_theme(
+    legend.position = c(0.6, 0.125),
+    legend.background = element_rect(fill = "white"),
+    plot.caption = element_text(hjust = 0),
+    plot.margin = margin(t = 0, b = 0)) +
   guides(fill = guide_legend(title = "", nrow = 2)) 
 # ggsave(garfo_map, filename = here::here("R/nmfs_size_spectra/images/garfo_regions.png"), bg = "white")
 
 
 # Map them together
-(strata_map | garfo_map) + plot_layout(guides = "collect")
+dual_map <- (strata_map | garfo_map) + plot_layout(guides = "collect")
+
+
+# # Save the map:
+# ggsave(dual_map,
+#   filename = here::here("R/nmfs_size_spectra/images/dual_region_map.png"),
+#   bg = "white",
+#   width = unit(6, "in"),
+#   height = unit(5, "in"), dpi = "retina")
 ```
+
+![](images/dual_region_map.png){fig-align="center"}
 
 ### Community Composition & Functional Groups
 
@@ -1534,7 +1558,7 @@ isd_timeline <- region_indices %>%
           label = str_c(round(mean_b, 2)) ), 
       vjust = -2.25, 
       size = 4, fontface = "bold") +
-    scale_y_continuous(expand = expansion(mult = c(0.1, 0.55))) +
+    scale_y_continuous(expand = expansion(mult = c(0.1, 0.65))) +
     # scale_y_continuous(expand = expansion(add = c(0,.1))) +
     scale_color_gmri() +
     facet_wrap(~area_titles, ncol = 1, scales = "free") +
@@ -1656,6 +1680,238 @@ slope_timeline <- region_indices %>%
 
 slope_timeline #+ geom_smooth(color = "orange", se = FALSE)
 ```
+
+
+#### Size-Bin Changes
+
+```{r}
+
+# Take the data for each size bin
+# Standardize it against the all-year average
+# plot how it changed through time using geom_tile
+
+# Take all the data:
+# Get the average to normalize against
+spectra_heatmap_data <- catch_size_bins %>% 
+  mutate(area_titles = "Northeast Shelf") %>% 
+  bind_rows(catch_size_bins) %>% 
+  split(.$area_titles) %>% 
+  map_dfr(function(x){
+    x %>% 
+      group_by(area_titles, Year, left_lim, bin_label, bin_width) %>% 
+      dplyr::summarize(
+        single_year_total_abund = sum(strat_total_abund_s, na.rm = T),
+        .groups = "drop") %>% 
+      group_by(area_titles, left_lim, bin_label, bin_width) %>% 
+      mutate(
+        all_year_total = sum(single_year_total_abund),
+        all_year_avg = mean(single_year_total_abund, na.rm = T),
+        all_year_sd = sd(single_year_total_abund, na.rm = T)) %>% 
+     ungroup() %>% 
+      mutate(
+        single_year_z = (single_year_total_abund - all_year_avg) / all_year_sd)
+  }, .id = "area_titles") %>% 
+  mutate(area_titles = factor(area_titles, levels = area_levels_long))
+  
+
+
+# Plot the heatmap:
+spectra_heatmaps <-
+  ggplot(spectra_heatmap_data, 
+       aes(x = Year, y = 2^left_lim, fill = single_year_z)) +
+  geom_tile() +
+  geom_hline(aes(yintercept = ((2^left_lim) + (2^(left_lim+1)))/2), color = "white", linewidth = 0.3) +
+  scale_x_continuous(expand = expansion(add = c(0.5,0.5))) +
+  scale_y_continuous(
+    trans = "log2",
+    labels = label_log(base = 2),
+    breaks = 2^seq(0,12, by = 2),
+    expand = expansion(add = c(0.5, 0.5))) +
+  scale_fill_distiller(
+    limits = c(-2,2), 
+    labels = c("<-2", c(-1:1), ">2"),
+    oob = oob_squish, palette = "RdBu") +
+  facet_wrap(~area_titles, ncol = 1)  +
+  theme(
+    legend.title = element_text(angle= 90, size = 12),
+    legend.position = "right", 
+    legend.direction = "vertical") +
+  guides(
+    fill = guide_colorbar(
+    title.position = "right",
+    title.hjust = 0.5,
+    frame.colour = "black", ticks.colour = "black",
+    barwidth = unit(1, "cm"),
+    barheight = unit(8, "cm"))) +
+  labs(y = "Body Weight (g)",
+       fill = "Size-Specific Relative Abundance (z)")
+  
+isd_timeline | spectra_heatmaps
+
+
+###########################
+
+# # Question:
+# # Should I normalize the abundances by bin-width first
+# # Then show how abundances shifted on that all-sizes scale?
+# maybe
+# 
+# Yea probably, jk... magnitudes are way off
+# Maybe within a year?
+# This code and its output should be
+
+# norm_test <- catch_size_bins %>% 
+#   mutate(area_titles = "Northeast Shelf") %>% 
+#   bind_rows(catch_size_bins) %>% 
+#   split(.$area_titles) %>% 
+#   map_dfr(function(x){
+#     x %>% 
+#       group_by(area_titles, Year, left_lim, bin_label, bin_width) %>%
+#       dplyr::summarize(
+#         single_year_total_abund = sum(strat_total_abund_s, na.rm = T),
+#         .groups = "drop") %>%
+#       # Do we normalize first and then ignore the bins?
+#       mutate(
+#         single_year_norm = single_year_total_abund / bin_width
+#       ) %>%
+#       # Now I'm confused what to average and standardize against...
+#       # I think I want the normalized abundance
+#       # to be scaled against the average normalized abundance and variance across all years
+#       group_by(area_titles) %>%
+#       mutate(
+#         all_size_avg = mean(single_year_norm, na.rm = T),
+#         all_size_sd = sd(single_year_norm, na.rm = T)) %>%
+#       ungroup() %>%
+#       mutate(single_year_z = (single_year_norm - all_size_avg) / all_size_sd)
+#   }, .id = "area_titles") %>% 
+#   mutate(area_titles = factor(area_titles, levels = area_levels_long))
+# 
+# 
+# # Norm test
+# ggplot(norm_test,
+#        aes(x = Year, y = 2^left_lim,
+#            fill = single_year_z)) +
+#   geom_tile() +
+#   geom_hline(aes(yintercept = ((2^left_lim) + (2^(left_lim+1)))/2), color = "white", linewidth = 0.3) +
+#   scale_x_continuous(expand = expansion(add = c(0.5,0.5))) +
+#   scale_y_continuous(
+#     trans = "log2",
+#     labels = label_log(base = 2),
+#     breaks = 2^seq(0,12, by = 2),
+#     expand = expansion(add = c(0.5, 0.5))) +
+#   scale_fill_distiller(
+#     limits = c(-2,2), 
+#     labels = c("<-2", c(-1:1), ">2"),
+#     oob = oob_squish, palette = "RdBu") +
+#   facet_wrap(~area_titles, ncol = 1)  +
+#   theme(
+#     legend.title = element_text(angle= 90, size = 12),
+#     legend.position = "right", 
+#     legend.direction = "vertical") +
+#   guides(
+#     fill = guide_colorbar(
+#     title.position = "right",
+#     title.hjust = 0.5,
+#     frame.colour = "black", ticks.colour = "black",
+#     barwidth = unit(1, "cm"),
+#     barheight = unit(8, "cm"))) +
+#   labs(y = "Body Weight (g)",
+#        fill = "Change in All-Size Normalized Abundance (z)")
+
+```
+
+
+#### Surface Checking
+
+```{r}
+#| eval: false
+#| label: surfaces check
+
+
+# Plot the surface using the actual abundances
+####  Surface Plots
+spectra_surface <- function(log2_totals, plot_title){
+  
+  # Pull data for matrix
+  dat <- dplyr::select(log2_totals, left_lim, Year, norm_strat_abund)
+  
+  # Make matrix to plot
+  spectrum_mat <- as.matrix(xtabs(norm_strat_abund~left_lim + Year, data = dat))
+  
+  
+  # Make a flat surface of -1 slope?
+  
+
+  # Build plotly plot
+  surf_plot <- plot_ly(
+      x = as.numeric(colnames(spectrum_mat)), 
+      y = as.numeric(rownames(spectrum_mat)), 
+      z = spectrum_mat
+    ) %>% 
+  add_surface() %>%
+  plotly::layout(
+    title = str_c(plot_title, " - Normalized Size Spectrum"),
+    scene = list(
+      xaxis = list(title = "Year", autorange = "reversed"),
+      yaxis = list(title = "Log2( BodyMass (g) )"),
+      zaxis = list(title = "Log2( Normalized Abundance) "),
+      camera = list(eye = list(x = 1, y = 1, z = 1.25))
+    ))
+  
+  #return plot
+  return(surf_plot)
+  
+}
+
+
+
+# Plot it using the normalized abundances
+# Get annual totals within each area
+areas_aggregated <- catch_size_bins %>% 
+  split(.$area_titles) %>% 
+  map(function(area_data){
+    area_data %>% 
+      split(.$Year) %>% 
+      map_dfr(function(yr_data){
+        aggregate_log2_bins(yr_data) %>%
+          mutate(
+            log2_bins = as.numeric(log2_bins),
+            norm_strat_abund = log2(norm_strat_abund),
+            norm_strat_abund = ifelse(is.na(norm_strat_abund), 0, norm_strat_abund))
+          
+      }, .id = "Year")
+  })
+
+
+# Interactive Plot?
+library(plotly)
+
+# Gulf of Maine
+spectra_surface(
+  log2_totals = filter(areas_aggregated$`Gulf of Maine`, Year >= 1970), 
+  plot_title = "Gulf of Maine")
+
+
+# Everywhere
+shelf_bin_agg <- catch_size_bins %>% 
+  split(.$Year) %>% 
+      map_dfr(function(yr_data){
+        aggregate_log2_bins(yr_data) %>%
+          mutate(
+            log2_bins = as.numeric(log2_bins),
+            norm_strat_abund = log2(norm_strat_abund),
+            norm_strat_abund = ifelse(is.na(norm_strat_abund), 0, norm_strat_abund))
+          
+      }, .id = "Year")
+spectra_surface(
+  log2_totals = filter(shelf_bin_agg, Year >= 2000),
+  plot_title = "Northeast Shelf")
+
+
+#
+```
+
+
 :::
 
 ## Size Spectra Drivers
@@ -1949,7 +2205,6 @@ Changepoint analyses suggest there were as many as 3 distinct regimes in the Gul
 
 fix the coefficients so the interactions now reflect the net result
 
-
 ::: panel-tabset
 ### Gulf of Maine
 
@@ -2003,7 +2258,6 @@ results_gom <- dredge(gom_ar_models)
 best_gom <- get.models(results_gom, subset = delta == 0)[[1]]
 
 ```
-
 
 ```{r}
 #| label: gom-top-models-table
@@ -2221,8 +2475,6 @@ augment(best_gom, gom_df_lag ) %>%
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
 ```
-
-
 :::
 
 ### Georges Bank
@@ -2383,8 +2635,6 @@ augment(bmod, gb_df_lag) %>%
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
 ```
-
-
 :::
 
 ### Southern New England
@@ -2525,8 +2775,6 @@ augment(bmod, sne_df) %>%
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
 ```
-
-
 :::
 
 ### Mid-Atlantic Bight
@@ -2658,8 +2906,6 @@ augment(bmod, mab_df ) %>%
   scale_color_gmri() +
   labs(color = "Color", y = "Spectrum Slope")
 ```
-
-
 :::
 :::
 
