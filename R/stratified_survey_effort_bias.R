@@ -12,17 +12,22 @@
 
 
 
-
 # PAckages
 library(targets)
 library(tidyverse)
-
+library(scales)
+library(gmRi)
+library(gt)
 
 
 ####  Goal  ####
 # targets data - match the decadal variability inputs
 # should have stratum area in there
 tar_load(catch_complete)
+
+
+# Save for Kathy, she can read in here with read_csv()
+# write_csv(catch_complete, here::here("data/nmfs_survdat_clean.csv"))
 glimpse(catch_complete)
 
 
@@ -75,16 +80,18 @@ strata_effort %>%
 
 strata_effort %>% 
   distinct(est_year, season, stratum, strata_effort_ratio, st_ratio) %>%
-  mutate(after_2010 = ifelse(est_year >2009, "orange", "gray50")) %>% 
+  mutate(after_2010 = ifelse(est_year >2009, "Post-2009", "Pre-2010")) %>% 
   ggplot() +
-    geom_point(aes(st_ratio, strata_effort_ratio, color = I(after_2010))) +
+    geom_point(aes(st_ratio, strata_effort_ratio, color = after_2010)) +
     geom_abline(intercept = 0, slope = 1) +
+    scale_color_manual(values = c("orange", "gray")) +
     labs(
       x = "Stratum's Percentage of Total Area",
       y = "Stratam's Percentage of Total Effort")
   
 
-library(scales)
+
+# ?debug
 strata_effort %>% 
   distinct(stratum, avg_effort_proportion) %>% 
   mutate(stratum = fct_reorder(stratum, avg_effort_proportion)) %>% 
@@ -92,6 +99,14 @@ strata_effort %>%
   geom_col() +
   scale_x_continuous(labels = label_percent())
   
+
+
+strata_effort %>% 
+  distinct(stratum, avg_effort_proportion) %>% 
+  mutate(stratum = fct_reorder(stratum, avg_effort_proportion)) %>% 
+  ggplot(aes(y = stratum, avg_effort_proportion)) +
+  geom_col() +
+  scale_x_continuous(labels = label_percent())
 
 
 
@@ -128,7 +143,7 @@ effort_differences %>% filter(different)  %>%
   gt::gt()
 
 # What percent
-mean(effort_differences$different)
+mean(effort_differences$different)  
 sum(effort_differences$different)
 nrow(effort_differences)
 

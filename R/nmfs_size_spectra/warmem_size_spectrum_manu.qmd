@@ -479,6 +479,56 @@ functional_group_size <- functional_group_size %>%
 
 ```
 
+```{r}
+#| label: plotting-bigfish-smallfish
+#| eval: true
+
+# Idea: it would be great top be able to speak more directly to population trends for large/small individuals within a functional group...
+
+
+# One avenue is to break it into large/small
+# Could use the median body size
+size_trends <- catch_size_bins %>% 
+  mutate(fish_size =  ifelse(wmin_g > 1000, "Over 1kg", "Less than 1 kg")) %>% 
+  group_by(Year,area, hare_group, fish_size) %>% 
+  summarise(
+    total_abund = sum(strat_total_abund_s)/1e6,
+    total_biomass = sum(strat_total_lwbio_s), 
+    .groups = "drop") %>% 
+  pivot_longer(cols = c(total_abund, total_biomass), names_to = "var", values_to = "vals") 
+
+
+# Abundance
+size_trends %>% 
+  filter(var == "total_abund") %>% 
+  #filter(var == "total_biomass") %>% 
+  filter(hare_group %in% c("groundfish", "elasmobranch")) %>% 
+  ggplot(aes(Year, vals)) +
+  geom_point(aes(color = fish_size), size = 0.5) +
+  geom_smooth(aes(color = fish_size), linewidth = 1, se = F) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  facet_grid(area~hare_group) +
+  labs(color = "Fish Size", y = "Abundance (millions)" )
+
+
+# Biomass
+size_trends %>% 
+  #filter(var == "total_abund") %>% 
+  filter(var == "total_biomass") %>% 
+  filter(hare_group %in% c("groundfish", "elasmobranch")) %>% 
+  ggplot(aes(Year, vals)) +
+  geom_point(aes(color = fish_size), size = 0.5) +
+  geom_smooth(aes(color = fish_size), linewidth = 1, se = F) +
+  scale_color_gmri() +
+  scale_y_continuous(labels = scales::comma_format()) +
+  facet_grid(area~hare_group) +
+  labs(color = "Fish Size", y = "Biomass (kg)" )
+```
+
+
+
+
 ### Estimating Size Spectra
 
 ```{r}
@@ -2197,7 +2247,7 @@ bind_rows(map(cpt_res, ~tibble("Most Supported Model" = .x[["best"]])), .id = "R
 
 ```
 
-Changepoint analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for changepoints.
+Change point analyses suggest there were as many as 3 distinct regimes in the Gulf of Maine slope changes. For all other regions there was not strong support for change points.
 
 ## Spectra Slope Regression Analysis
 

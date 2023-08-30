@@ -364,8 +364,15 @@ ggsave(str_c(decadal_folder, "strat_abundance_p3.pdf"), species_abund_3, height 
 
 # marrageGrob Pages of 20
 
-species_abund <- gridExtra::marrangeGrob(abundance_figs, layout_matrix = matrix(1:20,  nrow = 5, ncol=4, byrow=TRUE), top=NULL)
-ggsave(str_c(decadal_folder, "strat_abundance_all.pdf"), species_abund, height = 15, width = 12.5, units ="in")
+species_abund <- gridExtra::marrangeGrob(
+  abundance_figs, 
+  layout_matrix = matrix(1:20,  nrow = 5, ncol=4, byrow=TRUE), top=NULL)
+ggsave(
+  str_c(decadal_folder, "strat_abundance_all.pdf"), 
+  species_abund, 
+  height = 15, 
+  width = 12.5, 
+  units ="in")
 
 
 
