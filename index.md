@@ -41,12 +41,14 @@ The following markdown documents were made to verify various aspects of the rese
 
 This document was done to directly compare the results of calculating size-spectrum characteristics using different methods. 
 
-[Biomass Allocation Across Body  Size for the Study Regions](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/bodymass_allocation.html)
+[Biomass Allocation Across Body Size for the Study Regions](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/bodymass_allocation.html)
 
 This report digs into what the outcomes of the size spectrum estimations look like, and how their results break out into different stanzas. There's also timelines of each region showing relative prevalence of differently sized individuals.
 
 
 [Species Composition within Size Bins & Bin-Size Gap Handling](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/spectra_composition_suppl.html)
+
+[Mean/Median Size for Study Species](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/body-size-change-review.html)
 
 [Patterns Across Entire Survey Area](https://adamkemberling.github.io/nefsc_trawl/R/nmfs_size_spectra/size_spectrum_story.html)
 

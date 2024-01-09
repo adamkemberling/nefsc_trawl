@@ -288,7 +288,7 @@ size_bin_formatting <- function(catch_1g){
   
   
   # Weight bins
-  catch_size_bins <- catch_size_bins %>% 
+  catch_size_bins <- catch_size_bins %>%
     mutate(
       weight_bin = case_when(
         ind_weight_kg <= 0.001 ~ "0 - 1g",
@@ -306,6 +306,19 @@ size_bin_formatting <- function(catch_1g){
         "0 - 1g", "1 - 5g", "5 - 10g", "10 - 50g",
         "50 - 100g", "100 - 500g", ".5 - 1kg",
         "1 - 2kg", "2 - 5kg", "5 - 10kg", ">= 10kg")))
+  # # Less Weight bins
+  # catch_size_bins <- catch_size_bins %>% 
+  #   mutate(
+  #     weight_bin = case_when(
+  #       ind_weight_kg <= 0.001 ~ "0 - 1g",
+  #       ind_weight_kg <= 0.010 ~ "1 - 10g",
+  #       ind_weight_kg <= 0.100 ~ "10 - 100g",
+  #       ind_weight_kg <= 1.000 ~ "100g - 1kg",
+  #       ind_weight_kg <= 10.000 ~ "1kg - 10kg",
+  #       ind_weight_kg >= 10.00 ~ ">= 10kg" ),
+  #     weight_bin = factor(weight_bin, levels = c(
+  #       "0 - 1g", "1 - 10g", "10 - 100g", "100g - 1kg",
+  #       "1kg - 10kg", ">= 10kg")))
   
   
   
@@ -547,11 +560,9 @@ group_isd_estimation <- function(wmin_grams,
   
   # Set Bounds to Individual Size Distribution 
   if(is.null(isd_xmin)){
-    isd_xmin <- min(dbin_truncated$wmin_g, na.rm = T) 
-  }
+    isd_xmin <- min(dbin_truncated$wmin_g, na.rm = T) }
   if(is.null(isd_xmin)){
-   isd_xmax <- max(dbin_truncated$wmin_g, na.rm =T) 
-  }
+   isd_xmax <- max(dbin_truncated$wmin_g, na.rm =T) }
   
   
   
@@ -716,6 +727,7 @@ isd_plot_prep <- function(biomass_data = databin_split,
                           min_weight_g = 1){
   
   # Toggle abundance to stratified abundances
+  # Sets the column names
   if(stratified_abundance == TRUE){
     biomass_data <- biomass_data %>% 
       rename(survey_abund = numlen_adj) %>% 
@@ -1209,22 +1221,23 @@ aggregate_log2_bins <- function(
   # Full Possible Bin Structure
   # Fills in any gaps
   log2_bin_structure <- define_log2_bins(
-    log2_min = min_log2_bin, 
-    log2_max = max_log2_bin, 
+    log2_min       = min_log2_bin, 
+    log2_max       = max_log2_bin, 
     log2_increment = bin_increment)
   
   
   # Capture all the group levels with a cheeky expand()
   if(missing(...) == FALSE){
     log2_bin_structure <- log2_bin_structure %>% 
-      expand(left_lim, distinct(log2_assigned, ...)) %>% 
+      tidyr::expand(left_lim, distinct(log2_assigned, ...)) %>% 
       full_join(log2_bin_structure)
   }
   
   
   
   # Get bin breaks
-  log2_breaks <- sort(unique(c(log2_bin_structure$left_lim, log2_bin_structure$right_lim)))
+  log2_breaks <- sort(
+    unique(c(log2_bin_structure$left_lim, log2_bin_structure$right_lim)))
   
   
   # Get Totals for bodymass and abundances
@@ -1239,17 +1252,19 @@ aggregate_log2_bins <- function(
   
   # Join back in what the limits and labels are
   # The defined bins and their labels enforce the size limits
-  log2_prepped <- left_join(x = log2_bin_structure, 
-                           y = log2_aggregates)
+  log2_prepped <- left_join(
+    x = log2_bin_structure, 
+    y = log2_aggregates)
   
   
   #### Fill Gaps with Zero's?? 
   # This ensures that any size bin that is intended to be in use is actually used
   log2_prepped <- log2_prepped %>% 
-    mutate(observed_abundance = ifelse(is.na(observed_abundance), 1, observed_abundance),
-           stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
-           observed_weight_g = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
-           stratified_weight_g = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
+    mutate(
+      observed_abundance   = ifelse(is.na(observed_abundance), 1, observed_abundance),
+      observed_weight_g    = ifelse(is.na(observed_weight_g), 1, observed_weight_g),
+      stratified_abundance = ifelse(is.na(stratified_abundance), 1, stratified_abundance),
+      stratified_weight_g  = ifelse(is.na(stratified_weight_g), 1, stratified_weight_g))
   
   
   #### normalize abundances using the bin widths
@@ -1651,7 +1666,6 @@ aggregate_l10_bins <- function(
   
   # Get Totals for bodymass and abundances
   l10_aggregates <- l10_assigned %>% 
-    # group_by(log10_bins, ...) %>% 
     group_by(left_lim, ...) %>% 
     summarise(observed_abundance   = sum(numlen_adj, na.rm = T),
               observed_weight_g    = sum(wmin_g, na.rm = T),
@@ -1924,35 +1938,45 @@ plot_log10_ss <- function(l10_assigned){
   # Bin aggregation moved to aggregate_log10_bins
   
   # Get totals for each bin:
-  l10_prepped <- aggregate_l10_bins(l10_assigned)
+  l10_prepped <- aggregate_l10_bins(
+    l10_assigned, bin_increment = 1, min_l10_bin = 0, max_l10_bin = 4)
   
   
   #### Plots Correcting for the bin widths
-  norm_abund_plot <- l10_prepped %>% 
-    ggplot(aes(left_lim, normalized_abund)) +
-    geom_col(fill = gmri_cols("green")) +
-    scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
-    labs(x = "Log10(bodymass)", y = "Normalized Abundances",
-         subtitle = "Abundances Divided by Bin Widths")
+  # norm_abund_plot <- l10_prepped %>% 
+  #   ggplot(aes(left_lim, normalized_abund)) +
+  #   geom_col(fill = gmri_cols("green")) +
+  #   scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
+  #   scale_x_continuous(labels = math_format(10^.x)) + 
+  #   labs(
+  #     x = "Bodyweight", 
+  #     y = "Abundance Density",
+  #     subtitle = "Sampled Survey Abundance", 
+  #     title = "Abundance Size Spectra - Log10 Bins")
+  # 
+  # 
+  # # Abundances from Survey
+  # p1 <- norm_abund_plot +
+  #   geom_smooth(formula = y ~ x,
+  #               method = "lm",
+  #               color = gmri_cols("orange")) +
+  #   stat_poly_eq(formula = y ~ x,
+  #                aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
+  #                label.y = 1.1, 
+  #                parse = TRUE)
   
+  # Stratified Abundances
   norm_strat_abund_plot <- l10_prepped  %>% 
     ggplot(aes(left_lim, norm_strat_abund)) +
     geom_col(fill = gmri_cols("green")) +
     scale_y_log10(labels = trans_format("log10", math_format(10^.x))) + 
-    labs(x = "Log10(bodymass)", y = "Normalized Stratified Abundances")
+    scale_x_continuous(labels = math_format(10^.x)) + 
+    labs(
+      x = "Bodyweight", 
+      y = "Abundance Density",
+      subtitle = "Area-Stratified Abundance", 
+      title = "log10 Binning Abundance Size Spectra")
   
-  # Abundances from Survey
-  p1 <- norm_abund_plot +
-    geom_smooth(formula = y ~ x,
-                method = "lm",
-                color = gmri_cols("orange")) +
-    stat_poly_eq(formula = y ~ x,
-                 aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
-                 label.y = 1.1, 
-                 parse = TRUE) +
-    labs(caption = "Survey Abundance", subtitle = "", title = "Manual log10 Binning")
-  
-  # Stratified Abundances
   p2 <- norm_strat_abund_plot +
     geom_smooth(formula = y ~ x,
                 method = "lm",
@@ -1960,12 +1984,12 @@ plot_log10_ss <- function(l10_assigned){
     stat_poly_eq(formula = y ~ x,
                  aes(label = paste(..eq.label.., ..rr.label.., sep = "~~~")), 
                  label.y = 1.1, 
-                 parse = TRUE) +
-    labs(caption = "Stratified Abundance")
+                 parse = TRUE) 
+  return(p2)
   
   # assemble with patchwork
-  plot_out <- (p1 | p2)
-  return(plot_out)
+  # plot_out <- (p1 | p2)
+  # return(plot_out)
   
   
 }
@@ -2054,7 +2078,7 @@ plot_denormalized_ss <- function(l10_assigned, stratified = TRUE){
 group_size_metrics <- function(
     size_data, 
     .group_cols = "Year", 
-    abund_vals = "numlen_adj"){
+    weighting_column = "numlen_adj"){
   
   
   
@@ -2062,11 +2086,12 @@ group_size_metrics <- function(
   group_size_data <- size_data %>% 
     filter(is.na(ind_weight_kg) == FALSE) %>% 
     mutate(decade = floor_decade(Year)) %>% 
-    unite(col = "group_var", 
-          {{.group_cols}}, 
-          sep = "_", 
-          remove = FALSE, 
-          na.rm = FALSE)
+    unite(
+      col = "group_var", 
+      {{.group_cols}}, 
+      sep = "_", 
+      remove = FALSE, 
+      na.rm = FALSE)
   
   # 2. Make a table of constituent combinations
   col_syms <- syms(.group_cols)
@@ -2074,11 +2099,12 @@ group_size_metrics <- function(
     distinct(!!!col_syms, group_var)
   
   # 3. Add missing groups as "all data"
-  grouping_table <- add_missing_groups(group_dataframe = grouping_table)
+  grouping_table <- add_missing_groups(
+    group_dataframe = grouping_table)
   
   # Set what abundance column to use
   #we can use stratified rates instead of strat abundance because the proportions are the same
-  weighting_col <- switch(abund_vals,
+  weighting_col <- switch(weighting_column,
     "numlen_adj" = "numlen_adj",
     "stratified" = "strat_mean_abund_s")
   
@@ -2090,16 +2116,19 @@ group_size_metrics <- function(
       
       # Length (measured for all)
       mean_len    <- weighted.mean(group_data[, "length_cm"], group_data[, weighting_col], na.rm = T)
+      med_len     <- matrixStats::weightedMedian(group_data[, "length_cm"], group_data[, weighting_col], na.rm = T)
       min_len     <- min(group_data[, "length_cm"], na.rm = T)
       max_len     <- max(group_data[, "length_cm"], na.rm = T)
       
-      # Weights (derived from length)
+      # Weights (estimated from length w/ wigley data)
       mean_weight <- weighted.mean(group_data[,"ind_weight_kg"], group_data[, weighting_col], na.rm = T)
+      med_weight  <- matrixStats::weightedMedian(group_data[, "ind_weight_kg"], group_data[, weighting_col], na.rm = T)
       min_weight  <- min(group_data[, "ind_weight_kg"], na.rm = T)
       max_weight  <- max(group_data[, "ind_weight_kg"], na.rm = T)
       
-      # Abundance
+      # Abundance totals
       total_abund <- sum(group_data[, "numlen_adj"], na.rm = T)
+      strat_abund <- sum(group_data[, "strat_total_abund_s"], na.rm = T)
       
       # number of species
       num_species <- group_data %>% 
@@ -2112,10 +2141,13 @@ group_size_metrics <- function(
           "group_var"    = group_name,
           "n_species"    = num_species,  
           "survey_abund" = total_abund,
+          "strat_abund"  = strat_abund,
           "mean_len_cm"  = mean_len,
+          "med_len_cm"   = med_len,
           "min_len_cm"   = min_len,
           "max_len_cm"   = max_len,
           "mean_wt_kg"   = mean_weight,
+          "med_wt_kg"    = med_weight,
           "min_wt_kg"    = min_weight,
           "max_wt_kg"    = max_weight) %>% 
         
@@ -2149,15 +2181,16 @@ group_size_metrics <- function(
 # Direct match to the groups in warmem_isd_estimates
 mean_sizes_all_groups <- function(size_data, 
                                   min_weight_g = 0, 
-                                  abund_vals = "numlen_adj"){
+                                  weighting_column = "numlen_adj"){
   
   
   ####__  Set Bodymass Cutoff and Groups
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  group_size_data <- filter(size_data, 
-                           ind_weight_kg >= min_weight_g * 1000) %>% 
+  group_size_data <- filter(
+    size_data, 
+    ind_weight_kg >= min_weight_g * 1000) %>% 
     mutate(decade = floor_decade(Year))
   
   
@@ -2167,20 +2200,23 @@ mean_sizes_all_groups <- function(size_data,
   #####__ 1. Every year, entire survey
   message("Processing body size change for: Each year")
   g1_res <- group_size_data  %>% 
-    group_size_metrics(.group_cols = c("Year"),
-                       abund_vals = abund_vals) 
+    group_size_metrics(
+      .group_cols = c("Year"),
+      weighting_column = weighting_column) 
   
   #####__ 2. every year, every region
   message("Processing body size change for: Each year in each region")
   g2_res <- group_size_data  %>% 
-    group_size_metrics(.group_cols = c("Year", "survey_area"),
-                       abund_vals = abund_vals) 
+    group_size_metrics(
+      .group_cols = c("Year", "survey_area"),
+      weighting_column = weighting_column) 
   
   ####__3. Year * Region * Functional Group
   message("Processing body size change for: Each Year in each area, for each functional group")
   g3_res <- group_size_data %>% 
-    group_size_metrics(.group_cols = c("Year", "survey_area", "hare_group"),
-                       abund_vals = abund_vals) 
+    group_size_metrics(
+      .group_cols = c("Year", "survey_area", "hare_group"),
+      weighting_column = weighting_column) 
   
   
   # Put the reults in one table with an ID for how they groups are set up

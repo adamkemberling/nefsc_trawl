@@ -1,0 +1,320 @@
+---
+title: "Body Size Changes in Northeast Shelf Finfish Community"
+author: 
+    name: "Adam A. Kemberling"
+    title: "Quantitative Research Associate"
+    url: https://github.com/adamkemberling
+    affiliation: Gulf of Maine Research Institute
+description: | 
+  Changes in Mean/Median Length and Weight of 68 Finfish Species
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+    toc-depth: 2
+editor: source
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig-height: 8
+  fig-width: 7
+  fig.align: center
+  comment: ""
+---
+
+# Foundational  Understanding Check: Has Body Size Changed
+
+In order to understand changes in community size structure, it is important to have a good handle on whether body size has changed across different species or functional groups.
+
+Goal is to check, and highlight any trends that need to be spoken to in the manuscript
+
+## Changes to Median body-size
+
+Because of the natural skew in body-size data, we will use median body size, and weight it by the numbers caught.
+
+```{r}
+library(targets)
+library(gmRi)
+library(tidyverse)
+library(patchwork)
+library(showtext)
+
+# levels for faceting areas
+area_levels <- c("Northeast Shelf", "GoM", "GB", "SNE", "MAB")
+area_levels_long <- c("Northeast Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")
+
+# table to join for swapping shorthand for long-hand names
+area_df <- data.frame(
+  area = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
+  survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Northeast Shelf"),
+  area_titles = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "Northeast Shelf"))
+
+
+
+# Load the average body size data
+withr::with_dir(rprojroot::find_root('_targets.R'), 
+                tar_load(mean_sizes_ss_groups))   
+
+# 1. Overall Body Sizes Across all regions
+shelf_size <- mean_sizes_ss_groups %>% 
+  filter(`group ID` == "single years") %>% 
+  mutate(
+    Year = as.numeric(Year),
+    survey_area = "Northeast Shelf")
+
+
+# 2. Grouped on year and region
+regional_size <- mean_sizes_ss_groups %>% 
+  filter(`group ID` == "single years * region") %>% 
+   mutate(Year = as.numeric(Year),
+         survey_area = as.character(survey_area)) %>% 
+  left_join(area_df) %>% 
+  mutate(area_titles = factor(area_titles, levels = area_levels_long),
+         area_copy = survey_area)
+
+
+# 3. Grouped on year region and functional group sizes
+fgroup_size <- mean_sizes_ss_groups %>% 
+  filter(`group ID` == "single years * region * functional group") %>% 
+  mutate(Year = as.numeric(Year)) %>% 
+  left_join(area_df) %>% 
+  mutate(
+    survey_area = factor(survey_area, levels = area_levels),
+    area_titles = factor(area_titles, levels = area_levels_long),
+    area_copy = survey_area)
+
+# GGplot theme
+theme_set(theme_gmri() + theme(
+  panel.grid.major = element_line(linewidth = 0.5, linetype = 1, color = "gray"),
+  panel.grid.major.x = element_line(linewidth = 0.5, linetype = 3, color = "gray"),
+  panel.grid.minor = element_line(linewidth = 0.5, linetype = 3, color = "gray90"),
+  axis.line = element_line(color = "black"),
+  axis.line.y = element_line(color = "black"), 
+  strip.background = element_rect(colour = gmri_cols("teal")),
+  legend.position = "bottom"))
+
+```
+
+
+```{r}
+#| label: style-sheet
+#| results: asis
+
+# Use GMRI style
+use_gmri_style_rmd()
+
+```
+
+```{r}
+#| label: fonts-config
+#| echo: false
+
+# # Using Raleway Font because it works
+# sysfonts::font_add_google("Raleway")
+
+# Path to the directory containing the font file (replace with your actual path)
+font_dir <- paste0(system.file("stylesheets", package = "gmRi"), "/GMRI_fonts/Avenir/")
+
+# Register the font
+font_add(
+  family = "Avenir",
+  file.path(font_dir, "LTe50342.ttf"),
+  bold = file.path(font_dir, "LTe50340.ttf"),
+  italic = file.path(font_dir, "LTe50343.ttf"),
+  bolditalic = file.path(font_dir, "LTe50347.ttf"))
+
+
+# Why is the gt package able to add it wtf!!
+# google_font(name = "Avenir")
+
+# Load the font
+showtext::showtext_auto()
+
+```
+
+
+# Examining Body Size Changes
+
+
+## Overall Body Size Changes
+
+::: {.panel-tabset}
+
+### Shelf-Wide
+
+```{r}
+#| label: shelf-body-size-change
+
+size_df <- shelf_size
+
+
+l1 <- size_df %>% 
+  ggplot(aes(Year, mean_len_cm)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Average Length (cm)", title = "Average Length")
+
+w1 <- size_df %>% 
+  ggplot(aes(Year, med_wt_kg)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Average Weight (kg)", title = "Average Weight")
+
+l2 <- size_df %>% 
+  ggplot(aes(Year, mean_len_cm)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Median Length (cm)", title = "Median Length")
+
+w2 <- size_df %>% 
+  ggplot(aes(Year, med_wt_kg)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Median Weight (kg)", title = "Median Weight")
+
+
+(l1 | w1) / (l2 | w2)
+
+
+```
+
+
+### Regional Lengths
+
+```{r}
+#| label: regional-body-length-change
+
+size_df <- regional_size
+
+
+l1 <- size_df %>% 
+  ggplot(aes(Year, mean_len_cm)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Average Length (cm)", title = "Average Length")
+
+
+
+l2 <- size_df %>% 
+  ggplot(aes(Year, med_len_cm)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Median Length (cm)", title = "Median Length")
+
+
+
+l1 / l2 
+
+```
+
+### Regional Weights
+
+```{r}
+#| label: regional-body-weight-change
+
+size_df <- regional_size
+
+
+w1 <- size_df %>% 
+  ggplot(aes(Year, mean_wt_kg)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Average Weight (kg)", title = "Average Weight")
+
+w2 <- size_df %>% 
+  ggplot(aes(Year, med_wt_kg)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_wrap(~survey_area) +
+  labs(x = "Year", y = "Median Weight (kg)", title = "Median Weight")
+
+
+w1 / w2
+```
+
+### Functional Group Lengths
+
+
+```{r}
+
+size_df <- fgroup_size
+
+# l1 <- size_df %>% 
+#   ggplot(aes(Year, mean_len_cm)) +
+#   geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+#   geom_point(size = 1.2, alpha = 0.8) +
+#   facet_grid(hare_group~survey_area, scales = "free") +
+#   labs(x = "Year", y = "Average Length (cm)", title = "Average Length")
+
+
+
+l2 <- size_df %>% 
+  ggplot(aes(Year, med_len_cm)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2, alpha = 0.8) +
+ facet_grid(hare_group~survey_area, scales = "free") +
+  labs(x = "Year", y = "Median Length (cm)", title = "Median Length")
+
+
+
+# l1 | l2 
+l2
+
+```
+
+
+### Functional Group Weights
+
+
+```{r}
+#| fig-height: 8
+
+
+size_df <- fgroup_size
+
+# w1 <- size_df %>% 
+#   ggplot(aes(Year, mean_wt_kg)) +
+#   geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+#   geom_point(size = 1.2, alpha = 0.8) +
+#   facet_grid(hare_group~survey_area, scales = "free") +
+#   labs(x = "Year", y = "Average Weight (kg)", 
+#        title = "Average Weight")
+
+
+
+w2 <- size_df %>% 
+  ggplot(aes(Year, med_wt_kg)) +
+  geom_line(color = "gray60", alpha = 0.3, linewidth = 1) +
+  geom_point(size = 1.2, alpha = 0.8) +
+ facet_grid(hare_group~survey_area, scales = "free") +
+  labs(x = "Year", y = "Median Weight (kg)", 
+       title = "Median Weight")
+
+
+
+# w1 | w2 
+w2
+
+```
+
+:::
+
+
+
+```{r}
+#| results: asis
+insert_gmri_footer()
+```
+

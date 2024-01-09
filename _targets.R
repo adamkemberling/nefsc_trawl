@@ -265,9 +265,8 @@ list(
     mean_sizes_all_groups(
       size_data = rename(as.data.frame(catch_complete), Year = est_year),
       min_weight_g = 0, 
-      # abund_vals = "numlen_adj")
-      abund_vals = "stratified")
-    ),
+      # weighting_column = "numlen_adj")
+      weighting_column = "stratified")),
  
   # Run the size change for each species across years using stratified abundances
   tar_target(
@@ -275,9 +274,8 @@ list(
     group_size_metrics(
       size_data = rename(as.data.frame(catch_complete), Year = est_year),
       .group_cols = c("comname", "Year", "season"),
-      # abund_vals = "numlen_adj")
-      abund_vals = "stratified")
-    ),
+      # weighting_column = "numlen_adj")
+      weighting_column = "stratified")),
   
   
   
@@ -285,7 +283,6 @@ list(
   
   # starts with "survdat_biological"
   # ref code: size_at_age_exploration.Rmd
-  
   tar_target(vonbert_species_bio,
              select_vonbert_species(bio_complete, rank_cutoff = 17))
   
