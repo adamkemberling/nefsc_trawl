@@ -1,0 +1,875 @@
+---
+title: "Spectra and Median Size Mods"
+description: | 
+  Size Analysis of the Northeast US Finfish Community
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+    toc-depth: 2
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig.align: center
+  comment: ""
+---
+
+
+# Modeling Change in Median Size and Community Spectra
+
+```{r}
+library(gt)
+library(tidyverse)
+library(gmRi)
+library(tidyverse)
+library(ggeffects)
+library(zoo)
+library(lme4)
+library(patchwork)
+library(emmeans)
+library(rstatix)
+library(lmerTest)
+library(broom)
+library(broom.mixed)
+library(ggpmisc)
+library(performance)
+library(nlme)
+library(showtext)
+library(tidyquant)
+
+
+
+# Set theme
+theme_set(theme_gmri() + theme(plot.margin = margin(), legend.position = "bottom", legend.direction = "horizontal", legend.title = element_text(size = 12, face = "bold")) )
+
+
+# levels for faceting areas
+area_levels <- c("Northeast Shelf", "GoM", "GB", "SNE", "MAB")
+area_levels_long <- c("Northeast Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")
+
+
+#--------------------
+## Set up
+#--------------------
+
+# Load the raw data 
+df <- read_csv(here::here("data/size_and_spectra_model_data.csv"))
+
+
+# Get raw landings
+landings_raw <- read_csv(here::here("data/unscaled_spectra_predictor_dataset_wide.csv")) %>% 
+  select(year, survey_area, landings_raw = landings)
+
+# Get the raw sst from oisst
+sst_raw = read_csv(here::here("data/unscaled_regional_sst.csv"))
+
+# Read in dupontavice bottom temperatures
+bot_temps <- read_csv(str_c(cs_path("res", "Du_Pontavice_Combined_BT/RegionalTimeseries"), "trawl_region_bottom_temps.csv"))
+
+#------------
+
+# Put it all together and clarify the column names
+df <- df %>% 
+  select(-sst) %>% 
+  left_join(landings_raw) %>% 
+  left_join(sst_raw) %>% 
+  left_join(bot_temps) %>% 
+  mutate(
+    survey_area = factor(
+      survey_area, 
+      levels = area_levels_long),
+    region = str_replace_all(survey_area, "-| ", "_"),
+    region = factor(
+      region, 
+      levels = c("Gulf_of_Maine", "Georges_Bank", 
+                 "Mid_Atlantic_Bight", "Southern_New_England")))
+
+
+# format year and anomalies
+df <- df %>% 
+  mutate(yr_num = as.numeric(as.character(year)),
+         year = factor(year)) %>%            
+  group_by(survey_area) %>% 
+  arrange(survey_area, year) %>% 
+  mutate(
+    anom_5 = zoo::rollapply(
+      sst_anom, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_5_raw = zoo::rollapply(
+      landings_raw, 5, mean, na.rm = T, align = "right",  fill = NA)) %>% 
+  # Scale sst/bt within regions
+  group_by(survey_area) %>% 
+  mutate(
+    sst_z = as.numeric(base::scale(sst)),
+    ersst_z = as.numeric(base::scale(ersst)),
+    bt_z = as.numeric(base::scale(bot_temp))) %>% 
+  ungroup()
+
+
+
+
+```
+
+
+
+```{r}
+#| label: fonts-config
+#| echo: false
+
+# Path to the directory containing the font file (replace with your actual path)
+font_dir <- paste0(system.file("stylesheets", package = "gmRi"), "/GMRI_fonts/Avenir/")
+
+# Register the font
+font_add(
+  family = "Avenir",
+  file.path(font_dir, "LTe50342.ttf"),
+  bold = file.path(font_dir, "LTe50340.ttf"),
+  italic = file.path(font_dir, "LTe50343.ttf"),
+  bolditalic = file.path(font_dir, "LTe50347.ttf"))
+
+# Load the font
+showtext::showtext_auto()
+
+```
+
+# Changes in Time:
+
+::: {.panel-tabset}
+  
+
+### Median Weight
+
+```{r}
+
+df  %>% 
+  ggplot(aes(yr_num, med_wt, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F) +
+  
+  scale_color_gmri() +
+  labs(title = "Body Size Declining - Early",
+       y = "Median Bodw Weight (kg)",
+       x = "Year",
+       color = "Region")
+```
+
+### Exponent of Size Spectra
+
+```{r}
+df  %>% 
+  ggplot(aes(yr_num, b, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F) +
+  scale_color_gmri() +
+  labs(title = "Spectra Slope Steepening - Except MAB",
+       y = "Exponent of Size Spectra (b)",
+       x = "Year",
+       color = "Region")
+```
+
+### Sea Surface Temperature
+
+```{r}
+df  %>% 
+  ggplot(aes(yr_num, ersst, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F) +
+  scale_color_gmri() +
+  labs(title = "SSTs Rising Area-Wide",
+       y = "Sea Surface Temperature (ERSSTv5)",
+       x = "Year",
+       color = "Region")
+```
+
+
+
+### Bottom Temperature
+
+```{r}
+df  %>% 
+  ggplot(aes(yr_num, bot_temp, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F) +
+  scale_color_gmri() +
+  labs(title = "Bottom Temperatures Rising - Except MAB",
+       y = "Bottom Temperature (DuPontavice et al)",
+       x = "Year",
+       color = "Region")
+```
+
+
+### Regional Landings
+
+```{r}
+# Plot: How does landings change over time
+df %>% 
+  drop_na(landings_raw) %>% 
+  ggplot(aes(yr_num, landings_raw, color = survey_area)) +
+  # geom_point(size = 1) +
+  # geom_line(alpha = 0.6)  +
+  geom_smooth(method = "lm")  +
+  geom_col(aes(fill = survey_area), alpha = 0.4) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = scales::label_comma()) +
+  scale_x_continuous(limits = c(1970, 2020)) +
+  facet_wrap(~survey_area) +
+  labs(
+    title = "Regional Landings Declining - Bimodal in MAB",
+    subtitle = "Mid-Atlantic Exception, primarily forage fish fishery (menhaden)",
+    x = "Year",
+    color = "Region", fill = "Region")
+```
+
+
+### Overall Landings
+
+```{r}
+df %>% 
+  drop_na(landings_raw) %>% 
+  ggplot(aes(yr_num, landings_raw, color = survey_area)) +
+  # geom_point(size = 1) +
+  # geom_line(alpha = 0.6)  +
+  # geom_smooth(method = "lm")  +
+  geom_col(aes(fill = survey_area), alpha = 0.4) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = scales::label_comma()) +
+  scale_x_continuous(limits = c(1970, 2020)) +
+  labs(
+    title = "Regional Landings Declining - Peak Overall in 90's-2000's",
+    subtitle = "Mid-Atlantic Exception, primarily forage fish fishery (menhaden)",
+    x = "Year",
+    color = "Region", fill = "Region")
+
+
+# Trying to keep landings: binned/categorical label
+
+
+
+
+```
+
+
+
+### High Volume Species
+
+Bart raised that his landings looked different, can verify that we didn't mess them up in data prep.
+
+
+```{r}
+#| label: garfo-data-prep
+#| eval: true
+
+####  GARFO Landings  ####
+
+# Load the GARFO landings data:
+# Landings of finfish* sheet 5
+res_path <- cs_path("res")
+landings <- readxl::read_xlsx(
+  path = str_c(res_path, "GARFO_landings/KMills_landings by area 1964-2021_JUN 2022.xlsx"), sheet = 5) %>% 
+  rename_all(tolower)
+
+# # Why no GB Landings in 2011?
+# landings %>% filter(
+#   `stat area` %in% fish_zones$"Georges Bank", year == 2011)
+
+# Make a list of zones to roughly match the survey areas:
+fish_zones <- list(
+  "Gulf of Maine" = c(511:515, 464, 465),
+  "Georges Bank" = c(521, 522, 525, 561, 562),
+  "Southern New England" = c(611, 612, 613, 616, 526, 537, 538, 539),
+  "Mid-Atlantic Bight" = c(614:615, 621, 622, 625, 626, 631, 632))
+
+
+# Add the labels into the landings data and remove what we don't need there:
+landings <- landings %>% 
+  mutate(
+    survey_area = case_when(
+      `stat area` %in% fish_zones$"Gulf of Maine" ~ "Gulf of Maine",
+      `stat area` %in% fish_zones$"Georges Bank" ~ "Georges Bank",
+      `stat area` %in% fish_zones$"Southern New England" ~ "Southern New England",
+      `stat area` %in% fish_zones$"Mid-Atlantic Bight" ~ "Mid-Atlantic Bight")) %>% 
+  filter(survey_area %in% c("Georges Bank", "Gulf of Maine", "Southern New England", "Mid-Atlantic Bight")) %>% 
+  mutate(survey_area = factor(survey_area, area_levels_long))
+
+# Get Summaries for all species
+landings_summ <- landings %>% 
+  rename(
+    "weight_lb" = `landed lbs`,
+    "live_lb" = `live lbs`) %>% 
+  group_by(year, survey_area) %>% 
+  summarise( 
+    across(
+      .cols = c(value, weight_lb, live_lb), 
+      .fns = list(mean = ~mean(.x , na.rm = T), 
+                  total = ~sum(.x , na.rm = T)), 
+      .names = "{.fn}_{.col}"), 
+    .groups = "drop")  
+
+
+#  Species Summaries
+species_landings <-  landings %>% 
+  rename(
+    "weight_lb" = `landed lbs`,
+    "live_lb" = `live lbs`) %>% 
+  group_by(year, survey_area, sppname) %>% 
+  summarise( 
+    across(
+      .cols = c(value, weight_lb, live_lb), 
+      .fns = list(mean = ~mean(.x , na.rm = T), 
+                  total = ~sum(.x , na.rm = T)), 
+      .names = "{.fn}_{.col}"), 
+    .groups = "drop")
+
+
+# Top Species in each area
+high_landings <- species_landings %>% 
+  mutate(survey_area = fct_drop(survey_area)) %>% 
+  filter(total_weight_lb > 15000000) %>% 
+  split(.$survey_area) %>% 
+  map(function(x){
+    
+    # Annual Changes
+   ggplot(x, aes(year, total_weight_lb, fill = sppname, color = sppname)) +
+    geom_col(alpha = 0.4) +
+    scale_y_continuous(labels = scales::label_comma()) +
+      scale_fill_gmri() +
+      scale_color_gmri() +
+      guides(
+        fill = guide_legend(nrow = 3),
+        color = guide_legend(nrow = 3)
+      ) +
+      labs(x = "Year", y = "Total Weight (lb.)",
+         color = NULL, fill = NULL)
+    
+    
+  })
+   
+# Build the mosaic
+hl_plot_t <- (high_landings[[1]] | high_landings[[2]]) 
+hl_plot_b <- (high_landings[[3]] |high_landings[[4]])
+hl_plot_t / hl_plot_b + plot_annotation(
+  title = "High-Volume Species",
+  subtitle = "Annual Landings >15M lb."
+)
+  
+
+```
+
+:::
+
+
+
+
+
+# Pre-Modeling Collinearity Concerns
+
+::: {.panel-tabset}
+
+### Landings and Anomalies Colinearity
+
+```{r}
+# See roll anom and roll landings relationship
+ggplot(df, aes(ersst_z, landings)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_wrap(~survey_area) +
+  stat_poly_eq(use_label(c("eq", "R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and ERSSTv5 (both scaled)")
+
+
+```
+
+### Landings Clustering/Bi-modality
+
+```{r}
+# Exploring bimodality of landings
+ggplot(df, aes(landings)) +
+  geom_density(aes(fill = survey_area), alpha = 0.4) +
+  facet_wrap(~survey_area) +
+  scale_fill_gmri() +
+  labs(x = "Landings (z)")
+```
+
+
+
+
+```{r}
+#| label: landings-clustering
+#| eval: false
+
+# clustering landings
+# use betweens to assess which value for centers maximizes between group SS
+
+
+# evaluate n-clusters 
+clust_range <- c(2:9)
+clust_num_mods <- clust_range %>% 
+  map(function(x){
+    landings_df <- drop_na(df,landings)
+    mod = kmeans(landings_df$landings, centers = x)
+    list(
+      "cluster_dat" = data.frame(
+        year = landings_df$year,
+        region = landings_df$region,
+        cluster = mod$cluster),
+      "betweens" = tibble("Between Group SS" = mod$betweens))
+    })
+
+
+# Pull performance
+map_dfr(set_names(clust_num_mods, clust_range), 
+        ~pluck(.x, "betweens"), .id = "num_clusters") %>% 
+  ggplot(aes(num_clusters, `Between Group SS`)) + 
+  geom_point() + 
+  geom_line()
+
+
+
+# Pull the cluster info, make sure that each region has good representation
+# for 3 clusters
+region_clusters <- df %>% 
+  drop_na(landings) %>% 
+  split(.$region) %>% 
+  imap_dfr(function(x,y){
+    mod = kmeans(drop_na(x,landings)$landings, centers = 3)
+    data.frame(
+      region = y,
+      year = x$year,
+      landing_cat = mod$cluster
+    )})
+# Do together so there is coherence among what the categories mean
+region_clusters <- df %>% 
+  drop_na(landings) %>% 
+  list() %>% 
+   map_dfr(function(x){
+    mod = kmeans(drop_na(x, landings)$landings, centers = 3)
+    data.frame(
+      survey_area = x$survey_area,
+      year = x$year,
+      landing_cat = str_c("group ", mod$cluster))}) %>% 
+  mutate(survey_area = factor(survey_area, levels = area_levels_long))
+
+# Pull clusters
+left_join(df, region_clusters) %>% #glimpse()
+  ggplot(aes(yr_num, landings)) + 
+  geom_col(aes(fill = landing_cat)) + 
+  facet_wrap(~survey_area) +
+  scale_fill_brewer(palette = "Oranges", na.translate = F, direction = 1)
+
+```
+
+
+:::
+
+
+
+
+---
+
+# Spectra Slope Models
+
+
+```{r}
+
+
+# To smooth or not to smooth, I vote no
+
+# Complete model
+full_mod <- lme4::lmer(
+  b ~ land_5  * region * ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+
+# The full model has trouble with all the interactions
+# If we simplify either sst/landings to be intercept only it helps
+# Intercept only for SST
+slope_landings <- lme4::lmer(
+  b ~ land_5  * region + ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+# Intercept only for landings
+slope_sst <- lme4::lmer(
+  b ~ land_5  + region * ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+
+# Need models with reduced complexity to further compare
+landings_only_mod <- lme4::lmer(
+  b ~ land_5  * region + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+sst_only_mod <- lme4::lmer(
+  b ~ region * ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+
+# # Autocorrelative Error Structure- Performs badly
+# Ben bolker to thatnk, of course:
+# https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
+# full_mod <- nlme::lme(b ~ landings  * region + sst_anom,
+#                      random = ~ 1 |  year, 
+#                      data = drop_na(df, landings, sst_anom),
+#                      correlation=corAR1(), method = "ML")
+
+
+# # Summary
+# tidy(full_mod) %>% gt()
+
+# # % variance of random effect: 28%
+# # year (intercept) / year (intercept) + residual
+# 0.0210/(0.0210 + 0.0528) 
+
+
+```
+
+
+
+### Assess Collinearity Bottleneck
+
+```{r}
+# multicollinearity check
+plot(check_collinearity(full_mod))
+plot(check_collinearity(slope_landings))
+plot(check_collinearity(slope_sst))
+plot(check_collinearity())
+plot(check_collinearity(full_mod))
+
+```
+
+### Significance / Model Comparison
+
+```{r}
+
+# Model Comparison & significance testing with a likelihood ratio test
+
+# Based on f-test
+anova(slope_landings, full_mod)
+anova(slope_sst, full_mod)
+anova(landings_only_mod, full_mod)
+anova(sst_only_mod, full_mod)
+
+
+# Based on chi-square test
+anova(no_sst_mod, full_mod, test = "LRT")
+
+
+# # Can also check significance this way
+# drop1(full_mod, test = "Chisq")
+
+
+# Do AICc
+MuMIn::AICc(
+  full_mod,slope_landings, slope_sst, sst_only_mod, landings_only_mod) %>%  
+  mutate(DeltaAICc = AICc - max(.$AICc)) %>% 
+  rownames_to_column("Model ID") %>% gt()
+```
+
+
+### Fit & Predictions
+
+```{r}
+
+qqnorm(resid(full_mod))
+qqline(resid(full_mod))
+
+
+ggplot(df, 
+       aes(x = yr_num, y = b, color = region)) +
+      geom_point(alpha = 0.5) +
+      theme_classic() +
+  scale_color_gmri() +
+      geom_line(
+        data = cbind(drop_na(df, land_5, ersst), 
+                     pred = predict(full_mod)), 
+        aes(y = pred), size = 1) +  # adding predicted line from mixed model 
+      theme(legend.position = "none",
+            panel.spacing = unit(2, "lines"))  # adding space between panels
+
+```
+
+
+
+### SST Effect
+
+```{r}
+# SST Anomaliezs
+plot(ggpredict(full_mod, ~ersst_z+region), add.data = T, jitter = 0.1)
+
+
+```
+
+### Landings Effect
+
+```{r}
+plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
+```
+
+## Summary of results
+
+
+
+
+---
+
+# Median Body Weight Models
+
+How has median weight changed
+
+
+
+```{r}
+
+
+# To smooth or not to smooth, I vote no
+
+# Complete model
+full_mod <- lme4::lmer(
+  med_wt ~ land_5  * region * ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+
+# The full model has trouble with all the interactions
+# If we simplify either sst/landings to be intercept only it helps
+# Intercept only for SST
+slope_landings <- lme4::lmer(
+  med_wt ~ land_5  * region + ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+# Intercept only for landings
+slope_sst <- lme4::lmer(
+  med_wt ~ land_5  + region * ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+
+# Need models with reduced complexity to further compare
+landings_only_mod <- lme4::lmer(
+  med_wt ~ land_5  * region + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+sst_only_mod <- lme4::lmer(
+  med_wt ~ region * ersst_z + (1 | year), 
+  data = drop_na(df, land_5, ersst_z))
+
+
+# # Autocorrelative Error Structure- Performs badly
+# Ben bolker to thatnk, of course:
+# https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
+# full_mod <- nlme::lme(med_wt ~ landings  * region + sst_anom,
+#                      random = ~ 1 |  year, 
+#                      data = drop_na(df, landings, sst_anom),
+#                      correlation=corAR1(), method = "ML")
+
+
+# # Summary
+# tidy(full_mod) %>% gt()
+
+# # % variance of random effect: 28%
+# # year (intercept) / year (intercept) + residual
+# 0.0210/(0.0210 + 0.0528) 
+
+
+```
+
+
+
+### Assess Collinearity Bottleneck
+
+```{r}
+# multicollinearity check
+plot(check_collinearity(full_mod))
+plot(check_collinearity(slope_landings))
+plot(check_collinearity(slope_sst))
+plot(check_collinearity(sst_only_mod))
+plot(check_collinearity(landings_only_mod))
+
+```
+
+### Significance / Model Comparison
+
+```{r}
+
+# Model Comparison & significance testing with a likelihood ratio test
+
+# Based on f-test
+anova(slope_landings, full_mod)
+anova(slope_sst, full_mod)
+anova(landings_only_mod, full_mod)
+anova(sst_only_mod, full_mod)
+
+
+# Based on chi-square test
+anova(no_sst_mod, full_mod, test = "LRT")
+
+
+# # Can also check significance this way
+# drop1(full_mod, test = "Chisq")
+
+
+# Do AICc
+MuMIn::AICc(
+  full_mod,slope_landings, slope_sst, sst_only_mod, landings_only_mod) %>%  
+  mutate(DeltaAICc = AICc - max(.$AICc)) %>% 
+  rownames_to_column("Model ID") %>% gt()
+```
+
+
+
+### Fit & Predictions
+
+```{r}
+
+qqnorm(resid(full_mod))
+qqline(resid(full_mod))
+
+
+ggplot(df, 
+       aes(x = yr_num, y = med_wt, color = region)) +
+      geom_point(alpha = 0.5) +
+      theme_classic() +
+  scale_color_gmri() +
+      geom_line(
+        data = cbind(drop_na(df, land_5, ersst), 
+                     pred = predict(full_mod)), 
+        aes(y = pred), size = 1) +  # adding predicted line from mixed model 
+      theme(legend.position = "none",
+            panel.spacing = unit(2, "lines"))  # adding space between panels
+
+```
+
+
+
+### SST Effect
+
+```{r}
+# SST Anomaliezs
+plot(ggpredict(full_mod, ~ersst_z+region), add.data = T, jitter = 0.1)
+
+
+```
+
+### Landings Effect
+
+```{r}
+plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
+```
+
+## Summary of results
+
+
+
+
+
+---
+
+# Region Random Effects
+
+
+# What if we swap Random effects
+
+I don't really care about regions, so what if we used region as a random effect. It should also eat variability similar to year as a random effect and maybe help resolve the temperature or landings effects.
+
+Could also do year within region nesting...
+
+Just to see:
+
+
+## Contemporary SST/Landings Model
+
+```{r}
+# new model
+full_mod <- lme4::lmer(med_wt ~ landings * sst_anom + (1 | survey_area), 
+                      data = drop_na(df, landings, sst_anom))
+
+# # Autocorrelative Error - Performs badly here
+# Ben bolker to thatnk, of course:
+# https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
+full_mod <- nlme::lme(med_wt ~ landings  * landings + sst_anom,
+                     random = ~ 1 |  survey_area,
+                     data = drop_na(df, landings, sst_anom),
+                     correlation = corAR1(), 
+                     method = "ML")
+
+# Summary
+tidy(full_mod) %>% gt()
+
+
+```
+
+
+### Fit & Predictions
+
+
+```{r}
+
+qqnorm(resid(full_mod))
+qqline(resid(full_mod))
+
+
+ggplot(df, 
+       aes(x = yr_num, y = med_wt, color = region)) +
+      geom_point(alpha = 0.5) +
+      theme_classic() +
+    scale_color_gmri() +
+      geom_line(
+        data = cbind(drop_na(df, landings, sst_anom), 
+                     pred = predict(full_mod)), 
+        aes(y = pred), size = 1) +  # adding predicted line from mixed model 
+      theme(legend.position = "none",
+            panel.spacing = unit(2, "lines"))  # adding space between panels
+
+```
+
+### Significance
+
+```{r}
+drop1(full_mod, test = "Chisq")
+```
+
+
+### Collinearity
+
+```{r}
+# multicollinearity check
+col_check <- check_collinearity(full_mod)
+plot(col_check)
+```
+
+
+### SST Effect
+
+```{r}
+# SST Anomaliezs
+plot(ggpredict(full_mod, ~sst_anom), add.data = T, jitter = 0.1)
+
+
+```
+
+### Landings Effect
+
+```{r}
+plot(ggpredict(full_mod, ~landings), add.data = T, jitter = 0.1)
+```
+
+
+---
+
+
+# Variance Partitioning
+
+
+```{r}
+# library(vegan)
+
+
+```
+

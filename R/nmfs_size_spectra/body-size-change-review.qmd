@@ -37,7 +37,11 @@ Goal is to check, and highlight any trends that need to be spoken to in the manu
 
 Because of the natural skew in body-size data, we will use median body size, and weight it by the numbers caught.
 
+# Use  Crosstalk instead of tab nesting
+
 ```{r}
+library(crosstalk)
+library(plotly)
 library(targets)
 library(gmRi)
 library(tidyverse)
@@ -310,6 +314,129 @@ w2
 ```
 
 :::
+
+
+
+# Examining Body Size Changes
+
+
+## Average Length
+
+
+```{r}
+#| label: crosstalk-test
+
+shared_data <- crosstalk::SharedData$new(
+  bind_rows(
+    select(shelf_size, survey_area, Year, med_len_cm, med_wt_kg, mean_len_cm, mean_wt_kg),
+    select(regional_size, survey_area, Year, med_len_cm, med_wt_kg, mean_len_cm, mean_wt_kg)
+  )
+)
+
+
+# Make Median Length Plot
+plot <- shared_data %>% 
+  plotly::plot_ly(y = ~mean_len_cm, x = ~Year, color = ~survey_area) %>% 
+  add_lines() %>% 
+  layout(
+    title = 'Mean Length Change', plot_bgcolor = "#e5ecf6", xaxis = list(title = 'Year'), 
+    yaxis = list(title = 'Mean Length (cm)'), 
+    legend = list(title=list(text='<b> Survey Area </b>')))
+
+
+# Set up checkbox
+checkbox_area <- crosstalk::filter_checkbox(
+  id = "Survey_Area",
+  label = "Survey Area",
+  sharedData = shared_data,
+  group = ~survey_area
+)
+
+# Use them
+bscols(checkbox_area, plot, widths = c(4,8))
+```
+
+
+
+## Average Weight
+
+
+```{r}
+
+# Make Median Length Plot
+plot <- shared_data %>% 
+  plotly::plot_ly(y = ~mean_wt_kg, x = ~Year, color = ~survey_area) %>% 
+  add_lines() %>% 
+  layout(
+    title = 'Mean Weight Change', plot_bgcolor = "#e5ecf6", 
+    xaxis = list(title = 'Year'), 
+    yaxis = list(title = 'Mean Weight (kg)'), 
+    legend = list(title=list(text='<b> Survey Area </b>')))
+
+
+# Set up checkbox
+checkbox_area <- crosstalk::filter_checkbox(
+  id = "Survey_Area",
+  label = "Survey Area",
+  sharedData = shared_data,
+  group = ~survey_area, 
+)
+
+# Use them
+bscols(checkbox_area, plot, widths = c(4,8))
+```
+
+
+
+
+### Functional Group Changes
+
+
+```{r}
+
+
+shared_data <- crosstalk::SharedData$new(
+  fgroup_size %>% 
+    filter(survey_area == "GoM") %>% 
+    select(survey_area, hare_group, Year, mean_len_cm, mean_wt_kg), #%>% 
+    #pivot_longer(cols = starts_with("mean"), names_to = "variable", values_to = "measure"), 
+  key = ~hare_group
+)
+
+
+
+
+# Make Median Length Plot
+plot1 <- shared_data %>% 
+  plotly::plot_ly(y = ~mean_len_cm, x = ~Year, color = ~hare_group) %>% 
+  add_lines() %>% 
+  layout(
+    title = 'Gulf of Maine - Mean Length Change', plot_bgcolor = "#e5ecf6", 
+    xaxis = list(title = 'Year'), 
+    yaxis = list(title = 'Mean Length (cm)'), 
+    legend = list(title=list(text='<b> Functional Group </b>')))
+
+plot2 <- shared_data %>% 
+  plotly::plot_ly(y = ~mean_wt_kg, x = ~Year, color = ~hare_group) %>% 
+  add_lines(showlegend = F) %>% 
+  layout(
+    title = 'Gulf of Maine - Mean Weight Change', plot_bgcolor = "#e5ecf6", 
+    xaxis = list(title = 'Year'), 
+    yaxis = list(title = 'Mean Weight (kg)'), 
+    legend = list(title=list(text='<b> Functional Group </b>')))
+
+# 
+subplot(plot1, plot2, nrows = 2) %>% 
+  plotly::highlight(
+    persistent = F, 
+    on = "plotly_click", 
+    off = "plotly_doubleclick")
+
+
+
+```
+
+
 
 
 

@@ -3,11 +3,12 @@
 
 
 # Packages
-library(ggpmisc)
+suppressWarnings(library(ggpmisc))
 suppressWarnings(library(scales))
 suppressWarnings(library(patchwork))
-library(sizeSpectra)
-library(tidyverse)
+suppressWarnings(library(sizeSpectra))
+suppressWarnings(library(tidyverse))
+
 
 
 # Building Block Functions

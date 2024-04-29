@@ -337,6 +337,78 @@ return(catch_size_bins)
 
 
 
+# Function to process summaries for various factor combinations
+# processes abundance and biomass totals taking a number of factors using ...
+get_group_summaries <- function(data_in, ...){
+  
+  # Do some grouping to get totals
+  group_totals <- data_in %>% 
+    group_by(...) %>% 
+    summarise(total_survey_catch = sum(numlen, na.rm = T),
+              total_lw_bio       = sum(sum_weight_kg, na.rm = T),
+              total_strat_abund  = sum(strat_total_abund_s, na.rm = T),
+              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+  
+  # length bins
+  group_lengths <- data_in %>% 
+    group_by(..., length_bin) %>% 
+    summarise(lenbin_survey_catch = sum(numlen),
+              lenbin_lw_bio       = sum(sum_weight_kg),
+              lenbin_strat_abund  = sum(strat_total_abund_s),
+              lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
+      perc_lw_bio       = (lenbin_lw_bio - total_lw_bio) * 100,
+      perc_strat_abund  = (lenbin_strat_abund - total_strat_abund) * 100,
+      perc_strat_lw_bio = (lenbin_strat_lw_bio - total_strat_lw_bio) * 100)
+  
+  # weight bins
+  group_weights <- data_in %>% 
+    group_by(..., weight_bin) %>% 
+    summarise(wtbin_survey_catch = sum(numlen),
+              wtbin_lw_bio       = sum(sum_weight_kg),
+              wtbin_strat_abund  = sum(strat_total_abund_s),
+              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% g
+  mutate(
+    perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+    perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+    perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+    perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+  
+  return(list("length_bins" = drop_na(group_lengths),
+              "weight_bins" = drop_na(group_weights)))
+}
+
+
+
+
+
+####  CCF Information  ####
+
+# Function to grab the correlation data and lag data
+get_ccf_vector <- function(x,y, lagmax = 10){
+  
+  # Run the ccf
+  ccf_data <- ccf(x, y, plot= F , lag.max = lagmax)
+  
+  # Get the signif:
+  # https://www.squaregoldfish.co.uk/programming/r_acf_significance.md/
+  # Not 100% sure n is the same for ccf as it is for acf, but...
+  significance_level <- qnorm((1 + 0.95)/2)/sqrt(sum(!is.na(x)))
+  
+  data.frame(
+    "acf"    = ccf_data$acf,
+    "lag"    = ccf_data$lag,
+    "sigpos" = significance_level,
+    "signeg" = significance_level*-1
+  )
+}
+
 
 
 
@@ -615,76 +687,83 @@ group_isd_estimation <- function(wmin_grams,
 #' @export
 #'
 #' @examples
-warmem_isd_estimates <- function(wmin_grams, 
-                                 min_weight_g = 1, 
-                                 max_weight_g = 10^6,
-                                 isd_xmin = NULL,
-                                 isd_xmax = NULL,
-                                 abundance_vals = "stratified"){
+warmem_isd_estimates <- function(
+    wmin_grams, 
+    min_weight_g = 1, 
+    max_weight_g = 10^6,
+    isd_xmin = NULL,
+    isd_xmax = NULL,
+    abundance_vals = "stratified"){
+  
+  
   
   
   ####__  Set Bodymass Cutoff and Groups
   
   # 1. Set bodymass lower limit
   # Used to filter for lower end of gear selectivity
-  dbin_truncated <- filter(wmin_grams, 
-                           wmin_g >= min_weight_g,
-                           wmin_g <= max_weight_g) %>% 
+  dbin_truncated <- filter(
+    wmin_grams, 
+    wmin_g >= min_weight_g,
+    wmin_g <= max_weight_g) %>% 
     mutate(decade = floor_decade(Year))
   
   
   # 2. Set up the factor groupings we want to compare : 
   
   
-  ####_ 5. Every year, entire survey 
+  ####_ Year
   message("Calculating ISD exponent for each year")
-  g5_res <- dbin_truncated  %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("Year")) 
+  year_res <- dbin_truncated  %>% 
+    group_isd_estimation(
+      min_weight_g = min_weight_g, 
+      max_weight_g = max_weight_g,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      .group_cols = c("Year")) 
   
-  ####_ 6. every year, every region 
+  ####_  Year * region 
   message("Calculating ISD exponent for each year in each region")
-  g6_res <- dbin_truncated  %>% 
-    group_isd_estimation(min_weight_g = min_weight_g, 
-                         max_weight_g = max_weight_g,
-                         isd_xmin = isd_xmin,
-                         isd_xmax = isd_xmax,
-                         abundance_vals = abundance_vals,
-                         .group_cols = c("Year", "survey_area")) 
+  region_res <- dbin_truncated  %>% 
+    group_isd_estimation(
+      min_weight_g = min_weight_g, 
+      max_weight_g = max_weight_g,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      .group_cols = c("Year", "survey_area")) 
   
-  # ####_ 7. every year, only seasons 
-  # message("Calculating ISD exponent for each year in each season")
-  # g7_res <- dbin_truncated %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g, 
-  #                        max_weight_g = max_weight_g,
-  #                        isd_xmin = isd_xmin,
-  #                        isd_xmax = isd_xmax,
-  #                        abundance_vals = abundance_vals,
-  #                        .group_cols = c("Year", "season"))
+  # ####_  year * region * season 
+  message("Calculating ISD exponent for each year in each region, for every season")
+  season_res <- dbin_truncated %>%
+    group_isd_estimation(
+      min_weight_g = min_weight_g,
+      max_weight_g = max_weight_g,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      .group_cols = c("Year", "season", "survey_area"))
   
   
-  # ####_ 8. every year, region * season 
-  # message("Calculating ISD exponent for each year in each region, for every season")
-  # g8_res <- dbin_truncated %>% 
-  #   group_isd_estimation(min_weight_g = min_weight_g, 
-  #                        max_weight_g = max_weight_g,
-  #                        isd_xmin = isd_xmin,
-  #                        isd_xmax = isd_xmax,
-  #                        abundance_vals = abundance_vals,
-  #                        .group_cols = c("Year", "season", "survey_area")) 
+  # ####_ year * region * fishery
+  fishery_res <- dbin_truncated %>%
+    group_isd_estimation(
+      min_weight_g = min_weight_g,
+      max_weight_g = max_weight_g,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      .group_cols = c("Year", "survey_area", "fishery"))
     
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "single years"                   = g5_res,
-      "single years * region"          = g6_res#,
-      #"single years * season "         = g7_res,
-      #"single years * season * region" = g8_res
+      "single years"                    = year_res,
+      "single years * region"           = region_res,
+      "single years * region * season"  = season_res,
+      "single years * region * fishery" = fishery_res
       ), 
     .id = "group ID")
   
@@ -1393,8 +1472,7 @@ group_log2_spectra <- function(wmin_grams,
         log2_slope_strat = lm_b_strat,
         log2_int_strat   = lm_int_strat,
         log2_rsqr_strat  = lm_rsqr_strat,
-        log2_sig_strat   = lm_sig_strat
-      )
+        log2_sig_strat   = lm_sig_strat)
       
       # Return the group results
       return(log2_results)
@@ -1449,39 +1527,42 @@ warmem_log2_estimates <- function(wmin_grams,
     mutate(decade = floor_decade(Year))
   
   
-  ####_ 2. Every year, entire survey 
+  ####_ Years
   message("Calculating log(2) size spectrum slope each year")
-  g5_res <- log2_assigned_trunc  %>% 
-    group_log2_spectra(min_weight_g = min_weight_g, 
-                      .group_cols = c("Year")) 
+  year_res <- log2_assigned_trunc  %>% 
+    group_log2_spectra(
+      min_weight_g = min_weight_g, 
+      .group_cols = c("Year")) 
   
-  ####_ 6. every year, every region 
+  ####_ Year * Region
   message("Calculating log(2) size spectrum slope each year in each region")
-  g6_res <- log2_assigned_trunc  %>% 
-    group_log2_spectra(min_weight_g = min_weight_g, 
-                      .group_cols = c("Year", "survey_area")) 
+  region_res <- log2_assigned_trunc  %>% 
+    group_log2_spectra(
+      min_weight_g = min_weight_g, 
+      .group_cols = c("Year", "survey_area")) 
   
-  # ####_ 7. every year, only seasons 
-  # message("Calculating log(2) size spectrum slope each year in each season")
-  # g7_res <- log2_assigned_trunc %>% 
-  #   group_log2_spectra(min_weight_g = min_weight_g, 
-  #                     .group_cols = c("Year", "season"))
-  # 
-  # 
-  # ####_ 8. every year, region * season 
-  # message("Calculating log(2) size spectrum slope each year in each region, for every season")
-  # g8_res <- log2_assigned_trunc %>%
-  #   group_log2_spectra(min_weight_g = min_weight_g,
-  #                     .group_cols = c("Year", "season", "survey_area"))
+  ####_ Year * region * season
+  message("Calculating log(2) size spectrum slope each year in each region, for every season")
+  season_res <- log2_assigned_trunc %>%
+    group_log2_spectra(
+      min_weight_g = min_weight_g,
+      .group_cols = c("Year", "season", "survey_area"))
+  
+  ####_ Year * region * fishery
+  # message("Calculating log(2) size spectrum slope each year in each region, for fishery exposures")
+  # fishery_res <- log2_assigned_trunc %>%
+  #   group_log2_spectra(
+  #     min_weight_g = min_weight_g,
+  #     .group_cols = c("Year", "survey_area", "fishery"))
   
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "single years"                   = g5_res,
-      "single years * region"          = g6_res#,
-      # "single years * season"          = g7_res,
-      # "single years * season * region" = g8_res
+      "single years"                     = year_res,
+      "single years * region"            = region_res,
+      "single years * region * season"   = season_res#,
+      #"single years * region * fishery " = fishery_res,
       ), 
     .id = "group ID")
   
@@ -1498,6 +1579,36 @@ warmem_log2_estimates <- function(wmin_grams,
 
 
 
+# Function to process summaries for various factor combinations
+log2_bin_summaries <- function(data_in, ...){
+  
+  # Do some grouping to get totals
+  group_totals <- data_in %>% 
+    group_by(...) %>% 
+    summarise(total_survey_catch = sum(numlen, na.rm = T),
+              total_lw_bio = sum(sum_weight_kg, na.rm = T),
+              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
+              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
+              .groups = "drop") 
+  
+  # weight bins
+  group_weights <- data_in %>% 
+    mutate(weight_bin = bin_label) %>% 
+    group_by(..., left_lim) %>% 
+    summarise(wtbin_survey_catch = sum(numlen),
+              wtbin_lw_bio       = sum(sum_weight_kg),
+              wtbin_strat_abund  = sum(strat_total_abund_s),
+              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
+              .groups = "drop") %>% 
+    left_join(group_totals) %>% 
+    mutate(
+      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
+      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
+      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
+      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
+  
+  return(list("weight_bins" = drop_na(group_weights)))
+}
 
 
 
@@ -1878,39 +1989,39 @@ warmem_l10_estimates <- function(wmin_grams,
   
   # 2. Set up the factor groupings we want to compare : 
   
-  ####_ 5. Every year, entire survey 
+  ####_ Every year, entire survey 
   message("Calculating log(10) size spectrum slope each year")
-  g5_res <- l10_assigned_trunc  %>% 
+  year_res <- l10_assigned_trunc  %>% 
     group_l10_spectra(min_weight_g = min_weight_g, 
                      .group_cols = c("Year")) 
   
-  ####_ 6. every year, every region 
+  ####_ Year * region 
   message("Calculating log(10) size spectrum slope each year in each region")
-  g6_res <- l10_assigned_trunc  %>% 
+  region_res <- l10_assigned_trunc  %>% 
     group_l10_spectra(min_weight_g = min_weight_g, 
                      .group_cols = c("Year", "survey_area")) 
   
-  ####_ 7. every year, only seasons 
-  message("Calculating log(10) size spectrum slope each year in each season")
-  g7_res <- l10_assigned_trunc %>% 
-    group_l10_spectra(min_weight_g = min_weight_g, 
-                     .group_cols = c("Year", "season"))
   
-  
-  ####_ 8. every year, region * season 
+  ####_ Year * region * season 
   message("Calculating log(10) size spectrum slope each year in each region, for every season")
-  g8_res <- l10_assigned_trunc %>%
+  season_res <- l10_assigned_trunc %>%
     group_l10_spectra(min_weight_g = min_weight_g,
-                     .group_cols = c("Year", "season", "survey_area"))
+                     .group_cols = c("Year", "survey_area", "season"))
+  
+  ####_ Year * region * season 
+  message("Calculating log(10) size spectrum slope each year in each region, for every fishery")
+  fishery_res <- l10_assigned_trunc %>%
+    group_l10_spectra(min_weight_g = min_weight_g,
+                      .group_cols = c("Year", "survey_area", "fishery"))
   
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "single years"                   = g5_res,
-      "single years * region"          = g6_res,
-      "single years * season"          = g7_res,
-       "single years * season * region" = g8_res), 
+      "single years"                    = year_res,
+      "single years * region"           = region_res,
+      "single years * region * season"  = season_res,
+      "single years * region * fishery" = fishery_res), 
     .id = "group ID")
   
   # Return the summary table
@@ -2067,7 +2178,7 @@ plot_denormalized_ss <- function(l10_assigned, stratified = TRUE){
 
 
 ####______________________####
-####  Size Composition ####
+####  Mean / Median Size Metrics ####
 
 
 
@@ -2199,32 +2310,49 @@ mean_sizes_all_groups <- function(size_data,
   
   #####__ 1. Every year, entire survey
   message("Processing body size change for: Each year")
-  g1_res <- group_size_data  %>% 
+  year_res <- group_size_data  %>% 
     group_size_metrics(
       .group_cols = c("Year"),
       weighting_column = weighting_column) 
   
-  #####__ 2. every year, every region
+  #####_  Year * region
   message("Processing body size change for: Each year in each region")
-  g2_res <- group_size_data  %>% 
+  region_res <- group_size_data  %>% 
     group_size_metrics(
       .group_cols = c("Year", "survey_area"),
       weighting_column = weighting_column) 
   
-  ####__3. Year * Region * Functional Group
+  #####_  Year * region * season
+  message("Processing body size change for: Each year in each region, by season")
+  season_res <- group_size_data  %>% 
+    group_size_metrics(
+      .group_cols = c("Year", "survey_area", "season"),
+      weighting_column = weighting_column) 
+  
+  ####_ Year * Region * Functional Group
   message("Processing body size change for: Each Year in each area, for each functional group")
-  g3_res <- group_size_data %>% 
+  fgroup_res <- group_size_data %>% 
     group_size_metrics(
       .group_cols = c("Year", "survey_area", "hare_group"),
+      weighting_column = weighting_column) 
+  
+  ####_ Add Fishery
+  message("Processing body size change for: Each Year in each area, for each functional group")
+  fishery_res <- group_size_data %>% 
+    group_size_metrics(
+      .group_cols = c("Year", "survey_area", "fishery"),
       weighting_column = weighting_column) 
   
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
-      "single years"                             = g1_res,
-      "single years * region"                    = g2_res,
-      "single years * region * functional group" = g3_res), 
+      "single years"                             = year_res,
+      "single years * region"                    = region_res,
+      "single years * region * functional group" = fgroup_res,
+      "single years * region * season"           = season_res,
+      "single years * region * fishery"          = fishery_res
+      ), 
     .id = "group ID")
   
   # Return the summary table
@@ -2279,6 +2407,10 @@ set_vonbert_groups <- function(cutoff_rank){
 estimate_vonbert_coef <- function(species_size_age_data){
   "work in progress"
 }
+
+
+
+
 
 
 

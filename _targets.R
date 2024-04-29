@@ -52,29 +52,30 @@ list(
   
   # These are linked to the remaining analysis steps
   # with exception to analysis of average length/width, those are not filtered
-  tar_target(analysis_options, 
-             command = list(
-               
-               # Controls the data that reaches the analysis, and is used for context
-               # Also Sets min/max for ISD exponent estimates
-               min_input_weight_g = 2^0,
-               max_input_weight_g = 10^4, # To pick a reasonable sounding limit
-               # max_input_weight_g = 2^13, # To match log2 bins
-               
-               # Set/enforce the bin structure used for spectra analysis
-               # These enforce what bins go to binned size spectra analysis
-               # min and max set the left limits of the bin range: 
-               # i.e. max_l10_bin of 3 = 14^3 up to 10^4
-               l10_bin_width = 1,
-               min_l10_bin   = 0,
-               max_l10_bin   = 3,
-               
-               # log2 bin limits - LBNbiom method
-               log2_bin_width = 1,
-               min_log2_bin   = 0,
-               max_log2_bin   = 12
-               )
-             ),
+  tar_target(
+    analysis_options, 
+    command = list(
+      
+      # 1. Controls the data that reaches the analysis, and is used for context
+      # Also Sets min/max for ISD exponent estimates
+      min_input_weight_g = 2^0,
+      max_input_weight_g = 10^4, # To pick a reasonable sounding limit
+      # max_input_weight_g = 2^13, # To match log2 bins
+      
+      # 2. Set/enforce the bin structure used for spectra analysis
+      # These enforce what bins go to binned size spectra analysis
+      # min and max set the left limits of the bin range: 
+      # i.e. max_l10_bin of 3 = 14^3 up to 10^4
+      l10_bin_width = 1,
+      min_l10_bin   = 0,
+      max_l10_bin   = 3,
+      
+      # 3. log2 bin limits - LBNbiom method
+      log2_bin_width = 1,
+      min_log2_bin   = 0,
+      max_log2_bin   = 12
+      )
+    ),
   
   
   
@@ -83,8 +84,9 @@ list(
   
   # Pointer to data on Box,
   # Can be changed to trigger a full workflow reset
-  tar_target(boxdata_location, 
-             command = "cloudstorage"),
+  tar_target(
+    boxdata_location, 
+    command = "cloudstorage"),
   
   
   
@@ -226,9 +228,10 @@ list(
   
   
   # Join the MLE and Binned Results into a table
-  tar_target(size_spectrum_indices,
-             full_join(warmem_isd_results, warmem_log2_slopes,
-                       by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
+  tar_target(
+    size_spectrum_indices,
+    full_join(warmem_isd_results, warmem_log2_slopes,
+    by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
   
 
   

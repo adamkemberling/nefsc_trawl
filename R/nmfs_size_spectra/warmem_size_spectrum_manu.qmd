@@ -53,7 +53,7 @@ library(Hmisc)
 library(MuMIn)
 library(gtsummary)
 library(broom.helpers)
-# changepoint package
+library(sysfonts)
 library(EnvCpt)
 
 # Package Conflicts
@@ -154,107 +154,6 @@ showtext::showtext_auto()
 
 ```{r}
 #| label: functions-cell
-
-# Function to process summaries for various factor combinations
-get_group_summaries <- function(data_in, ...){
-  
-  # Do some grouping to get totals
-  group_totals <- data_in %>% 
-    group_by(...) %>% 
-    summarise(total_survey_catch = sum(numlen, na.rm = T),
-              total_lw_bio = sum(sum_weight_kg, na.rm = T),
-              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
-              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
-              .groups = "drop") 
-  
-  # length bins
-  group_lengths <- data_in %>% 
-    group_by(..., length_bin) %>% 
-    summarise(lenbin_survey_catch = sum(numlen),
-              lenbin_lw_bio       = sum(sum_weight_kg),
-              lenbin_strat_abund  = sum(strat_total_abund_s),
-              lenbin_strat_lw_bio = sum(strat_total_lwbio_s), 
-              .groups = "drop") %>% 
-    left_join(group_totals) %>% 
-    mutate(
-      perc_total_catch  = (lenbin_survey_catch - total_survey_catch) * 100,
-      perc_lw_bio       = (lenbin_lw_bio - total_lw_bio) * 100,
-      perc_strat_abund  = (lenbin_strat_abund - total_strat_abund) * 100,
-      perc_strat_lw_bio = (lenbin_strat_lw_bio - total_strat_lw_bio) * 100)
-  
-  # weight bins
-  group_weights <- data_in %>% 
-    group_by(..., weight_bin) %>% 
-    summarise(wtbin_survey_catch = sum(numlen),
-              wtbin_lw_bio       = sum(sum_weight_kg),
-              wtbin_strat_abund  = sum(strat_total_abund_s),
-              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
-              .groups = "drop") %>% 
-    left_join(group_totals) %>% g
-    mutate(
-      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
-      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
-      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
-      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
-
-return(list("length_bins" = drop_na(group_lengths),
-            "weight_bins" = drop_na(group_weights)))
-}
-
-
-
-# Function to process summaries for various factor combinations
-log2_bin_summaries <- function(data_in, ...){
-  
-  # Do some grouping to get totals
-  group_totals <- data_in %>% 
-    group_by(...) %>% 
-    summarise(total_survey_catch = sum(numlen, na.rm = T),
-              total_lw_bio = sum(sum_weight_kg, na.rm = T),
-              total_strat_abund = sum(strat_total_abund_s, na.rm = T),
-              total_strat_lw_bio = sum(strat_total_lwbio_s, na.rm = T), 
-              .groups = "drop") 
-  
-  # weight bins
-  group_weights <- data_in %>% 
-    mutate(weight_bin = bin_label) %>% 
-    group_by(..., left_lim) %>% 
-    summarise(wtbin_survey_catch = sum(numlen),
-              wtbin_lw_bio       = sum(sum_weight_kg),
-              wtbin_strat_abund  = sum(strat_total_abund_s),
-              wtbin_strat_lw_bio = sum(strat_total_lwbio_s),
-              .groups = "drop") %>% 
-    left_join(group_totals) %>% 
-    mutate(
-      perc_total_catch  = (wtbin_survey_catch / total_survey_catch) * 100,
-      perc_lw_bio       = (wtbin_lw_bio / total_lw_bio) * 100,
-      perc_strat_abund  = (wtbin_strat_abund / total_strat_abund) * 100,
-      perc_strat_lw_bio = (wtbin_strat_lw_bio / total_strat_lw_bio) * 100)
-
-return(list("weight_bins" = drop_na(group_weights)))
-}
-
-
-
-
-# Function to grab the correlation data and lag data
-get_ccf_vector <- function(x,y){
-  
-  # Run the ccf
-  ccf_data <- ccf(x,y,plot= F , lag.max = 15)
-  
-  # Get the signif:
-  # https://www.squaregoldfish.co.uk/programming/r_acf_significance.md/
-  # Not 100% sure n is the same for ccf as it is for acf, but...
-  significance_level <- qnorm((1 + 0.95)/2)/sqrt(sum(!is.na(x)))
-  
-  data.frame(
-    "acf" = ccf_data$acf,
-    "lag" = ccf_data$lag,
-    "sigpos" = significance_level,
-    "signeg" = significance_level*-1
-  )
-}
 
 
 # Plotting the correlation matrix over a specific decade
@@ -410,9 +309,7 @@ Total abundance and biomass for each sub-region were calculated for each year us
 fgroup_area <- log2_bin_summaries(data_in = catch_size_bins, Year, survey_area, hare_group)
 fgroup_all  <- log2_bin_summaries(data_in = catch_size_bins, Year, hare_group)
 fgroup_all  <- fgroup_all %>% map(function(x){
-  mutate(x, 
-         survey_area = "Northeast Shelf")
-})
+  mutate(x, survey_area = "Northeast Shelf")})
 
 
 # Join the overall values back in
@@ -469,53 +366,6 @@ functional_group_size <- functional_group_size %>%
 ```
 
 
-
-```{r}
-#| label: plotting-bigfish-smallfish
-#| eval: false
-
-# Idea: it would be great top be able to speak more directly to population trends for large/small individuals within a functional group...
-
-
-# One avenue is to break it into large/small
-# Could use the median body size
-size_trends <- catch_size_bins %>% 
-  mutate(fish_size =  ifelse(wmin_g > 1000, "Over 1kg", "Less than 1 kg")) %>% 
-  group_by(Year,area, hare_group, fish_size) %>% 
-  summarise(
-    total_abund = sum(strat_total_abund_s)/1e6,
-    total_biomass = sum(strat_total_lwbio_s), 
-    .groups = "drop") %>% 
-  pivot_longer(cols = c(total_abund, total_biomass), names_to = "var", values_to = "vals") 
-
-
-# Abundance
-size_trends %>% 
-  filter(var == "total_abund") %>% 
-  #filter(var == "total_biomass") %>% 
-  filter(hare_group %in% c("groundfish", "elasmobranch")) %>% 
-  ggplot(aes(Year, vals)) +
-  geom_point(aes(color = fish_size), size = 0.5) +
-  geom_smooth(aes(color = fish_size), linewidth = 1, se = F) +
-  scale_color_gmri() +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_grid(area~hare_group) +
-  labs(color = "Fish Size", y = "Abundance (millions)" )
-
-
-# Biomass
-size_trends %>% 
-  #filter(var == "total_abund") %>% 
-  filter(var == "total_biomass") %>% 
-  filter(hare_group %in% c("groundfish", "elasmobranch")) %>% 
-  ggplot(aes(Year, vals)) +
-  geom_point(aes(color = fish_size), size = 0.5) +
-  geom_smooth(aes(color = fish_size), linewidth = 1, se = F) +
-  scale_color_gmri() +
-  scale_y_continuous(labels = scales::comma_format()) +
-  facet_grid(area~hare_group) +
-  labs(color = "Fish Size", y = "Biomass (kg)" )
-```
 
 ```{r}
 #| label: load the size spectrum indices
@@ -603,6 +453,10 @@ landings <- read_xlsx(
   path = str_c(res_path, "GARFO_landings/KMills_landings by area 1964-2021_JUN 2022.xlsx"), sheet = 5) %>% 
   rename_all(tolower)
 
+# # Why no GB Landings in 2011?
+# landings %>% filter(
+#   `stat area` %in% fish_zones$"Georges Bank", year == 2011)
+
 
 # Add the labels into the landings data and remove what we don't need there:
 landings <- landings %>% 
@@ -617,9 +471,9 @@ landings <- landings %>%
 
 
 
+
 # Get Summaries
 landings_summ <- landings %>% 
-  drop_na() %>% 
   rename(
     "weight_lb" = `landed lbs`,
     "live_lb" = `live lbs`) %>% 
@@ -699,6 +553,9 @@ landings_idx <- landings_summ %>%
     .groups = "drop") %>% 
   mutate(var = "landings")
 
+# NA's in 2011 for GB
+#landings_idx %>% filter(area == "Georges Bank") %>% distinct(year) %>% pull()
+
 
 #---
 # 3. Temperature
@@ -738,16 +595,14 @@ ss_idx <- region_indices %>%
 #---
 # All Metrics Together
 all_drivers <- bind_rows(
-  list(
-    clim_idx,
-    landings_idx,
-    sst_idx,
-    zp_idx,
-    ss_idx))
+  list(clim_idx,landings_idx,sst_idx,zp_idx,ss_idx))
 
+
+# At this stage, no NA's landings in 2011
+#all_drivers %>% filter(area == "Georges Bank", var == "landings") %>% distinct(year) %>% pull()
 ```
 
-
+# ISSUE: driver-pivot introducing NA's
 
 ```{r}
 #| label: driver-scaling
@@ -762,9 +617,10 @@ drivers_wide <- all_drivers %>%
   filter(
     #year >= 1982,
     year <= 2019) %>% 
-  mutate(id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
+  mutate(
+    id = str_replace_all(str_c(area, "_", var), " ", "_")) %>% 
     select(-c(area, area_titles, var)) %>% 
-    pivot_wider(names_from = id, values_from = value) %>% 
+    pivot_wider(names_from = id, values_from = value, values_fill = NA) %>% 
   column_to_rownames(var = "year")
 
 
@@ -781,7 +637,7 @@ drivers_scaled <- bind_cols(dont_scale, to_scale) %>%
 
 
 # Export for use in spectra_driver_modeling.R
-#drivers_scaled %>% write_csv(here::here("data/env_drivers_scaled.R"))
+#drivers_scaled %>% write_csv(here::here("data/env_drivers_scaled.csv"))
 ```
 
 ```{r}
@@ -839,7 +695,7 @@ driver_period_list <- map(driver_periods, function(yrs){
 
 # Tidy standalone dataset for model eval
 # Export for use in spectra_driver_modeling.R
-#drivers_wide %>% write_csv(here::here("data/env_drivers_raw.R"))
+#drivers_wide %>% write_csv(here::here("data/env_drivers_raw.csv"))
 unscaled_regression_df <- drivers_wide %>% 
   select(!ends_with(c("zp_small","zp_large"))) %>% 
   rownames_to_column("year")
@@ -884,13 +740,12 @@ unscaled_regression_df <- unscaled_regression_df %>%
       str_detect(driver_var, "Gulf") ~ "Gulf of Maine",
       str_detect(driver_var, "Southern") ~ "Southern New England",
       str_detect(driver_var, "Mid-Atlantic") ~ "Mid-Atlantic Bight"),
-    driver_area = factor(driver_area, levels = c("All", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")),
+    driver_area = factor(driver_area, 
+      levels = c("All", "Gulf of Maine", "Georges Bank", 
+                 "Southern New England", "Mid-Atlantic Bight")),
     
     # E. Add Decade in
-    decade = floor_decade(year),
-    #
-    #regime = ifelse(year < 2010, "regime_1", "regime_2" )
-    ) 
+    decade = floor_decade(year)) 
 
 
 # Filter it so predictors are only within matching regions, 
@@ -903,7 +758,7 @@ unscaled_regression_df <- unscaled_regression_df %>%
 
 
 # Last wrangling:
-# columns for: year, slope, isd, spectra region, drver_region, GSI, sst_anom, landings
+# columns for: year, slope, isd, spectra region, driver_region, GSI, sst_anom, landings
 # GSI is so annoying here, just rejoin it without the area column
 unscaled_regression_df <- unscaled_regression_df %>% 
   select(-c(spectra_param, driver_var)) %>% 
@@ -2131,9 +1986,11 @@ regression_df <- regression_df %>%
   rename(
     landings = `Commercial Landings`,
     b = `ISD Exponent`)
-gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") 
+
+# Isolate Regions
+gom_df <- filter(regression_df, spectra_area == "Gulf of Maine") %>% drop_na()
 gb_df <- filter(regression_df, spectra_area == "Georges Bank") %>% drop_na()
-sne_df <- filter(regression_df, spectra_area == "Southern New England") 
+sne_df <- filter(regression_df, spectra_area == "Southern New England")  %>% drop_na()
 mab_df <- filter(regression_df, spectra_area == "Mid-Atlantic Bight") %>% drop_na()
 
 
@@ -2160,6 +2017,9 @@ cpt_res <- list(
 
 # # Plot GOM, the only one with changepoints
 # plot(gom_cpt, main = "Gulf of Maine, Break Point Analysis")
+# plot(gb_cpt, main = "Georges Bank, Break Point Analysis")
+# plot(sne_cpt, main = "Southern New England, Break Point Analysis")
+# plot(mab_cpt, main = "Mid-Atlantic Bight, Break Point Analysis")
 
 
 

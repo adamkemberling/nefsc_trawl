@@ -213,7 +213,7 @@ all_check$`blue crab`
 all_check$
 
 
-# are we losing it duting filtering?
+# are we losing it during filtering?
 check_raw(survdat_21_raw, "spiny dogfish")
 check_raw(survdat_21_bio_raw, "spiny dogfish")
 check_raw(survdat_21_raw, "longfin squid")

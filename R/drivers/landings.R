@@ -58,10 +58,10 @@ landings <- read_xlsx(
 
 # Make a list of zones to roughly match the survey areas:
 fish_zones <- list(
-  "Gulf of Maine" = c(511:515, 464, 465),
-  "Georges Bank" = c(521, 522, 525, 561, 562),
+  "Gulf of Maine"        = c(511:515, 464, 465),
+  "Georges Bank"         = c(521, 522, 525, 561, 562),
   "Southern New England" = c(611, 612, 613, 616, 526, 537, 538, 539),
-  "Mid-Atlantic Bight" = c(614:615, 621, 622, 625, 626, 631, 632))
+  "Mid-Atlantic Bight"   = c(614:615, 621, 622, 625, 626, 631, 632))
 
 
 # Join to landings
@@ -88,6 +88,8 @@ landings <- landings %>%
 # Goal:
 # Separate landings into groups that might better explain in a mechanistic sense
 # how they would impact a trawl-sampled community
+
+
 
 # Add the labels into the landings data and remove what we don't need there:
 landings %>% 
@@ -121,19 +123,28 @@ landings %>%
 
 
 # Maybe a plot is better:
-landings_yrly <- landings %>% 
-  expand(year, survey_area, sppname) %>% 
-  left_join(landings) %>% 
-  filter(survey_area!= "Northeast Shelf") %>% 
-  group_by(survey_area, year,  sppname) %>% 
-  summarise(avg_landings_lb = mean(`landed lbs`, na.rm = T),
-            across(.cols = c(landings_lb = `landed lbs`, 
-                             value = value), 
-                   .fns = sum, 
-                   .names = "total_{.col}"),
-            .groups = "drop") %>% 
-  mutate(across(4:6, ~ifelse(is.na(.x), 0, .x)))
 
+# Total landings by region
+landings_annual <- landings %>% 
+  group_by(survey_area, year) %>% 
+  summarise(
+    avg_landings_lb = mean(`landed lbs`, na.rm = T),
+    across(.cols = c(landings_lb = `landed lbs`, 
+                     value = value), 
+           .fns = sum, 
+           .names = "total_{.col}"),
+    .groups = "drop")
+
+landings_annual %>% 
+  ggplot() +
+  geom_line(aes(year, total_landings_lb), show.legend = F) +
+  facet_wrap(~survey_area) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(x = "Year", y = "All Species Yearly Total Landings (lb.)")
+
+
+# Does Georges Bank have an NA this time?
+landings %>% filter(survey_area == "Georges Bank", is.na(`landed lbs`)) 
 
 
 # Assign groundfish label (Jonathan Labaree, market based)
@@ -153,19 +164,29 @@ gf_species <- tolower(
 
 
 # What does that give us if the groundfish are labeled?
-landings_yrly <- mutate(
-  landings_yrly, is_gf = ifelse(tolower(sppname) %in% gf_species, "groundfish", "other"))
-
-
+# Split out species and label groundfish
+landings_species <-  landings %>% 
+  expand(year, survey_area, sppname) %>% 
+  left_join(landings) %>% 
+  filter(survey_area!= "Northeast Shelf") %>% 
+  group_by(survey_area, year,  sppname) %>% 
+  summarise(avg_landings_lb = mean(`landed lbs`, na.rm = T),
+            across(.cols = c(landings_lb = `landed lbs`, 
+                             value = value), 
+                   .fns = sum, 
+                   .names = "total_{.col}"),
+            .groups = "drop") %>% 
+  mutate(across(4:6, ~ifelse(is.na(.x), 0, .x)),
+         is_gf = ifelse(tolower(sppname) %in% gf_species, "groundfish", "other"))
 
 
 
 # Plots
-landings_yrly %>% 
+landings_species %>% 
   ggplot() +
-  geom_line(aes(year, total_landings_lb, group = sppname, color = is_gf), show.legend = F) +
-  #facet_grid(survey_area~is_gf)
-  facet_grid(is_gf~survey_area) +
+  geom_line(aes(year, total_landings_lb, group = sppname, color = is_gf), 
+            show.legend = F) +
+  facet_grid(is_gf~survey_area, scales = "free_y") +
   scale_y_continuous(labels = scales::label_comma()) +
   labs(x = "Year", y = "Single Species Yearly Total Landings (lb.)")
 
