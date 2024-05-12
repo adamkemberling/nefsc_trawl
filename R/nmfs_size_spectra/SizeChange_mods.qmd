@@ -105,7 +105,7 @@ df <- df %>%
   group_by(survey_area) %>% 
   mutate(
     sst_z = as.numeric(base::scale(sst)),
-    ersst_z = as.numeric(base::scale(ersst)),
+    bt_z = as.numeric(base::scale(ersst)),
     bt_z = as.numeric(base::scale(bot_temp))) %>% 
   ungroup()
 
@@ -152,7 +152,7 @@ df  %>%
   geom_smooth(method = "lm", linewidth = 1, se = F) +
   
   scale_color_gmri() +
-  labs(title = "Body Size Declining - Early",
+  labs(title = "Median Body-Weight Declines in the 1980's",
        y = "Median Bodw Weight (kg)",
        x = "Year",
        color = "Region")
@@ -167,7 +167,7 @@ df  %>%
   geom_ma(n = 5, ma_fun = SMA) +
   geom_smooth(method = "lm", linewidth = 1, se = F) +
   scale_color_gmri() +
-  labs(title = "Spectra Slope Steepening - Except MAB",
+  labs(title = "Size Spectra Slope Steepens in 1990's",
        y = "Exponent of Size Spectra (b)",
        x = "Year",
        color = "Region")
@@ -182,7 +182,7 @@ df  %>%
   geom_ma(n = 5, ma_fun = SMA) +
   geom_smooth(method = "lm", linewidth = 1, se = F) +
   scale_color_gmri() +
-  labs(title = "SSTs Rising Area-Wide",
+  labs(title = "SSTs Rising in All Regions Since 1970",
        y = "Sea Surface Temperature (ERSSTv5)",
        x = "Year",
        color = "Region")
@@ -199,7 +199,7 @@ df  %>%
   geom_ma(n = 5, ma_fun = SMA) +
   geom_smooth(method = "lm", linewidth = 1, se = F) +
   scale_color_gmri() +
-  labs(title = "Bottom Temperatures Rising - Except MAB",
+  labs(title = "Bottom Temperatures Rising in All Regions",
        y = "Bottom Temperature (DuPontavice et al)",
        x = "Year",
        color = "Region")
@@ -223,7 +223,7 @@ df %>%
   scale_x_continuous(limits = c(1970, 2020)) +
   facet_wrap(~survey_area) +
   labs(
-    title = "Regional Landings Declining - Bimodal in MAB",
+    title = "Regional Landings Declining.\nMAB Landings largely Menhaden Fishery",
     subtitle = "Mid-Atlantic Exception, primarily forage fish fishery (menhaden)",
     x = "Year",
     color = "Region", fill = "Region")
@@ -245,13 +245,11 @@ df %>%
   scale_y_continuous(labels = scales::label_comma()) +
   scale_x_continuous(limits = c(1970, 2020)) +
   labs(
-    title = "Regional Landings Declining - Peak Overall in 90's-2000's",
-    subtitle = "Mid-Atlantic Exception, primarily forage fish fishery (menhaden)",
+    title = "Overall Landings Peak in 90's-2000's\nWhen Menhaden Fishery Comes Online",
+    subtitle = "Mid-Atlantic is primarily forage fish fishery (menhaden)",
     x = "Year",
+    y = "Landings (lb.)",
     color = "Region", fill = "Region")
-
-
-# Trying to keep landings: binned/categorical label
 
 
 
@@ -262,7 +260,7 @@ df %>%
 
 ### High Volume Species
 
-Bart raised that his landings looked different, can verify that we didn't mess them up in data prep.
+Bart raised that his landings looked different, can verify that we didn't mess them up in data prep. The following figure(s) work directly from the landings spreadsheet.
 
 
 ```{r}
@@ -369,17 +367,19 @@ hl_plot_t / hl_plot_b + plot_annotation(
 
 
 
-
-
 # Pre-Modeling Collinearity Concerns
+
+In some previous EDA we became concerned about both landings and SST changes being colinear with time. Increasing error around parameter estimates.
 
 ::: {.panel-tabset}
 
-### Landings and Anomalies Colinearity
+### Landings and Bottom Temperature Colinearity
+
+Landings and bottom temperature are most correlated in georges bank at R2 = 0.41. 
 
 ```{r}
 # See roll anom and roll landings relationship
-ggplot(df, aes(ersst_z, landings)) + 
+ggplot(df, aes(bot_temp, landings)) + 
   geom_point() + 
   geom_smooth(method = "lm") +
   facet_wrap(~survey_area) +
@@ -390,6 +390,8 @@ ggplot(df, aes(ersst_z, landings)) +
 ```
 
 ### Landings Clustering/Bi-modality
+
+We also chatted about maybe clustering the landings data as an alternative model structure to avoid colinearity. Scaled landings are bi-modal in most regions and could probably be broken. However it would be tricky/biased to try and cluster them in actual units and would further obfuscate that landings are of different species and using different gears between regions.
 
 ```{r}
 # Exploring bimodality of landings
@@ -478,42 +480,61 @@ left_join(df, region_clusters) %>% #glimpse()
 
 # Spectra Slope Models
 
+The "full model" for size spectra exponent change includes the following:
+
+Fixed effects and interactions:\*
+ 1. Regionally Scaled Bottom Temperature & Region Interation
+ 2. Regionally scaled landings by weight & Region interaction
+ 
+Random Effects:\*
+ 1. Yearly intercepts
+ 
+ 
+The full model was assessed for colinearity issues using variance inflation factor test using the (VIF) performed using the {performance} package.
+
+Package documentation on interaction terms:
+
+ > If interaction terms are included in a model, high VIF values are expected. This portion of multicollinearity among the component terms of an interaction is also called "inessential ill-conditioning", which leads to inflated VIF values that are typically seen for models with interaction terms (Francoeur 2013).
+
+Models were fit using log-likelihood for parameter significance testing via likelihood ratio tests. Following model evaluation/selection the model was refit for parameter estimation.
 
 ```{r}
 
-
-# To smooth or not to smooth, I vote no
-
 # Complete model
 full_mod <- lme4::lmer(
-  b ~ land_5  * region * ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+  b ~ land_5  * region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z), 
+  REML = FALSE)
 
 
 # The full model has trouble with all the interactions
 # If we simplify either sst/landings to be intercept only it helps
 # Intercept only for SST
 slope_landings <- lme4::lmer(
-  b ~ land_5  * region + ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+  b ~ land_5  * region + bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z), 
+  REML = FALSE)
 
 # Intercept only for landings
-slope_sst <- lme4::lmer(
-  b ~ land_5  + region * ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+slope_bt <- lme4::lmer(
+  b ~ land_5  + region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z), 
+  REML = FALSE)
 
 
 # Need models with reduced complexity to further compare
 landings_only_mod <- lme4::lmer(
   b ~ land_5  * region + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+  data = drop_na(df, land_5, bt_z), 
+  REML = FALSE)
 
-sst_only_mod <- lme4::lmer(
-  b ~ region * ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+bt_only_mod <- lme4::lmer(
+  b ~ region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z), 
+  REML = FALSE)
 
 
-# # Autocorrelative Error Structure- Performs badly
+# # Autocorrelative Error Structure - Performs badly
 # Ben bolker to thatnk, of course:
 # https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
 # full_mod <- nlme::lme(b ~ landings  * region + sst_anom,
@@ -522,12 +543,6 @@ sst_only_mod <- lme4::lmer(
 #                      correlation=corAR1(), method = "ML")
 
 
-# # Summary
-# tidy(full_mod) %>% gt()
-
-# # % variance of random effect: 28%
-# # year (intercept) / year (intercept) + residual
-# 0.0210/(0.0210 + 0.0528) 
 
 
 ```
@@ -537,12 +552,24 @@ sst_only_mod <- lme4::lmer(
 ### Assess Collinearity Bottleneck
 
 ```{r}
-# multicollinearity check
-plot(check_collinearity(full_mod))
+# multicollinearity checks
+
+# Full Model
+plot(check_collinearity(full_mod)) +
+  geom_hline(yintercept = 3, linetype = 3, aes(color = "Zuur Threshold"), linewidth = 1)
+
+```
+
+
+```{r}
+#| eval: false
+
+
+# Less complex models
 plot(check_collinearity(slope_landings))
-plot(check_collinearity(slope_sst))
-plot(check_collinearity())
-plot(check_collinearity(full_mod))
+plot(check_collinearity(slope_bt))
+plot(check_collinearity(bt_only_mod))
+plot(check_collinearity(landings_only_mod))
 
 ```
 
@@ -550,37 +577,42 @@ plot(check_collinearity(full_mod))
 
 ```{r}
 
-# Model Comparison & significance testing with a likelihood ratio test
-
-# Based on f-test
-anova(slope_landings, full_mod)
-anova(slope_sst, full_mod)
-anova(landings_only_mod, full_mod)
-anova(sst_only_mod, full_mod)
-
-
-# Based on chi-square test
-anova(no_sst_mod, full_mod, test = "LRT")
-
-
-# # Can also check significance this way
-# drop1(full_mod, test = "Chisq")
-
-
 # Do AICc
 MuMIn::AICc(
-  full_mod,slope_landings, slope_sst, sst_only_mod, landings_only_mod) %>%  
-  mutate(DeltaAICc = AICc - max(.$AICc)) %>% 
-  rownames_to_column("Model ID") %>% gt()
+  full_mod,slope_landings, slope_bt, bt_only_mod, landings_only_mod) %>%  
+  mutate(DeltaAICc = AICc - min(.$AICc)) %>% 
+  rownames_to_column("Model ID") %>% 
+  arrange(DeltaAICc) %>% 
+  gt() %>% 
+  tab_header(
+    title = "Exponent of Size Spectra Model Comparisons", 
+    subtitle = "Delta AICc Comparisons") %>% 
+  tab_style(
+    style = cell_fill(color = "limegreen", alpha = 0.3),
+    locations = cells_body(
+      columns = everything(),
+      rows = DeltaAICc < 2)) 
 ```
+
+
+### Refit Using REML - Report Summary
+
+```{r}
+# Complete model
+full_mod_reml <- lme4::lmer(
+  b ~ land_5  * region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z), 
+  REML = TRUE)
+```
+
 
 
 ### Fit & Predictions
 
 ```{r}
 
-qqnorm(resid(full_mod))
-qqline(resid(full_mod))
+qqnorm(resid(full_mod_reml))
+qqline(resid(full_mod_reml))
 
 
 ggplot(df, 
@@ -592,23 +624,54 @@ ggplot(df,
         data = cbind(drop_na(df, land_5, ersst), 
                      pred = predict(full_mod)), 
         aes(y = pred), size = 1) +  # adding predicted line from mixed model 
-      theme(legend.position = "none",
-            panel.spacing = unit(2, "lines"))  # adding space between panels
+      theme(legend.position = "none") +
+  labs(
+    title = "Spectra Model Predicitions",
+    x = "Year",
+    y = "Exponent of Community Size Spectra (b)")
 
 ```
 
 
 
-### SST Effect
+### Bottom Temperature Effect
+
+Significance of bottom temperature on exponent of size spectra was evaluated using a likelihood ratio test. The full model containing bottom temperature and landings interactions was tested against models with 1) bottom temperature as a fixed effect without a regional interaction and 2) a model without bottom temperature.
+
+Results from the LRT's indicated that including bottom temperature in the model did not significantly impact predictions of b. 
+
+```{r}
+# Model Comparison & significance testing with a likelihood ratio test
+
+# Based on f-test
+anova(slope_landings, full_mod)
+anova(landings_only_mod, full_mod)
+
+```
+
 
 ```{r}
 # SST Anomaliezs
-plot(ggpredict(full_mod, ~ersst_z+region), add.data = T, jitter = 0.1)
-
+plot(ggpredict(full_mod, ~bt_z+region), add.data = T, jitter = 0.1)
 
 ```
 
 ### Landings Effect
+
+
+Significance of landings on exponent of size spectra was evaluated using a likelihood ratio test. The full model containing bottom temperature and landings interactions was tested against models with 1) landings as a fixed effect without a regional interaction and 2) a model without regional landings.
+
+Results from the LRT's indicated that including regional landings in the model also did not significantly impact predictions of b. 
+
+```{r}
+# Model Comparison & significance testing with a likelihood ratio test
+
+# Based on f-test
+anova(slope_bt, full_mod)
+anova(bt_only_mod, full_mod)
+
+```
+
 
 ```{r}
 plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
@@ -616,6 +679,11 @@ plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
 
 ## Summary of results
 
+
+```{r}
+tidy(full_mod_reml) %>% 
+  gt()
+```
 
 
 
@@ -634,31 +702,31 @@ How has median weight changed
 
 # Complete model
 full_mod <- lme4::lmer(
-  med_wt ~ land_5  * region * ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+  med_wt ~ land_5  * region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z))
 
 
 # The full model has trouble with all the interactions
 # If we simplify either sst/landings to be intercept only it helps
 # Intercept only for SST
 slope_landings <- lme4::lmer(
-  med_wt ~ land_5  * region + ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+  med_wt ~ land_5  * region + bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z))
 
 # Intercept only for landings
-slope_sst <- lme4::lmer(
-  med_wt ~ land_5  + region * ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+slope_bt <- lme4::lmer(
+  med_wt ~ land_5  + region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z))
 
 
 # Need models with reduced complexity to further compare
 landings_only_mod <- lme4::lmer(
   med_wt ~ land_5  * region + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+  data = drop_na(df, land_5, bt_z))
 
-sst_only_mod <- lme4::lmer(
-  med_wt ~ region * ersst_z + (1 | year), 
-  data = drop_na(df, land_5, ersst_z))
+bt_only_mod <- lme4::lmer(
+  med_wt ~ region * bt_z + (1 | year), 
+  data = drop_na(df, land_5, bt_z))
 
 
 # # Autocorrelative Error Structure- Performs badly
@@ -688,8 +756,8 @@ sst_only_mod <- lme4::lmer(
 # multicollinearity check
 plot(check_collinearity(full_mod))
 plot(check_collinearity(slope_landings))
-plot(check_collinearity(slope_sst))
-plot(check_collinearity(sst_only_mod))
+plot(check_collinearity(slope_bt))
+plot(check_collinearity(bt_only_mod))
 plot(check_collinearity(landings_only_mod))
 
 ```
@@ -702,13 +770,13 @@ plot(check_collinearity(landings_only_mod))
 
 # Based on f-test
 anova(slope_landings, full_mod)
-anova(slope_sst, full_mod)
+anova(slope_bt, full_mod)
 anova(landings_only_mod, full_mod)
-anova(sst_only_mod, full_mod)
+anova(bt_only_mod, full_mod)
 
 
 # Based on chi-square test
-anova(no_sst_mod, full_mod, test = "LRT")
+anova(no_bt_mod, full_mod, test = "LRT")
 
 
 # # Can also check significance this way
@@ -717,7 +785,7 @@ anova(no_sst_mod, full_mod, test = "LRT")
 
 # Do AICc
 MuMIn::AICc(
-  full_mod,slope_landings, slope_sst, sst_only_mod, landings_only_mod) %>%  
+  full_mod,slope_landings, slope_bt, bt_only_mod, landings_only_mod) %>%  
   mutate(DeltaAICc = AICc - max(.$AICc)) %>% 
   rownames_to_column("Model ID") %>% gt()
 ```
@@ -752,7 +820,7 @@ ggplot(df,
 
 ```{r}
 # SST Anomaliezs
-plot(ggpredict(full_mod, ~ersst_z+region), add.data = T, jitter = 0.1)
+plot(ggpredict(full_mod, ~bt_z+region), add.data = T, jitter = 0.1)
 
 
 ```
@@ -768,97 +836,6 @@ plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
 
 
 
-
----
-
-# Region Random Effects
-
-
-# What if we swap Random effects
-
-I don't really care about regions, so what if we used region as a random effect. It should also eat variability similar to year as a random effect and maybe help resolve the temperature or landings effects.
-
-Could also do year within region nesting...
-
-Just to see:
-
-
-## Contemporary SST/Landings Model
-
-```{r}
-# new model
-full_mod <- lme4::lmer(med_wt ~ landings * sst_anom + (1 | survey_area), 
-                      data = drop_na(df, landings, sst_anom))
-
-# # Autocorrelative Error - Performs badly here
-# Ben bolker to thatnk, of course:
-# https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
-full_mod <- nlme::lme(med_wt ~ landings  * landings + sst_anom,
-                     random = ~ 1 |  survey_area,
-                     data = drop_na(df, landings, sst_anom),
-                     correlation = corAR1(), 
-                     method = "ML")
-
-# Summary
-tidy(full_mod) %>% gt()
-
-
-```
-
-
-### Fit & Predictions
-
-
-```{r}
-
-qqnorm(resid(full_mod))
-qqline(resid(full_mod))
-
-
-ggplot(df, 
-       aes(x = yr_num, y = med_wt, color = region)) +
-      geom_point(alpha = 0.5) +
-      theme_classic() +
-    scale_color_gmri() +
-      geom_line(
-        data = cbind(drop_na(df, landings, sst_anom), 
-                     pred = predict(full_mod)), 
-        aes(y = pred), size = 1) +  # adding predicted line from mixed model 
-      theme(legend.position = "none",
-            panel.spacing = unit(2, "lines"))  # adding space between panels
-
-```
-
-### Significance
-
-```{r}
-drop1(full_mod, test = "Chisq")
-```
-
-
-### Collinearity
-
-```{r}
-# multicollinearity check
-col_check <- check_collinearity(full_mod)
-plot(col_check)
-```
-
-
-### SST Effect
-
-```{r}
-# SST Anomaliezs
-plot(ggpredict(full_mod, ~sst_anom), add.data = T, jitter = 0.1)
-
-
-```
-
-### Landings Effect
-
-```{r}
-plot(ggpredict(full_mod, ~landings), add.data = T, jitter = 0.1)
-```
 
 
 ---

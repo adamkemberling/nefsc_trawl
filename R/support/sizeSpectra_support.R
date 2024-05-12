@@ -485,12 +485,13 @@ add_missing_groups <- function(group_dataframe){
 #' @export
 #'
 #' @examples
-group_isd_calc <- function(dataBinForLike, 
-                           group_var, 
-                           abundance_vals = "stratified",
-                           isd_xmin = NULL,
-                           isd_xmax = NULL,
-                           vecDiff = 0.5){
+group_isd_calc <- function(
+    dataBinForLike, 
+    group_var, 
+    abundance_vals = "stratified",
+    isd_xmin = NULL,
+    isd_xmax = NULL,
+    vecDiff = 0.5){
   
   # 1. toggle which abundance calue to use with switch
   abundance_col <- switch(abundance_vals,
@@ -529,7 +530,10 @@ group_isd_calc <- function(dataBinForLike,
   
   
   # 4. Estimate the Maximum likelihood calculation for the Individual size distribution
-  # previously named sizeSpectra::MLEbins.nSeaFung.new
+  # This approach takes a dataframe "dataBinforLike" containing:
+  # species name/code
+  # wmin & wmax for the size(s) of the fish
+  # number of counts for each species x bin
   mle_group_bins <- calcLike(
     negLL.fn          = negLL.PLB.bins.species,
     p                 = -1.9,
