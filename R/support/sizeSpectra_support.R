@@ -44,7 +44,7 @@ prep_sizeSpectra_data <- function(lw_trawl_data){
   
   # Format columns for consistency downstream
   ss_dat <- ss_dat %>%
-    rename(
+    mutate(
       Year         = est_year,                  # year
       # SpecCode   = comname,                   # common name
       # LngtClass  = length_cm,                 # length bin
@@ -420,7 +420,9 @@ get_ccf_vector <- function(x,y, lagmax = 10){
 #' @title Add Missing Group Columns that drop with group_by or Split
 #' 
 #' @description Adds factor columns back in to the table that were not expressly
-#' included as a grouping column. These columns are added in with values of "all" to
+#' included as a grouping column. 
+#' 
+#' These columns are added in with values of "all" to
 #' communicate that all data across that factor are included.
 #'
 #' @param group_dataframe Table of distinct factor combinations used to provide summary details.
@@ -435,18 +437,22 @@ add_missing_groups <- function(group_dataframe){
   # 4. Make flags for group levels not specified
   # for groups not listed, all levels are used
   # ex. if year not used, then all years were used together
-  yr_flag     <- "Year" %in% names(group_dataframe)
-  szn_flag    <- "season" %in% names(group_dataframe)
-  area_flag   <- "survey_area" %in% names(group_dataframe)
-  decade_flag <- "decade" %in% names(group_dataframe)
-  class_flag  <- "hare_group" %in% names(group_dataframe)
+  yr_flag       <- "Year" %in% names(group_dataframe)
+  szn_flag      <- "season" %in% names(group_dataframe)
+  area_flag     <- "survey_area" %in% names(group_dataframe)
+  decade_flag   <- "decade" %in% names(group_dataframe)
+  class_flag    <- "hare_group" %in% names(group_dataframe)
+  # fishery_flag  <- "fishery" %in% names(group_dataframe)
   
   # flag for which ones to build
-  flag_checks <- c("Year"        = yr_flag, 
-                   "season"      = szn_flag, 
-                   "survey_area" = area_flag, 
-                   "decade"      = decade_flag,
-                   "hare_group"  = class_flag)
+  flag_checks <- c(
+    "Year"        = yr_flag, 
+    "season"      = szn_flag, 
+    "survey_area" = area_flag, 
+    #"decade"      = decade_flag,
+    "hare_group"  = class_flag#,
+    # "fishery"     = fishery_flag
+    )
   
   # Columns to add as "all"
   cols_2_add <- flag_checks[which(flag_checks == FALSE)] 
@@ -465,8 +471,303 @@ add_missing_groups <- function(group_dataframe){
 
 
 
+
 ####_____________________####
-#### MLE ISD Spectra Analysis ####
+####_ sizeSpectra MLE Methods  _####
+
+
+#### MLE Method  - negLL.PLB ####
+# Uses single vector of sizes, estimates spectra exponent and confidence interval
+
+#' @title {MLE Size Spectra Estimation}
+#'
+#' @param ss_input Dataframe containing a column of abundance and a column of sizes
+#' @param grouping_vars string identifiers of columns to group_by prior to analysis
+#' @param abundance_vals string indicating column of abundances
+#' @param weight_vals string indicating column with individual weight data
+#' @param isd_xmin lower limit for size distribution fitting
+#' @param isd_xmax upper limit for size distribution fitting
+#'
+#' @return
+#' @export
+#'
+#' @examples
+group_mle_estimates <-  function(
+    ss_input, 
+    grouping_vars, 
+    abundance_vals = "numlen_adj",
+    weight_vals = "ind_weight_g",
+    isd_xmin = NULL,
+    isd_xmax = NULL,
+    global_min = TRUE,
+    global_max = TRUE){
+  
+  
+  # 1. toggle which abundance/weight columns to use with switch
+  .abund_col <- sym(abundance_vals)
+  .weight_col <- sym(weight_vals)
+  .group_cols <- grouping_vars
+  .agg_cols <- c(.group_cols, "comname", weight_vals)
+  
+  
+  # 2. Select only the columns we need:
+  # Now aggregate by body-weight within the groups we are measuring spectra for:
+  ss_input_summs <- ss_input %>% 
+    group_by(!!!syms(.agg_cols)) %>% 
+    summarise(
+      Number = sum(!!.abund_col),
+      LWa = unique(a), 
+      LWb = unique(b),
+      .groups = "drop")  %>% 
+    # Create a group column that we can loop through
+    unite(col = "group_var", {{.group_cols}}, sep = "-", remove = FALSE, na.rm = FALSE)
+  
+  
+  
+  # Drop columns we don't need, rename to match edwards code
+  # edwards calls this df databinforlike
+  mle_input <- ss_input_summs  %>% 
+    select(
+      group_var, 
+      Number, 
+      bodyMass = !!.weight_col)
+  
+  
+  
+  #------ Set all-group constants
+  # set these one time
+  
+  # 3. Set Global power-law limits:
+  # set left bound & right bounds, grams
+  if(global_min == TRUE){
+    if(is.null(isd_xmin)){ isd_xmin <- min(mle_input$bodyMass, na.rm = T)}
+  }
+  if(global_max == TRUE){
+    if(is.null(isd_xmax)){ isd_xmax <- max(mle_input$bodyMass, na.rm = T)}
+  }
+  
+  
+  
+  # Set global controls if we're doing that:
+  if(global_min == TRUE & global_max == TRUE){
+    
+    # Filter the range of sizes we want to include
+    mle_input <- mle_input %>% 
+      filter(bodyMass >= isd_xmin,
+             bodyMass <= isd_xmax)
+    
+    # # Get many total individuals
+    n <- sum(ceiling(mle_input$Number) )
+    
+    # Vector of body weights, repeat bodymass x abundance
+    x <- rep(mle_input$bodyMass, ceiling(mle_input$Number))
+    
+    # Sum( log(bodymass) )
+    sum_log_x <- sum( log(x) )
+    
+    # Analytical value of MLE b for PL model (Box 1, Edwards et al. 2007)
+    PL.bMLE_global  <- 1/( log(min(x)) - sum_log_x / length(x)) - 1
+  }
+  
+  
+  #------ Loop through Groups 
+  group_results_df <- mle_input %>% 
+    split(.$group_var) %>% 
+    map_df(
+      function(ss_input_i){
+        
+        
+        # 3. Tune subgroup the power-law limits:
+        # set left bound & right bounds, grams
+        min_i <- min(ss_input_i$bodyMass, na.rm = T)
+        max_i <- max(ss_input_i$bodyMass, na.rm = T)
+        if(global_min == FALSE){
+          if(is.null(isd_xmin)){ isd_xmin <- min_i}
+        }
+        if(global_max == FALSE){
+          if(is.null(isd_xmax)){ isd_xmax <- max_i}
+        }
+        
+        # Filter the range of sizes we want to include
+        ss_input_i <- ss_input_i %>% 
+          filter(bodyMass >= isd_xmin,
+                 bodyMass <= isd_xmax)
+        
+        
+        # Get the subgroup inputs:
+        # Vector of body weights, repeat bodymass x abundance
+        x_i <- rep(ss_input_i$bodyMass, ceiling(ss_input_i$Number))
+        
+        # Get many total individuals
+        n_i <- sum(ceiling(ss_input_i$Number) )
+        
+        # Sum( log(bodymass) )
+        sum_log_xi <- sum( log(x_i)) 
+        
+        # Analytical value of MLE b for PL model (Box 1, Edwards et al. 2007)
+        PL.bMLE_i  <- 1/( log(min(x_i)) - sum_log_xi / length(x_i)) - 1
+        
+        # Toggle which starting value to use
+        PL.bMLE <- ifelse(global_max == T, PL.bMLE_global, PL.bMLE_i)
+        
+        
+        
+        # Do the exponent estimation for group i
+        group_est <- calcLike(
+          negLL.fn = negLL.PLB,  # MLE function, takes a vector of weights
+          p        = PL.bMLE, 
+          x        = x_i,
+          xmin     = isd_xmin, 
+          xmax     = isd_xmax,
+          n        = n_i,
+          sumlogx  = sum_log_xi)
+        
+        
+        
+        # Put it into a dataframe to rejoin neatly
+        mle_group_results <- data.frame(
+          xmin_fit = isd_xmin,
+          xmax_fit = isd_xmax,
+          xmin_actual = min_i,
+          xmax_actual = max_i,
+          n = n_i,
+          b = group_est$MLE,
+          confMin = group_est$conf[1],
+          confMax = group_est$conf[2])
+        
+        
+        # Process C and standard error
+        mle_group_results <- mle_group_results %>% 
+          mutate(
+            stdErr = (abs(confMin - b) + abs(confMax - b)) / (2 * 1.96),
+            C = (b != -1 ) * (b + 1) / ( xmax_fit^(b + 1) - xmin_fit^(b + 1) ) + (b == -1) * 1 / ( log(xmax_fit) - log(xmin_fit)))
+        return(mle_group_results)
+        }, 
+      .id = "group_var") %>% 
+    separate(
+      group_var, 
+      sep = "-", 
+      into = grouping_vars, 
+      remove = F)
+  
+  
+  
+    #---
+    #  Make a table of constituent combinations
+    #  Adding in any missing groups as "all data"
+    grouping_table <- group_results_df %>% 
+      distinct(group_var, !!!syms(.group_cols))
+    grouping_table <- add_missing_groups(
+      group_dataframe = grouping_table)
+    
+    
+    # Merge in the group details
+    group_results_df <- full_join(
+      grouping_table, group_results_df, join_by(group_var, !!!syms(.group_cols))) %>% 
+      mutate(across(c(group_var, .group_cols), as.character))
+    
+    #---
+  
+  
+  # Spit it out
+  return(group_results_df)
+  
+}
+
+
+
+
+
+
+
+
+# Convenience function for doing the different groups all together
+warmem_group_mle_estimates <- function(
+    ss_input, 
+    isd_xmin = NULL,
+    isd_xmax = NULL,
+    weight_vals = "ind_weight_g",
+    abundance_vals = "numlen_adj",
+    set_global_min = TRUE,
+    set_global_max = TRUE){
+  
+  
+  
+  
+  ####__  Set Bodymass Cutoff and Groups
+  
+  # 1. Set bodymass lower limit
+  # Used to filter for lower end of gear selectivity
+  ss_input_truncated <- ss_input
+  
+  
+  # 2. Set up the factor groupings we want to compare : 
+  
+  
+  ####_ Year
+  message("Calculating ISD exponent for each year")
+  year_res <- ss_input_truncated  %>% 
+    group_mle_estimates(
+      ss_input = .,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      weight_vals = weight_vals,
+      grouping_vars = c("Year"),
+      global_min = set_global_min,
+      global_max = set_global_max) 
+  
+  ####_  Year * region 
+  message("Calculating ISD exponent for each year in each region")
+  region_res <- ss_input_truncated  %>% 
+    group_mle_estimates(
+      ss_input = .,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      weight_vals = weight_vals,
+      grouping_vars =  c("Year", "survey_area"),
+      global_min = set_global_min,
+      global_max = set_global_max) 
+  
+  # ####_  year * region * season 
+  message("Calculating ISD exponent for each year in each region, for every season")
+  season_res <- ss_input_truncated  %>% 
+    group_mle_estimates(
+      ss_input = .,
+      isd_xmin = isd_xmin,
+      isd_xmax = isd_xmax,
+      abundance_vals = abundance_vals,
+      weight_vals = weight_vals,
+      grouping_vars =  c("Year", "season", "survey_area"),
+      global_min = set_global_min,
+      global_max = set_global_max)
+  
+  
+  # Put the reults in one table with an ID for how they groups are set up
+  table_complete <- bind_rows(
+    list(
+      "single years"                    = year_res,
+      "single years * region"           = region_res,
+      "single years * region * season"  = season_res), 
+    .id = "group ID")
+  
+  # Return the summary table
+  return(table_complete)
+  
+}
+
+
+
+####_____________________####
+#### MLE Method - negLL.PLB.bins.species ####
+# Used for Species Length Bins
+# Uses columns of min/max sizes for a species' size bins
+# & columns for length and abundance
+# estimates spectra exponent and confidence interval
+
+# Based on different species having different growth curves 
+# i.e. different weight ranges for the same length bins
 
 
 
@@ -485,7 +786,7 @@ add_missing_groups <- function(group_dataframe){
 #' @export
 #'
 #' @examples
-group_isd_calc <- function(
+group_mle_binspecies_calc <- function(
     dataBinForLike, 
     group_var, 
     abundance_vals = "stratified",
@@ -494,10 +795,11 @@ group_isd_calc <- function(
     vecDiff = 0.5){
   
   # 1. toggle which abundance calue to use with switch
-  abundance_col <- switch(abundance_vals,
-                          "observed"   = sym("numlen_adj"),
-                          "strat_mean" = sym("strat_mean_abund_s"),
-                          "stratified" = sym("strat_total_abund_s"))
+  abundance_col <- switch(
+    EXPR = abundance_vals,
+    "observed"   = sym("numlen_adj"),
+    "strat_mean" = sym("strat_mean_abund_s"),
+    "stratified" = sym("strat_total_abund_s"))
   
   
   # 2. Select only the columns we need:
@@ -510,30 +812,28 @@ group_isd_calc <- function(
       Number = !!abundance_col)
   
   
-  
   # 3. Set the power-law limits:
   # n, xmin, xmax
-  
   # Total individuals
   n    <- sum(dataBinForLike$Number)
   
   # left bound, grams
-  if(is.null(isd_xmin)){
-    isd_xmin <- min(dataBinForLike$wmin, na.rm = T)
-  }
+  if(is.null(isd_xmin)){isd_xmin <- min(dataBinForLike$wmin, na.rm = T)}
   
   # right bound, grams
-  if(is.null(isd_xmax)){
-    isd_xmax <- max(dataBinForLike$wmax, na.rm = T)
-  }
+  if(is.null(isd_xmax)){ isd_xmax <- max(dataBinForLike$wmax, na.rm = T)}
   
   
   
   # 4. Estimate the Maximum likelihood calculation for the Individual size distribution
+  
+  # "negLL.PLB.bins.species"
   # This approach takes a dataframe "dataBinforLike" containing:
   # species name/code
   # wmin & wmax for the size(s) of the fish
   # number of counts for each species x bin
+  # Useful when species are measured using the same length bins, but applies
+  # species specific weights associated with those bins
   mle_group_bins <- calcLike(
     negLL.fn          = negLL.PLB.bins.species,
     p                 = -1.9,
@@ -571,18 +871,25 @@ group_isd_calc <- function(
 
 
 
+
+
+
+
+
+
+
 #' @title  Plot Individual Size Distribution Estimates for a group of estimates
 #'
-#' @description Plot the Individual Size Distribution fits from group_isd_calc displaying the 
+#' @description Plot the Individual Size Distribution fits from group_mle_binspecies_calc displaying the 
 #' exponent of individual size spectra (b) and confidence intervals on its estimates.
 #'
-#' @param mle_res output from group_isd_calc
+#' @param mle_res output from group_mle_binspecies_calc
 #'
 #' @return
 #' @export
 #'
 #' @examples
-group_isd_plot <- function(mle_res){
+group_mle_binspecies_plot <- function(mle_res){
   plot <- mle_res %>% 
     ggplot(aes(Year, b, color = area, shape = season)) +
     geom_pointrange(aes(x = Year, y = b, ymin = confMin, ymax = confMax),
@@ -619,13 +926,14 @@ group_isd_plot <- function(mle_res){
 #' @export
 #'
 #' @examples
-group_isd_estimation <- function(wmin_grams, 
-                                     min_weight_g = 1, 
-                                     max_weight_g = 10^6,
-                                     isd_xmin = NULL,
-                                     isd_xmax = NULL,
-                                     abundance_vals = "stratified",
-                                     .group_cols = "Year"){
+group_mle_binspecies_estimation <- function(
+    wmin_grams, 
+    min_weight_g = 1, 
+    max_weight_g = 10^6,
+    isd_xmin = NULL,
+    isd_xmax = NULL,
+    abundance_vals = "stratified",
+    .group_cols = "Year"){
   
   # 1. Set bodymass lower limit
   # Used to filter for upper & lower end of gear selectivity
@@ -644,7 +952,9 @@ group_isd_estimation <- function(wmin_grams,
   
   # 3. Build group_level from desired group columns
   dbin_truncated <- dbin_truncated %>% 
-    unite(col = "group_var", {{.group_cols}}, sep = "_", remove = FALSE, na.rm = FALSE)
+    unite(
+      col = "group_var", {{.group_cols}}, 
+      sep = "-", remove = FALSE, na.rm = FALSE)
   
   # 4. Make a table of constituent combinations
   col_syms <- syms(.group_cols)
@@ -656,14 +966,15 @@ group_isd_estimation <- function(wmin_grams,
   # 6. Run individual size distribution fits for each group
   group_results <- dbin_truncated %>% 
     split(.$group_var) %>% 
-    imap_dfr(.f = group_isd_calc, 
+    imap_dfr(.f = group_mle_binspecies_calc, 
              isd_xmin = isd_xmin,
              isd_xmax = isd_xmax,
              abundance_vals = abundance_vals)
   
   # Merge in the group details
-  group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
-    mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
+  group_results <- full_join(
+    grouping_table, group_results, by = "group_var") %>% 
+    mutate(across(c(group_var, Year, season, survey_area), as.character))
   
   # Return the results
   return(group_results)
@@ -678,7 +989,7 @@ group_isd_estimation <- function(wmin_grams,
 #' @title Perform Estimates of Individual Size Distribution Fits for All WARMEM Groups
 #' 
 #' @description Source script: 06_nmfs_ss_group_estimates.R, original code added to phase 
-#' out section. That code was made to function more modular with group_isd_estimation
+#' out section. That code was made to function more modular with group_mle_binspecies_estimation
 #'
 #' @param wmin_grams Data prepped for mle estimation, use prep_wmin_wmax
 #' @param min_weight_g Minimum weight cutoff to usefor filtering input data
@@ -709,9 +1020,7 @@ warmem_isd_estimates <- function(
   dbin_truncated <- filter(
     wmin_grams, 
     wmin_g >= min_weight_g,
-    wmin_g <= max_weight_g) %>% 
-    mutate(decade = floor_decade(Year))
-  
+    wmin_g <= max_weight_g) 
   
   # 2. Set up the factor groupings we want to compare : 
   
@@ -719,7 +1028,7 @@ warmem_isd_estimates <- function(
   ####_ Year
   message("Calculating ISD exponent for each year")
   year_res <- dbin_truncated  %>% 
-    group_isd_estimation(
+    group_mle_binspecies_estimation(
       min_weight_g = min_weight_g, 
       max_weight_g = max_weight_g,
       isd_xmin = isd_xmin,
@@ -730,7 +1039,7 @@ warmem_isd_estimates <- function(
   ####_  Year * region 
   message("Calculating ISD exponent for each year in each region")
   region_res <- dbin_truncated  %>% 
-    group_isd_estimation(
+    group_mle_binspecies_estimation(
       min_weight_g = min_weight_g, 
       max_weight_g = max_weight_g,
       isd_xmin = isd_xmin,
@@ -741,7 +1050,7 @@ warmem_isd_estimates <- function(
   # ####_  year * region * season 
   message("Calculating ISD exponent for each year in each region, for every season")
   season_res <- dbin_truncated %>%
-    group_isd_estimation(
+    group_mle_binspecies_estimation(
       min_weight_g = min_weight_g,
       max_weight_g = max_weight_g,
       isd_xmin = isd_xmin,
@@ -751,14 +1060,14 @@ warmem_isd_estimates <- function(
   
   
   # ####_ year * region * fishery
-  fishery_res <- dbin_truncated %>%
-    group_isd_estimation(
-      min_weight_g = min_weight_g,
-      max_weight_g = max_weight_g,
-      isd_xmin = isd_xmin,
-      isd_xmax = isd_xmax,
-      abundance_vals = abundance_vals,
-      .group_cols = c("Year", "survey_area", "fishery"))
+  # fishery_res <- dbin_truncated %>%
+  #   group_mle_binspecies_estimation(
+  #     min_weight_g = min_weight_g,
+  #     max_weight_g = max_weight_g,
+  #     isd_xmin = isd_xmin,
+  #     isd_xmax = isd_xmax,
+  #     abundance_vals = abundance_vals,
+  #     .group_cols = c("Year", "survey_area", "fishery"))
     
   
   # Put the reults in one table with an ID for how they groups are set up
@@ -766,8 +1075,8 @@ warmem_isd_estimates <- function(
     list(
       "single years"                    = year_res,
       "single years * region"           = region_res,
-      "single years * region * season"  = season_res,
-      "single years * region * fishery" = fishery_res
+      "single years * region * season"  = season_res#,
+      #"single years * region * fishery" = fishery_res
       ), 
     .id = "group ID")
   
@@ -883,7 +1192,7 @@ isd_plot_prep <- function(biomass_data = databin_split,
 #' @title Plot Individual Size Distribution Curves
 #'
 #' @param isd_data_prepped Data from isd_plot_prep
-#' @param mle_results Corresponding group results from group_isd_calc
+#' @param mle_results Corresponding group results from group_mle_binspecies_calc
 #' @param abundance_used Label to add for context of what abundance source was used
 #' @param plot_rects Flag to plot bodymass rectangles
 #' @param show_pl_fit Flag to include powerlaw fit
@@ -1153,8 +1462,8 @@ isd_lite <- function(wmin_grams,
 
 
 ####______________________####
-#### Binned Spectra Analysis  ####
-####______________________####
+#### Binned Spectra Analysis Methods  ####
+
 
 
 
@@ -1406,7 +1715,7 @@ group_log2_spectra <- function(wmin_grams,
   log2_assigned <- log2_assigned %>% 
     unite(col = "group_var", 
           {{.group_cols}}, 
-          sep = "_", 
+          sep = "-", 
           remove = FALSE, 
           na.rm = FALSE)
   
@@ -1486,7 +1795,7 @@ group_log2_spectra <- function(wmin_grams,
   
   # Merge in the group details
   group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
-    mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
+    mutate(across(c(group_var, Year, season, survey_area), as.character))
   
   # Return the results
   return(group_results)
@@ -1527,8 +1836,7 @@ warmem_log2_estimates <- function(wmin_grams,
   log2_assigned_trunc <- filter(
     wmin_grams, 
     wmin_g >= min_weight_g,
-    wmin_g < max_weight_g) %>% 
-    mutate(decade = floor_decade(Year))
+    wmin_g < max_weight_g) 
   
   
   ####_ Years
@@ -1552,22 +1860,13 @@ warmem_log2_estimates <- function(wmin_grams,
       min_weight_g = min_weight_g,
       .group_cols = c("Year", "season", "survey_area"))
   
-  ####_ Year * region * fishery
-  # message("Calculating log(2) size spectrum slope each year in each region, for fishery exposures")
-  # fishery_res <- log2_assigned_trunc %>%
-  #   group_log2_spectra(
-  #     min_weight_g = min_weight_g,
-  #     .group_cols = c("Year", "survey_area", "fishery"))
-  
   
   # Put the reults in one table with an ID for how they groups are set up
   table_complete <- bind_rows(
     list(
       "single years"                     = year_res,
       "single years * region"            = region_res,
-      "single years * region * season"   = season_res#,
-      #"single years * region * fishery " = fishery_res,
-      ), 
+      "single years * region * season"   = season_res), 
     .id = "group ID")
   
   # Return the summary table
@@ -1856,7 +2155,7 @@ group_l10_spectra <- function(wmin_grams,
   l10_assigned <- l10_assigned %>% 
     unite(col = "group_var", 
           {{.group_cols}}, 
-          sep = "_", 
+          sep = "-", 
           remove = FALSE, 
           na.rm = FALSE)
   
@@ -1947,7 +2246,7 @@ group_l10_spectra <- function(wmin_grams,
   
   # Merge in the group details
   group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
-    mutate(across(c(group_var, Year, season, survey_area, decade), as.character))
+    mutate(across(c(group_var, Year, season, survey_area), as.character))
   
   # Return the results
   return(group_results)
@@ -2200,11 +2499,10 @@ group_size_metrics <- function(
   # 1. Build group_level from desired group columns
   group_size_data <- size_data %>% 
     filter(is.na(ind_weight_kg) == FALSE) %>% 
-    mutate(decade = floor_decade(Year)) %>% 
     unite(
       col = "group_var", 
       {{.group_cols}}, 
-      sep = "_", 
+      sep = "-", 
       remove = FALSE, 
       na.rm = FALSE)
   
@@ -2221,6 +2519,7 @@ group_size_metrics <- function(
   #we can use stratified rates instead of strat abundance because the proportions are the same
   weighting_col <- switch(weighting_column,
     "numlen_adj" = "numlen_adj",
+    "observed"   = "numlen_adj",
     "stratified" = "strat_mean_abund_s")
   
   
@@ -2277,7 +2576,6 @@ group_size_metrics <- function(
   group_results <- full_join(grouping_table, group_results, by = "group_var") %>% 
     mutate(across(c(group_var, 
                     Year, 
-                    decade, 
                     season, 
                     survey_area,
                     hare_group), as.character))
@@ -2330,7 +2628,7 @@ mean_sizes_all_groups <- function(size_data,
   message("Processing body size change for: Each year in each region, by season")
   season_res <- group_size_data  %>% 
     group_size_metrics(
-      .group_cols = c("Year", "survey_area", "season"),
+      .group_cols = c("Year", "season", "survey_area"),
       weighting_column = weighting_column) 
   
   ####_ Year * Region * Functional Group
@@ -2363,6 +2661,12 @@ mean_sizes_all_groups <- function(size_data,
   return(table_complete)
   
 }
+
+
+
+
+
+
 
 
 ####______________________####
@@ -2620,7 +2924,7 @@ species_omit_changes <- function(spec_omit_results,
 #   
 #   # Set which function to operate on: stratified or not stratified
 #   mle_function <- switch(abundance_vals,
-#                          "observed" = group_isd_calc,
+#                          "observed" = group_mle_binspecies_calc,
 #                          "stratified"  = strat_abund_mle_calc)
 #   
 #   

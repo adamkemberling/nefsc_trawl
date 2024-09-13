@@ -2,7 +2,7 @@
 # Quick and dirty NEFSC trawl data run for quick display with app
 # update to use wigley growth coefficients 10/27/2020
 # Options to use abundances from survey directly, 
-# or their aadjustments to total stratum areas
+# or their adjustments to total stratum areas
 
 
 # Output files:

@@ -47,6 +47,7 @@ area_df <- data.frame(
 ##### 1. Abundance Data  ####
 tar_load(catch_log2_labelled)  
 
+
 # rename and format
 # Add the area titles
 catch_size_bins <- catch_log2_labelled %>% 
@@ -186,8 +187,8 @@ unscaled_drivers <- read_csv(here::here("data/unscaled_spectra_predictor_df.csv"
 
 
 # Exporting unscaled in a useful format
-# This is the model_data we create
-model_data <- read_csv(here::here("data/size_and_spectra_model_data.csv"))
+# # This is the model_data we create below
+# model_data <- read_csv(here::here("data/size_and_spectra_model_data.csv"))
 
 
 # # this is the unscaled covariate dataset that should compliment it
@@ -420,6 +421,10 @@ size_regression_df <- size_regression_df %>%
 
 
 
+
+
+
+
 #### Multi-Collinearity Checks  ####
 
 
@@ -427,18 +432,18 @@ size_regression_df <- size_regression_df %>%
 
 ##### a.) SST * GSI
 
-plot_corr <- function(xvar, yvar){
-  x <- pull(size_regression_df[,xvar])
-  y <- pull(size_regression_df[,yvar])
-  est <- cor.test(x, y)[["estimate"]]
-  plot(x,  y, main = str_c(xvar, " ~ ", yvar, "   r2 = ", round(est, 2)))
-}
-
-# OISST correction
-plot_corr("sst", "gsi")
-plot_corr("sst", "year")
-plot_corr("sst", "landings")
-plot_corr("sst", "zp_large")
+# plot_corr <- function(xvar, yvar){
+#   x <- pull(size_regression_df[,xvar])
+#   y <- pull(size_regression_df[,yvar])
+#   est <- cor.test(x, y)[["estimate"]]
+#   plot(x,  y, main = str_c(xvar, " ~ ", yvar, "   r2 = ", round(est, 2)))
+# }
+# 
+# # OISST correction
+# plot_corr("sst", "gsi")
+# plot_corr("sst", "year")
+# plot_corr("sst", "landings")
+# plot_corr("sst", "zp_large")
 
 
 

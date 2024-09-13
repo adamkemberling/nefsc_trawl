@@ -1,0 +1,807 @@
+---
+title: "SizeSpectra_Manuscript_Regressions"
+description: | 
+  Size Analysis of the Northeast US Finfish Community
+date: "`r Sys.Date()`"
+format:
+  html:
+    self-contained: true
+    code-fold: true
+    code-tools: true
+    df-print: kable
+    toc: true
+    toc-depth: 2
+execute: 
+  echo: false
+  warning: false
+  message: false
+  fig.align: center
+  comment: ""
+---
+
+
+# Modeling Change in Median Size and Community Spectra
+
+```{r}
+#| label: setup-libraries-themes
+
+
+library(gt)
+library(tidyverse)
+library(gmRi)
+library(tidyverse)
+library(ggeffects)
+library(zoo)
+library(lme4)
+library(patchwork)
+library(emmeans)
+library(rstatix)
+library(lmerTest)
+library(broom)
+library(broom.mixed)
+library(ggpmisc)
+library(performance)
+library(nlme)
+library(showtext)
+library(tidyquant)
+# For Bootstrapped confidence intervals
+library(merTools)
+
+conflicted::conflict_prefer("select", "dplyr")
+conflicted::conflict_prefer("filter", "dplyr")
+
+
+# levels for faceting areas
+area_levels <- c("GoM", "GB", "SNE", "MAB")
+area_levels_long <- c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")
+
+# table to join for swapping shorthand for long-hand names
+area_df <- data.frame(
+  area = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
+  survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Northeast Shelf"),
+  area_titles = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "Northeast Shelf"))
+
+
+#---------  Theme & Fonts
+
+# Set theme
+theme_set(
+  theme_gmri() + 
+    theme(
+      text = element_text(family = "Avenir", size = 11),
+      plot.margin = margin(5,5,5,5), 
+          legend.position = "bottom", 
+          legend.direction = "horizontal", 
+          legend.title = element_text(size = 12, face = "bold")) )
+
+
+
+# Path to the directory containing the font file (replace with your actual path)
+font_dir <- paste0(system.file("stylesheets", package = "gmRi"), "/GMRI_fonts/Avenir/")
+
+# Register the font
+font_add(
+  family = "Avenir",
+  file.path(font_dir, "LTe50342.ttf"),
+  bold = file.path(font_dir, "LTe50340.ttf"),
+  italic = file.path(font_dir, "LTe50343.ttf"),
+  bolditalic = file.path(font_dir, "LTe50347.ttf"))
+
+# Load the font
+showtext::showtext_auto()
+
+```
+
+
+
+```{r}
+#| label: load-and-prep-data
+
+
+#--------------------
+## Set up
+#--------------------
+
+# Load the raw data 
+# Source: spectra_lm_data_prep
+# df <- read_csv(here::here("data/size_and_spectra_model_data.csv"))
+
+# Load from targets so we're consistent
+# OR targets...
+targets::tar_load("warmem_mle_results")
+targets::tar_load("mean_sizes_ss_groups")
+
+
+# Join them - annual values
+df <- left_join(
+  warmem_mle_results,
+  mean_sizes_ss_groups) %>% 
+  filter(`group ID` == "single years * region") %>% 
+  select(
+    Year, survey_area, season, 
+    avg_len = mean_len_cm, 
+    avg_wt = mean_wt_kg,
+    mean_wt = mean_wt_kg,
+    med_wt = med_wt_kg, 
+    n, 
+    b, 
+    confMin, 
+    confMax, 
+    xmin = xmin_fit, 
+    xmax = xmax_fit) %>% 
+  left_join(area_df) %>% 
+  select(-survey_area) %>% 
+  rename(survey_area = area,
+         year = Year)  %>% 
+  mutate(year = as.numeric(as.character(year)))
+
+
+
+
+# Another join problem (group_by order matters for matching group_var)
+seasonal_df <- left_join(
+  warmem_mle_results,
+  mean_sizes_ss_groups) %>% 
+  filter(`group ID` == "single years * region * season") %>% 
+  select(
+    Year, 
+    survey_area, 
+    season, 
+    avg_len = mean_len_cm, 
+    avg_wt = mean_wt_kg,
+    mean_wt = mean_wt_kg,
+    med_wt = med_wt_kg, 
+    n, 
+    b, 
+    confMin, 
+    confMax, 
+    xmin = xmin_fit, 
+    xmax = xmax_fit) %>% 
+  left_join(area_df) %>% 
+  select(-survey_area) %>% 
+  rename(survey_area = area,
+         year = Year)  %>% 
+  mutate(year = as.numeric(as.character(year)))
+```
+
+
+```{r}
+# Load raw landings values
+landings_raw <- read_csv(here::here("data/unscaled_spectra_predictor_dataset_wide.csv")) %>% 
+  select(year, survey_area, landings_raw = landings)
+
+
+# Get the raw sst from oisst
+sst_raw <- read_csv(here::here("data/unscaled_regional_sst.csv"))
+
+# Read in du pontavice bottom temperatures
+bot_temps <- read_csv(str_c(cs_path("res", "Du_Pontavice_Combined_BT/RegionalTimeseries"), "trawl_region_bottom_temps.csv"))
+
+
+# Load ersst
+ersst_path <- cs_path("res", "ERSSTv5")
+shape_names <- str_c(
+  ersst_path, "ERSSTv5_anom_nmfs_trawl_", 
+  c("gulf_of_maine", "georges_bank", "mid_atlantic_bight", "southern_new_england"), 
+  ".csv")
+
+# Load them
+ersst_ts <- map(
+  shape_names, ~read_csv(.x)) %>% 
+  setNames(c("Gulf of Maine", "Georges Bank", 
+             "Mid-Atlantic Bight", "Southern New England")) %>% 
+  bind_rows(.id = "survey_area") %>% 
+  select(survey_area, time, sst = area_wtd_sst, sst_anom = area_wtd_sst_anom) %>% 
+  group_by(year = lubridate::year(time), survey_area) %>% 
+  summarise(
+    ersst = mean(sst),
+    ersst_anom = mean(sst_anom),
+    .groups = "drop")
+
+
+
+# Add ERSST sst
+sst_both <- full_join(ersst_ts, sst_raw)
+```
+
+
+
+
+```{r}
+#| label: build-analysis-df
+
+
+#------------ Annual df
+
+# Put it all together and clarify the column names
+df <- df %>% 
+  left_join(landings_raw) %>% 
+  left_join(sst_both) %>% 
+  left_join(bot_temps) %>% 
+  mutate(
+    survey_area = factor(
+      survey_area, 
+      levels = area_levels_long),
+    region = str_replace_all(survey_area, "-| ", "_"),
+    region = factor(
+      region, 
+      levels = c("Gulf_of_Maine", "Georges_Bank", 
+                 "Mid_Atlantic_Bight", "Southern_New_England")))
+
+
+
+
+# Format year and anomalies
+
+# Get 5-year rolling averages of landings/temps
+df <- df %>% 
+  mutate(
+    yr_num = as.numeric(as.character(year)),
+    year = factor(year)) %>%
+  # 1. Get de-trended values in landings/bottom temperatures within regions
+  group_by(region) %>%
+  arrange(yr_num) %>% 
+  mutate(
+    # These are t - t-1 
+    land_diff = landings_raw - dplyr::lag(landings_raw),
+    bt_diff   = bot_temp - dplyr::lag(bot_temp)) %>% 
+  ungroup() %>% 
+  
+  # 2. Scale sst/bt/landings across all values
+  mutate(
+    land_z      = base::scale(landings_raw)[,1],
+    log_land_z  = base::scale(log(landings_raw))[,1],
+    land_diff_z = base::scale(land_diff)[,1],
+    bt_z        = base::scale(bot_temp)[,1],
+    bt_diff_z   = base::scale(bt_diff)[,1]) %>% 
+  
+  # Apply Rolling Averages within Regions
+  group_by(survey_area) %>% 
+  arrange(survey_area, year) %>% 
+  mutate(
+    land_5_raw = zoo::rollapply(
+      landings_raw, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_5_z = zoo::rollapply(
+      land_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    log_land_5_z = zoo::rollapply(
+      log_land_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_diff_5 = zoo::rollapply(
+      land_diff, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_5 = zoo::rollapply(
+      bot_temp, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_z_5 = zoo::rollapply(
+      bt_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_diff_5 = zoo::rollapply(
+      bt_diff, 5, mean, na.rm = T, align = "right",  fill = NA)) %>% 
+  ungroup()
+```
+
+
+```{r}
+#------------ Seasonal df
+
+# Put it all together and clarify the column names
+seasonal_df <- seasonal_df %>% 
+  left_join(landings_raw) %>% 
+  left_join(sst_both) %>% 
+  left_join(bot_temps) %>% 
+  mutate(
+    survey_area = factor(
+      survey_area, 
+      levels = area_levels_long),
+    region = str_replace_all(survey_area, "-| ", "_"),
+    region = factor(
+      region, 
+      levels = c("Gulf_of_Maine", "Georges_Bank", 
+                 "Mid_Atlantic_Bight", "Southern_New_England")))
+
+
+
+
+# Format year and anomalies
+
+# Get 5-year rolling averages of landings/temps
+seasonal_df <- seasonal_df %>% 
+  mutate(
+    yr_num = as.numeric(as.character(year)),
+    year = factor(year)) %>%
+  # 1. Get de-trended values in landings/bottom temperatures within regions
+  group_by(region) %>%
+  arrange(yr_num) %>% 
+  mutate(
+    # These are t - t-1 
+    land_diff = landings_raw - dplyr::lag(landings_raw),
+    bt_diff   = bot_temp - dplyr::lag(bot_temp)) %>% 
+  ungroup() %>% 
+  
+  # 2. Scale sst/bt/landings across all values
+  mutate(
+    land_z      = base::scale(landings_raw)[,1],
+    log_land_z  = base::scale(log(landings_raw))[,1],
+    land_diff_z = base::scale(land_diff)[,1],
+    bt_z        = base::scale(bot_temp)[,1],
+    bt_diff_z   = base::scale(bt_diff)[,1]) %>% 
+  
+  # Apply Rolling Averages within Regions
+  group_by(survey_area) %>% 
+  arrange(survey_area, year) %>% 
+  mutate(
+    land_5_raw = zoo::rollapply(
+      landings_raw, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_5_z = zoo::rollapply(
+      land_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    log_land_5_z = zoo::rollapply(
+      log_land_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_diff_5 = zoo::rollapply(
+      land_diff, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_5 = zoo::rollapply(
+      bot_temp, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_z_5 = zoo::rollapply(
+      bt_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_diff_5 = zoo::rollapply(
+      bt_diff, 5, mean, na.rm = T, align = "right",  fill = NA)) %>% 
+  ungroup()  
+  
+
+
+```
+
+
+
+
+# Changes Size and Size Distribution:
+
+::: {.panel-tabset}
+  
+
+### Median Weight
+
+```{r}
+
+df  %>% 
+  ggplot(aes(yr_num, med_wt, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(aes(linetype = "5-Year Moving Average"),n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F, 
+              aes(linetype = "Regression Fit")) +
+  scale_color_gmri() +
+  facet_wrap(~survey_area, scale = "free") +
+  labs(title = "Median Body Weight ~ year * region",
+       y = "Median Bodw Weight (kg)",
+       x = "Year",
+       color = "Region")
+```
+
+### Seasonal Weights
+
+
+```{r}
+seasonal_df %>% 
+  ggplot(aes(yr_num, med_wt, color = season)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(aes(linetype = "5-Year Moving Average"),n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F, 
+              aes(linetype = "Regression Fit")) +
+  facet_wrap(~survey_area, scales = "free") +
+  scale_color_gmri() +
+  labs(title = "Median Weight ~ year * region * season",
+       y = "Median Weight (kg)",
+       x = "Year",
+       color = "Region")
+
+```
+
+### Exponent of Size Spectra
+
+
+
+```{r}
+df  %>% 
+  ggplot(aes(yr_num, b, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(aes(linetype = "5-Year Moving Average"),n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F, 
+              aes(linetype = "Regression Fit")) +
+  scale_color_gmri() +
+  facet_wrap(~survey_area, scales = "free") +
+  labs(title = "Size Spectra Slope ~ year * region",
+       y = "Exponent of Size Spectra (b)",
+       x = "Year",
+       color = "Region")
+```
+
+### Seasonal Spectra
+
+
+```{r}
+warmem_mle_results %>% 
+  mutate(yr_num = as.numeric(as.character(Year))) %>% 
+  filter(`group ID` == "single years * region * season") %>% #pull(xmax_actual) %>% range()
+  ggplot(aes(yr_num, b, color = season)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(aes(linetype = "5-Year Moving Average"),n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F, 
+              aes(linetype = "Regression Fit")) +
+  facet_wrap(~survey_area, scales = "free") +
+  scale_color_gmri() +
+  labs(title = "Size Spectra Slope ~ year * region * season",
+       subtitle = "Enforced xmin = 1, xmax = observed max",
+       y = "Exponent of Size Spectra (b)",
+       x = "Year",
+       color = "Region")
+
+```
+
+### Enforcing a Shared xmin/xmax
+
+```{r}
+# Run it again without global limits
+
+# load the input data
+targets::tar_load(catch_complete)
+
+# modify the function to take max size from the data, not a global value
+source(here::here("R/support/sizeSpectra_support.R"))
+season_res <- catch_complete  %>%
+  mutate(ind_weight_g = ind_weight_kg * 1000) %>% 
+  group_mle_estimates(
+    ss_input = .,
+    isd_xmin = 1,
+    isd_xmax = 10000,
+    abundance_vals = "numlen_adj",
+    weight_vals = "ind_weight_g",
+    grouping_vars =  c("Year", "season", "survey_area"),
+    global_min = TRUE,
+    global_max = TRUE)
+
+
+season_res %>% 
+  mutate(yr_num = as.numeric(as.character(Year))) %>% 
+  ggplot(aes(yr_num, b, color = season)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(aes(linetype = "5-Year Moving Average"),n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F, 
+              aes(linetype = "Regression Fit")) +
+  facet_wrap(~survey_area) +
+  scale_color_gmri() +
+  labs(title = "Size Spectra Slope ~ year * region * season",
+       subtitle = "Enforced xmin = 1, xmax = 10kg",
+       y = "Exponent of Size Spectra (b)",
+       x = "Year",
+       color = "Region")
+```
+
+:::
+
+
+# Changes in Temperature and Fishing Levels
+
+::: {.panel-tabset}
+  
+
+### ERSSTv5 Sea Surface Temperature
+
+```{r}
+df  %>% 
+  ggplot(aes(yr_num, ersst, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F) +
+  scale_color_gmri() +
+  facet_wrap(~survey_area, scales = "free") +
+  labs(title = "ERSSTv5",
+       y = "Sea Surface Temperature",
+       x = "Year",
+       color = "Region")
+```
+
+
+
+### Bottom Temperature
+
+```{r}
+df  %>% 
+  ggplot(aes(yr_num, bot_temp, color = survey_area)) +
+  geom_point(size = 1, alpha = 0.6) +
+  geom_ma(n = 5, ma_fun = SMA) +
+  geom_smooth(method = "lm", linewidth = 1, se = F) +
+  scale_color_gmri() +
+  facet_wrap(~survey_area, scales = "free") +
+  labs(title = "Du Pontavice et al. 2023",
+       y = "Bottom Temperature",
+       x = "Year",
+       color = "Region")
+```
+
+
+### Regional Landings
+
+```{r}
+# Plot: How does landings change over time
+df %>% 
+  drop_na(landings_raw) %>% 
+  ggplot(aes(yr_num, landings_raw, color = survey_area)) +
+  # geom_point(size = 1) +
+  # geom_line(alpha = 0.6)  +
+  geom_smooth(method = "lm")  +
+  geom_col(aes(fill = survey_area), alpha = 0.4) +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  scale_y_continuous(labels = scales::label_comma()) +
+  scale_x_continuous(limits = c(1970, 2020)) +
+  facet_wrap(~survey_area, scales = "free") +
+  labs(
+    title = "Regional Landings ~ year * region",
+    subtitle = "Mid-Atlantic Exception primarily forage fish fishery (menhaden)",
+    x = "Year",
+    color = "Region", fill = "Region")
+```
+
+
+:::
+
+
+
+# Pre-Modeling Collinearity Concerns
+
+In some previous EDA we became concerned about both landings and SST changes being colinear with time. Increasing error around parameter estimates.
+
+::: {.panel-tabset}
+
+### Raw
+
+Landings and bottom temperature are most correlated in georges bank at R2 = 0.41. This is lower than I thought intitally and might not be a problem.
+
+```{r}
+# See roll anom and roll landings relationship
+df %>% 
+  pivot_longer(cols = c("bot_temp", "landings_raw"), names_to = "vars", values_to = "vals") %>% 
+  ggplot(aes(yr_num, vals)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_grid(vars~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature - Raw",x = NULL)
+
+
+```
+
+
+### 5-Year Smooth
+
+```{r}
+# See rolling mean bottom temp and rolling mean landings relationship
+df %>% 
+  pivot_longer(cols = c("bt_5", "land_5_raw"), names_to = "vars", values_to = "vals") %>% 
+  ggplot(aes(yr_num, vals)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_grid(vars~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature - 5yr Rolling Avg.",
+       subtitle = "(5-year rolling Average)",
+       x = NULL)
+
+```
+
+### Scaled & Smoothed
+
+```{r}
+
+df %>% 
+  pivot_longer(cols = c("bt_z_5", "land_5_z"), names_to = "vars", values_to = "vals") %>% 
+  ggplot(aes(yr_num, vals)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_grid(vars~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature - Scaled & Smoothed",
+       subtitle = "(5-year rolling Average)",
+       x = NULL)
+```
+
+
+### Differenced Timeseries
+
+Differencing temperature and landings removes temporal trend
+
+```{r}
+df %>% 
+  pivot_longer(cols = c("bt_diff", "land_diff"), names_to = "vars", values_to = "vals") %>% 
+  ggplot(aes(yr_num, vals)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_grid(vars~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature - Differenced",
+       subtitle = "X(t) - X(t-1)",
+       x = NULL)
+```
+
+### Differenced Predictor Correlation
+
+If we scale the values after diff() to put them on common units, these are their correlations with time
+
+
+```{r}
+df %>% 
+  pivot_longer(cols = c("bt_diff_z", "land_diff_z"), names_to = "vars", values_to = "vals") %>% 
+  ggplot(aes(yr_num, vals)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_grid(vars~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Differenced Landings and Bottom Temperature",
+       subtitle = "X(t) - X(t-1)",
+       x = "Year")
+```
+
+And their correlations with one-another
+
+```{r}
+df %>% 
+  ggplot(aes(bt_diff_z, land_diff_z)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_grid(~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature - Differenced",
+       subtitle = "X(t) - X(t-1)",
+       x = "Bottom Temperature Difference (z)", y = "Landings Difference (z)")
+```
+
+
+:::
+
+
+
+
+
+# Modeling Size Spectra Exponents
+
+
+
+## Model 1: Change Over Time
+
+
+
+```{r}
+# Season & Regional slopes over time, RE year (for testing)
+season_change <- lmerTest::lmer(
+  formula = b ~  region  * yr_num * season +  (1 | year), 
+  data = seasonal_df)
+
+# summary
+summary(season_change)
+
+
+# Table for fixed effect significance
+reml_summ <- summary(season_change, ddf="Kenward-Roger")
+tibble("term" = rownames(reml_summ$coefficients)) %>% 
+  cbind(as_tibble(reml_summ$coefficients)) %>% 
+  gt() %>% 
+  tab_header(title = "Fixed Effect Model Coefficients", 
+             subtitle = "Significance testing via t-tests using Kenward-Roger's method") %>% 
+  tab_style(
+    style = cell_fill(color = "limegreen", alpha = 0.3),
+    locations = cells_body(
+      columns = everything(),
+      rows = `Pr(>|t|)` < 0.05 & Estimate > 0)) %>% 
+  tab_style(
+    style = cell_fill(color = "coral", alpha = 0.3),
+    locations = cells_body(
+      columns = everything(),
+      rows = `Pr(>|t|)` < 0.05  & Estimate < 0))
+  
+
+
+```
+
+### Region & Season Interactions
+
+```{r}
+# ggpredictions
+simple_preds <- as.data.frame(
+  ggpredict(season_change, ~ yr_num + season + region) )
+
+# Plot over observed data
+simple_preds %>% 
+  mutate(
+    season = factor(group, levels = c("Spring", "Fall")),
+    region = factor(facet, levels = str_replace_all(area_levels_long, " |-", "_"))) %>% 
+ggplot() +
+  geom_ribbon(aes(x, ymin = conf.low, ymax = conf.high, group = season), alpha = 0.1) +
+  geom_line(
+    aes(x, predicted, color = season, linetype = "Predicted"), 
+    linewidth = 1) +
+  facet_wrap(~region) +
+  geom_point(
+    data = seasonal_df, 
+    aes(yr_num, b, color = season),
+    alpha = 0.6) +
+  geom_line(
+    data = seasonal_df,
+    aes(yr_num, b, color = season, linetype = "Observed"),
+    alpha = 0.3, linewidth = 0.5) +
+  scale_linetype_manual(values = c(3, 1)) +
+  labs(y = "b")
+```
+
+
+### Intercept Post-hoc 
+
+```{r}
+# Use emmeans for post-hoc testing for factors
+
+# Regions
+region_phoc <- emmeans(season_change, list(pairwise ~ region), adjust = "tukey")
+plot(region_phoc) + 
+  coord_flip() +
+  labs(y = "Region", title = "Regional Intercept - Post-Hoc")
+
+# Seasons
+season_phoc <- emmeans(season_change, list(pairwise ~ season), adjust = "tukey")
+plot(season_phoc) + 
+  scale_y_discrete(limits = rev) +
+  coord_flip() +
+  labs(y = "Season", title = "Seasonal Intercept - Post-Hoc")
+
+
+regseas_phoc <- emmeans(
+  object = season_change, 
+  specs = list(pairwise ~ region * season), 
+  adjust = "tukey")
+regseas_phoc$`emmeans of region, season` %>% 
+  as_tibble() %>% 
+  ggplot(aes(region, emmean, ymin = lower.CL, ymax = upper.CL)) +
+    geom_pointrange(fill = "purple", alpha = 0.4) +
+  scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+    facet_wrap(~fct_rev(season), ncol = 2) +
+    labs(
+      title = "Region * Seasonal Intercept - Post-Hoc")
+```
+
+### Trend Significance
+
+```{r}
+#--------  Trend Comparisons
+
+season_change_2 <- lme4::lmer(
+  formula = b ~  region  * yr_num * season +  (1 | year), 
+  data = seasonal_df)
+
+
+# Slope Comparisons
+
+# not pairwise
+slope_phoc <- emtrends(
+  object = season_change_2, 
+  specs =  ~ region * season,
+  var = "yr_num",
+  adjust = "sidak")
+
+slope_phoc %>% 
+  as_tibble() %>% 
+  mutate(flag_alpha = ifelse(lower.CL > 0 | upper.CL <0, 1, 0.3)) %>% 
+  ggplot(aes(region, yr_num.trend, ymin = lower.CL, ymax = upper.CL)) +
+    geom_hline(yintercept = 0, linetype = 1, color = "gray30", linewidth = 1) +
+    geom_pointrange(aes(alpha = I(flag_alpha)), color = gmri_cols("blue"), size = 1) +
+    scale_x_discrete(guide = guide_axis(n.dodge = 2)) +
+    facet_wrap(~fct_rev(season), ncol = 2) +
+    labs(
+      title = "Region * Seasonal Slopes",
+      x = NULL,
+      y = "yr_num Trend")
+
+```
+
+
+
+
+# Model 2: Effects of Temperature and Fishing
+
+```{r}
+
+```
+
+

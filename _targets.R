@@ -97,58 +97,42 @@ list(
   
   # Perform standard cleanup without LW and stratification for species that drop
   # This target is used to investigate data immediately after the base cleanup
-  tar_target(
-    name = survdat_clean,
-    command = gmri_survdat_prep(survdat = NULL,
-                                survdat_source = "most recent",
-                                box_location = boxdata_location) %>% 
-              filter(est_year %in% c(1970:2019, 
-                     season %in% c("Spring", "Fall")))
-    ),
+  # tar_target(
+  #   name = survdat_clean,
+  #   command = gmri_survdat_prep(survdat = NULL,
+  #                               survdat_source = "most recent",
+  #                               box_location = boxdata_location) %>% 
+  #             filter(est_year %in% c(1970:2019, 
+  #                    season %in% c("Spring", "Fall")))
+  #   ),
   
   
   # Run all the import and tidying for catch data to use for the pipeline
   tar_target(
     name = catch_complete,
     command = import_and_tidy_catch(box_location = boxdata_location) %>% 
-              filter(est_year %in% c(1970:2019, 
-                     season %in% c("Spring", "Fall")))),
+        filter(est_year %in% c(1970:2019, 
+               season %in% c("Spring", "Fall"))) %>% 
+        mutate(Year = est_year,
+               ind_weight_g = ind_weight_kg * 1000)),
   
   ###### b. Biological Data  ####
   
   # Import and tidy the biological dataset
+  # survdat biological data - for actual length relationships
   tar_target(
     name = bio_complete,
     command = import_and_tidy_bio(box_location = boxdata_location)),
   
-  # survdat biological data - for actual length relationships
-  tar_target(
-    name = survdat_biological,
-    command = gmri_survdat_prep(survdat_source = "bio",
-                                box_location = boxdata_location) ),
   
 
   
   
   
-  #####  2. Size Spectrum Prep  #####
-  
-  # # Prepare the data for use in size spectrum analysis:
-  # # Set weight column units to grams
-  # # impose a max/min weight
-  # # set up the size bins - for plotting
-  # # set a min/max weight a fish could be within 1cm growth increments for lme method
-  # tar_target(
-  #   catch_1g_labelled,
-  #   command = size_spectrum_prep(
-  #     catch_data = catch_complete, 
-  #     min_weight_g = analysis_options[["min_input_weight_g"]], 
-  #     max_weight_g = analysis_options[["max_input_weight_g"]], 
-  #     bin_increment = analysis_options[["l10_bin_width"]])),
-  
-
+  #####  2. Spectra Analysis Prep  #####
   
   # Assign the log size bins and apply min/max cutoffs
+  # needed for using binned method, and comparative consistency with MLE methods
   tar_target(
     catch_log2_labelled,
     command = LBNbiom_prep(
@@ -157,88 +141,91 @@ list(
       max_weight_g = analysis_options[["max_input_weight_g"]], # 2^13, 
       bin_increment = analysis_options[["log2_bin_width"]])),
   
-  ##### 4a. log10 SS Slopes  ####
-  
-
-  # # Run the different groupings through the slope estimation
-  # # lower end is >=, upper end is <
-  # tar_target(warmem_log10_slopes,
-  #            warmem_l10_estimates(
-  #              # The input data for all the group estimates, labelled for 
-  #              # both the binned and ISD analyses
-  #              wmin_grams = catch_1g_labelled,
-  #              
-  #              # These two filter the input data
-  #              min_weight_g = analysis_options[["min_input_weight_g"]],
-  #              max_weight_g = analysis_options[["max_input_weight_g"]], 
-  #              
-  #              # These two enforce the bins used to estimate the spectra
-  #              min_l10_bin = analysis_options[["min_l10_bin"]], 
-  #              max_l10_bin = analysis_options[["max_l10_bin"]], 
-  #              bin_increment = analysis_options[["l10_bin_width"]])),
   
   
   
   
+  ####_____________________________####
   
-  ##### 4b. LBNbiom Method Spectra  ####
+  
+  ##### 4a. Log2-Binned Size Spectra Slopes  ####
   # See Edwards et al. 2016
   # Method LBNbiom
   
-  
-  
-  
   # Run the spectrum fitting using the log2 binning and LBNbiom methodology
-  tar_target(warmem_log2_slopes,
-             warmem_log2_estimates(
-               # The input data for all the group estimates, labelled for 
-               # both the binned and ISD analyses
-               wmin_grams = catch_log2_labelled,
-               
-               # These two filter the input data
-               min_weight_g = analysis_options[["min_input_weight_g"]],
-               max_weight_g = analysis_options[["max_input_weight_g"]], 
-               
-               # These two enforce the bins used to estimate the spectra
-               min_log2_bin = analysis_options[["min_log2_bin"]],
-               max_log2_bin = analysis_options[["min_log2_bin"]], 
-               bin_increment = analysis_options[["log2_bin_width"]])),
-  
-  
-  
-  
-  ##### 5. sizeSpectra Exponents  ####
-  
-  # These should match the max size available to the size spectra bins
-  # or be close to it
-  # its obvious from the composition qmd data those largest sizes just aren't sampled in many groups
-  # This can be achieved with the max size filtering, or with a control in this function
-  
-  # Run the individual size distribution calculation on stratified abundances
   tar_target(
-    name = warmem_isd_results,
-    command = warmem_isd_estimates(
-      wmin_grams = catch_log2_labelled, 
-      min_weight_g = analysis_options[["min_input_weight_g"]],
-      max_weight_g = analysis_options[["max_input_weight_g"]],
-      isd_xmin = analysis_options[["min_input_weight_g"]],
-      isd_xmax = analysis_options[["max_input_weight_g"]],
-      abundance_vals = "stratified")),
+    name = warmem_log2_slopes,
+    command = warmem_log2_estimates(
+         # The input data for all the group estimates, labelled for 
+         # both the binned and ISD analyses
+         wmin_grams = catch_log2_labelled,
+         
+         # These two filter the input data
+         min_weight_g = analysis_options[["min_input_weight_g"]],
+         max_weight_g = analysis_options[["max_input_weight_g"]], 
+         
+         # These two enforce the bins used to estimate the spectra
+         min_log2_bin = analysis_options[["min_log2_bin"]],
+         max_log2_bin = analysis_options[["min_log2_bin"]], 
+         bin_increment = analysis_options[["log2_bin_width"]])),
   
   
   
+  
+  
+  ##### 4b. MLE Method  ####
+  # MLE method from Edwards using sizeSpectra package
+  # likelihood function = negLL.PLB
+  
+  
+  tar_target(
+    name = warmem_mle_results,
+    command = warmem_group_mle_estimates(
+      ss_input       = catch_complete, 
+      weight_vals    = "ind_weight_g",
+      abundance_vals = "numlen_adj",
+      set_global_min     = TRUE,
+      isd_xmin       = analysis_options[["min_input_weight_g"]],
+      set_global_max     = FALSE, 
+      isd_xmax       = NULL)
+      ),
+  
+  
+  
+  
+  
+  ##### 4c. MLE Method - Species-Bins  ####
+  # likelihood function = negLL.PLB.bins.species
+  
+  # # Run the individual size distribution calculation on stratified abundances
+  # tar_target(
+  #   name = warmem_mle_speciesbins,
+  #   command = warmem_isd_estimates(
+  #     wmin_grams     = catch_complete, 
+  #     min_weight_g   = analysis_options[["min_input_weight_g"]],
+  #     max_weight_g   = analysis_options[["max_input_weight_g"]],
+  #     isd_xmin       = analysis_options[["min_input_weight_g"]],
+  #     isd_xmax       = analysis_options[["max_input_weight_g"]],
+  #     abundance_vals = "observed")),
+  
+  
+  
+  
+  
+  ##### 4d. Combins Size & Size Spectra Results  ####
   # Join the MLE and Binned Results into a table
   tar_target(
     size_spectrum_indices,
-    full_join(warmem_isd_results, warmem_log2_slopes,
-    by = c("group ID", "group_var", "Year", "season", "survey_area", "decade"))),
+    full_join(
+      mutate(warmem_mle_results, decade = floor_decade(Year)),
+      warmem_log2_slopes)),
   
 
   
   
   ####_____________________________####
   
-  ####______  Physical Drivers  _______####
+  ####______  Physical Driver Prep  _______####
   
   # ##### 1. Temperature Data  ####
   tar_target(
@@ -253,7 +240,7 @@ list(
   ####_____________________________####
   ####_____ Body Size Changes  ______####
   
-  ##### 1. Mean Size Change  ####
+  ##### 1. Mean/Median Size Change  ####
   
   # "
   # Time series of mean length and weight will be constructed for the fish 
@@ -266,19 +253,19 @@ list(
   tar_target(
     mean_sizes_ss_groups,
     mean_sizes_all_groups(
-      size_data = rename(as.data.frame(catch_complete), Year = est_year),
+      size_data = catch_complete,
       min_weight_g = 0, 
-      # weighting_column = "numlen_adj")
-      weighting_column = "stratified")),
+      weighting_column = "numlen_adj")),
  
   # Run the size change for each species across years using stratified abundances
   tar_target(
     annual_individual_sizes,
     group_size_metrics(
-      size_data = rename(as.data.frame(catch_complete), Year = est_year),
+      size_data = catch_complete,
       .group_cols = c("comname", "Year", "season"),
-      # weighting_column = "numlen_adj")
-      weighting_column = "stratified")),
+      weighting_column = "numlen_adj")),
+  
+  
   
   
   
@@ -286,8 +273,9 @@ list(
   
   # starts with "survdat_biological"
   # ref code: size_at_age_exploration.Rmd
-  tar_target(vonbert_species_bio,
-             select_vonbert_species(bio_complete, rank_cutoff = 17))
+  tar_target(
+    vonbert_species_bio,
+    select_vonbert_species(bio_complete, rank_cutoff = 17))
   
   
   # tar_target(vonbert_growth_coef,
@@ -521,7 +509,7 @@ list(
 # ##### 1. Table of indices  ####
 # tar_target(
 #   group_community_indicators,
-#   full_join(mean_sizes_ss_groups, warmem_isd_results)
+#   full_join(mean_sizes_ss_groups, warmem_mle_speciesbins)
 
 
 

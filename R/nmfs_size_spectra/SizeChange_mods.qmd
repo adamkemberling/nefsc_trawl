@@ -23,6 +23,9 @@ execute:
 # Modeling Change in Median Size and Community Spectra
 
 ```{r}
+#| label: setup-libraries-themes
+
+
 library(gt)
 library(tidyverse)
 library(gmRi)
@@ -41,84 +44,37 @@ library(performance)
 library(nlme)
 library(showtext)
 library(tidyquant)
+# For Bootstrapped confidence intervals
+library(merTools)
 
-
-
-# Set theme
-theme_set(theme_gmri() + theme(plot.margin = margin(), legend.position = "bottom", legend.direction = "horizontal", legend.title = element_text(size = 12, face = "bold")) )
+conflicted::conflict_prefer("select", "dplyr")
+conflicted::conflict_prefer("filter", "dplyr")
 
 
 # levels for faceting areas
-area_levels <- c("Northeast Shelf", "GoM", "GB", "SNE", "MAB")
-area_levels_long <- c("Northeast Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")
+area_levels <- c("GoM", "GB", "SNE", "MAB")
+area_levels_long <- c("Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight")
+
+# table to join for swapping shorthand for long-hand names
+area_df <- data.frame(
+  area = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "All"),
+  survey_area = c("SS", "GoM", "GB", "SNE", "MAB", "Northeast Shelf"),
+  area_titles = c("Scotian Shelf", "Gulf of Maine", "Georges Bank", "Southern New England", "Mid-Atlantic Bight", "Northeast Shelf"))
 
 
-#--------------------
-## Set up
-#--------------------
+#---------  Theme & Fonts
 
-# Load the raw data 
-df <- read_csv(here::here("data/size_and_spectra_model_data.csv"))
-
-
-# Get raw landings
-landings_raw <- read_csv(here::here("data/unscaled_spectra_predictor_dataset_wide.csv")) %>% 
-  select(year, survey_area, landings_raw = landings)
-
-# Get the raw sst from oisst
-sst_raw = read_csv(here::here("data/unscaled_regional_sst.csv"))
-
-# Read in dupontavice bottom temperatures
-bot_temps <- read_csv(str_c(cs_path("res", "Du_Pontavice_Combined_BT/RegionalTimeseries"), "trawl_region_bottom_temps.csv"))
-
-#------------
-
-# Put it all together and clarify the column names
-df <- df %>% 
-  select(-sst) %>% 
-  left_join(landings_raw) %>% 
-  left_join(sst_raw) %>% 
-  left_join(bot_temps) %>% 
-  mutate(
-    survey_area = factor(
-      survey_area, 
-      levels = area_levels_long),
-    region = str_replace_all(survey_area, "-| ", "_"),
-    region = factor(
-      region, 
-      levels = c("Gulf_of_Maine", "Georges_Bank", 
-                 "Mid_Atlantic_Bight", "Southern_New_England")))
+# Set theme
+theme_set(
+  theme_gmri() + 
+    theme(
+      text = element_text(family = "Avenir", size = 11),
+      plot.margin = margin(5,5,5,5), 
+          legend.position = "bottom", 
+          legend.direction = "horizontal", 
+          legend.title = element_text(size = 12, face = "bold")) )
 
 
-# format year and anomalies
-df <- df %>% 
-  mutate(yr_num = as.numeric(as.character(year)),
-         year = factor(year)) %>%            
-  group_by(survey_area) %>% 
-  arrange(survey_area, year) %>% 
-  mutate(
-    anom_5 = zoo::rollapply(
-      sst_anom, 5, mean, na.rm = T, align = "right",  fill = NA),
-    land_5_raw = zoo::rollapply(
-      landings_raw, 5, mean, na.rm = T, align = "right",  fill = NA)) %>% 
-  # Scale sst/bt within regions
-  group_by(survey_area) %>% 
-  mutate(
-    sst_z = as.numeric(base::scale(sst)),
-    bt_z = as.numeric(base::scale(ersst)),
-    bt_z = as.numeric(base::scale(bot_temp))) %>% 
-  ungroup()
-
-
-
-
-```
-
-
-
-```{r}
-#| label: fonts-config
-#| echo: false
 
 # Path to the directory containing the font file (replace with your actual path)
 font_dir <- paste0(system.file("stylesheets", package = "gmRi"), "/GMRI_fonts/Avenir/")
@@ -135,6 +91,167 @@ font_add(
 showtext::showtext_auto()
 
 ```
+
+
+
+```{r}
+#| label: load-and-prep-data
+
+
+#--------------------
+## Set up
+#--------------------
+
+# Load the raw data 
+# Source: spectra_lm_data_prep
+# df <- read_csv(here::here("data/size_and_spectra_model_data.csv"))
+
+# Load from targets so we're consistent
+# OR targets...
+targets::tar_load("warmem_mle_results")
+targets::tar_load("mean_sizes_ss_groups")
+
+
+# Join them
+df <- left_join(
+  warmem_mle_results,
+  mean_sizes_ss_groups) %>% 
+  filter(`group ID` == "single years * region") %>% 
+  select(
+    Year, survey_area, season, 
+    avg_len = mean_len_cm, 
+    avg_wt = mean_wt_kg,
+    mean_wt = mean_wt_kg,
+    med_wt = med_wt_kg, 
+    n, 
+    b, 
+    confMin, 
+    confMax, 
+    xmin = xmin_fit, 
+    xmax = xmax_fit) %>% 
+  left_join(area_df) %>% 
+  select(-survey_area) %>% 
+  rename(survey_area = area,
+         year = Year)  %>% 
+  mutate(year = as.numeric(as.character(year)))
+
+
+
+# Get raw landings
+landings_raw <- read_csv(here::here("data/unscaled_spectra_predictor_dataset_wide.csv")) %>% 
+  select(year, survey_area, landings_raw = landings)
+
+
+# Get the raw sst from oisst
+sst_raw <- read_csv(here::here("data/unscaled_regional_sst.csv"))
+
+# Read in dupontavice bottom temperatures
+bot_temps <- read_csv(str_c(cs_path("res", "Du_Pontavice_Combined_BT/RegionalTimeseries"), "trawl_region_bottom_temps.csv"))
+
+
+# Load ersst
+ersst_path <- cs_path("res", "ERSSTv5")
+shape_names <- str_c(
+  ersst_path, "ERSSTv5_anom_nmfs_trawl_", 
+  c("gulf_of_maine", "georges_bank", "mid_atlantic_bight", "southern_new_england"), 
+  ".csv")
+
+# Load them
+ersst_ts <- map(
+  shape_names, ~read_csv(.x)) %>% 
+  setNames(c("Gulf of Maine", "Georges Bank", 
+             "Mid-Atlantic Bight", "Southern New England")) %>% 
+  bind_rows(.id = "survey_area") %>% 
+  select(survey_area, time, sst = area_wtd_sst, sst_anom = area_wtd_sst_anom) %>% 
+  group_by(year = lubridate::year(time), survey_area) %>% 
+  summarise(
+    ersst = mean(sst),
+    ersst_anom = mean(sst_anom),
+    .groups = "drop")
+
+
+
+# Add ERSST sst
+sst_both <- full_join(ersst_ts, sst_raw)
+```
+
+
+
+
+```{r}
+#| label: build-analysis-df
+
+
+#------------
+
+# Put it all together and clarify the column names
+df <- df %>% 
+  left_join(landings_raw) %>% 
+  left_join(sst_both) %>% 
+  left_join(bot_temps) %>% 
+  mutate(
+    survey_area = factor(
+      survey_area, 
+      levels = area_levels_long),
+    region = str_replace_all(survey_area, "-| ", "_"),
+    region = factor(
+      region, 
+      levels = c("Gulf_of_Maine", "Georges_Bank", 
+                 "Mid_Atlantic_Bight", "Southern_New_England")))
+
+
+
+
+# Format year and anomalies
+
+# Get 5-year rolling averages of landings/temps
+df <- df %>% 
+  mutate(
+    yr_num = as.numeric(as.character(year)),
+    year = factor(year)) %>%
+  # 1. Get de-trended values in landings/bottom temperatures within regions
+  group_by(region) %>%
+  arrange(yr_num) %>% 
+  mutate(
+    # These are t - t-1 
+    land_diff = landings_raw - dplyr::lag(landings_raw),
+    bt_diff   = bot_temp - dplyr::lag(bot_temp)) %>% 
+  ungroup() %>% 
+  
+  # 2. Scale sst/bt/landings across all values
+  mutate(
+    land_z      = base::scale(landings_raw)[,1],
+    log_land_z  = base::scale(log(landings_raw))[,1],
+    land_diff_z = base::scale(land_diff)[,1],
+    bt_z        = base::scale(bot_temp)[,1],
+    bt_diff_z   = base::scale(bt_diff)[,1]) %>% 
+  
+  # Apply Rolling Averages within Regions
+  group_by(survey_area) %>% 
+  arrange(survey_area, year) %>% 
+  mutate(
+    land_5_raw = zoo::rollapply(
+      landings_raw, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_5_z = zoo::rollapply(
+      land_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    log_land_5_z = zoo::rollapply(
+      log_land_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    land_diff_5 = zoo::rollapply(
+      land_diff, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_5 = zoo::rollapply(
+      bot_temp, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_z_5 = zoo::rollapply(
+      bt_z, 5, mean, na.rm = T, align = "right",  fill = NA),
+    bt_diff_5 = zoo::rollapply(
+      bt_diff, 5, mean, na.rm = T, align = "right",  fill = NA)) %>% 
+  ungroup()  
+  
+
+
+```
+
+
+
 
 # Changes in Time:
 
@@ -167,13 +284,125 @@ df  %>%
   geom_ma(n = 5, ma_fun = SMA) +
   geom_smooth(method = "lm", linewidth = 1, se = F) +
   scale_color_gmri() +
-  labs(title = "Size Spectra Slope Steepens in 1990's",
+  labs(title = "Size Spectra Slope Changes",
        y = "Exponent of Size Spectra (b)",
        x = "Year",
        color = "Region")
 ```
 
-### Sea Surface Temperature
+### Size Spectra as Slopes
+
+Plotting the PDF of the Individual Size Distribution (Size Spectra)
+
+So much less cool than I thought...
+
+```{r}
+#| eval: false
+#| label: size-distribution-curves
+
+# Idea, take xmin, xmax, and slope parameters and plot the sixe distribution as ridgeplot over time
+targets::tar_load(size_spectrum_indices)
+glimpse(size_spectrum_indices)
+
+# Getting a bad join - decade
+isd_plot_data <- size_spectrum_indices %>% 
+  filter(`group ID` == "single years * region") %>% 
+  select(year = Year, survey_area,  b, n, confMin, confMax, xmin = xmin_fit, xmax = xmax_fit)
+
+
+
+
+# Build data for the curves
+isd_curvedata <- function(mle_results, add_height = F){
+  # These are the things we need
+  b.MLE           <- mle_results$b # Slope
+  total_abundance <- mle_results$n # Total abundance (sets height)
+  b.confMin       <- mle_results$confMin # Lower Confidence
+  b.confMax       <- mle_results$confMax # Upper Confidence
+  
+  # Create range of x values from the group to get power law predictions
+  # PLB = bounded power-law
+  # Uses min and max weights for predictions
+  xmin  <- mle_results$xmin
+  xmax  <- mle_results$xmax
+  
+  # Create x values (individual bodymass) to predict across
+  # break up the Xlim into pieces between min and max
+  x.PLB <- seq(
+    from = xmin, 
+    to   = xmax, 
+    length.out = 2000)   
+  
+  # get the length of that vector
+  x.PLB.length <- length(x.PLB)  
+  
+  # remove last entry, add an entry .9999 of the way there, and cap it with the last entry wtf
+  x.PLB <- c(x.PLB[-x.PLB.length], 0.99999 * x.PLB[x.PLB.length], x.PLB[x.PLB.length])
+  
+  # Y values for plot limits/bounds/predictions from bounded power law pdf
+  y.PLB         <- (1 - sizeSpectra::pPLB(x = x.PLB, b = b.MLE, xmin = min(x.PLB), xmax = max(x.PLB))) 
+  y.PLB.confMin <- (1 - sizeSpectra::pPLB(x = x.PLB, b = b.confMin, xmin = min(x.PLB), xmax = max(x.PLB))) 
+  y.PLB.confMax <- (1 - sizeSpectra::pPLB(x = x.PLB, b = b.confMax, xmin = min(x.PLB), xmax = max(x.PLB))) 
+  
+  
+  # Add height using total abundance: Y/n?
+  if(add_height){
+    y.PLB       <- y.PLB * total_abundance
+    y.PLB.confMin <- y.PLB.confMin * total_abundance
+    y.PLB.confMax <- y.PLB.confMax * total_abundance
+  }
+  
+  # Put it in a df to make it easier
+  PLB_df <- data.frame(
+    x.PLB   = x.PLB,
+    y.PLB   = y.PLB,
+    confMin = y.PLB.confMin,
+    confMax = y.PLB.confMax)
+  return(PLB_df)
+}
+
+
+
+
+
+# Test a subset:
+# Makes a dataframe for every year...
+isd_plot_data %>% 
+  filter(year %in% c(2005:2010)) %>% 
+  mutate(yr_area = str_c(year, survey_area, sep = "-")) %>% 
+  split(.$yr_area) %>% 
+  map_dfr(~isd_curvedata(.x, add_height = F), 
+          .id = "yr_area") %>% 
+  separate(yr_area, sep = "-", into = c("year", "survey_area"), remove = F) %>% 
+  ggplot(aes(x.PLB, y.PLB, ymin = confMin, ymax = confMax)) +
+  #geom_ribbon() +
+  scale_color_gmri() +
+  geom_line(aes(color = survey_area, group = yr_area), alpha = 0.4, linewidth = 1) +
+  scale_x_continuous(
+    expand = expansion(add = c(0,0)),
+    transform = "log10", 
+    labels = scales::label_log(base = 10)) +
+  scale_y_continuous(limits = c(0,1), breaks = c(0, 1)) +
+  # If we add height units use log10 transformation
+  # scale_y_continuous(
+  #   transform = "log10", 
+  #   labels = scales::label_log(base = 10)) +
+  facet_grid(year~., scales = "free") +
+  theme(strip.placement = "outside",
+        strip.text.y = element_text(angle = 0)) +
+  labs(
+    x = "Weight (g)", 
+    y = "Probablility",
+    title = "Individual Size Probability Distribution")
+
+
+
+
+```
+
+
+
+### ERSSTv5 Sea Surface Temperature
 
 ```{r}
 df  %>% 
@@ -199,7 +428,7 @@ df  %>%
   geom_ma(n = 5, ma_fun = SMA) +
   geom_smooth(method = "lm", linewidth = 1, se = F) +
   scale_color_gmri() +
-  labs(title = "Bottom Temperatures Rising in All Regions",
+  labs(title = "Bottom Temperature Rising in All Regions Since 1970",
        y = "Bottom Temperature (DuPontavice et al)",
        x = "Year",
        color = "Region")
@@ -250,8 +479,6 @@ df %>%
     x = "Year",
     y = "Landings (lb.)",
     color = "Region", fill = "Region")
-
-
 
 
 ```
@@ -343,9 +570,9 @@ high_landings <- species_landings %>%
       scale_fill_gmri() +
       scale_color_gmri() +
       guides(
-        fill = guide_legend(nrow = 3),
-        color = guide_legend(nrow = 3)
-      ) +
+        fill = guide_legend(nrow = 4),
+        color = guide_legend(nrow = 4)) +
+      facet_wrap(~survey_area) +
       labs(x = "Year", y = "Total Weight (lb.)",
          color = NULL, fill = NULL)
     
@@ -375,19 +602,50 @@ In some previous EDA we became concerned about both landings and SST changes bei
 
 ### Landings and Bottom Temperature Colinearity
 
-Landings and bottom temperature are most correlated in georges bank at R2 = 0.41. 
+Landings and bottom temperature are most correlated in georges bank at R2 = 0.41. This is lower than I thought intitally and might not be a problem.
 
 ```{r}
 # See roll anom and roll landings relationship
-ggplot(df, aes(bot_temp, landings)) + 
+ggplot(df, aes(bot_temp, landings_raw)) + 
   geom_point() + 
   geom_smooth(method = "lm") +
-  facet_wrap(~survey_area) +
+  facet_wrap(~survey_area, scales = "free") +
   stat_poly_eq(use_label(c("eq", "R2")), label.x = 0.95, label.y = 0.95) +
-  labs(title ="Landings and ERSSTv5 (both scaled)")
+  labs(title ="Landings and Bottom Temperature")
 
 
 ```
+
+
+
+
+```{r}
+# See rolling mean bottom temp and rolling mean landings relationship
+ggplot(df, aes(bt_5, land_5_raw)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_wrap(~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("eq", "R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature",
+       subtitle = "(5-year rolling Average)")
+
+```
+
+If we don't use a rolling window we may need to check for temporal auto-correlation in the residuals
+
+Here is what they look like scaled over the full range of values:
+
+```{r}
+
+ggplot(df, aes(bt_5, land_5_raw)) + 
+  geom_point() + 
+  geom_smooth(method = "lm") +
+  facet_wrap(~survey_area, scales = "free") +
+  stat_poly_eq(use_label(c("eq", "R2")), label.x = 0.95, label.y = 0.95) +
+  labs(title ="Landings and Bottom Temperature",
+       subtitle = "(5-year rolling Average)")
+```
+
 
 ### Landings Clustering/Bi-modality
 
@@ -400,14 +658,30 @@ ggplot(df, aes(landings)) +
   facet_wrap(~survey_area) +
   scale_fill_gmri() +
   labs(x = "Landings (z)")
+
+# # Find valleys to use as breaks?
+# # ^ The above plots kernel density smooths
+# df %>% 
+#   split(.$survey_area) %>% 
+#   walk(function(x){
+# 
+#     # try to get density vector from scratch
+#     density(drop_na(df,landings)$landings)
+#     # then find valleys from the kernel densities
+#     quantmod::findValleys(cdf_pct)
+#   })
+# 
+# 
+
+
 ```
 
 
-
+We could also use k-means clustering to convert landings into a categorical variable. But this gets into the weeds on arbitrary decision making and loss of meaning quickly. Larger numbers of clusters (>5) increase the between group SS, which is good, but we don't really have any mechanistic hypotheses to go with the new levels.
 
 ```{r}
 #| label: landings-clustering
-#| eval: false
+#| eval: true
 
 # clustering landings
 # use betweens to assess which value for centers maximizes between group SS
@@ -428,27 +702,31 @@ clust_num_mods <- clust_range %>%
     })
 
 
-# Pull performance
-map_dfr(set_names(clust_num_mods, clust_range), 
-        ~pluck(.x, "betweens"), .id = "num_clusters") %>% 
-  ggplot(aes(num_clusters, `Between Group SS`)) + 
-  geom_point() + 
-  geom_line()
+# # Pull performance
+# map_dfr(set_names(clust_num_mods, clust_range),
+#         ~pluck(.x, "betweens"), .id = "num_clusters") %>%
+#   ggplot(aes(num_clusters, `Between Group SS`)) +
+#   geom_point() +
+#   geom_line()
 
 
 
 # Pull the cluster info, make sure that each region has good representation
 # for 3 clusters
-region_clusters <- df %>% 
-  drop_na(landings) %>% 
-  split(.$region) %>% 
-  imap_dfr(function(x,y){
-    mod = kmeans(drop_na(x,landings)$landings, centers = 3)
-    data.frame(
-      region = y,
-      year = x$year,
-      landing_cat = mod$cluster
-    )})
+# If we do it independently between the regions we don't have coherence in what the clusters mean
+
+# BAD
+# region_clusters <- df %>% 
+#   drop_na(landings) %>% 
+#   split(.$region) %>% 
+#   imap_dfr(function(x,y){
+#     mod = kmeans(drop_na(x,landings)$landings, centers = 3)
+#     data.frame(
+#       region = y,
+#       year = x$year,
+#       landing_cat = mod$cluster
+#     )})
+
 # Do together so there is coherence among what the categories mean
 region_clusters <- df %>% 
   drop_na(landings) %>% 
@@ -466,13 +744,26 @@ left_join(df, region_clusters) %>% #glimpse()
   ggplot(aes(yr_num, landings)) + 
   geom_col(aes(fill = landing_cat)) + 
   facet_wrap(~survey_area) +
-  scale_fill_brewer(palette = "Oranges", na.translate = F, direction = 1)
+  scale_fill_brewer(palette = "Oranges", na.translate = F, direction = 1) +
+  labs(title = "Should we cluster the landings?")
 
 ```
 
 
 :::
 
+
+
+### Predictor year differencing
+
+```{r}
+land_time <- lm(land_5_raw ~ yr_num * region, data = df)
+land_time_diff <- df$land_5_raw - predict(land_time)
+bind_cols(df, "ltdiff" = land_time_diff) %>% 
+  ggplot(aes(yr_num, ltdiff, color = region)) +
+  geom_point() +
+  geom_smooth(method = "lm", alpha = 0.3)
+```
 
 
 
@@ -499,54 +790,29 @@ Package documentation on interaction terms:
 Models were fit using log-likelihood for parameter significance testing via likelihood ratio tests. Following model evaluation/selection the model was refit for parameter estimation.
 
 ```{r}
-
 # Complete model
+model_dat <- drop_na(df, landings, bt_z)
+
+# The model we wish we could have
 full_mod <- lme4::lmer(
-  b ~ land_5  * region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z), 
+  b ~ scale(log(landings_raw))  * region + scale(bt) + (1 | year), 
+  data = model_dat, 
   REML = FALSE)
 
-
-# The full model has trouble with all the interactions
-# If we simplify either sst/landings to be intercept only it helps
-# Intercept only for SST
-slope_landings <- lme4::lmer(
-  b ~ land_5  * region + bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z), 
-  REML = FALSE)
-
-# Intercept only for landings
-slope_bt <- lme4::lmer(
-  b ~ land_5  + region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z), 
-  REML = FALSE)
+# The version with un-smoothed predictors
+quick_summ <- lmerTest::lmer(
+  b ~ region * (scale(log(landings_raw)) + scale(bot_temp)) + (1 | year), 
+  data = model_dat
+)
+summary(quick_summ)
 
 
-# Need models with reduced complexity to further compare
-landings_only_mod <- lme4::lmer(
-  b ~ land_5  * region + (1 | year), 
-  data = drop_na(df, land_5, bt_z), 
-  REML = FALSE)
-
-bt_only_mod <- lme4::lmer(
-  b ~ region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z), 
-  REML = FALSE)
-
-
-# # Autocorrelative Error Structure - Performs badly
-# Ben bolker to thatnk, of course:
-# https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
-# full_mod <- nlme::lme(b ~ landings  * region + sst_anom,
-#                      random = ~ 1 |  year, 
-#                      data = drop_na(df, landings, sst_anom),
-#                      correlation=corAR1(), method = "ML")
-
-
-
-
+# The version with the 5-year
+smooth_summ <- lmerTest::lmer(
+  b ~ region * (scale(log(land_5_raw)) + scale(bt_5)) + (1 | year), 
+  data = model_dat)
+summary(smooth_summ)
 ```
-
 
 
 ### Assess Collinearity Bottleneck
@@ -560,27 +826,150 @@ plot(check_collinearity(full_mod)) +
 
 ```
 
+# Figure 2 stuff
+
+Did body size change over time, different by region
+
 
 ```{r}
-#| eval: false
+
+# Start from a simple question, did regions change over time
+simple_mmod <- lmerTest::lmer(data = df, b ~   yr_num * region + (1 | year))
+
+# Significance here relative to gom factor level
+summary(simple_mmod)
+simple_preds <- as.data.frame(ggpredict(simple_mmod, ~ yr_num + region) )
 
 
-# Less complex models
-plot(check_collinearity(slope_landings))
-plot(check_collinearity(slope_bt))
-plot(check_collinearity(bt_only_mod))
-plot(check_collinearity(landings_only_mod))
+ggplot(simple_preds) +
+  geom_ribbon(aes(x, ymin = conf.low, ymax = conf.high, group = group), alpha = 0.1) +
+  geom_line(aes(x, predicted, color = group)) +
+  geom_point(data = model_dat, aes(yr_num, b, color = region)) +
+  geom_line(data = model_dat, aes(yr_num, b, color = region), alpha = 0.4, linetype = 2)
+
+
+
+# To get effect significance need effects package
+  
+```
+
+## Differencing to Remove trends
+
+```{r}
+
+
+# ---- with other covariates
+
+
+mod2 <- lmerTest::lmer(med_wt ~ region * yr_num * (scale(landings_diff) + scale(bt_diff)) + (1|year), 
+                       data = model_dat)
+summary(mod2)
+
+
+diff_preds <- as.data.frame(ggpredict(mod2, ~ yr_num + region) )
+
+
+
+
+ggplot(diff_preds) +
+  geom_ribbon(aes(x, ymin = conf.low, ymax = conf.high, group = group), alpha = 0.1) +
+  geom_line(aes(x, predicted, color = group)) +
+  geom_point(data = model_dat, aes(yr_num, med_wt, color = region)) +
+  geom_line(data = model_dat, aes(yr_num, med_wt, color = region), alpha = 0.4, linetype = 2) 
+
+
+diff_preds <- as.data.frame(ggpredict(mod2, ~ landings_diff + region) )
+ggplot(diff_preds) +
+  geom_ribbon(aes(x, ymin = conf.low, ymax = conf.high, group = group), alpha = 0.1) +
+  geom_line(aes(x, predicted, color = group))  +
+  geom_point(data = model_dat, aes(landings_diff, med_wt, color = region)) +
+  geom_line(data = model_dat, aes(landings_diff, med_wt, color = region), alpha = 0.4, linetype = 2)
+```
+
+
+
+
+
+
+## Exploring Less complex/complete model forms
+
+
+
+```{r}
+# Less complex models that give up on landings or temperature
+model_dat
+
+slope_landings <- lmerTest::lmer(
+  b ~ region * (scale(log(land_5_raw)) + scale(bt_5)) + (1 | year),
+  data = model_dat)
+summary(slope_landings)
+
+plot(ggpredict(slope_landings, ~ land_5_raw * region)) + scale_x_log10()
+
+
+plot(check_collinearity(slope_landings)) +
+  geom_hline(yintercept = 3, linetype = 3, aes(color = "Zuur Threshold"), linewidth = 1)
+
+
+
+
+# ---- old stuff
+
+# The full model has trouble with all the interactions
+# If we simplify either sst/landings to be intercept only it helps
+# Intercept only for SST
+slope_landings <- lmerTest::lmer(
+  b ~ landings  * region + bt_z + (1 | year),
+  data = model_dat,
+  REML = FALSE)
+
+# Intercept only for landings
+slope_bt <- lmerTest::lmer(
+  b ~ landings  + region * bt_z + (1 | year),
+  data = model_dat,
+  REML = FALSE)
+
+
+# Need models with reduced complexity to further compare
+landings_only_mod <- lmerTest::lmer(
+  b ~ landings  * region + (1 | year),
+  data = model_dat,
+  REML = FALSE)
+
+bt_only_mod <- lmerTest::lmer(
+  b ~ region * bt_z + (1 | year),
+  data = model_dat,
+  REML = FALSE)
+
+
+# No Random Effect Model
+no_re_mod <- lm(
+  b ~ landings  * region  * bt_z,
+  data = model_dat)
+
+
+# # Autocorrelative Error Structure Can be Added this way
+# - Performs badly
+# Ben bolker to thatnk, of course:
+# https://bbolker.github.io/mixedmodels-misc/notes/corr_braindump.html
+# full_mod <- nlme::lme(b ~ landings  * region + sst_anom,
+#                      random = ~ 1 |  year,
+#                      data = drop_na(df, landings, sst_anom),
+#                      correlation=corAR1(), method = "ML")
+
 
 ```
 
-### Significance / Model Comparison
+
+
+## AICc Model Comparison
 
 ```{r}
 
-# Do AICc
+# Do AICc and Delat AICc
 MuMIn::AICc(
   full_mod,slope_landings, slope_bt, bt_only_mod, landings_only_mod) %>%  
-  mutate(DeltaAICc = AICc - min(.$AICc)) %>% 
+  mutate(DeltaAICc = abs(min(.$AICc) - AICc)) %>% 
   rownames_to_column("Model ID") %>% 
   arrange(DeltaAICc) %>% 
   gt() %>% 
@@ -595,43 +984,7 @@ MuMIn::AICc(
 ```
 
 
-### Refit Using REML - Report Summary
-
-```{r}
-# Complete model
-full_mod_reml <- lme4::lmer(
-  b ~ land_5  * region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z), 
-  REML = TRUE)
-```
-
-
-
-### Fit & Predictions
-
-```{r}
-
-qqnorm(resid(full_mod_reml))
-qqline(resid(full_mod_reml))
-
-
-ggplot(df, 
-       aes(x = yr_num, y = b, color = region)) +
-      geom_point(alpha = 0.5) +
-      theme_classic() +
-  scale_color_gmri() +
-      geom_line(
-        data = cbind(drop_na(df, land_5, ersst), 
-                     pred = predict(full_mod)), 
-        aes(y = pred), size = 1) +  # adding predicted line from mixed model 
-      theme(legend.position = "none") +
-  labs(
-    title = "Spectra Model Predicitions",
-    x = "Year",
-    y = "Exponent of Community Size Spectra (b)")
-
-```
-
+## Significance Testing with LRT
 
 
 ### Bottom Temperature Effect
@@ -642,19 +995,17 @@ Results from the LRT's indicated that including bottom temperature in the model 
 
 ```{r}
 # Model Comparison & significance testing with a likelihood ratio test
-
 # Based on f-test
-anova(slope_landings, full_mod)
+
+# Compare against the landings only model - no bottom temp
 anova(landings_only_mod, full_mod)
 
+# Compare against the landings slope only model - no bt * region
+anova(slope_landings, full_mod)
+
+
 ```
 
-
-```{r}
-# SST Anomaliezs
-plot(ggpredict(full_mod, ~bt_z+region), add.data = T, jitter = 0.1)
-
-```
 
 ### Landings Effect
 
@@ -667,23 +1018,238 @@ Results from the LRT's indicated that including regional landings in the model a
 # Model Comparison & significance testing with a likelihood ratio test
 
 # Based on f-test
-anova(slope_bt, full_mod)
+
+# Compare against the bot temp only model - no landings
 anova(bt_only_mod, full_mod)
 
+# Compare against the bot temp slope only model - no landings * region
+anova(slope_bt, full_mod)
+
+```
+
+### Regional Effect 
+
+
+```{r}
+# Use emmeans for contrasting regional interactions
+
+# # Just regions
+# region_contrast <- emmeans(full_mod, ~region)
+# plot(region_contrast) + coord_flip()
+
+# Pairwise Comparisons
+region_contrast <- emmeans(full_mod, ~region)
+contrast(region_contrast, "pairwise")
+
+```
+
+### Region Interactions
+
+```{r}
+# Interactions
+# # these look weird because its one value for the continuous var
+# # Bottom temp
+# bt_x_region <- emmeans(full_mod, ~ bt_z | region)
+# plot(bt_x_region)
+# 
+# # landings
+# landings_x_region <- emmeans(full_mod, ~ land_5 | region)
+# plot(landings_x_region) 
+```
+
+
+
+### Random Effect - Years
+
+The random effect of year is kind of part of the study/sampling design so we might not want to test it or remove it.
+
+see: https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html#testing-hypotheses 
+
+```{r}
+# Compare against a model without random effects
+# significance test
+anova(full_mod,  no_re_mod)
+
+
+# Can Extract Random effects this way
+# ranef(full_mod)
+
+# Can do random intercept this way (intercept + random effect)
+# coef(full_mod)$year
+
+
+# Can also create bootstrapped confidence intervals
+
+# predictInterval(full_mod)   # for various model predictions, possibly with new data
+full_mod_resim <-  REsim(full_mod)   # mean, median and sd of the random effect estimates
+
+
+
+# Plot interval estimates in order of years
+full_mod_resim %>% 
+  mutate(year = as.numeric(groupID),
+         confmin = mean - 1.96*sd,
+         confmax = mean + 1.96*sd,
+         flag_alpha = ifelse(confmin > 0 | confmax < 0, 1, 0.5)) %>% 
+  ggplot(aes(year)) +
+  geom_segment(aes(x = year, xend = year, y = confmin, yend = confmax,alpha = I(flag_alpha)), 
+               color = gmri_cols("blue"), linewidth = 1)+ 
+  geom_hline(yintercept = 0, linewidth = 1, color = gmri_cols("orange")) +
+  geom_point(aes(year, mean,alpha = I(flag_alpha)), size = 3, color = gmri_cols("blue")) +
+  labs(x = "Year", y = "Coefficient", title = "Year Random Effects", subtitle = "Interval Estimates")
+```
+
+
+
+
+# Refit Best/Full Model Using REML - Report the Summary
+
+```{r}
+# Complete model
+full_mod_reml <- lme4::lmer(
+  b ~ landings  * region * bt_z + (1 | year), 
+  data = model_dat, 
+  REML = TRUE)
+```
+
+### Interprate Results from REML Fit
+
+Significance testing on linear mixed model were performed via t-tests using Kenward-Roger's method and implemented via the lmerTest package in R. 
+
+
+```{r}
+# lmerTest
+# lmerTest
+reml_summ <- summary(as_lmerModLmerTest(full_mod_reml), ddf="Kenward-Roger") 
+
+# Table for fixed effect significance
+tibble("term" = rownames(reml_summ$coefficients)) %>% 
+  cbind(as_tibble(reml_summ$coefficients)) %>% 
+  gt() %>% 
+  tab_header(title = "Fixed Effect Model Coefficients", 
+             subtitle = "Significance testing via t-tests using Kenward-Roger's method") %>% 
+  tab_style(
+    style = cell_fill(color = "limegreen", alpha = 0.3),
+    locations = cells_body(
+      columns = everything(),
+      rows = `Pr(>|t|)` < 0.05 & Estimate > 0)) %>% 
+  tab_style(
+    style = cell_fill(color = "coral", alpha = 0.3),
+    locations = cells_body(
+      columns = everything(),
+      rows = `Pr(>|t|)` < 0.05  & Estimate < 0))
 ```
 
 
 ```{r}
-plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
+# #------- Why are significance results different when done this way?
+# 
+# # Or Type II Wald F Tests with Kenward-Roger df
+# car::Anova(full_mod_reml, test = "F")
+
 ```
 
-## Summary of results
+
+
+Coefficient summaries for fixed and random effects can be summarized with the broom package.
+
+```{r}
+coef_summ <- tidy(full_mod_reml) 
+coef_summ %>% 
+  gt() %>% 
+  tab_header(title = "Fixed & Random Effect Model Coefficients")
+
+```
 
 
 ```{r}
-tidy(full_mod_reml) %>% 
-  gt()
+# Random effect % deviance
+
+# Residual standard error
+yr_reffect_resid <- coef_summ %>% filter(group == "year") %>% pull(estimate)
+mod_residual_se <- sigma(full_mod_reml)
+
+# Get the fraction explained by the random effect
+round((yr_reffect_resid / mod_residual_se) * 100, 3)
 ```
+
+
+
+
+
+Written summary of results
+
+```{r}
+
+report::report(full_mod_reml)
+```
+
+
+
+
+### Fit & Predictions
+
+```{r}
+
+# qqnorm(resid(full_mod_reml))
+# qqline(resid(full_mod_reml))
+
+# Get mean predictions
+# Get predictions and prediction intervals
+reml_preds <- cbind(
+  model_dat,
+  predictInterval(
+  full_mod_reml, 
+  newdata = model_dat))
+
+
+# Plot predictions and prediction intervals
+ggplot(reml_preds) +
+  geom_ribbon(data = reml_preds, aes(yr_num, ymin = upr, ymax = lwr, fill = region), alpha = 0.1) +
+  geom_line(data = reml_preds, aes(yr_num, y = fit, color = region), size = 1.5) +
+  geom_point(aes(x = yr_num, y = b, color = region), alpha = 0.5) +
+  theme_classic() +
+  scale_color_gmri() +
+  scale_fill_gmri() +
+  facet_wrap(~survey_area) +
+  theme(legend.position = "none") +
+  labs(
+    title = "Spectra Model Predicitions",
+    x = "Year",
+    y = "Exponent of Community Size Spectra (b)")
+
+```
+
+### Marginal Effects Plots
+
+```{r}
+# Bottom Temp Anomalies
+plot(ggpredict(full_mod_reml, ~bt_z + region), add.data = T, jitter = 0.1)
+
+```
+
+
+```{r}
+plot(ggpredict(full_mod_reml, ~landings+region), add.data = T, jitter = 0.1)
+```
+
+
+```{r}
+# Bottom temp
+bt_x_region <- emmeans(full_mod_reml, ~ bt_z | region) %>% as_tibble()
+plot(bt_x_region)
+
+# landings
+landings_x_region <- emmeans(full_mod_reml, ~ landings | region)
+plot(landings_x_region) 
+
+# Just regions
+region_contrast <- emmeans(full_mod_reml, ~region)
+plot(region_contrast) + coord_flip()
+contrast(region_contrast, "pairwise")
+```
+
+
 
 
 
@@ -702,31 +1268,31 @@ How has median weight changed
 
 # Complete model
 full_mod <- lme4::lmer(
-  med_wt ~ land_5  * region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z))
+  med_wt ~ landings  * region * bt_z + (1 | year), 
+  data = model_dat)
 
 
 # The full model has trouble with all the interactions
 # If we simplify either sst/landings to be intercept only it helps
 # Intercept only for SST
 slope_landings <- lme4::lmer(
-  med_wt ~ land_5  * region + bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z))
+  med_wt ~ landings  * region + bt_z + (1 | year), 
+  data = model_dat)
 
 # Intercept only for landings
 slope_bt <- lme4::lmer(
-  med_wt ~ land_5  + region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z))
+  med_wt ~ landings  + region * bt_z + (1 | year), 
+  data = model_dat)
 
 
 # Need models with reduced complexity to further compare
 landings_only_mod <- lme4::lmer(
-  med_wt ~ land_5  * region + (1 | year), 
-  data = drop_na(df, land_5, bt_z))
+  med_wt ~ landings  * region + (1 | year), 
+  data = model_dat)
 
 bt_only_mod <- lme4::lmer(
   med_wt ~ region * bt_z + (1 | year), 
-  data = drop_na(df, land_5, bt_z))
+  data = model_dat)
 
 
 # # Autocorrelative Error Structure- Performs badly
@@ -806,7 +1372,7 @@ ggplot(df,
       theme_classic() +
   scale_color_gmri() +
       geom_line(
-        data = cbind(drop_na(df, land_5, ersst), 
+        data = cbind(drop_na(df, landings, ersst), 
                      pred = predict(full_mod)), 
         aes(y = pred), size = 1) +  # adding predicted line from mixed model 
       theme(legend.position = "none",
@@ -828,7 +1394,7 @@ plot(ggpredict(full_mod, ~bt_z+region), add.data = T, jitter = 0.1)
 ### Landings Effect
 
 ```{r}
-plot(ggpredict(full_mod, ~land_5+region), add.data = T, jitter = 0.1)
+plot(ggpredict(full_mod, ~landings+region), add.data = T, jitter = 0.1)
 ```
 
 ## Summary of results

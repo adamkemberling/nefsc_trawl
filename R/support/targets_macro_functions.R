@@ -18,13 +18,16 @@ source(here::here("R/support/sizeSpectra_support.R"))
 # Macro 1: survdat catch and survdat bio
 # Load, add_lw, supplement functional groups
 import_and_tidy_catch <- function(box_location){
-  catch_data <- gmri_survdat_prep(survdat = NULL, 
-                    survdat_source = "most recent", 
-                    box_location = box_location) %>% 
-    add_lw_info(cutoff = T, 
-                box_location = box_location) %>% 
-    add_area_stratification(include_epu = F, 
-                            box_location = box_location) %>% 
+  catch_data <- gmri_survdat_prep(
+      survdat = NULL, 
+      survdat_source = "most recent", 
+      box_location = box_location) %>% 
+    add_lw_info(
+      cutoff = T, 
+      box_location = box_location) %>% 
+    add_area_stratification(
+      include_epu = F, 
+      box_location = box_location) %>% 
     fill_func_groups(species_dat = .) 
   return(catch_data)
 }
@@ -32,13 +35,16 @@ import_and_tidy_catch <- function(box_location){
 
 # Same steps (minus area stratification) for biological data
 import_and_tidy_bio <- function(box_location){
-  bio_data <- gmri_survdat_prep(survdat = NULL, 
-                    survdat_source = "bio", 
-                    box_location = box_location) %>% 
-    add_lw_info(cutoff = T, 
-                box_location = box_location)%>% 
-    mutate(Year = est_year,
-           season = str_to_title(season)) %>% 
+  bio_data <- gmri_survdat_prep(
+      survdat = NULL, 
+      survdat_source = "bio", 
+      box_location = box_location) %>% 
+    add_lw_info(
+      cutoff = T, 
+      box_location = box_location) %>% 
+    mutate(
+      Year = est_year,
+      season = str_to_title(season)) %>% 
     fill_func_groups()  
   return(bio_data)
 }
